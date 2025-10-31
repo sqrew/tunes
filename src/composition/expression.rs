@@ -39,10 +39,10 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("violin", &Instrument::synth_lead())
     ///     .vibrato(5.5, 0.3)  // Moderate vibrato at 5.5 Hz
@@ -70,10 +70,10 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .note(&[C4, E4, G4], 2.0)

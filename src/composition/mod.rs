@@ -135,10 +135,10 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)

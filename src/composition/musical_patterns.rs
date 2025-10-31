@@ -25,13 +25,13 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::theory::{progression, ScalePattern, ProgressionType};
-    /// use musicrs::notes::C4;
+    /// use tunes::theory::{progression, ScalePattern, ProgressionType};
+    /// use tunes::notes::C4;
     ///
     /// let pop_prog = progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], ProgressionType::Triads);
     /// comp.instrument("chords", &Instrument::warm_pad())
@@ -56,11 +56,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::scales::C4_MAJOR_SCALE;
+    /// use tunes::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale(&C4_MAJOR_SCALE, 0.1);  // Plays C4, D4, E4, F4, G4, A4, B4, C5
     /// ```
@@ -72,11 +72,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::scales::C4_MAJOR_SCALE;
+    /// use tunes::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_reverse(&C4_MAJOR_SCALE, 0.1);  // Plays C5, B4, A4, G4, F4, E4, D4, C4
     /// ```
@@ -104,11 +104,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::scales::C4_MAJOR_SCALE;
+    /// use tunes::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_updown(&C4_MAJOR_SCALE, 0.1);  // Plays C4, D4, E4, F4, G4, F4, E4, D4, C4
     /// ```
@@ -155,11 +155,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::scales::C4_MAJOR_SCALE;
+    /// use tunes::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_downup(&C4_MAJOR_SCALE, 0.1);  // Plays G4, F4, E4, D4, C4, D4, E4, F4, G4
     /// ```
@@ -203,12 +203,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::chords::C4_MAJOR;
+    /// use tunes::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate(C4_MAJOR, 0.125);  // Plays C4, E4, G4 sequentially
     /// ```
@@ -220,12 +220,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::chords::C4_MAJOR;
+    /// use tunes::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_reverse(C4_MAJOR, 0.125);  // Plays G4, E4, C4 sequentially
     /// ```
@@ -253,12 +253,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::chords::C4_MAJOR;
+    /// use tunes::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_updown(C4_MAJOR, 0.125);  // Plays C4, E4, G4, E4, C4 (no double G4)
     /// ```
@@ -305,12 +305,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::chords::C4_MAJOR;
+    /// use tunes::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_downup(C4_MAJOR, 0.125);  // Plays G4, E4, C4, E4, G4 (no double C4)
     /// ```
@@ -357,10 +357,10 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("thicc", &Instrument::saw_lead())
     ///     .octaves(&[C4, D4, E4], -1, 0.25);  // Each note plays with octave below
@@ -391,10 +391,10 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("harmony", &Instrument::pluck())
     ///     .harmonize(&[C4, D4, E4], 7, 0.25);  // Add perfect fifth (7 semitones) above
@@ -424,12 +424,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::chords::C4_MAJOR;
+    /// use tunes::chords::C4_MAJOR;
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .strum(C4_MAJOR, 0.5, 0.02);  // Quick upstroke (20ms between strings)
     pub fn pedal(mut self, pedal_note: f32, melody_notes: &[f32], note_duration: f32) -> Self {
@@ -475,12 +475,12 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use musicrs::sequences;
-    /// use musicrs::scales::C4_MAJOR_SCALE;
+    /// use tunes::sequences;
+    /// use tunes::scales::C4_MAJOR_SCALE;
     ///
     /// let fib = sequences::fibonacci(16);
     /// comp.instrument("fib", &Instrument::pluck())

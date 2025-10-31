@@ -30,9 +30,9 @@ impl<'a> DrumGrid<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::drums::DrumType;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::drums::DrumType;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)
@@ -160,8 +160,8 @@ impl<'a> DrumGrid<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::rhythm::Tempo;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)

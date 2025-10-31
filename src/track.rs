@@ -306,9 +306,9 @@ impl Mixer {
     ///
     /// # Example
     /// ```no_run
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::engine::AudioEngine;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::engine::AudioEngine;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// # let engine = AudioEngine::new()?;

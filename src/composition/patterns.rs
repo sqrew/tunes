@@ -67,11 +67,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::notes::*;
-    /// # use musicrs::scales::C4_MAJOR_SCALE;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # use tunes::scales::C4_MAJOR_SCALE;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("melody", &Instrument::pluck())
     ///     .pattern_start()

@@ -110,9 +110,9 @@ pub fn collatz(start: u32, max_terms: usize) -> Vec<u32> {
 ///
 /// # Examples
 /// ```
-/// # use musicrs::composition::Composition;
-/// # use musicrs::rhythm::Tempo;
-/// use musicrs::sequences;
+/// # use tunes::composition::Composition;
+/// # use tunes::rhythm::Tempo;
+/// use tunes::sequences;
 ///
 /// // Classic Cuban tresillo pattern
 /// let pattern = sequences::euclidean(3, 8);
@@ -186,7 +186,7 @@ fn bjorklund(pulses: usize, steps: usize) -> Vec<u32> {
 ///
 /// # Examples
 /// ```
-/// use musicrs::sequences;
+/// use tunes::sequences;
 /// let pattern = sequences::euclidean_pattern(5, 8);
 /// // Returns: [1, 0, 1, 1, 0, 1, 1, 0]
 /// ```
@@ -201,7 +201,7 @@ pub fn euclidean_pattern(pulses: usize, steps: usize) -> Vec<u32> {
 ///
 /// # Examples
 /// ```
-/// use musicrs::sequences;
+/// use tunes::sequences;
 /// let tri = sequences::triangular(6);
 /// assert_eq!(tri, vec![1, 3, 6, 10, 15, 21]);
 /// ```

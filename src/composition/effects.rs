@@ -33,11 +33,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::BitCrusher;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::BitCrusher;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("lead", &Instrument::synth_lead())
     ///     .bitcrusher(BitCrusher::new(4.0, 8.0, 0.5))
@@ -56,11 +56,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::Compressor;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Compressor;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("drums", &Instrument::synth_lead())
     ///     .compressor(Compressor::new(-10.0, 4.0, 0.01, 0.1, 2.0))
@@ -79,11 +79,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::Chorus;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Chorus;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .chorus(Chorus::new(0.5, 0.002, 0.3))
@@ -102,11 +102,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::EQ;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::EQ;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("bass", &Instrument::sub_bass())
     ///     .eq(EQ::new(2.0, 1.0, 0.5, 200.0, 2000.0))
@@ -125,11 +125,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::Saturation;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Saturation;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .saturation(Saturation::new(2.0, 0.5, 0.7))
@@ -148,11 +148,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::Phaser;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Phaser;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
     ///     .phaser(Phaser::new(0.5, 0.7, 0.5, 0.5, 4))
@@ -171,11 +171,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::Flanger;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Flanger;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .flanger(Flanger::new(0.5, 3.0, 0.6, 0.5))
@@ -194,11 +194,11 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// # Example
     /// ```
-    /// # use musicrs::composition::Composition;
-    /// # use musicrs::instruments::Instrument;
-    /// # use musicrs::rhythm::Tempo;
-    /// # use musicrs::effects::RingModulator;
-    /// # use musicrs::notes::*;
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::RingModulator;
+    /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("robot_voice", &Instrument::synth_lead())
     ///     .ring_mod(RingModulator::new(440.0, 0.7))

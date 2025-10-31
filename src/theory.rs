@@ -14,9 +14,9 @@
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::transpose;
-/// use musicrs::notes::C4;
+/// # use tunes::notes::*;
+/// use tunes::theory::transpose;
+/// use tunes::notes::C4;
 ///
 /// let d4 = transpose(C4, 2);  // C4 up 2 semitones = D4
 /// let a3 = transpose(C4, -3); // C4 down 3 semitones = A3
@@ -115,9 +115,9 @@ impl ScalePattern {
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::{scale, ScalePattern};
-/// use musicrs::notes::C4;
+/// # use tunes::notes::*;
+/// use tunes::theory::{scale, ScalePattern};
+/// use tunes::notes::C4;
 ///
 /// let c_major = scale(C4, &ScalePattern::MAJOR);
 /// let a_minor_pent = scale(A3, &ScalePattern::MINOR_PENTATONIC);
@@ -223,9 +223,9 @@ impl ChordPattern {
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::{chord, ChordPattern};
-/// use musicrs::notes::C4;
+/// # use tunes::notes::*;
+/// use tunes::theory::{chord, ChordPattern};
+/// use tunes::notes::C4;
 ///
 /// let c_major = chord(C4, &ChordPattern::MAJOR);
 /// let g_dominant7 = chord(G3, &ChordPattern::DOMINANT7);
@@ -251,9 +251,9 @@ pub fn chord(root: f32, pattern: &ChordPattern) -> Vec<f32> {
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::{progression, ScalePattern, ProgressionType};
-/// use musicrs::notes::C4;
+/// # use tunes::notes::*;
+/// use tunes::theory::{progression, ScalePattern, ProgressionType};
+/// use tunes::notes::C4;
 ///
 /// // I-V-vi-IV progression in C major
 /// let prog = progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], ProgressionType::Triads);
@@ -348,8 +348,8 @@ fn determine_seventh(scale_pattern: &ScalePattern, degree: usize) -> &'static Ch
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::transpose_sequence;
+/// # use tunes::notes::*;
+/// use tunes::theory::transpose_sequence;
 ///
 /// let melody = vec![261.63, 293.66, 329.63]; // C4, D4, E4
 /// let transposed = transpose_sequence(&melody, 2); // D4, E4, F#4
@@ -367,9 +367,9 @@ pub fn transpose_sequence(notes: &[f32], semitones: i32) -> Vec<f32> {
 ///
 /// # Example
 /// ```
-/// # use musicrs::notes::*;
-/// use musicrs::theory::{scale_degree, ScalePattern};
-/// use musicrs::notes::C4;
+/// # use tunes::notes::*;
+/// use tunes::theory::{scale_degree, ScalePattern};
+/// use tunes::notes::C4;
 ///
 /// let fifth = scale_degree(C4, &ScalePattern::MAJOR, 5); // G4
 /// ```
