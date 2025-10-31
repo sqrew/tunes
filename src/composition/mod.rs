@@ -1,0 +1,156 @@
+use crate::drum_grid::DrumGrid;
+use crate::envelope::Envelope;
+use crate::instruments::Instrument;
+use crate::rhythm::Tempo;
+use crate::track::{Mixer, Track};
+use crate::waveform::Waveform;
+use std::collections::HashMap;
+
+// Module declarations
+mod notes;
+mod musical_patterns;
+mod ornaments;
+mod portamento;
+mod timing;
+mod patterns;
+mod effects;
+mod expression;
+mod tuplets;
+mod classical_patterns;
+mod musical_time;
+
+/// A musical composition with multiple named tracks
+pub struct Composition {
+    tracks: HashMap<String, Track>,
+    tempo: Tempo,
+}
+
+impl Composition {
+    /// Create a new composition with a given tempo
+    pub fn new(tempo: Tempo) -> Self {
+        Self {
+            tracks: HashMap::new(),
+            tempo,
+        }
+    }
+
+    /// Get or create a track by name
+    pub fn track(&mut self, name: &str) -> TrackBuilder<'_> {
+        // Use entry API to avoid unwrap - guaranteed to exist after or_insert
+        let track = self.tracks.entry(name.to_string()).or_default();
+
+        TrackBuilder {
+            track,
+            cursor: 0.0,
+            pattern_start: 0.0,
+            waveform: Waveform::Sine,      // Default to sine wave
+            envelope: Envelope::default(), // Default envelope
+            swing: 0.5,                    // No swing by default (straight timing)
+            swing_counter: 0,
+            pitch_bend: 0.0, // No pitch bend by default
+            tempo: self.tempo,
+        }
+    }
+
+    /// Create a track with an instrument preset
+    pub fn instrument(&mut self, name: &str, instrument: &Instrument) -> TrackBuilder<'_> {
+        // Use entry API to avoid unwrap - guaranteed to exist after or_insert
+        let track = self.tracks.entry(name.to_string()).or_default();
+
+        // Apply instrument settings to the track
+        track.volume = instrument.volume;
+        track.pan = instrument.pan;
+        track.filter = instrument.filter;
+        track.delay = instrument.delay.clone();
+        track.reverb = instrument.reverb.clone();
+        track.distortion = instrument.distortion;
+        track.modulation = instrument.modulation.clone();
+
+        TrackBuilder {
+            track,
+            cursor: 0.0,
+            pattern_start: 0.0,
+            waveform: instrument.waveform,
+            envelope: instrument.envelope,
+            swing: 0.5, // No swing by default (straight timing)
+            swing_counter: 0,
+            pitch_bend: 0.0, // No pitch bend by default
+            tempo: self.tempo,
+        }
+    }
+
+    /// Convert this composition into a Mixer for playback
+    pub fn into_mixer(self) -> Mixer {
+        let mut mixer = Mixer::new();
+        for (_name, track) in self.tracks {
+            mixer.add_track(track);
+        }
+        mixer
+    }
+
+    /// Get the tempo (returns a copy since Tempo is Copy)
+    pub fn tempo(&self) -> Tempo {
+        self.tempo
+    }
+}
+
+/// Builder for adding events to a track
+pub struct TrackBuilder<'a> {
+    pub(crate) track: &'a mut Track,
+    pub(crate) cursor: f32,          // Current time position in the track
+    pub(crate) pattern_start: f32,   // Start position of current pattern (for looping)
+    pub(crate) waveform: Waveform,   // Current waveform for notes
+    pub(crate) envelope: Envelope,   // Current envelope for notes
+    pub(crate) swing: f32,           // Swing ratio (0.5 = straight, 0.67 = triplet swing, 0.75 = heavy)
+    pub(crate) swing_counter: usize, // Counter to track even/odd notes for swing
+    pub(crate) pitch_bend: f32,      // Pitch bend in semitones for subsequent notes (0.0 = no bend)
+    pub(crate) tempo: Tempo,         // Tempo for musical time calculations
+}
+
+impl<'a> TrackBuilder<'a> {
+    /// Apply swing timing to a duration based on whether this is an even or odd note
+    pub(crate) fn apply_swing(&mut self, base_duration: f32) -> f32 {
+        if self.swing == 0.5 {
+            // No swing - straight timing
+            return base_duration;
+        }
+
+        let is_offbeat = self.swing_counter % 2 == 1;
+        self.swing_counter += 1;
+
+        if is_offbeat {
+            // Off-beat notes get delayed
+            base_duration * (2.0 * self.swing)
+        } else {
+            // On-beat notes get shortened
+            base_duration * (2.0 - 2.0 * self.swing)
+        }
+    }
+
+    /// Create a step sequencer-style drum grid
+    ///
+    /// # Arguments
+    /// * `steps` - Number of steps in the grid (e.g., 16 for a bar of 16th notes)
+    /// * `step_duration` - Duration of each step in seconds (e.g., 0.125 for 16th notes at 120bpm)
+    ///
+    /// # Example
+    /// ```
+    /// # use musicrs::composition::Composition;
+    /// # use musicrs::instruments::Instrument;
+    /// # use musicrs::rhythm::Tempo;
+    /// # use musicrs::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125)
+    ///     .kick(&[0, 4, 8, 12])
+    ///     .snare(&[4, 12])
+    ///     .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+    /// ```
+    pub fn drum_grid(mut self, steps: usize, step_duration: f32) -> DrumGrid<'a> {
+        let start_time = self.cursor;
+        let grid = DrumGrid::new(self.track, start_time, steps, step_duration);
+        // Move cursor to end of grid
+        self.cursor += steps as f32 * step_duration;
+        grid
+    }
+}

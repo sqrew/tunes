@@ -1,0 +1,22 @@
+[package]
+name = "tunes"
+version = "0.1.0"
+edition = "2021"
+authors = ["Nicholas Manson <nicholaspmanson@gmail.com>"]
+description = "A music composition, synthesis, and audio generation library"
+documentation = "https://docs.rs/tunes"
+homepage = "https://github.com/sqrew/tunes"
+repository = "https://github.com/sqrew/tunes"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["music", "audio", "synthesis", "composition", "midi"]
+categories = ["multimedia::audio", "multimedia", "algorithms"]
+exclude = [
+    ".github/*",
+    "*.wav",
+    "*.mp3",
+]
+
+[dependencies]
+cpal = "0.15"
+anyhow = "1.0"
