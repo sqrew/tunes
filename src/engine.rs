@@ -262,6 +262,33 @@ impl AudioEngine {
 
         Ok(())
     }
+
+    /// Render a mixer to a WAV file
+    ///
+    /// Convenience method that renders the mixer's audio to a WAV file.
+    /// Uses the default sample rate (44100 Hz).
+    ///
+    /// # Arguments
+    /// * `mixer` - The mixer to render
+    /// * `path` - Output file path (e.g., "output.wav")
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let engine = AudioEngine::new()?;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("piano").note(&[440.0], 1.0);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    /// engine.render_to_wav(&mut mixer, "output.wav")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn render_to_wav(&self, mixer: &mut Mixer, path: &str) -> Result<(), anyhow::Error> {
+        let sample_rate = self.config.sample_rate().0;
+        mixer.export_wav(path, sample_rate)
+    }
 }
 
 impl Default for AudioEngine {

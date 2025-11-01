@@ -50,6 +50,7 @@ pub mod prelude {
     pub use crate::composition::Composition;
     pub use crate::engine::AudioEngine;
     pub use crate::rhythm::Tempo;
+    pub use crate::track::Mixer;
 
     // Notes
     pub use crate::notes::*;

@@ -757,6 +757,78 @@ impl Mixer {
             (0.0, 0.0)
         }
     }
+
+    /// Export the mixed audio to a WAV file
+    ///
+    /// Renders the entire composition to a stereo WAV file with the specified sample rate.
+    ///
+    /// # Arguments
+    /// * `path` - Output file path (e.g., "output.wav")
+    /// * `sample_rate` - Sample rate in Hz (44100 is CD quality, 48000 is professional)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("piano").note(&[440.0], 1.0);
+    ///
+    /// let mixer = comp.into_mixer();
+    /// mixer.export_wav("output.wav", 44100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn export_wav(&mut self, path: &str, sample_rate: u32) -> Result<(), anyhow::Error> {
+        let spec = hound::WavSpec {
+            channels: 2,
+            sample_rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+
+        let mut writer = hound::WavWriter::create(path, spec)?;
+
+        let duration = self.total_duration();
+        let total_samples = (duration * sample_rate as f32).ceil() as usize;
+
+        let sample_rate_f32 = sample_rate as f32;
+        let mut sample_clock = 0.0;
+
+        println!("Rendering to WAV...");
+        println!("  Duration: {:.2}s", duration);
+        println!("  Sample rate: {} Hz", sample_rate);
+        println!("  Total samples: {}", total_samples);
+
+        for i in 0..total_samples {
+            let time = i as f32 / sample_rate_f32;
+
+            // Generate stereo sample
+            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock);
+
+            // Convert from f32 (-1.0 to 1.0) to i16 (-32768 to 32767)
+            let left_i16 = (left.clamp(-1.0, 1.0) * 32767.0) as i16;
+            let right_i16 = (right.clamp(-1.0, 1.0) * 32767.0) as i16;
+
+            writer.write_sample(left_i16)?;
+            writer.write_sample(right_i16)?;
+
+            sample_clock = (sample_clock + 1.0) % sample_rate_f32;
+
+            // Progress indicator every second
+            if i % sample_rate as usize == 0 {
+                let progress = (i as f32 / total_samples as f32) * 100.0;
+                print!("\r  Progress: {:.0}%", progress);
+                use std::io::Write;
+                std::io::stdout().flush().ok();
+            }
+        }
+
+        println!("\r  Progress: 100%");
+        writer.finalize()?;
+
+        println!("✅ Exported to: {}", path);
+        Ok(())
+    }
 }
 
 impl Default for Mixer {
