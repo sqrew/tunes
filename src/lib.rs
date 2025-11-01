@@ -37,6 +37,7 @@ pub mod lfo;
 pub mod microtonal;
 pub mod notes;
 pub mod rhythm;
+pub mod sample;
 pub mod scales;
 pub mod sequences;
 pub mod theory;

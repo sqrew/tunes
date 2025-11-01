@@ -5,13 +5,15 @@ use crate::filter::Filter;
 use crate::filter_envelope::FilterEnvelope;
 use crate::fm_synthesis::FMParams;
 use crate::lfo::ModRoute;
+use crate::sample::Sample;
 use crate::waveform::Waveform;
 
 /// Represents different types of audio events
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum AudioEvent {
     Note(NoteEvent),
     Drum(DrumEvent),
+    Sample(SampleEvent),
 }
 
 impl AudioEvent {
@@ -21,6 +23,7 @@ impl AudioEvent {
         match self {
             AudioEvent::Note(note) => note.start_time,
             AudioEvent::Drum(drum) => drum.start_time,
+            AudioEvent::Sample(sample) => sample.start_time,
         }
     }
 
@@ -33,6 +36,9 @@ impl AudioEvent {
                 note.start_time + total_duration
             }
             AudioEvent::Drum(drum) => drum.start_time + drum.drum_type.duration(),
+            AudioEvent::Sample(sample) => {
+                sample.start_time + (sample.sample.duration / sample.playback_rate)
+            }
         }
     }
 }
@@ -56,6 +62,36 @@ pub struct NoteEvent {
 pub struct DrumEvent {
     pub drum_type: DrumType,
     pub start_time: f32,
+}
+
+/// Represents a sample playback event
+#[derive(Debug, Clone)]
+pub struct SampleEvent {
+    pub sample: Sample,
+    pub start_time: f32,
+    pub playback_rate: f32,  // 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed
+    pub volume: f32,         // 0.0 to 1.0
+}
+
+impl SampleEvent {
+    pub fn new(sample: Sample, start_time: f32) -> Self {
+        Self {
+            sample,
+            start_time,
+            playback_rate: 1.0,
+            volume: 1.0,
+        }
+    }
+
+    pub fn with_playback_rate(mut self, rate: f32) -> Self {
+        self.playback_rate = rate;
+        self
+    }
+
+    pub fn with_volume(mut self, volume: f32) -> Self {
+        self.volume = volume.clamp(0.0, 1.0);
+        self
+    }
 }
 
 impl NoteEvent {
@@ -231,6 +267,7 @@ impl Track {
             .map(|e| match e {
                 AudioEvent::Note(n) => n.start_time,
                 AudioEvent::Drum(d) => d.start_time,
+                AudioEvent::Sample(s) => s.start_time,
             })
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0);
@@ -251,7 +288,7 @@ impl Track {
     }
 
     /// Invalidate time caches (call when events are added)
-    fn invalidate_time_cache(&mut self) {
+    pub(crate) fn invalidate_time_cache(&mut self) {
         self.cached_start_time = None;
         self.cached_end_time = None;
         self.events_sorted = false; // Events need to be re-sorted
@@ -448,6 +485,7 @@ impl Track {
             .map(|e| match e {
                 AudioEvent::Note(n) => n.start_time + n.duration,
                 AudioEvent::Drum(d) => d.start_time + d.drum_type.duration(),
+                AudioEvent::Sample(s) => s.start_time + (s.sample.duration / s.playback_rate),
             })
             .fold(0.0, f32::max)
     }
@@ -529,6 +567,15 @@ impl Mixer {
                         AudioEvent::Drum(drum) => {
                             track.add_drum(drum.drum_type, drum.start_time + offset);
                         }
+                        AudioEvent::Sample(sample) => {
+                            track.events.push(AudioEvent::Sample(crate::track::SampleEvent {
+                                sample: sample.sample.clone(),
+                                start_time: sample.start_time + offset,
+                                playback_rate: sample.playback_rate,
+                                volume: sample.volume,
+                            }));
+                            track.invalidate_time_cache();
+                        }
                     }
                 }
             }
@@ -571,6 +618,20 @@ impl Mixer {
             // Only iterate through events that could possibly be active
             for event in &track.events[start_idx..end_idx] {
                 match event {
+                    AudioEvent::Sample(sample_event) => {
+                        let time_in_sample = time - sample_event.start_time;
+                        let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
+
+                        if time_in_sample >= 0.0 && time_in_sample < sample_duration {
+                            has_active_event = true;
+                            let (sample_left, sample_right) = sample_event.sample.sample_at_interpolated(
+                                time_in_sample,
+                                sample_event.playback_rate,
+                                sample_rate
+                            );
+                            track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
+                        }
+                    }
                     AudioEvent::Note(note_event) => {
                         let total_duration =
                             note_event.envelope.total_duration(note_event.duration);

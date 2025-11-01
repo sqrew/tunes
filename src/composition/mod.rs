@@ -2,6 +2,7 @@ use crate::drum_grid::DrumGrid;
 use crate::envelope::Envelope;
 use crate::instruments::Instrument;
 use crate::rhythm::Tempo;
+use crate::sample::Sample;
 use crate::track::{Mixer, Track};
 use crate::waveform::Waveform;
 use std::collections::HashMap;
@@ -33,6 +34,7 @@ pub struct Composition {
     tracks: HashMap<String, Track>,
     pub(crate) sections: HashMap<String, sections::Section>,
     tempo: Tempo,
+    samples: HashMap<String, Sample>, // Cache of loaded samples
 }
 
 impl Composition {
@@ -42,7 +44,34 @@ impl Composition {
             tracks: HashMap::new(),
             sections: HashMap::new(),
             tempo,
+            samples: HashMap::new(),
         }
+    }
+
+    /// Load a WAV file as a sample and cache it with a name
+    ///
+    /// # Arguments
+    /// * `name` - Name to use for this sample (e.g., "kick", "snare")
+    /// * `path` - Path to the WAV file
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.load_sample("kick", "samples/kick.wav")?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    pub fn load_sample(&mut self, name: &str, path: &str) -> Result<(), anyhow::Error> {
+        let sample = Sample::from_wav(path)?;
+        self.samples.insert(name.to_string(), sample);
+        Ok(())
+    }
+
+    /// Get a previously loaded sample by name
+    ///
+    /// Returns None if the sample hasn't been loaded.
+    pub fn get_sample(&self, name: &str) -> Option<&Sample> {
+        self.samples.get(name)
     }
 
     /// Get or create a track by name

@@ -1,17 +1,22 @@
 # tunes
 
-A Rust library for music composition, synthesis, and audio generation. Build complex musical pieces with an intuitive, expressive API.
+A standalone Rust library for music composition, synthesis, and audio generation. Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
+
+Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
 ## Features
 
 - **Music Theory**: Scales, chords, patterns, progressions, and transposition
 - **Composition DSL**: Fluent API for building musical sequences
-- **Rhythm & Drums**: Drum grids, euclidean rhythms, and pattern sequencing
+- **Synthesis**: FM synthesis, filter envelopes, wavetable oscillators
+- **Sample Playback**: Load and play WAV files with pitch shifting
+- **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: Pre-configured synthesizers, bass, pads, leads, and more
 - **Effects**: Delay, reverb, distortion, chorus, filters, and modulation
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Tempo & Timing**: Musical time abstractions (quarter notes, bars, beats)
 - **Real-time Playback**: Cross-platform audio output via cpal
+- **WAV Import/Export**: Load samples and render compositions to WAV files
 
 ## Installation
 
@@ -37,6 +42,8 @@ sudo dnf install alsa-lib-devel
 
 ## Quick Start
 
+### Real-time Playback
+
 ```rust
 use tunes::prelude::*;
 
@@ -56,6 +63,97 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
+### Export to WAV
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    // Create a melody with instruments and effects
+    comp.instrument("lead", &Instrument::synth_lead())
+        .filter(Filter::low_pass(1200.0, 0.6))
+        .notes(&[C4, E4, G4, C5], 0.5);
+
+    // Export to WAV file
+    let mut mixer = comp.into_mixer();
+    mixer.export_wav("my_song.wav", 44100)?;
+    Ok(())
+}
+```
+
+### Sample Playback
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    // Load samples (drums, vocals, any WAV file)
+    comp.load_sample("kick", "samples/kick.wav")?;
+    comp.load_sample("snare", "samples/snare.wav")?;
+
+    // Use samples in your composition
+    comp.track("drums")
+        .sample("kick")                    // Play at normal speed
+        .sample("snare")
+        .sample("kick")
+        .sample_with_rate("snare", 2.0);   // Double speed (pitch up)
+
+    // Mix samples with synthesis
+    comp.instrument("bass", &Instrument::sub_bass())
+        .notes(&[C2, C2, G2, G2], 0.5);
+
+    let mixer = comp.into_mixer();
+    let engine = AudioEngine::new()?;
+    engine.play_mixer(&mixer)?;
+    Ok(())
+}
+```
+
+## Comparison with Other Music Programming Libraries
+
+`tunes` occupies a unique position in the music programming landscape:
+
+| Feature                  | SuperCollider | Sonic Pi        | Leipzig         | Strudel           | **tunes**          | Music21 |
+|--------------------------|---------------|-----------------|-----------------|-------------------|--------------------|---------|
+| **Type safety**          | No            | No              | No (Clojure)    | Partial (TS)      | **Yes (Rust)**     | No      |
+| **Real-time audio**      | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
+| **Sample playback**      | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
+| **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
+| **Easy to learn**        | No            | Yes             | Medium          | Yes               | **Yes**            | Yes     |
+| **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
+| **Algorithmic patterns** | Yes           | Yes             | Yes             | Yes               | **Yes**            | Yes     |
+| **Music theory**         | Manual        | Manual          | Yes             | Some              | **Yes (built-in)** | Yes     |
+| **Standalone binary**    | No            | No              | No              | No                | **Yes**            | No      |
+| **Embeddable**           | No            | No              | No              | No                | **Yes**            | No      |
+
+### When to use `tunes`
+
+**tunes excels at:**
+- Building Rust applications with music generation (games, art installations, tools)
+- Algorithmic composition with type-safe APIs
+- Offline music generation and batch processing
+- Learning music programming without complex setup
+- Prototyping musical ideas with immediate feedback
+
+**Use alternatives if you need:**
+- **SuperCollider**: Extreme synthesis flexibility and live coding ecosystem
+- **Sonic Pi**: Classroom-ready live coding with visual feedback
+- **Leipzig**: Functional composition with Clojure's elegance
+- **Strudel**: Browser-based collaboration and live coding
+- **Music21**: Academic music analysis and score manipulation
+
+### tunes' unique position
+
+`tunes` is the only **standalone, embeddable, type-safe** music library with synthesis + sample playback. It compiles to a single binary with no runtime dependencies, making it ideal for:
+- Rust game developers (Bevy, ggez, etc.)
+- Desktop music applications
+- Command-line music tools
+- Embedded audio systems
+
 ## Documentation
 
 Run `cargo doc --open` to view the full API documentation with detailed examples for each module.
@@ -66,6 +164,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 - `src/instruments/` - Pre-configured instrument presets
 - `src/effects/` - Audio effects (reverb, delay, filters, etc.)
 - `src/drums/` - Drum synthesis and sequencing
+- `src/sample.rs` - WAV file loading and sample playback
 - `src/theory.rs` - Music theory (scales, chords, progressions)
 - `src/engine.rs` - Audio playback engine
 - `examples/` - 20+ complete examples demonstrating features
@@ -76,13 +175,22 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-The library includes 331 unit tests and 76 documentation tests ensuring reliability.
+The library includes 395 comprehensive tests ensuring reliability and correctness.
 
 ## Examples
 
 Run the included examples to hear the library in action:
 
 ```bash
+# Sample playback (WAV file loading and playback)
+cargo run --release --example sample_playback_demo
+
+# Export to WAV file
+cargo run --release --example wav_export_demo
+
+# Synthesis showcase (FM, filters, envelopes)
+cargo run --release --example synthesis_demo
+
 # Theory and scales
 cargo run --example theory_demo
 
@@ -100,6 +208,8 @@ cargo run --example drum_grid
 
 # And many more...
 ```
+
+**Note:** Use `--release` for examples with complex synthesis to avoid audio underruns.
 
 ## License
 

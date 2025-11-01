@@ -196,38 +196,48 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Collect note events in the pattern range and invert their frequencies
+        // Collect events in the pattern range - invert notes, pass through drums and samples
         let inverted_events: Vec<_> = self
             .get_track_mut()
             .events
             .iter()
-            .filter_map(|event| match event {
-                AudioEvent::Note(note) if note.start_time >= pattern_start && note.start_time < cursor => {
-                    // Invert each frequency in the note/chord
-                    let mut inverted_freqs = [0.0f32; 8];
-                    for i in 0..note.num_freqs {
-                        let freq = note.frequencies[i];
-                        // Calculate distance from axis in semitones
-                        let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
-                        // Mirror it
-                        let inverted_semitones = -semitones_from_axis;
-                        // Convert back to frequency
-                        inverted_freqs[i] = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
-                    }
+            .filter_map(|event| {
+                let event_time = event.start_time();
+                if event_time >= pattern_start && event_time < cursor {
+                    match event {
+                        AudioEvent::Note(note) => {
+                            // Invert each frequency in the note/chord
+                            let mut inverted_freqs = [0.0f32; 8];
+                            for i in 0..note.num_freqs {
+                                let freq = note.frequencies[i];
+                                // Calculate distance from axis in semitones
+                                let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
+                                // Mirror it
+                                let inverted_semitones = -semitones_from_axis;
+                                // Convert back to frequency
+                                inverted_freqs[i] = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
+                            }
 
-                    Some(AudioEvent::Note(crate::track::NoteEvent {
-                        frequencies: inverted_freqs,
-                        num_freqs: note.num_freqs,
-                        start_time: note.start_time,
-                        duration: note.duration,
-                        waveform: note.waveform,
-                        envelope: note.envelope,
-                        filter_envelope: note.filter_envelope,
-                        fm_params: note.fm_params,
-                        pitch_bend_semitones: note.pitch_bend_semitones,
-                    }))
+                            Some(AudioEvent::Note(crate::track::NoteEvent {
+                                frequencies: inverted_freqs,
+                                num_freqs: note.num_freqs,
+                                start_time: note.start_time,
+                                duration: note.duration,
+                                waveform: note.waveform,
+                                envelope: note.envelope,
+                                filter_envelope: note.filter_envelope,
+                                fm_params: note.fm_params,
+                                pitch_bend_semitones: note.pitch_bend_semitones,
+                            }))
+                        }
+                        AudioEvent::Drum(_) | AudioEvent::Sample(_) => {
+                            // Pass through drums and samples unchanged
+                            Some(event.clone())
+                        }
+                    }
+                } else {
+                    None
                 }
-                _ => None,
             })
             .collect();
 
@@ -238,6 +248,7 @@ impl<'a> TrackBuilder<'a> {
             let event_time = match event {
                 AudioEvent::Note(note) => note.start_time,
                 AudioEvent::Drum(drum) => drum.start_time,
+                AudioEvent::Sample(sample) => sample.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -274,44 +285,54 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Collect and invert events, constraining to range
+        // Collect and invert events, constraining to range - pass through drums and samples
         let inverted_events: Vec<_> = self
             .get_track_mut()
             .events
             .iter()
-            .filter_map(|event| match event {
-                AudioEvent::Note(note) if note.start_time >= pattern_start && note.start_time < cursor => {
-                    let mut inverted_freqs = [0.0f32; 8];
-                    for i in 0..note.num_freqs {
-                        let freq = note.frequencies[i];
-                        let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
-                        let inverted_semitones = -semitones_from_axis;
-                        let mut inverted_freq = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
+            .filter_map(|event| {
+                let event_time = event.start_time();
+                if event_time >= pattern_start && event_time < cursor {
+                    match event {
+                        AudioEvent::Note(note) => {
+                            let mut inverted_freqs = [0.0f32; 8];
+                            for i in 0..note.num_freqs {
+                                let freq = note.frequencies[i];
+                                let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
+                                let inverted_semitones = -semitones_from_axis;
+                                let mut inverted_freq = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
 
-                        // Octave-shift to keep in range
-                        while inverted_freq < min_freq {
-                            inverted_freq *= 2.0;
-                        }
-                        while inverted_freq > max_freq {
-                            inverted_freq /= 2.0;
-                        }
+                                // Octave-shift to keep in range
+                                while inverted_freq < min_freq {
+                                    inverted_freq *= 2.0;
+                                }
+                                while inverted_freq > max_freq {
+                                    inverted_freq /= 2.0;
+                                }
 
-                        inverted_freqs[i] = inverted_freq;
+                                inverted_freqs[i] = inverted_freq;
+                            }
+
+                            Some(AudioEvent::Note(crate::track::NoteEvent {
+                                frequencies: inverted_freqs,
+                                num_freqs: note.num_freqs,
+                                start_time: note.start_time,
+                                duration: note.duration,
+                                waveform: note.waveform,
+                                envelope: note.envelope,
+                                filter_envelope: note.filter_envelope,
+                                fm_params: note.fm_params,
+                                pitch_bend_semitones: note.pitch_bend_semitones,
+                            }))
+                        }
+                        AudioEvent::Drum(_) | AudioEvent::Sample(_) => {
+                            // Pass through drums and samples unchanged
+                            Some(event.clone())
+                        }
                     }
-
-                    Some(AudioEvent::Note(crate::track::NoteEvent {
-                        frequencies: inverted_freqs,
-                        num_freqs: note.num_freqs,
-                        start_time: note.start_time,
-                        duration: note.duration,
-                        waveform: note.waveform,
-                        envelope: note.envelope,
-                        filter_envelope: note.filter_envelope,
-                        fm_params: note.fm_params,
-                        pitch_bend_semitones: note.pitch_bend_semitones,
-                    }))
+                } else {
+                    None
                 }
-                _ => None,
             })
             .collect();
 
@@ -322,6 +343,7 @@ impl<'a> TrackBuilder<'a> {
             let event_time = match event {
                 AudioEvent::Note(note) => note.start_time,
                 AudioEvent::Drum(drum) => drum.start_time,
+                AudioEvent::Sample(sample) => sample.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });

@@ -28,6 +28,7 @@ impl<'a> TrackBuilder<'a> {
                 let event_time = match event {
                     crate::track::AudioEvent::Note(note) => note.start_time,
                     crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                    crate::track::AudioEvent::Sample(sample) => sample.start_time,
                 };
                 event_time >= pattern_start && event_time < cursor
             })
@@ -52,6 +53,17 @@ impl<'a> TrackBuilder<'a> {
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
                             .add_drum(drum.drum_type, drum.start_time + offset);
+                    }
+                    crate::track::AudioEvent::Sample(sample) => {
+                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
+                            crate::track::SampleEvent {
+                                sample: sample.sample.clone(),
+                                start_time: sample.start_time + offset,
+                                playback_rate: sample.playback_rate,
+                                volume: sample.volume,
+                            }
+                        ));
+                        self.get_track_mut().invalidate_time_cache();
                     }
                 }
             }
@@ -98,6 +110,7 @@ impl<'a> TrackBuilder<'a> {
                 let event_time = match event {
                     crate::track::AudioEvent::Note(note) => note.start_time,
                     crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                    crate::track::AudioEvent::Sample(sample) => sample.start_time,
                 };
                 event_time >= pattern_start && event_time < cursor
             })
@@ -113,10 +126,12 @@ impl<'a> TrackBuilder<'a> {
             let time_a = match a {
                 crate::track::AudioEvent::Note(n) => n.start_time,
                 crate::track::AudioEvent::Drum(d) => d.start_time,
+                crate::track::AudioEvent::Sample(s) => s.start_time,
             };
             let time_b = match b {
                 crate::track::AudioEvent::Note(n) => n.start_time,
                 crate::track::AudioEvent::Drum(d) => d.start_time,
+                crate::track::AudioEvent::Sample(s) => s.start_time,
             };
             // Handle NaN values - treat them as equal (shouldn't happen, but safe)
             time_a
@@ -146,6 +161,15 @@ impl<'a> TrackBuilder<'a> {
                     0.0,
                     false,
                 ),
+                crate::track::AudioEvent::Sample(_sample) => (
+                    [0.0; 8],
+                    0,
+                    0.0,
+                    crate::waveform::Waveform::Sine,
+                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    0.0,
+                    false,
+                ),
             })
             .collect();
 
@@ -157,12 +181,21 @@ impl<'a> TrackBuilder<'a> {
             })
             .collect();
 
+        let sample_data: Vec<_> = pattern_events
+            .iter()
+            .filter_map(|event| match event {
+                crate::track::AudioEvent::Sample(sample) => Some(sample.clone()),
+                _ => None,
+            })
+            .collect();
+
         // Get timing information
         let timings: Vec<f32> = pattern_events
             .iter()
             .map(|event| match event {
                 crate::track::AudioEvent::Note(n) => n.start_time,
                 crate::track::AudioEvent::Drum(d) => d.start_time,
+                crate::track::AudioEvent::Sample(s) => s.start_time,
             })
             .collect();
 
@@ -173,12 +206,14 @@ impl<'a> TrackBuilder<'a> {
             let event_time = match event {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                crate::track::AudioEvent::Sample(sample) => sample.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
 
-        // Re-add events with reversed note/drum data but original timings
+        // Re-add events with reversed note/drum/sample data but original timings
         let mut drum_idx = drum_data.len();
+        let mut sample_idx = sample_data.len();
         for (i, &timing) in timings.iter().enumerate() {
             let reversed_idx = pattern_events.len() - 1 - i;
 
@@ -199,6 +234,21 @@ impl<'a> TrackBuilder<'a> {
                     drum_idx -= 1;
                     if drum_idx < drum_data.len() {
                         self.get_track_mut().add_drum(drum_data[drum_idx], timing);
+                    }
+                }
+                crate::track::AudioEvent::Sample(_) => {
+                    sample_idx -= 1;
+                    if sample_idx < sample_data.len() {
+                        let sample = &sample_data[sample_idx];
+                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
+                            crate::track::SampleEvent {
+                                sample: sample.sample.clone(),
+                                start_time: timing,
+                                playback_rate: sample.playback_rate,
+                                volume: sample.volume,
+                            }
+                        ));
+                        self.get_track_mut().invalidate_time_cache();
                     }
                 }
             }
@@ -224,6 +274,7 @@ impl<'a> TrackBuilder<'a> {
                 let event_time = match event {
                     crate::track::AudioEvent::Note(note) => note.start_time,
                     crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                    crate::track::AudioEvent::Sample(sample) => sample.start_time,
                 };
                 event_time >= pattern_start && event_time < cursor
             })
@@ -248,6 +299,17 @@ impl<'a> TrackBuilder<'a> {
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
                             .add_drum(drum.drum_type, drum.start_time + offset);
+                    }
+                    crate::track::AudioEvent::Sample(sample) => {
+                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
+                            crate::track::SampleEvent {
+                                sample: sample.sample.clone(),
+                                start_time: sample.start_time + offset,
+                                playback_rate: sample.playback_rate,
+                                volume: sample.volume,
+                            }
+                        ));
+                        self.get_track_mut().invalidate_time_cache();
                     }
                 }
             }
@@ -302,6 +364,7 @@ impl<'a> TrackBuilder<'a> {
                 let event_time = match event {
                     crate::track::AudioEvent::Note(note) => note.start_time,
                     crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                    crate::track::AudioEvent::Sample(sample) => sample.start_time,
                 };
 
                 if event_time >= pattern_start && event_time < cursor {
@@ -321,6 +384,7 @@ impl<'a> TrackBuilder<'a> {
                                 note.envelope,
                                 note.pitch_bend_semitones,
                                 crate::drums::DrumType::Kick,
+                                None,
                             ))
                         }
                         crate::track::AudioEvent::Drum(drum) => {
@@ -334,6 +398,21 @@ impl<'a> TrackBuilder<'a> {
                                 crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                                 0.0,
                                 drum.drum_type,
+                                None,
+                            ))
+                        }
+                        crate::track::AudioEvent::Sample(sample) => {
+                            Some((
+                                false,
+                                [0.0; 8],
+                                0,
+                                0.0,
+                                new_time,
+                                crate::waveform::Waveform::Sine,
+                                crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                                0.0,
+                                crate::drums::DrumType::Kick,
+                                Some((sample.sample.clone(), sample.playback_rate * factor, sample.volume)),
                             ))
                         }
                     }
@@ -350,13 +429,24 @@ impl<'a> TrackBuilder<'a> {
             let event_time = match event {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                crate::track::AudioEvent::Sample(sample) => sample.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
 
         // Add modified events
-        for (is_note, freqs, num_freqs, duration, time, waveform, envelope, bend, drum_type) in modified_events {
-            if is_note {
+        for (is_note, freqs, num_freqs, duration, time, waveform, envelope, bend, drum_type, sample_data) in modified_events {
+            if let Some((sample, playback_rate, volume)) = sample_data {
+                self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
+                    crate::track::SampleEvent {
+                        sample,
+                        start_time: time,
+                        playback_rate,
+                        volume,
+                    }
+                ));
+                self.get_track_mut().invalidate_time_cache();
+            } else if is_note {
                 self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                     &freqs[..num_freqs],
                     time,
@@ -415,6 +505,7 @@ impl<'a> TrackBuilder<'a> {
                 let event_time = match event {
                     crate::track::AudioEvent::Note(note) => note.start_time,
                     crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                    crate::track::AudioEvent::Sample(sample) => sample.start_time,
                 };
                 event_time < pattern_start || event_time >= cursor
             });
@@ -431,6 +522,7 @@ impl<'a> TrackBuilder<'a> {
             let event_time = match event {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                crate::track::AudioEvent::Sample(sample) => sample.start_time,
             };
 
             // Keep events outside pattern range

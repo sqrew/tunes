@@ -15,6 +15,7 @@ mod lfo;
 mod microtonal;
 mod notes;
 mod rhythm;
+mod sample;
 mod scales;
 mod sequences;
 mod theory;

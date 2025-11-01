@@ -22,7 +22,7 @@ impl Waveform {
 
     /// Sine wave: smooth, pure tone (using fast wavetable lookup)
     fn sine(phase: f32) -> f32 {
-        WAVETABLE.sine(phase)
+        WAVETABLE.sample(phase)
     }
 
     /// Square wave: rich in odd harmonics, hollow sound

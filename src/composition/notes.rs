@@ -38,6 +38,89 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
+    /// Play a sample at the current cursor position
+    ///
+    /// The sample must be previously loaded using `comp.load_sample()`.
+    ///
+    /// # Arguments
+    /// * `sample_name` - Name of the loaded sample
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.load_sample("kick", "samples/kick.wav")?;
+    ///
+    /// comp.track("drums")
+    ///     .sample("kick")  // Play at cursor position
+    ///     .sample("kick");  // Play again
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn sample(mut self, sample_name: &str) -> Self {
+        let cursor = self.cursor;
+
+        // Get the sample from the composition's cache
+        let sample = self.composition.get_sample(sample_name)
+            .expect(&format!("Sample '{}' not found. Load it first with comp.load_sample()", sample_name))
+            .clone();
+
+        // Add the sample event
+        use crate::track::{AudioEvent, SampleEvent};
+        let sample_event = SampleEvent::new(sample.clone(), cursor);
+        let duration = sample.duration;
+
+        self.get_track_mut().events.push(AudioEvent::Sample(sample_event));
+        self.get_track_mut().invalidate_time_cache();
+
+        let swung_duration = self.apply_swing(duration);
+        self.cursor += swung_duration;
+        self.update_section_duration();
+        self
+    }
+
+    /// Play a sample with custom playback rate
+    ///
+    /// # Arguments
+    /// * `sample_name` - Name of the loaded sample
+    /// * `playback_rate` - Speed multiplier (1.0 = normal, 2.0 = double speed/octave up, 0.5 = half speed/octave down)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.load_sample("kick", "samples/kick.wav")?;
+    ///
+    /// comp.track("drums")
+    ///     .sample_with_rate("kick", 1.0)   // Normal speed
+    ///     .sample_with_rate("kick", 2.0)   // Double speed (octave up)
+    ///     .sample_with_rate("kick", 0.5);  // Half speed (octave down)
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn sample_with_rate(mut self, sample_name: &str, playback_rate: f32) -> Self {
+        let cursor = self.cursor;
+
+        let sample = self.composition.get_sample(sample_name)
+            .expect(&format!("Sample '{}' not found. Load it first with comp.load_sample()", sample_name))
+            .clone();
+
+        use crate::track::{AudioEvent, SampleEvent};
+        let sample_event = SampleEvent::new(sample.clone(), cursor)
+            .with_playback_rate(playback_rate);
+        let duration = sample.duration / playback_rate;
+
+        self.get_track_mut().events.push(AudioEvent::Sample(sample_event));
+        self.get_track_mut().invalidate_time_cache();
+
+        let swung_duration = self.apply_swing(duration);
+        self.cursor += swung_duration;
+        self.update_section_duration();
+        self
+    }
+
     /// Add an interpolated sequence starting at the current cursor position
     pub fn interpolated(
         mut self,

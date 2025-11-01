@@ -178,7 +178,7 @@ impl FMParams {
         if self.mod_index == 0.0 {
             // Bypass - just return carrier sine wave (using fast wavetable)
             let phase = time_in_note * carrier_freq;
-            return WAVETABLE.sine(phase);
+            return WAVETABLE.sample(phase);
         }
 
         // Calculate modulator frequency
@@ -189,7 +189,7 @@ impl FMParams {
 
         // Generate modulator signal (using fast wavetable)
         let mod_phase = time_in_note * modulator_freq;
-        let modulator = WAVETABLE.sine(mod_phase);
+        let modulator = WAVETABLE.sample(mod_phase);
 
         // Modulate carrier frequency
         let frequency_offset = modulator * current_index * modulator_freq;
@@ -197,7 +197,7 @@ impl FMParams {
 
         // Generate carrier with modulated frequency (using fast wavetable)
         let carrier_phase = time_in_note * modulated_freq;
-        WAVETABLE.sine(carrier_phase)
+        WAVETABLE.sample(carrier_phase)
     }
 }
 

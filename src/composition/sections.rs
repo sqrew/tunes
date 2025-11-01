@@ -62,6 +62,9 @@ impl Section {
                         AudioEvent::Drum(drum) => {
                             drum.start_time += time_offset;
                         }
+                        AudioEvent::Sample(sample) => {
+                            sample.start_time += time_offset;
+                        }
                     }
                 }
                 (name.clone(), new_track)

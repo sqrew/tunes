@@ -361,6 +361,120 @@ pub fn kick_808_sample(sample_index: usize, sample_rate: f32) -> f32 {
     value * envelope * 0.9
 }
 
+/// Generate an 808 snare sample (dual tone + noise burst)
+pub fn snare_808_sample(sample_index: usize, sample_rate: f32) -> f32 {
+    let t = sample_index as f32 / sample_rate;
+    let duration = 0.15;
+
+    if t > duration {
+        return 0.0;
+    }
+
+    // Classic 808 snare uses two triangle oscillators
+    let freq1 = 180.0;
+    let freq2 = 240.0;
+
+    // Triangle waves (more characteristic 808 sound than sine)
+    let phase1 = (t * freq1) % 1.0;
+    let tone1 = if phase1 < 0.5 {
+        4.0 * phase1 - 1.0
+    } else {
+        -4.0 * phase1 + 3.0
+    };
+
+    let phase2 = (t * freq2) % 1.0;
+    let tone2 = if phase2 < 0.5 {
+        4.0 * phase2 - 1.0
+    } else {
+        -4.0 * phase2 + 3.0
+    };
+
+    // Noise burst (shorter than tones)
+    let noise_val = noise(sample_index as f32);
+    let noise_env = if t < 0.05 { (-t * 35.0).exp() } else { 0.0 };
+
+    // Tone envelope (slightly longer)
+    let tone_env = (-t * 18.0).exp();
+
+    // Mix: 808 snare is mostly tone with short noise burst
+    (tone1 + tone2) * 0.4 * tone_env + noise_val * 0.6 * noise_env
+}
+
+/// Generate an 808 hi-hat sample (6 square oscillators for metallic sound)
+pub fn hihat_808_sample(sample_index: usize, sample_rate: f32, closed: bool) -> f32 {
+    let t = sample_index as f32 / sample_rate;
+    let duration = if closed { 0.04 } else { 0.12 };
+
+    if t > duration {
+        return 0.0;
+    }
+
+    // Classic 808 hihat uses 6 square wave oscillators at specific ratios
+    // These frequencies create the metallic, inharmonic timbre
+    let freqs = [
+        1.0 * 3520.0,
+        1.4 * 3520.0,
+        1.6 * 3520.0,
+        1.8 * 3520.0,
+        2.1 * 3520.0,
+        2.4 * 3520.0,
+    ];
+
+    let mut output = 0.0;
+    for &freq in &freqs {
+        let phase = (t * freq) % 1.0;
+        // Square wave
+        let square = if phase < 0.5 { 1.0 } else { -1.0 };
+        output += square;
+    }
+
+    // Normalize
+    output /= 6.0;
+
+    // Simple high-pass effect by adding derivative
+    let prev_t = (sample_index.saturating_sub(1)) as f32 / sample_rate;
+    let prev_output = if prev_t > 0.0 {
+        output * 0.5  // Approximate previous value
+    } else {
+        0.0
+    };
+    let highpassed = output - prev_output * 0.8;
+
+    // Very sharp envelope for closed, slightly longer for open
+    let decay_rate = if closed { 50.0 } else { 18.0 };
+    let envelope = (-t * decay_rate).exp();
+
+    highpassed * envelope * 0.25
+}
+
+/// Generate an 808 clap sample (multiple noise bursts with specific timing)
+pub fn clap_808_sample(sample_index: usize, sample_rate: f32) -> f32 {
+    let t = sample_index as f32 / sample_rate;
+    let duration = 0.1;
+
+    if t > duration {
+        return 0.0;
+    }
+
+    let noise_val = noise(sample_index as f32);
+
+    // 808 clap uses multiple tightly-timed bursts (simulates multiple hands)
+    // First burst is strongest, followed by two weaker echoes
+    let burst1 = if t < 0.008 { 1.0 } else { 0.0 };
+    let burst2 = if t >= 0.008 && t < 0.016 { 0.7 } else { 0.0 };
+    let burst3 = if t >= 0.016 && t < 0.024 { 0.5 } else { 0.0 };
+
+    // Overall decay envelope
+    let envelope = (-t * 25.0).exp();
+
+    // 808 clap is band-passed noise (roughly 1-3kHz)
+    // Simulate by mixing noise with filtered tone
+    let midrange = (2.0 * std::f32::consts::PI * 2000.0 * t).sin();
+    let filtered = noise_val * 0.85 + midrange * 0.15;
+
+    filtered * (burst1 + burst2 + burst3) * envelope * 0.45
+}
+
 /// Generate a sub kick sample (ultra-low frequency kick)
 pub fn sub_kick_sample(sample_index: usize, sample_rate: f32) -> f32 {
     let t = sample_index as f32 / sample_rate;
@@ -460,25 +574,29 @@ pub fn pitched_tom_sample(sample_index: usize, sample_rate: f32, pitch_hz: f32) 
 #[derive(Debug, Clone, Copy)]
 pub enum DrumType {
     Kick,
-    Kick808,     // Long, pitched 808 kick
-    SubKick,     // Ultra-low sub kick
+    Kick808,         // Long, pitched 808 kick
+    SubKick,         // Ultra-low sub kick
     Snare,
+    Snare808,        // 808 snare (dual triangle oscillators)
     HiHatClosed,
     HiHatOpen,
+    HiHat808Closed,  // 808 closed hi-hat (6 square oscillators)
+    HiHat808Open,    // 808 open hi-hat (6 square oscillators)
     Clap,
-    Tom,         // Mid tom (original)
-    TomHigh,     // High tom
-    TomLow,      // Low tom
+    Clap808,         // 808 clap (multiple noise bursts)
+    Tom,             // Mid tom (original)
+    TomHigh,         // High tom
+    TomLow,          // Low tom
     Rimshot,
     Cowbell,
     Crash,
     Ride,
-    China,       // China cymbal
-    Splash,      // Splash cymbal
+    China,           // China cymbal
+    Splash,          // Splash cymbal
     Tambourine,
     Shaker,
-    BassDrop,    // Dramatic bass drop impact
-    Boom,        // Deep cinematic boom
+    BassDrop,        // Dramatic bass drop impact
+    Boom,            // Deep cinematic boom
 }
 
 impl DrumType {
@@ -488,9 +606,13 @@ impl DrumType {
             DrumType::Kick808 => kick_808_sample(sample_index, sample_rate),
             DrumType::SubKick => sub_kick_sample(sample_index, sample_rate),
             DrumType::Snare => snare_drum_sample(sample_index, sample_rate),
+            DrumType::Snare808 => snare_808_sample(sample_index, sample_rate),
             DrumType::HiHatClosed => hihat_sample(sample_index, sample_rate, true),
             DrumType::HiHatOpen => hihat_sample(sample_index, sample_rate, false),
+            DrumType::HiHat808Closed => hihat_808_sample(sample_index, sample_rate, true),
+            DrumType::HiHat808Open => hihat_808_sample(sample_index, sample_rate, false),
             DrumType::Clap => clap_sample(sample_index, sample_rate),
+            DrumType::Clap808 => clap_808_sample(sample_index, sample_rate),
             DrumType::Tom => tom_sample(sample_index, sample_rate),
             DrumType::TomHigh => tom_high_sample(sample_index, sample_rate),
             DrumType::TomLow => tom_low_sample(sample_index, sample_rate),
@@ -513,9 +635,13 @@ impl DrumType {
             DrumType::Kick808 => 0.5,
             DrumType::SubKick => 0.4,
             DrumType::Snare => 0.1,
+            DrumType::Snare808 => 0.15,
             DrumType::HiHatClosed => 0.05,
             DrumType::HiHatOpen => 0.15,
+            DrumType::HiHat808Closed => 0.04,
+            DrumType::HiHat808Open => 0.12,
             DrumType::Clap => 0.08,
+            DrumType::Clap808 => 0.1,
             DrumType::Tom => 0.3,
             DrumType::TomHigh => 0.25,
             DrumType::TomLow => 0.35,
