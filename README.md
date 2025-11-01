@@ -17,6 +17,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Musical time abstractions (quarter notes, bars, beats)
 - **Real-time Playback**: Cross-platform audio output via cpal
 - **WAV Import/Export**: Load samples and render compositions to WAV files
+- **MIDI Export**: Export compositions to Standard MIDI Files for use in DAWs
 
 ## Installation
 
@@ -113,6 +114,30 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
+### MIDI Export
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    // Create a composition
+    comp.instrument("melody", &Instrument::synth_lead())
+        .notes(&[C4, E4, G4, C5], 0.5);
+
+    comp.track("drums")
+        .drum_grid(16, 0.125)
+        .kick(&[0, 4, 8, 12])
+        .snare(&[4, 12]);
+
+    // Export to MIDI file
+    let mixer = comp.into_mixer();
+    mixer.export_midi("song.mid", Tempo::new(120.0))?;
+    Ok(())
+}
+```
+
 ## Comparison with Other Music Programming Libraries
 
 `tunes` occupies a unique position in the music programming landscape:
@@ -123,6 +148,7 @@ fn main() -> Result<(), anyhow::Error> {
 | **Real-time audio**      | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
 | **Sample playback**      | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
 | **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
+| **MIDI export**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **Easy to learn**        | No            | Yes             | Medium          | Yes               | **Yes**            | Yes     |
 | **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
 | **Algorithmic patterns** | Yes           | Yes             | Yes             | Yes               | **Yes**            | Yes     |

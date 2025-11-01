@@ -35,6 +35,7 @@ pub mod fm_synthesis;
 pub mod instruments;
 pub mod lfo;
 pub mod microtonal;
+pub mod midi;
 pub mod notes;
 pub mod rhythm;
 pub mod sample;
