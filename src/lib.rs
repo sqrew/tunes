@@ -32,6 +32,7 @@ pub mod envelope;
 pub mod filter;
 pub mod instruments;
 pub mod lfo;
+pub mod microtonal;
 pub mod notes;
 pub mod rhythm;
 pub mod scales;
@@ -73,4 +74,13 @@ pub mod prelude {
 
     // LFO
     pub use crate::lfo::{LFO, ModRoute, ModTarget};
+
+    // Microtonal
+    pub use crate::microtonal::{
+        Edo, EDO12, EDO19, EDO24, EDO31, EDO53,
+        cents_to_ratio, ratio_to_cents, freq_from_cents,
+        just_ratio, just_scale, just_major_scale, just_minor_scale,
+        pythagorean_scale,
+        quarter_sharp, quarter_flat, half_sharp, half_flat,
+    };
 }

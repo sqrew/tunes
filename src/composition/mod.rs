@@ -18,10 +18,15 @@ mod expression;
 mod tuplets;
 mod classical_patterns;
 mod musical_time;
+mod sections;
+
+// Re-export Section types for public API
+pub use sections::{Section, SectionBuilder, SectionTrackBuilder};
 
 /// A musical composition with multiple named tracks
 pub struct Composition {
     tracks: HashMap<String, Track>,
+    pub(crate) sections: HashMap<String, sections::Section>,
     tempo: Tempo,
 }
 
@@ -30,6 +35,7 @@ impl Composition {
     pub fn new(tempo: Tempo) -> Self {
         Self {
             tracks: HashMap::new(),
+            sections: HashMap::new(),
             tempo,
         }
     }
@@ -91,6 +97,113 @@ impl Composition {
     /// Get the tempo (returns a copy since Tempo is Copy)
     pub fn tempo(&self) -> Tempo {
         self.tempo
+    }
+
+    /// Start defining a reusable section
+    ///
+    /// Sections allow you to define reusable portions of music (verse, chorus, etc.)
+    /// that can be arranged into a complete composition.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::drums::DrumType;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// // Define a verse section
+    /// comp.section("verse")
+    ///     .instrument("bass", &Instrument::pluck())
+    ///     .notes(&[C2, C2, G2, C2], 0.5)
+    ///     .and()
+    ///     .track("drums")
+    ///     .drum(DrumType::Kick)
+    ///     .drum(DrumType::Snare);
+    ///
+    /// // Define a chorus section
+    /// comp.section("chorus")
+    ///     .instrument("lead", &Instrument::synth_lead())
+    ///     .notes(&[C4, E4, G4, C5], 0.25);
+    ///
+    /// // Arrange them
+    /// comp.arrange(&["verse", "chorus", "verse"]);
+    /// ```
+    pub fn section(&mut self, name: &str) -> SectionBuilder<'_> {
+        // Create the section if it doesn't exist
+        self.sections
+            .entry(name.to_string())
+            .or_insert_with(|| sections::Section::new(name.to_string()));
+
+        SectionBuilder::new(self, name.to_string(), self.tempo)
+    }
+
+    /// Arrange sections into the composition
+    ///
+    /// Takes an array of section names and sequences them in order, adjusting
+    /// timing so they play one after another.
+    ///
+    /// # Arguments
+    /// * `section_names` - Array of section names to arrange in order
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # comp.section("intro").track("drums").note(&[100.0], 1.0);
+    /// # comp.section("verse").track("drums").note(&[100.0], 2.0);
+    /// # comp.section("chorus").track("drums").note(&[100.0], 1.5);
+    /// // Standard song structure: intro, verse, chorus, verse, chorus, chorus
+    /// comp.arrange(&["intro", "verse", "chorus", "verse", "chorus", "chorus"]);
+    /// ```
+    pub fn arrange(&mut self, section_names: &[&str]) {
+        let mut current_time = 0.0;
+
+        for &section_name in section_names {
+            if let Some(section) = self.sections.get(&section_name.to_string()) {
+                // Clone the section's tracks with time offset
+                let offset_tracks = section.clone_with_offset(current_time);
+
+                // Merge the offset tracks into the composition's tracks
+                for (track_name, offset_track) in offset_tracks {
+                    let comp_track = self.tracks.entry(track_name).or_default();
+
+                    // Append events from the section track
+                    comp_track.events.extend(offset_track.events);
+
+                    // If the track was empty, copy the effects/settings
+                    if comp_track.volume == 1.0 && offset_track.volume != 1.0 {
+                        comp_track.volume = offset_track.volume;
+                        comp_track.pan = offset_track.pan;
+                        comp_track.filter = offset_track.filter;
+                        comp_track.delay = offset_track.delay;
+                        comp_track.reverb = offset_track.reverb;
+                        comp_track.distortion = offset_track.distortion;
+                        comp_track.modulation = offset_track.modulation.clone();
+                    }
+                }
+
+                // Move forward in time by this section's duration
+                current_time += section.duration;
+            }
+        }
+    }
+
+    /// Helper method to get or create a track within a section
+    pub(crate) fn get_or_create_section_track(
+        &mut self,
+        section_name: &str,
+        track_name: &str,
+    ) -> &mut Track {
+        let section = self
+            .sections
+            .get_mut(section_name)
+            .expect("Section should exist");
+
+        section.tracks.entry(track_name.to_string()).or_default()
     }
 }
 

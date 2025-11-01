@@ -102,6 +102,219 @@ impl ScalePattern {
     pub const LOCRIAN: ScalePattern = ScalePattern {
         intervals: &[0, 1, 3, 5, 6, 8, 10, 12],
     };
+
+    // === JAZZ & BEBOP SCALES ===
+
+    /// Bebop major scale (major with chromatic passing tone)
+    pub const BEBOP_MAJOR: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 5, 7, 8, 9, 11, 12],
+    };
+
+    /// Bebop dominant scale (mixolydian with chromatic passing tone)
+    pub const BEBOP_DOMINANT: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 5, 7, 9, 10, 11, 12],
+    };
+
+    /// Bebop minor scale (dorian with chromatic passing tone)
+    pub const BEBOP_MINOR: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 5, 7, 8, 9, 10, 12],
+    };
+
+    /// Altered scale (super locrian, diminished whole tone)
+    pub const ALTERED: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 4, 6, 8, 10, 12],
+    };
+
+    /// Half-whole diminished scale (octatonic)
+    pub const DIMINISHED_HALF_WHOLE: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 4, 6, 7, 9, 10, 12],
+    };
+
+    /// Whole-half diminished scale (octatonic)
+    pub const DIMINISHED_WHOLE_HALF: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 5, 6, 8, 9, 11, 12],
+    };
+
+    // === JAPANESE SCALES ===
+
+    /// Hirajoshi scale (Japanese pentatonic)
+    pub const HIRAJOSHI: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 7, 8, 12],
+    };
+
+    /// In Sen scale (Japanese pentatonic)
+    pub const IN_SEN: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 5, 7, 10, 12],
+    };
+
+    /// Iwato scale (Japanese pentatonic)
+    pub const IWATO: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 5, 6, 10, 12],
+    };
+
+    /// Yo scale (Japanese pentatonic, similar to major pentatonic)
+    pub const YO: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 5, 7, 9, 12],
+    };
+
+    /// Kumoi scale (Japanese pentatonic)
+    pub const KUMOI: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 7, 9, 12],
+    };
+
+    // === MIDDLE EASTERN SCALES ===
+
+    /// Maqam Hijaz (Middle Eastern scale)
+    pub const HIJAZ: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 11, 12],
+    };
+
+    /// Double harmonic major (Byzantine, Arabic)
+    pub const DOUBLE_HARMONIC: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 11, 12],
+    };
+
+    /// Phrygian dominant (Spanish Phrygian, Ahava Rabbah)
+    pub const PHRYGIAN_DOMINANT: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 10, 12],
+    };
+
+    /// Persian scale
+    pub const PERSIAN: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 6, 8, 11, 12],
+    };
+
+    // === INDIAN SCALES (Basic Ragas) ===
+
+    /// Bhairav raga (Indian classical)
+    pub const BHAIRAV: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 11, 12],
+    };
+
+    /// Kafi raga (similar to Dorian)
+    pub const KAFI: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 5, 7, 9, 10, 12],
+    };
+
+    /// Bhairavi raga
+    pub const BHAIRAVI: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 5, 7, 8, 10, 12],
+    };
+
+    /// Purvi raga
+    pub const PURVI: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 6, 7, 8, 11, 12],
+    };
+
+    /// Marva raga
+    pub const MARVA: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 6, 7, 9, 11, 12],
+    };
+
+    // === HUNGARIAN & GYPSY SCALES ===
+
+    /// Hungarian minor scale (Gypsy minor)
+    pub const HUNGARIAN_MINOR: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 6, 7, 8, 11, 12],
+    };
+
+    /// Hungarian major scale
+    pub const HUNGARIAN_MAJOR: ScalePattern = ScalePattern {
+        intervals: &[0, 3, 4, 6, 7, 9, 10, 12],
+    };
+
+    /// Gypsy scale (Byzantine)
+    pub const GYPSY: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 10, 12],
+    };
+
+    // === SPANISH & FLAMENCO SCALES ===
+
+    /// Spanish scale (Phrygian dominant)
+    pub const SPANISH: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 5, 7, 8, 10, 12],
+    };
+
+    /// Flamenco scale
+    pub const FLAMENCO: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 4, 5, 7, 8, 10, 11, 12],
+    };
+
+    // === ENIGMATIC & EXOTIC SCALES ===
+
+    /// Enigmatic scale
+    pub const ENIGMATIC: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 6, 8, 10, 11, 12],
+    };
+
+    /// Neapolitan major scale
+    pub const NEAPOLITAN_MAJOR: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 5, 7, 9, 11, 12],
+    };
+
+    /// Neapolitan minor scale
+    pub const NEAPOLITAN_MINOR: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 5, 7, 8, 11, 12],
+    };
+
+    /// Prometheus scale
+    pub const PROMETHEUS: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 6, 9, 10, 12],
+    };
+
+    /// Tritone scale
+    pub const TRITONE: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 4, 6, 7, 10, 12],
+    };
+
+    /// Augmented scale (hexatonic)
+    pub const AUGMENTED: ScalePattern = ScalePattern {
+        intervals: &[0, 3, 4, 7, 8, 11, 12],
+    };
+
+    // === PENTATONIC VARIATIONS ===
+
+    /// Egyptian pentatonic (suspended pentatonic)
+    pub const EGYPTIAN: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 5, 7, 10, 12],
+    };
+
+    /// Chinese pentatonic
+    pub const CHINESE: ScalePattern = ScalePattern {
+        intervals: &[0, 4, 6, 7, 11, 12],
+    };
+
+    /// Mongolian pentatonic
+    pub const MONGOLIAN: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 7, 9, 12],
+    };
+
+    // === MODERN & EXPERIMENTAL SCALES ===
+
+    /// Lydian augmented scale
+    pub const LYDIAN_AUGMENTED: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 6, 8, 9, 11, 12],
+    };
+
+    /// Lydian dominant scale (acoustic scale, overtone scale)
+    pub const LYDIAN_DOMINANT: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 4, 6, 7, 9, 10, 12],
+    };
+
+    /// Super Locrian (altered scale, diminished whole tone)
+    pub const SUPER_LOCRIAN: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 4, 6, 8, 10, 12],
+    };
+
+    /// Ultra Locrian (super super locrian)
+    pub const ULTRA_LOCRIAN: ScalePattern = ScalePattern {
+        intervals: &[0, 1, 3, 4, 6, 8, 9, 12],
+    };
+
+    /// Half diminished (Locrian #2)
+    pub const HALF_DIMINISHED: ScalePattern = ScalePattern {
+        intervals: &[0, 2, 3, 5, 6, 8, 10, 12],
+    };
 }
 
 /// Generates a scale from a root note using a scale pattern
@@ -402,5 +615,112 @@ mod tests {
         let c4 = 261.63;
         let c_major_chord = chord(c4, &ChordPattern::MAJOR);
         assert_eq!(c_major_chord.len(), 3); // Root, 3rd, 5th
+    }
+
+    #[test]
+    fn test_all_scales_generate() {
+        let c4 = 261.63;
+
+        // Test that all scale patterns generate valid scales
+        let scales = vec![
+            // Western
+            (&ScalePattern::MAJOR, 8),
+            (&ScalePattern::MINOR, 8),
+            (&ScalePattern::HARMONIC_MINOR, 8),
+            (&ScalePattern::MELODIC_MINOR, 8),
+            (&ScalePattern::MAJOR_PENTATONIC, 6),
+            (&ScalePattern::MINOR_PENTATONIC, 6),
+            (&ScalePattern::BLUES, 7),
+            (&ScalePattern::CHROMATIC, 13),
+            (&ScalePattern::WHOLE_TONE, 7),
+            // Modes
+            (&ScalePattern::DORIAN, 8),
+            (&ScalePattern::PHRYGIAN, 8),
+            (&ScalePattern::LYDIAN, 8),
+            (&ScalePattern::MIXOLYDIAN, 8),
+            (&ScalePattern::LOCRIAN, 8),
+            // Jazz & Bebop
+            (&ScalePattern::BEBOP_MAJOR, 9),
+            (&ScalePattern::BEBOP_DOMINANT, 9),
+            (&ScalePattern::BEBOP_MINOR, 9),
+            (&ScalePattern::ALTERED, 8),
+            (&ScalePattern::DIMINISHED_HALF_WHOLE, 9),
+            (&ScalePattern::DIMINISHED_WHOLE_HALF, 9),
+            // Japanese
+            (&ScalePattern::HIRAJOSHI, 6),
+            (&ScalePattern::IN_SEN, 6),
+            (&ScalePattern::IWATO, 6),
+            (&ScalePattern::YO, 6),
+            (&ScalePattern::KUMOI, 6),
+            // Middle Eastern
+            (&ScalePattern::HIJAZ, 8),
+            (&ScalePattern::DOUBLE_HARMONIC, 8),
+            (&ScalePattern::PHRYGIAN_DOMINANT, 8),
+            (&ScalePattern::PERSIAN, 8),
+            // Indian
+            (&ScalePattern::BHAIRAV, 8),
+            (&ScalePattern::KAFI, 8),
+            (&ScalePattern::BHAIRAVI, 8),
+            (&ScalePattern::PURVI, 8),
+            (&ScalePattern::MARVA, 8),
+            // Hungarian & Gypsy
+            (&ScalePattern::HUNGARIAN_MINOR, 8),
+            (&ScalePattern::HUNGARIAN_MAJOR, 8),
+            (&ScalePattern::GYPSY, 8),
+            // Spanish & Flamenco
+            (&ScalePattern::SPANISH, 8),
+            (&ScalePattern::FLAMENCO, 10),
+            // Enigmatic & Exotic
+            (&ScalePattern::ENIGMATIC, 8),
+            (&ScalePattern::NEAPOLITAN_MAJOR, 8),
+            (&ScalePattern::NEAPOLITAN_MINOR, 8),
+            (&ScalePattern::PROMETHEUS, 7),
+            (&ScalePattern::TRITONE, 7),
+            (&ScalePattern::AUGMENTED, 7),
+            // Pentatonic variations
+            (&ScalePattern::EGYPTIAN, 6),
+            (&ScalePattern::CHINESE, 6),
+            (&ScalePattern::MONGOLIAN, 6),
+            // Modern & Experimental
+            (&ScalePattern::LYDIAN_AUGMENTED, 8),
+            (&ScalePattern::LYDIAN_DOMINANT, 8),
+            (&ScalePattern::SUPER_LOCRIAN, 8),
+            (&ScalePattern::ULTRA_LOCRIAN, 8),
+            (&ScalePattern::HALF_DIMINISHED, 8),
+        ];
+
+        for (pattern, expected_len) in scales {
+            let generated = scale(c4, pattern);
+            assert_eq!(generated.len(), expected_len);
+            // First note should be root
+            assert!((generated[0] - c4).abs() < 0.01);
+            // Last note should be octave (2x frequency)
+            assert!((generated[expected_len - 1] - c4 * 2.0).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_japanese_scales_unique() {
+        let c4 = 261.63;
+        let hirajoshi = scale(c4, &ScalePattern::HIRAJOSHI);
+        let in_sen = scale(c4, &ScalePattern::IN_SEN);
+        let iwato = scale(c4, &ScalePattern::IWATO);
+
+        // Each Japanese scale should be different
+        assert_ne!(hirajoshi, in_sen);
+        assert_ne!(in_sen, iwato);
+        assert_ne!(hirajoshi, iwato);
+    }
+
+    #[test]
+    fn test_middle_eastern_scales() {
+        let a4 = 440.0;
+        let hijaz = scale(a4, &ScalePattern::HIJAZ);
+
+        // Hijaz should have characteristic augmented second (3 semitones)
+        // between 2nd and 3rd degrees
+        assert_eq!(hijaz.len(), 8);
+        let interval = hijaz[2] / hijaz[1];
+        assert!((interval - 2.0f32.powf(3.0 / 12.0)).abs() < 0.01);
     }
 }

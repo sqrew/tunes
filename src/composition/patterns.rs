@@ -249,6 +249,183 @@ impl<'a> TrackBuilder<'a> {
         self.cursor += duration * times as f32;
         self
     }
+
+    /// Apply speed modification to the current pattern
+    ///
+    /// Multiplies the speed of all events in the pattern range.
+    /// - `speed > 1.0`: Faster (events compressed in time)
+    /// - `speed < 1.0`: Slower (events stretched in time)
+    /// - `speed = 2.0`: Double-time (all durations halved)
+    /// - `speed = 0.5`: Half-time (all durations doubled)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .note(&[C4], 0.5)
+    ///     .note(&[E4], 0.5)
+    ///     .note(&[G4], 0.5)
+    ///     .speed(2.0);  // Play twice as fast (0.25s per note)
+    /// ```
+    pub fn speed(mut self, factor: f32) -> Self {
+        if factor <= 0.0 || !factor.is_finite() {
+            return self;
+        }
+
+        let pattern_duration = self.cursor - self.pattern_start;
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        // Collect and modify events in the pattern range
+        let modified_events: Vec<_> = self
+            .track
+            .events
+            .iter()
+            .filter_map(|event| {
+                let event_time = match event {
+                    crate::track::AudioEvent::Note(note) => note.start_time,
+                    crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                };
+
+                if event_time >= self.pattern_start && event_time < self.cursor {
+                    // Time relative to pattern start, scaled by speed
+                    let relative_time = event_time - self.pattern_start;
+                    let new_time = self.pattern_start + (relative_time / factor);
+
+                    match event {
+                        crate::track::AudioEvent::Note(note) => {
+                            Some((
+                                true,
+                                note.frequencies,
+                                note.num_freqs,
+                                note.duration / factor,  // Scale duration
+                                new_time,
+                                note.waveform,
+                                note.envelope,
+                                note.pitch_bend_semitones,
+                                crate::drums::DrumType::Kick,
+                            ))
+                        }
+                        crate::track::AudioEvent::Drum(drum) => {
+                            Some((
+                                false,
+                                [0.0; 8],
+                                0,
+                                0.0,
+                                new_time,
+                                crate::waveform::Waveform::Sine,
+                                crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                                0.0,
+                                drum.drum_type,
+                            ))
+                        }
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Remove original events from pattern range
+        self.track.events.retain(|event| {
+            let event_time = match event {
+                crate::track::AudioEvent::Note(note) => note.start_time,
+                crate::track::AudioEvent::Drum(drum) => drum.start_time,
+            };
+            event_time < self.pattern_start || event_time >= self.cursor
+        });
+
+        // Add modified events
+        for (is_note, freqs, num_freqs, duration, time, waveform, envelope, bend, drum_type) in modified_events {
+            if is_note {
+                self.track.add_note_with_waveform_envelope_and_bend(
+                    &freqs[..num_freqs],
+                    time,
+                    duration,
+                    waveform,
+                    envelope,
+                    bend,
+                );
+            } else {
+                self.track.add_drum(drum_type, time);
+            }
+        }
+
+        // Adjust cursor: new pattern duration is original / factor
+        self.cursor = self.pattern_start + (pattern_duration / factor);
+        self
+    }
+
+    /// Apply probability filter to the current pattern
+    ///
+    /// Each event in the pattern has a probability chance of being kept.
+    /// Great for creating variation and humanization in generative music.
+    ///
+    /// # Arguments
+    /// * `probability` - Chance each event plays (0.0 to 1.0)
+    ///   - `1.0` = all events play (no effect)
+    ///   - `0.5` = each event has 50% chance
+    ///   - `0.0` = no events play (silence)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("hihat")
+    ///     .pattern_start()
+    ///     .note(&[/* hihat freq */], 0.125)
+    ///     .repeat(16)
+    ///     .probability(0.7);  // Each hit has 70% chance to play
+    /// ```
+    pub fn probability(mut self, prob: f32) -> Self {
+        let prob = prob.clamp(0.0, 1.0);
+
+        if prob >= 1.0 {
+            return self;  // No filtering needed
+        }
+
+        if prob <= 0.0 {
+            // Remove all events in pattern range
+            self.track.events.retain(|event| {
+                let event_time = match event {
+                    crate::track::AudioEvent::Note(note) => note.start_time,
+                    crate::track::AudioEvent::Drum(drum) => drum.start_time,
+                };
+                event_time < self.pattern_start || event_time >= self.cursor
+            });
+            return self;
+        }
+
+        // Filter events probabilistically
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+
+        self.track.events.retain(|event| {
+            let event_time = match event {
+                crate::track::AudioEvent::Note(note) => note.start_time,
+                crate::track::AudioEvent::Drum(drum) => drum.start_time,
+            };
+
+            // Keep events outside pattern range
+            if event_time < self.pattern_start || event_time >= self.cursor {
+                return true;
+            }
+
+            // Probabilistically keep events inside pattern range
+            rng.gen::<f32>() < prob
+        });
+
+        self
+    }
 }
 
 #[cfg(test)]
@@ -582,6 +759,274 @@ mod tests {
             assert_eq!(note.frequencies[0], 440.0);
             assert_eq!(note.frequencies[1], 550.0);
             assert_eq!(note.duration, 0.5);
+        }
+    }
+
+    #[test]
+    fn test_speed_doubles_tempo() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .speed(2.0);  // Double speed
+
+        let track = &comp.into_mixer().tracks[0];
+        assert_eq!(track.events.len(), 3);
+
+        // Durations should be halved
+        if let AudioEvent::Note(note) = track.events[0] {
+            assert_eq!(note.duration, 0.25);
+            assert_eq!(note.start_time, 0.0);
+        }
+        if let AudioEvent::Note(note) = track.events[1] {
+            assert_eq!(note.duration, 0.25);
+            assert_eq!(note.start_time, 0.25);
+        }
+        if let AudioEvent::Note(note) = track.events[2] {
+            assert_eq!(note.duration, 0.25);
+            assert_eq!(note.start_time, 0.5);
+        }
+    }
+
+    #[test]
+    fn test_speed_halves_tempo() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .speed(0.5);  // Half speed (slower)
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // Durations should be doubled
+        if let AudioEvent::Note(note) = track.events[0] {
+            assert_eq!(note.duration, 1.0);
+            assert_eq!(note.start_time, 0.0);
+        }
+        if let AudioEvent::Note(note) = track.events[1] {
+            assert_eq!(note.duration, 1.0);
+            assert_eq!(note.start_time, 1.0);
+        }
+    }
+
+    #[test]
+    fn test_speed_adjusts_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .speed(2.0);
+
+        // Original pattern = 1.5s, at 2x speed = 0.75s
+        assert!((builder.cursor - 0.75).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_speed_with_zero_factor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .speed(0.0);
+
+        // Should be no-op
+        assert_eq!(builder.cursor, 0.5);
+    }
+
+    #[test]
+    fn test_speed_with_negative_factor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .speed(-2.0);
+
+        // Should be no-op
+        assert_eq!(builder.cursor, 0.5);
+    }
+
+    #[test]
+    fn test_speed_preserves_note_properties() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4, E4, G4], 0.5)  // Chord
+            .speed(2.0);
+
+        let track = &comp.into_mixer().tracks[0];
+
+        if let AudioEvent::Note(note) = track.events[0] {
+            // Chord should still be a chord
+            assert_eq!(note.num_freqs, 3);
+            assert_eq!(note.frequencies[0], C4);
+            assert_eq!(note.frequencies[1], E4);
+            assert_eq!(note.frequencies[2], G4);
+            // Duration should be halved
+            assert_eq!(note.duration, 0.25);
+        }
+    }
+
+    #[test]
+    fn test_probability_removes_some_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.125)
+            .repeat(31)  // 32 total notes
+            .probability(0.5);  // 50% chance each
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // With 50% probability and 32 notes, we expect roughly 16 notes
+        // Allow for variance (between 8 and 24 should be reasonable)
+        assert!(track.events.len() >= 8);
+        assert!(track.events.len() <= 24);
+    }
+
+    #[test]
+    fn test_probability_with_zero() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .probability(0.0);  // 0% chance = silence
+
+        let track = &comp.into_mixer().tracks[0];
+        assert_eq!(track.events.len(), 0);
+    }
+
+    #[test]
+    fn test_probability_with_one() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .probability(1.0);  // 100% chance = all notes
+
+        let track = &comp.into_mixer().tracks[0];
+        assert_eq!(track.events.len(), 3);
+    }
+
+    #[test]
+    fn test_probability_doesnt_affect_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .probability(0.5);
+
+        // Cursor should remain at 1.5 regardless of which notes were removed
+        assert_eq!(builder.cursor, 1.5);
+    }
+
+    #[test]
+    fn test_probability_only_affects_pattern_range() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .note(&[C4], 0.5)       // Before pattern - should stay
+            .pattern_start()
+            .note(&[E4], 0.5)       // In pattern - probabilistic
+            .note(&[G4], 0.5)       // In pattern - probabilistic
+            .probability(0.0);
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // Should still have the note before pattern_start
+        assert_eq!(track.events.len(), 1);
+        if let AudioEvent::Note(note) = track.events[0] {
+            assert_eq!(note.frequencies[0], C4);
+        }
+    }
+
+    #[test]
+    fn test_speed_and_probability_chaining() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .note(&[E4], 0.5)
+            .note(&[G4], 0.5)
+            .note(&[C5], 0.5)
+            .speed(2.0)          // First double the speed
+            .probability(1.0);   // Then keep all (no filtering)
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // Should have all 4 notes with halved durations
+        assert_eq!(track.events.len(), 4);
+        if let AudioEvent::Note(note) = track.events[0] {
+            assert_eq!(note.duration, 0.25);
+        }
+    }
+
+    #[test]
+    fn test_speed_with_drums() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("drums")
+            .pattern_start()
+            .drum(DrumType::Kick)
+            .at(0.5)
+            .drum(DrumType::Snare)
+            .at(1.0)
+            .speed(2.0);
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // Check timing compression
+        if let AudioEvent::Drum(drum) = track.events[0] {
+            assert_eq!(drum.start_time, 0.0);
+        }
+        if let AudioEvent::Drum(drum) = track.events[1] {
+            assert!((drum.start_time - 0.25).abs() < 0.001);  // Was 0.5, now 0.25
+        }
+    }
+
+    #[test]
+    fn test_probability_with_drums() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("drums")
+            .pattern_start()
+            .drum(DrumType::Kick)
+            .drum(DrumType::Kick)
+            .drum(DrumType::Kick)
+            .drum(DrumType::Kick)
+            .probability(1.0);  // All should stay
+
+        let track = &comp.into_mixer().tracks[0];
+        assert_eq!(track.events.len(), 4);
+    }
+
+    #[test]
+    fn test_complex_generative_workflow() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .repeat(3)               // 16 notes total
+            .speed(1.5)              // Make it faster
+            .probability(0.8);       // Remove ~20% of notes
+
+        let track = &comp.into_mixer().tracks[0];
+
+        // Should have some notes (probabilistic, so can't be exact)
+        assert!(track.events.len() > 0);
+        assert!(track.events.len() <= 16);
+
+        // Durations should be scaled by speed
+        if let AudioEvent::Note(note) = track.events[0] {
+            let expected_duration = 0.25 / 1.5;
+            assert!((note.duration - expected_duration).abs() < 0.001);
         }
     }
 }
