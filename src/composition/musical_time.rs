@@ -164,13 +164,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn wholes(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.whole_note();
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -193,13 +197,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn halves(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.quarter_note() * 2.0;
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -222,13 +230,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn quarters(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.quarter_note();
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -251,13 +263,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn eighths(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.eighth_note();
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -280,13 +296,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn sixteenths(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.eighth_note() / 2.0;
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -309,13 +329,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn dotted_quarters(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.quarter_note() * 1.5;
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -338,13 +362,17 @@ impl<'a> TrackBuilder<'a> {
     pub fn dotted_eighths(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.eighth_note() * 1.5;
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            let waveform = self.waveform;
+            let envelope = self.envelope;
+            let pitch_bend = self.pitch_bend;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
@@ -368,13 +396,17 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn quarter(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.quarter_note();
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             notes,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -395,13 +427,17 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn half(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.quarter_note() * 2.0;
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             notes,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -422,13 +458,17 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn whole(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.whole_note();
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             notes,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -449,13 +489,17 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn eighth(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.eighth_note();
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             notes,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -476,13 +520,17 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn sixteenth(mut self, notes: &[f32]) -> Self {
         let duration = self.tempo.eighth_note() / 2.0;
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             notes,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;

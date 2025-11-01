@@ -30,6 +30,8 @@ pub mod effects;
 pub mod engine;
 pub mod envelope;
 pub mod filter;
+pub mod filter_envelope;
+pub mod fm_synthesis;
 pub mod instruments;
 pub mod lfo;
 pub mod microtonal;
@@ -40,6 +42,7 @@ pub mod sequences;
 pub mod theory;
 pub mod track;
 pub mod waveform;
+pub mod wavetable;
 
 /// Prelude module for convenient imports
 pub mod prelude {
@@ -67,6 +70,8 @@ pub mod prelude {
 
     // Envelopes and waveforms
     pub use crate::envelope::Envelope;
+    pub use crate::filter_envelope::FilterEnvelope;
+    pub use crate::fm_synthesis::FMParams;
     pub use crate::waveform::Waveform;
 
     // Sequences

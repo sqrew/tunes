@@ -14,19 +14,25 @@ impl<'a> TrackBuilder<'a> {
     ///     .trill(C4, D4, 16, 0.05);  // Alternates C4-D4-C4-D4... 16 times total
     /// ```
     pub fn trill(mut self, note1: f32, note2: f32, count: usize, note_duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         for i in 0..count {
             let freq = if i % 2 == 0 { note1 } else { note2 };
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
+        self.update_section_duration();
         self
     }
     /// Create a cascade/waterfall effect - notes start staggered but sustain
@@ -52,18 +58,23 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn cascade(mut self, notes: &[f32], note_duration: f32, stagger: f32) -> Self {
         let start_cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         for (i, &freq) in notes.iter().enumerate() {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
                 start_cursor + (i as f32 * stagger),
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
         }
         // Move cursor to the end of the cascade (last note start + its duration)
         self.cursor = start_cursor + ((notes.len() - 1) as f32 * stagger) + note_duration;
+        self.update_section_duration();
         self
     }
     /// Rapidly repeat the same note (tremolo effect)
@@ -82,18 +93,24 @@ impl<'a> TrackBuilder<'a> {
     ///     .tremolo(C4, 16, 0.05);  // Rapid C4-C4-C4-C4... (16 times)
     /// ```
     pub fn tremolo(mut self, note: f32, count: usize, note_duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         for _ in 0..count {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[note],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
+        self.update_section_duration();
         self
     }
     pub fn strum(self, chord: &[f32], note_duration: f32, stagger: f32) -> Self {
@@ -122,28 +139,35 @@ impl<'a> TrackBuilder<'a> {
         grace_duration: f32,
         main_duration: f32,
     ) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         // Play grace note
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[grace_note],
-            self.cursor,
+            cursor,
             grace_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += grace_duration;
 
         // Play main note
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[main_note],
-            self.cursor,
+            cursor,
             main_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += main_duration;
 
+        self.update_section_duration();
         self
     }
 
@@ -170,38 +194,45 @@ impl<'a> TrackBuilder<'a> {
         if duration <= 0.0 || !duration.is_finite() { return self; }
         let note_duration = duration / 3.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         // Main → Upper → Main
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[main_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[upper_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[main_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
+        self.update_section_duration();
         self
     }
 
@@ -228,38 +259,45 @@ impl<'a> TrackBuilder<'a> {
         if duration <= 0.0 || !duration.is_finite() { return self; }
         let note_duration = duration / 3.0;
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         // Main → Lower → Main
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[main_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[lower_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
             &[main_note],
-            self.cursor,
+            cursor,
             note_duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            pitch_bend,
         );
         self.cursor += note_duration;
 
+        self.update_section_duration();
         self
     }
 
@@ -287,22 +325,27 @@ impl<'a> TrackBuilder<'a> {
         let note_duration = duration / 4.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         // Upper → Main → Lower → Main
         let notes = [upper_note, main_note, lower_note, main_note];
 
         for &note in &notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[note],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             self.cursor += note_duration;
         }
 
+        self.update_section_duration();
         self
     }
 
@@ -330,22 +373,27 @@ impl<'a> TrackBuilder<'a> {
         let note_duration = duration / 4.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         // Lower → Main → Upper → Main
         let notes = [lower_note, main_note, upper_note, main_note];
 
         for &note in &notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[note],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             self.cursor += note_duration;
         }
 
+        self.update_section_duration();
         self
     }
 }
@@ -394,8 +442,9 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("trill").trill(C4, D4, 0, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
-        assert_eq!(track.events.len(), 0);
+        let mixer = comp.into_mixer();
+        // With zero count, no track is created since loop doesn't execute
+        assert_eq!(mixer.tracks.len(), 0, "Zero count should create no track");
     }
 
     #[test]

@@ -6,6 +6,9 @@ use crate::track::{Mixer, Track};
 use crate::waveform::Waveform;
 use std::collections::HashMap;
 
+// Import synthesis types - use prelude which re-exports them
+use crate::prelude::{FilterEnvelope, FMParams};
+
 // Module declarations
 mod notes;
 mod musical_patterns;
@@ -19,9 +22,11 @@ mod tuplets;
 mod classical_patterns;
 mod musical_time;
 mod sections;
+mod synthesis;
+pub mod generative;
 
 // Re-export Section types for public API
-pub use sections::{Section, SectionBuilder, SectionTrackBuilder};
+pub use sections::{Section, SectionBuilder};
 
 /// A musical composition with multiple named tracks
 pub struct Composition {
@@ -42,28 +47,45 @@ impl Composition {
 
     /// Get or create a track by name
     pub fn track(&mut self, name: &str) -> TrackBuilder<'_> {
-        // Use entry API to avoid unwrap - guaranteed to exist after or_insert
-        let track = self.tracks.entry(name.to_string()).or_default();
-
+        let tempo = self.tempo;
         TrackBuilder {
-            track,
+            composition: self,
+            context: BuilderContext::Direct,
+            track_name: name.to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: Waveform::Sine,      // Default to sine wave
             envelope: Envelope::default(), // Default envelope
+            filter_envelope: FilterEnvelope::default(), // Default (no filter envelope)
+            fm_params: FMParams::default(), // Default (no FM)
             swing: 0.5,                    // No swing by default (straight timing)
             swing_counter: 0,
             pitch_bend: 0.0, // No pitch bend by default
-            tempo: self.tempo,
+            tempo,
         }
     }
 
     /// Create a track with an instrument preset
     pub fn instrument(&mut self, name: &str, instrument: &Instrument) -> TrackBuilder<'_> {
-        // Use entry API to avoid unwrap - guaranteed to exist after or_insert
-        let track = self.tracks.entry(name.to_string()).or_default();
+        let tempo = self.tempo;
+        let mut builder = TrackBuilder {
+            composition: self,
+            context: BuilderContext::Direct,
+            track_name: name.to_string(),
+            cursor: 0.0,
+            pattern_start: 0.0,
+            waveform: instrument.waveform,
+            envelope: instrument.envelope,
+            filter_envelope: FilterEnvelope::default(), // Default (no filter envelope)
+            fm_params: FMParams::default(), // Default (no FM)
+            swing: 0.5, // No swing by default (straight timing)
+            swing_counter: 0,
+            pitch_bend: 0.0, // No pitch bend by default
+            tempo,
+        };
 
         // Apply instrument settings to the track
+        let track = builder.get_track_mut();
         track.volume = instrument.volume;
         track.pan = instrument.pan;
         track.filter = instrument.filter;
@@ -72,17 +94,7 @@ impl Composition {
         track.distortion = instrument.distortion;
         track.modulation = instrument.modulation.clone();
 
-        TrackBuilder {
-            track,
-            cursor: 0.0,
-            pattern_start: 0.0,
-            waveform: instrument.waveform,
-            envelope: instrument.envelope,
-            swing: 0.5, // No swing by default (straight timing)
-            swing_counter: 0,
-            pitch_bend: 0.0, // No pitch bend by default
-            tempo: self.tempo,
-        }
+        builder
     }
 
     /// Convert this composition into a Mixer for playback
@@ -207,13 +219,29 @@ impl Composition {
     }
 }
 
+/// Context for where the TrackBuilder is building
+#[derive(Clone, Debug)]
+pub(crate) enum BuilderContext {
+    /// Building directly on composition tracks
+    Direct,
+    /// Building within a named section
+    Section(String),
+}
+
 /// Builder for adding events to a track
+///
+/// This unified builder works in both direct composition mode and section mode,
+/// providing the same full functionality in either context.
 pub struct TrackBuilder<'a> {
-    pub(crate) track: &'a mut Track,
+    pub(crate) composition: &'a mut Composition,
+    pub(crate) context: BuilderContext,
+    pub(crate) track_name: String,
     pub(crate) cursor: f32,          // Current time position in the track
     pub(crate) pattern_start: f32,   // Start position of current pattern (for looping)
     pub(crate) waveform: Waveform,   // Current waveform for notes
     pub(crate) envelope: Envelope,   // Current envelope for notes
+    pub(crate) filter_envelope: FilterEnvelope, // Current filter envelope for notes
+    pub(crate) fm_params: FMParams,  // Current FM synthesis parameters
     pub(crate) swing: f32,           // Swing ratio (0.5 = straight, 0.67 = triplet swing, 0.75 = heavy)
     pub(crate) swing_counter: usize, // Counter to track even/odd notes for swing
     pub(crate) pitch_bend: f32,      // Pitch bend in semitones for subsequent notes (0.0 = no bend)
@@ -221,6 +249,33 @@ pub struct TrackBuilder<'a> {
 }
 
 impl<'a> TrackBuilder<'a> {
+    /// Get a mutable reference to the track being built
+    ///
+    /// This handles both direct composition tracks and section tracks
+    pub(crate) fn get_track_mut(&mut self) -> &mut Track {
+        match &self.context {
+            BuilderContext::Direct => {
+                self.composition
+                    .tracks
+                    .entry(self.track_name.clone())
+                    .or_default()
+            }
+            BuilderContext::Section(section_name) => {
+                self.composition
+                    .get_or_create_section_track(section_name, &self.track_name)
+            }
+        }
+    }
+
+    /// Update section duration if in section context
+    pub(crate) fn update_section_duration(&mut self) {
+        if let BuilderContext::Section(section_name) = &self.context {
+            if let Some(section) = self.composition.sections.get_mut(section_name) {
+                section.duration = section.duration.max(self.cursor);
+            }
+        }
+    }
+
     /// Apply swing timing to a duration based on whether this is an even or odd note
     pub(crate) fn apply_swing(&mut self, base_duration: f32) -> f32 {
         if self.swing == 0.5 {
@@ -259,11 +314,57 @@ impl<'a> TrackBuilder<'a> {
     ///     .snare(&[4, 12])
     ///     .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
     /// ```
-    pub fn drum_grid(mut self, steps: usize, step_duration: f32) -> DrumGrid<'a> {
+    pub fn drum_grid(self, steps: usize, step_duration: f32) -> DrumGrid<'a> {
         let start_time = self.cursor;
-        let grid = DrumGrid::new(self.track, start_time, steps, step_duration);
-        // Move cursor to end of grid
-        self.cursor += steps as f32 * step_duration;
-        grid
+
+        // Get the track reference directly from composition for lifetime 'a
+        let track = match &self.context {
+            BuilderContext::Direct => {
+                self.composition
+                    .tracks
+                    .entry(self.track_name.clone())
+                    .or_default()
+            }
+            BuilderContext::Section(section_name) => {
+                self.composition
+                    .get_or_create_section_track(section_name, &self.track_name)
+            }
+        };
+
+        DrumGrid::new(track, start_time, steps, step_duration)
+    }
+
+    /// Continue building another track (useful for sections or multi-track compositions)
+    ///
+    /// This returns the builder to section builder mode if in a section context,
+    /// otherwise it just switches to a new track in direct mode.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.section("verse")
+    ///     .track("melody")
+    ///     .notes(&[C4, E4], 0.5)
+    ///     .and()
+    ///     .track("bass")
+    ///     .notes(&[C2, G2], 1.0);
+    /// ```
+    pub fn and(mut self) -> SectionBuilder<'a> {
+        self.update_section_duration();
+
+        // Extract the section name if in section context
+        let section_name = match &self.context {
+            BuilderContext::Section(name) => name.clone(),
+            BuilderContext::Direct => {
+                // In direct mode, .and() doesn't really make sense, but we'll support it
+                // by creating an implicit section
+                panic!("and() can only be used in section context. Use comp.section(\"name\").track(...).and()...")
+            }
+        };
+
+        SectionBuilder::new(self.composition, section_name, self.tempo)
     }
 }

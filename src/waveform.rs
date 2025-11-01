@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use crate::wavetable::WAVETABLE;
 
 /// Different waveform types for synthesis
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -20,9 +20,9 @@ impl Waveform {
         }
     }
 
-    /// Sine wave: smooth, pure tone
+    /// Sine wave: smooth, pure tone (using fast wavetable lookup)
     fn sine(phase: f32) -> f32 {
-        (phase * 2.0 * PI).sin()
+        WAVETABLE.sine(phase)
     }
 
     /// Square wave: rich in odd harmonics, hollow sound

@@ -4,13 +4,13 @@ use crate::waveform::Waveform;
 
 impl<'a> TrackBuilder<'a> {
     /// Set the volume for this track (0.0 to 2.0)
-    pub fn volume(self, volume: f32) -> Self {
-        self.track.volume = volume.clamp(0.0, 2.0);
+    pub fn volume(mut self, volume: f32) -> Self {
+        self.get_track_mut().volume = volume.clamp(0.0, 2.0);
         self
     }
     /// Set the stereo pan for this track (-1.0 = left, 0.0 = center, 1.0 = right)
-    pub fn pan(self, pan: f32) -> Self {
-        self.track.pan = pan.clamp(-1.0, 1.0);
+    pub fn pan(mut self, pan: f32) -> Self {
+        self.get_track_mut().pan = pan.clamp(-1.0, 1.0);
         self
     }
     /// Set pitch bend for subsequent notes (in semitones, positive = up, negative = down)
@@ -48,11 +48,11 @@ impl<'a> TrackBuilder<'a> {
     ///     .vibrato(5.5, 0.3)  // Moderate vibrato at 5.5 Hz
     ///     .note(&[A4], 2.0);
     /// ```
-    pub fn vibrato(self, rate: f32, depth: f32) -> Self {
+    pub fn vibrato(mut self, rate: f32, depth: f32) -> Self {
         use crate::lfo::{LFO, ModRoute, ModTarget};
         let vibrato_lfo = LFO::new(Waveform::Sine, rate, depth);
         let mod_route = ModRoute::new(vibrato_lfo, ModTarget::Pitch, 1.0);
-        self.track.modulation.push(mod_route);
+        self.get_track_mut().modulation.push(mod_route);
         self
     }
     /// Fade volume from current level to a target level over a duration
@@ -92,7 +92,7 @@ impl<'a> TrackBuilder<'a> {
         // modulation on the volume parameter for true continuous fading
 
         self.cursor += duration;
-        self.track.volume = target_volume;
+        self.get_track_mut().volume = target_volume;
 
         self
     }
@@ -109,176 +109,261 @@ mod tests {
     #[test]
     fn test_volume_sets_track_volume() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").volume(0.7);
+        comp.track("test").volume(0.7);
 
-        assert_eq!(builder.track.volume, 0.7);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 0.7);
     }
 
     #[test]
     fn test_volume_clamps_low() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").volume(-0.5);
+        comp.track("test").volume(-0.5);
 
-        assert_eq!(builder.track.volume, 0.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 0.0);
     }
 
     #[test]
     fn test_volume_clamps_high() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").volume(3.0);
+        comp.track("test").volume(3.0);
 
-        assert_eq!(builder.track.volume, 2.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 2.0);
     }
 
     #[test]
     fn test_volume_allows_boundaries() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        let min = comp.track("min").volume(0.0);
-        assert_eq!(min.track.volume, 0.0);
+        comp.track("min").volume(0.0);
+        comp.track("max").volume(2.0);
 
-        let max = comp.track("max").volume(2.0);
-        assert_eq!(max.track.volume, 2.0);
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+
+        // Check that both boundary volumes exist (HashMap order not guaranteed)
+        let has_min = mixer.tracks.iter().any(|t| t.volume == 0.0);
+        let has_max = mixer.tracks.iter().any(|t| t.volume == 2.0);
+
+        assert!(has_min, "Should have a track with volume 0.0");
+        assert!(has_max, "Should have a track with volume 2.0");
     }
 
     #[test]
     fn test_pan_sets_track_pan() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").pan(0.5);
+        comp.track("test").pan(0.5);
 
-        assert_eq!(builder.track.pan, 0.5);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.pan, 0.5);
     }
 
     #[test]
     fn test_pan_clamps_low() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").pan(-1.5);
+        comp.track("test").pan(-1.5);
 
-        assert_eq!(builder.track.pan, -1.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.pan, -1.0);
     }
 
     #[test]
     fn test_pan_clamps_high() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").pan(1.5);
+        comp.track("test").pan(1.5);
 
-        assert_eq!(builder.track.pan, 1.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.pan, 1.0);
     }
 
     #[test]
     fn test_pan_center() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").pan(0.0);
+        comp.track("test").pan(0.0);
 
-        assert_eq!(builder.track.pan, 0.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.pan, 0.0);
     }
 
     #[test]
     fn test_bend_sets_pitch_bend() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").bend(2.0);
+        comp.track("test")
+            .bend(2.0)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.pitch_bend, 2.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.pitch_bend_semitones, 2.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_bend_clamps_low() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").bend(-30.0);
+        comp.track("test")
+            .bend(-30.0)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.pitch_bend, -24.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.pitch_bend_semitones, -24.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_bend_clamps_high() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").bend(30.0);
+        comp.track("test")
+            .bend(30.0)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.pitch_bend, 24.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.pitch_bend_semitones, 24.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_waveform_sets_for_subsequent_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").waveform(Waveform::Square);
+        comp.track("test")
+            .waveform(Waveform::Square)
+            .note(&[C4], 1.0);
 
-        assert!(matches!(builder.waveform, Waveform::Square));
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert!(matches!(note.waveform, Waveform::Square));
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_envelope_sets_for_subsequent_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
         let env = Envelope::new(0.1, 0.2, 0.7, 0.3);
-        let builder = comp.track("test").envelope(env);
+        comp.track("test")
+            .envelope(env)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.envelope.attack, 0.1);
-        assert_eq!(builder.envelope.decay, 0.2);
-        assert_eq!(builder.envelope.sustain, 0.7);
-        assert_eq!(builder.envelope.release, 0.3);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.envelope.attack, 0.1);
+            assert_eq!(note.envelope.decay, 0.2);
+            assert_eq!(note.envelope.sustain, 0.7);
+            assert_eq!(note.envelope.release, 0.3);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_vibrato_adds_modulation() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").vibrato(5.0, 0.3);
+        comp.track("test").vibrato(5.0, 0.3);
 
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
         // Vibrato should add a modulation route
-        assert_eq!(builder.track.modulation.len(), 1);
+        assert_eq!(track.modulation.len(), 1);
     }
 
     #[test]
     fn test_vibrato_multiple_calls() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test")
+        comp.track("test")
             .vibrato(5.0, 0.3)
             .vibrato(3.0, 0.1);
 
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
         // Should have 2 modulation routes
-        assert_eq!(builder.track.modulation.len(), 2);
+        assert_eq!(track.modulation.len(), 2);
     }
 
     #[test]
     fn test_fade_to_sets_volume() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").volume(1.0).fade_to(0.0, 2.0);
+        comp.track("test").volume(1.0).fade_to(0.0, 2.0);
 
-        assert_eq!(builder.track.volume, 0.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 0.0);
     }
 
     #[test]
     fn test_fade_to_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").fade_to(0.5, 3.0);
+        comp.track("test")
+            .fade_to(0.5, 3.0)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.cursor, 3.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            // Note should start at 3.0 (after the fade duration)
+            assert_eq!(note.start_time, 3.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_fade_to_clamps_volume() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").fade_to(3.0, 1.0);
+        comp.track("test").fade_to(3.0, 1.0);
 
-        assert_eq!(builder.track.volume, 2.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 2.0);
     }
 
     #[test]
     fn test_expression_chaining() {
         let mut comp = Composition::new(Tempo::new(120.0));
         let env = Envelope::new(0.1, 0.1, 0.8, 0.2);
-        let builder = comp.track("test")
+        comp.track("test")
             .volume(0.8)
             .pan(-0.3)
             .bend(1.0)
             .waveform(Waveform::Sawtooth)
             .envelope(env)
-            .vibrato(5.5, 0.2);
+            .vibrato(5.5, 0.2)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.track.volume, 0.8);
-        assert_eq!(builder.track.pan, -0.3);
-        assert_eq!(builder.pitch_bend, 1.0);
-        assert!(matches!(builder.waveform, Waveform::Sawtooth));
-        assert_eq!(builder.envelope.attack, 0.1);
-        assert_eq!(builder.track.modulation.len(), 1);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        assert_eq!(track.volume, 0.8);
+        assert_eq!(track.pan, -0.3);
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.pitch_bend_semitones, 1.0);
+            assert!(matches!(note.waveform, Waveform::Sawtooth));
+            assert_eq!(note.envelope.attack, 0.1);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+        assert_eq!(track.modulation.len(), 1);
     }
 
     #[test]
@@ -296,28 +381,53 @@ mod tests {
     fn test_pan_extremes() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        let left = comp.track("left").pan(-1.0);
-        assert_eq!(left.track.pan, -1.0);
+        comp.track("left").pan(-1.0);
+        comp.track("right").pan(1.0);
 
-        let right = comp.track("right").pan(1.0);
-        assert_eq!(right.track.pan, 1.0);
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+
+        // Check that both pan extremes exist (HashMap order not guaranteed)
+        let has_left = mixer.tracks.iter().any(|t| t.pan == -1.0);
+        let has_right = mixer.tracks.iter().any(|t| t.pan == 1.0);
+
+        assert!(has_left, "Should have a track panned hard left (-1.0)");
+        assert!(has_right, "Should have a track panned hard right (1.0)");
     }
 
     #[test]
     fn test_bend_zero_is_no_bend() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").bend(0.0);
+        comp.track("test")
+            .bend(0.0)
+            .note(&[C4], 1.0);
 
-        assert_eq!(builder.pitch_bend, 0.0);
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.pitch_bend_semitones, 0.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 
     #[test]
     fn test_fade_to_zero_duration() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test").volume(1.0).fade_to(0.0, 0.0);
+        comp.track("test")
+            .volume(1.0)
+            .fade_to(0.0, 0.0)
+            .note(&[C4], 1.0);
 
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
         // Should set volume immediately
-        assert_eq!(builder.track.volume, 0.0);
-        assert_eq!(builder.cursor, 0.0);
+        assert_eq!(track.volume, 0.0);
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            // Note should start at 0.0 (no fade duration)
+            assert_eq!(note.start_time, 0.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
     }
 }

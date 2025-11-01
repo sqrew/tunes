@@ -1,4 +1,5 @@
 use tunes::chords::*;
+use tunes::composition::generative::{biased_random_walk_sequence, random_walk_sequence};
 use tunes::composition::Composition;
 use tunes::engine::AudioEngine;
 use tunes::instruments::Instrument;
@@ -68,12 +69,53 @@ fn main() -> Result<(), anyhow::Error> {
         .notes(&[C4, D4, E4, F4, G4], 0.15)
         .reverse();
 
+    // === GENERATIVE FEATURES ===
+
+    // Random walk through a scale (unbiased)
+    let walk = random_walk_sequence(3, 24, 0, 7); // Start at index 3, 24 steps
+    comp.instrument("random_walk", &Instrument::synth_lead())
+        .at(11.0)
+        .sequence_from(&walk, &C4_MAJOR_SCALE, 0.125);
+
+    // Biased random walk (tends upward for ascending melody)
+    let ascending = biased_random_walk_sequence(0, 16, 0, 12, 0.7); // 70% up
+    comp.instrument("ascending_walk", &Instrument::pluck())
+        .at(14.0)
+        .sequence_from(&ascending, &C4_MINOR_PENTATONIC_SCALE, 0.15);
+
+    // Musical inversion (mirror a melody)
+    comp.instrument("original", &Instrument::acoustic_piano())
+        .at(17.0)
+        .pattern_start()
+        .notes(&[C4, E4, G4, A4, G4, F4], 0.2);
+
+    comp.instrument("inverted", &Instrument::acoustic_piano())
+        .at(18.5)
+        .pattern_start()
+        .notes(&[C4, E4, G4, A4, G4, F4], 0.2)
+        .invert(C4); // Mirror around C4
+
+    // Constrained inversion (keeps result playable)
+    comp.instrument("inverted_constrained", &Instrument::warm_pad())
+        .at(20.0)
+        .pattern_start()
+        .notes(&[C4, E4, G4, B4, C5], 0.3)
+        .invert_constrained(C4, C3, C5); // Keep in playable range
+
+    // Direct random walk method (walks through actual frequencies)
+    comp.instrument("direct_walk", &Instrument::pluck())
+        .at(22.0)
+        .random_walk(C4, 24, 0.125, &C4_MAJOR_SCALE);
+
     println!("✓ Scale runs: .scale() and .scale_reverse()");
     println!("✓ Arpeggios: .arpeggiate() and .arpeggiate_reverse()");
     println!("✓ Ornaments: .trill() and .tremolo()");
     println!("✓ Glides: .interpolated() and .portamento()");
     println!("✓ Sequences: .sequence_from() with Fibonacci");
-    println!("✓ Transform: .reverse()\n");
+    println!("✓ Transform: .reverse()");
+    println!("✓ Generative: random_walk_sequence() and biased_random_walk_sequence()");
+    println!("✓ Generative: .invert() and .invert_constrained()");
+    println!("✓ Generative: .random_walk() direct method\n");
 
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())

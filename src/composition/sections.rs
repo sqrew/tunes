@@ -5,6 +5,8 @@
 
 use crate::composition::Composition;
 use crate::envelope::Envelope;
+use crate::filter_envelope::FilterEnvelope;
+use crate::fm_synthesis::FMParams;
 use crate::instruments::Instrument;
 use crate::rhythm::Tempo;
 use crate::track::{AudioEvent, Track};
@@ -100,15 +102,17 @@ impl<'a> SectionBuilder<'a> {
     ///     .track("melody")
     ///     .notes(&[C4, E4, G4], 0.5);
     /// ```
-    pub fn track(self, name: &str) -> SectionTrackBuilder<'a> {
-        SectionTrackBuilder {
+    pub fn track(self, name: &str) -> crate::composition::TrackBuilder<'a> {
+        crate::composition::TrackBuilder {
             composition: self.composition,
-            section_name: self.section_name,
+            context: crate::composition::BuilderContext::Section(self.section_name),
             track_name: name.to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: Waveform::Sine,
             envelope: Envelope::default(),
+            filter_envelope: FilterEnvelope::default(),
+            fm_params: FMParams::default(),
             swing: 0.5,
             swing_counter: 0,
             pitch_bend: 0.0,
@@ -129,15 +133,17 @@ impl<'a> SectionBuilder<'a> {
     ///     .instrument("lead", &Instrument::synth_lead())
     ///     .notes(&[E4, G4, B4], 0.25);
     /// ```
-    pub fn instrument(self, name: &str, instrument: &Instrument) -> SectionTrackBuilder<'a> {
-        let mut builder = SectionTrackBuilder {
+    pub fn instrument(self, name: &str, instrument: &Instrument) -> crate::composition::TrackBuilder<'a> {
+        let mut builder = crate::composition::TrackBuilder {
             composition: self.composition,
-            section_name: self.section_name,
+            context: crate::composition::BuilderContext::Section(self.section_name),
             track_name: name.to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: instrument.waveform,
             envelope: instrument.envelope,
+            filter_envelope: FilterEnvelope::default(),
+            fm_params: FMParams::default(),
             swing: 0.5,
             swing_counter: 0,
             pitch_bend: 0.0,
@@ -145,47 +151,15 @@ impl<'a> SectionBuilder<'a> {
         };
 
         // Get or create the track and apply instrument settings
-        builder.get_or_create_track_mut().apply_instrument(instrument);
+        builder.get_track_mut().apply_instrument(instrument);
 
         builder
     }
 }
 
-/// Builder for adding events to a track within a section
-///
-/// This is similar to TrackBuilder but works within a section context
-pub struct SectionTrackBuilder<'a> {
-    composition: &'a mut Composition,
-    section_name: String,
-    track_name: String,
-    cursor: f32,
-    pattern_start: f32,
-    waveform: Waveform,
-    envelope: Envelope,
-    swing: f32,
-    swing_counter: usize,
-    pitch_bend: f32,
-    tempo: Tempo,
-}
-
-impl<'a> SectionTrackBuilder<'a> {
-    /// Get or create the track for this section
-    fn get_or_create_track_mut(&mut self) -> &mut Track {
-        self.composition
-            .get_or_create_section_track(&self.section_name, &self.track_name)
-    }
-
-    /// Update the section duration based on current cursor position
-    fn update_section_duration(&mut self) {
-        if let Some(section) = self.composition.sections.get_mut(&self.section_name) {
-            section.duration = section.duration.max(self.cursor);
-        }
-    }
-}
-
 impl Track {
     /// Apply instrument settings to this track
-    fn apply_instrument(&mut self, instrument: &Instrument) {
+    pub(crate) fn apply_instrument(&mut self, instrument: &Instrument) {
         self.volume = instrument.volume;
         self.pan = instrument.pan;
         self.filter = instrument.filter;
@@ -193,161 +167,6 @@ impl Track {
         self.reverb = instrument.reverb.clone();
         self.distortion = instrument.distortion;
         self.modulation = instrument.modulation.clone();
-    }
-}
-
-// We'll implement the note/drum methods directly to avoid complex delegation
-
-use crate::drums::DrumType;
-use crate::track::NoteEvent;
-
-impl<'a> SectionTrackBuilder<'a> {
-    /// Continue building on this section's track (returns the section builder)
-    ///
-    /// This is a helper to chain section operations while ensuring the section is finalized
-    pub fn and(mut self) -> SectionBuilder<'a> {
-        self.update_section_duration();
-        SectionBuilder {
-            composition: self.composition,
-            section_name: self.section_name,
-            tempo: self.tempo,
-        }
-    }
-
-    /// Add a single note or chord
-    pub fn note(mut self, frequencies: &[f32], duration: f32) -> Self {
-        // Copy values before borrowing
-        let cursor = self.cursor;
-        let waveform = self.waveform;
-        let envelope = self.envelope;
-        let pitch_bend = self.pitch_bend;
-
-        let track = self.get_or_create_track_mut();
-        let note = NoteEvent::with_waveform_envelope_and_bend(
-            frequencies,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
-        track.events.push(AudioEvent::Note(note));
-
-        self.cursor += duration;
-        self.update_section_duration();
-        self
-    }
-
-    /// Add multiple notes in sequence
-    pub fn notes(mut self, frequencies: &[f32], duration: f32) -> Self {
-        // Copy values before borrowing
-        let waveform = self.waveform;
-        let envelope = self.envelope;
-        let pitch_bend = self.pitch_bend;
-
-        for freq in frequencies {
-            let cursor = self.cursor;
-            let track = self.get_or_create_track_mut();
-            let note = NoteEvent::with_waveform_envelope_and_bend(
-                &[*freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
-            track.events.push(AudioEvent::Note(note));
-            self.cursor += duration;
-        }
-        self.update_section_duration();
-        self
-    }
-
-    /// Add a drum hit
-    pub fn drum(mut self, drum_type: DrumType) -> Self {
-        let cursor = self.cursor;
-        let track = self.get_or_create_track_mut();
-        track.add_drum(drum_type, cursor);
-        self.cursor += 0.1; // Default drum duration
-        self.update_section_duration();
-        self
-    }
-
-    /// Set the waveform for subsequent notes
-    pub fn waveform(mut self, waveform: Waveform) -> Self {
-        self.waveform = waveform;
-        self
-    }
-
-    /// Set the envelope for subsequent notes
-    pub fn envelope(mut self, envelope: Envelope) -> Self {
-        self.envelope = envelope;
-        self
-    }
-
-    /// Set the cursor position (time in seconds)
-    pub fn at(mut self, time: f32) -> Self {
-        self.cursor = time;
-        self.update_section_duration();
-        self
-    }
-
-    /// Wait/advance the cursor by a duration
-    pub fn wait(mut self, duration: f32) -> Self {
-        self.cursor += duration;
-        self.update_section_duration();
-        self
-    }
-
-    /// Mark the start of a pattern for looping/repeating
-    pub fn pattern_start(mut self) -> Self {
-        self.pattern_start = self.cursor;
-        self
-    }
-
-    /// Repeat the pattern since pattern_start
-    pub fn repeat(mut self, times: usize) -> Self {
-        let pattern_duration = self.cursor - self.pattern_start;
-        let pattern_start = self.pattern_start;
-        let cursor = self.cursor;
-
-        // Collect events in the pattern range
-        {
-            let track = self.get_or_create_track_mut();
-            let pattern_events: Vec<_> = track
-                .events
-                .iter()
-                .filter(|event| {
-                    let event_time = match event {
-                        AudioEvent::Note(note) => note.start_time,
-                        AudioEvent::Drum(drum) => drum.start_time,
-                    };
-                    event_time >= pattern_start && event_time < cursor
-                })
-                .cloned()
-                .collect();
-
-            // Repeat the pattern
-            for i in 0..times {
-                let offset = pattern_duration * (i + 1) as f32;
-                for event in &pattern_events {
-                    let mut new_event = *event;
-                    match &mut new_event {
-                        AudioEvent::Note(note) => {
-                            note.start_time += offset;
-                        }
-                        AudioEvent::Drum(drum) => {
-                            drum.start_time += offset;
-                        }
-                    }
-                    track.events.push(new_event);
-                }
-            }
-        }
-
-        self.cursor += pattern_duration * times as f32;
-        self.update_section_duration();
-        self
     }
 }
 

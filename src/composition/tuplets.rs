@@ -28,20 +28,25 @@ impl<'a> TrackBuilder<'a> {
         }
 
         let note_duration = total_duration / count as f32;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         for &freq in notes {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
 
+        self.update_section_duration();
         self
     }
 

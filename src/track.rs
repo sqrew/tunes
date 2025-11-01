@@ -2,6 +2,8 @@ use crate::drums::DrumType;
 use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
 use crate::envelope::Envelope;
 use crate::filter::Filter;
+use crate::filter_envelope::FilterEnvelope;
+use crate::fm_synthesis::FMParams;
 use crate::lfo::ModRoute;
 use crate::waveform::Waveform;
 
@@ -12,6 +14,29 @@ pub enum AudioEvent {
     Drum(DrumEvent),
 }
 
+impl AudioEvent {
+    /// Get the start time of this event
+    #[inline]
+    pub fn start_time(&self) -> f32 {
+        match self {
+            AudioEvent::Note(note) => note.start_time,
+            AudioEvent::Drum(drum) => drum.start_time,
+        }
+    }
+
+    /// Get the end time of this event (including release for notes)
+    #[inline]
+    pub fn end_time(&self) -> f32 {
+        match self {
+            AudioEvent::Note(note) => {
+                let total_duration = note.envelope.total_duration(note.duration);
+                note.start_time + total_duration
+            }
+            AudioEvent::Drum(drum) => drum.start_time + drum.drum_type.duration(),
+        }
+    }
+}
+
 /// Represents a note event with timing information
 #[derive(Debug, Clone, Copy)]
 pub struct NoteEvent {
@@ -19,8 +44,10 @@ pub struct NoteEvent {
     pub num_freqs: usize,
     pub start_time: f32,    // When to start playing (in seconds from track start)
     pub duration: f32,      // How long to play (in seconds)
-    pub waveform: Waveform, // Waveform type to use
-    pub envelope: Envelope, // ADSR envelope
+    pub waveform: Waveform, // Waveform type to use (ignored if FM is enabled)
+    pub envelope: Envelope, // ADSR envelope for amplitude
+    pub filter_envelope: FilterEnvelope, // ADSR envelope for filter cutoff
+    pub fm_params: FMParams, // FM synthesis parameters (mod_index=0 disables FM)
     pub pitch_bend_semitones: f32, // Pitch bend amount in semitones (0.0 = no bend)
 }
 
@@ -76,6 +103,48 @@ impl NoteEvent {
         envelope: Envelope,
         pitch_bend_semitones: f32,
     ) -> Self {
+        Self::with_full_params(
+            frequencies,
+            start_time,
+            duration,
+            waveform,
+            envelope,
+            FilterEnvelope::default(),
+            pitch_bend_semitones,
+        )
+    }
+
+    pub fn with_full_params(
+        frequencies: &[f32],
+        start_time: f32,
+        duration: f32,
+        waveform: Waveform,
+        envelope: Envelope,
+        filter_envelope: FilterEnvelope,
+        pitch_bend_semitones: f32,
+    ) -> Self {
+        Self::with_complete_params(
+            frequencies,
+            start_time,
+            duration,
+            waveform,
+            envelope,
+            filter_envelope,
+            FMParams::default(),
+            pitch_bend_semitones,
+        )
+    }
+
+    pub fn with_complete_params(
+        frequencies: &[f32],
+        start_time: f32,
+        duration: f32,
+        waveform: Waveform,
+        envelope: Envelope,
+        filter_envelope: FilterEnvelope,
+        fm_params: FMParams,
+        pitch_bend_semitones: f32,
+    ) -> Self {
         let mut freq_array = [0.0; 8];
         let num_freqs = frequencies.len().min(8);
 
@@ -92,6 +161,8 @@ impl NoteEvent {
             duration,
             waveform,
             envelope,
+            filter_envelope,
+            fm_params,
             pitch_bend_semitones,
         }
     }
@@ -116,6 +187,13 @@ pub struct Track {
     pub flanger: Option<Flanger>,       // Optional flanger effect
     pub ring_mod: Option<RingModulator>, // Optional ring modulator effect
     pub modulation: Vec<ModRoute>,      // LFO modulation routes
+
+    // Cached time bounds for performance (computed on-demand)
+    cached_start_time: Option<f32>,
+    cached_end_time: Option<f32>,
+
+    // Flag to track if events are sorted by start_time
+    events_sorted: bool,
 }
 
 impl Track {
@@ -137,7 +215,80 @@ impl Track {
             flanger: None,
             ring_mod: None,
             modulation: Vec::new(),
+            cached_start_time: None,
+            cached_end_time: None,
+            events_sorted: true, // Empty list is sorted
         }
+    }
+
+    /// Get the start time of the first event (cached for performance)
+    fn start_time(&mut self) -> f32 {
+        if let Some(cached) = self.cached_start_time {
+            return cached;
+        }
+
+        let start = self.events.iter()
+            .map(|e| match e {
+                AudioEvent::Note(n) => n.start_time,
+                AudioEvent::Drum(d) => d.start_time,
+            })
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(0.0);
+
+        self.cached_start_time = Some(start);
+        start
+    }
+
+    /// Get the end time of the last event (cached for performance)
+    fn end_time(&mut self) -> f32 {
+        if let Some(cached) = self.cached_end_time {
+            return cached;
+        }
+
+        let end = self.total_duration();
+        self.cached_end_time = Some(end);
+        end
+    }
+
+    /// Invalidate time caches (call when events are added)
+    fn invalidate_time_cache(&mut self) {
+        self.cached_start_time = None;
+        self.cached_end_time = None;
+        self.events_sorted = false; // Events need to be re-sorted
+    }
+
+    /// Ensure events are sorted by start_time (lazy sorting for performance)
+    fn ensure_sorted(&mut self) {
+        if !self.events_sorted {
+            self.events.sort_by(|a, b| {
+                a.start_time().partial_cmp(&b.start_time())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            self.events_sorted = true;
+        }
+    }
+
+    /// Find the range of events that could be active at the given time using binary search
+    /// Returns (start_index, end_index) where events[start_index..end_index] may be active
+    ///
+    /// This is O(log n) instead of O(n), dramatically faster for large event counts
+    fn find_active_range(&self, time: f32) -> (usize, usize) {
+        if self.events.is_empty() {
+            return (0, 0);
+        }
+
+        // Binary search to find first event that MIGHT be active
+        // An event is potentially active if: time >= (event.start_time - max_release_time)
+        // For simplicity, we search for events that start before or at current time + lookahead
+
+        // Find first event that ends after current time
+        let start_idx = self.events.partition_point(|event| event.end_time() <= time);
+
+        // All remaining events could potentially be active (they end after current time)
+        // We could further optimize by finding events that start after current time,
+        // but for now this gives us O(log n) search + O(k) iteration where k = active events
+
+        (start_idx, self.events.len())
     }
 
     pub fn with_volume(mut self, volume: f32) -> Self {
@@ -177,6 +328,7 @@ impl Track {
             start_time,
             duration,
         )));
+        self.invalidate_time_cache();
     }
 
     /// Add a note event with a specific waveform
@@ -193,6 +345,7 @@ impl Track {
             duration,
             waveform,
         )));
+        self.invalidate_time_cache();
     }
 
     /// Add a note event with waveform and envelope
@@ -212,6 +365,7 @@ impl Track {
                 waveform,
                 envelope,
             )));
+        self.invalidate_time_cache();
     }
 
     /// Add a note event with waveform, envelope, and pitch bend
@@ -234,6 +388,34 @@ impl Track {
                 pitch_bend_semitones,
             ),
         ));
+        self.invalidate_time_cache();
+    }
+
+    /// Add a note event with complete synthesis parameters
+    pub fn add_note_with_complete_params(
+        &mut self,
+        frequencies: &[f32],
+        start_time: f32,
+        duration: f32,
+        waveform: Waveform,
+        envelope: Envelope,
+        filter_envelope: FilterEnvelope,
+        fm_params: FMParams,
+        pitch_bend_semitones: f32,
+    ) {
+        self.events.push(AudioEvent::Note(
+            NoteEvent::with_complete_params(
+                frequencies,
+                start_time,
+                duration,
+                waveform,
+                envelope,
+                filter_envelope,
+                fm_params,
+                pitch_bend_semitones,
+            ),
+        ));
+        self.invalidate_time_cache();
     }
 
     /// Add a drum event to the track
@@ -242,6 +424,7 @@ impl Track {
             drum_type,
             start_time,
         }));
+        self.invalidate_time_cache();
     }
 
     /// Add a sequence of notes with equal duration
@@ -361,9 +544,32 @@ impl Mixer {
         let mut mixed_right = 0.0;
 
         for track in &mut self.tracks {
-            let mut track_value = 0.0;
+            // Ensure events are sorted by start_time for binary search
+            track.ensure_sorted();
 
-            for event in &track.events {
+            // Quick time-bounds check: skip entire track if current time is outside its active range
+            // This avoids iterating through all events on inactive tracks
+            let track_start = track.start_time();
+            let track_end = track.end_time();
+
+            // Skip track entirely if we're before it starts or after it ends
+            // (unless it has delay/reverb which can extend beyond the events)
+            if (time < track_start || time > track_end)
+                && track.delay.is_none()
+                && track.reverb.is_none() {
+                continue;
+            }
+
+            let mut track_value = 0.0;
+            let mut has_active_event = false;
+            let mut filter_env_cutoff = track.filter.cutoff;
+            let mut filter_env_found = false;
+
+            // Binary search to find potentially active events (O(log n) instead of O(n))
+            let (start_idx, end_idx) = track.find_active_range(time);
+
+            // Only iterate through events that could possibly be active
+            for event in &track.events[start_idx..end_idx] {
                 match event {
                     AudioEvent::Note(note_event) => {
                         let total_duration =
@@ -372,27 +578,51 @@ impl Mixer {
 
                         // Check if this note event is active (including release phase)
                         if time >= note_event.start_time && time < note_end_with_release {
+                            has_active_event = true;
+
                             // Calculate time within the note
                             let time_in_note = time - note_event.start_time;
+
+                            // Get filter envelope from this note (if it has one)
+                            // Use the first active note's filter envelope we encounter
+                            if !filter_env_found && note_event.filter_envelope.amount > 0.0 {
+                                let filter_total_duration = note_event.filter_envelope.total_duration(note_event.duration);
+                                let filter_end = note_event.start_time + filter_total_duration;
+                                if time >= note_event.start_time && time < filter_end {
+                                    filter_env_cutoff = note_event.filter_envelope.cutoff_at(time_in_note, note_event.duration);
+                                    filter_env_found = true;
+                                }
+                            }
 
                             // Get envelope amplitude at this point in time
                             let envelope_amp = note_event
                                 .envelope
                                 .amplitude_at(time_in_note, note_event.duration);
 
-                            // Generate waves for all frequencies in this event using the specified waveform
+                            // Generate waves for all frequencies in this event
                             for i in 0..note_event.num_freqs {
                                 let base_freq = note_event.frequencies[i];
 
                                 // Apply pitch bend (linear over note duration)
-                                let bend_progress = (time_in_note / note_event.duration).min(1.0);
-                                let bend_multiplier = 2.0f32
-                                    .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
-                                let freq = base_freq * bend_multiplier;
+                                // Skip expensive math if no pitch bend
+                                let freq = if note_event.pitch_bend_semitones != 0.0 {
+                                    let bend_progress = (time_in_note / note_event.duration).min(1.0);
+                                    let bend_multiplier = 2.0f32
+                                        .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
+                                    base_freq * bend_multiplier
+                                } else {
+                                    base_freq
+                                };
 
-                                // Calculate phase relative to note start time to avoid clicks
-                                let phase = (time_in_note * freq) % 1.0;
-                                let sample = note_event.waveform.sample(phase);
+                                let sample = if note_event.fm_params.mod_index > 0.0 {
+                                    // Use FM synthesis
+                                    note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                } else {
+                                    // Use standard waveform
+                                    let phase = (time_in_note * freq) % 1.0;
+                                    note_event.waveform.sample(phase)
+                                };
+
                                 track_value += sample * envelope_amp;
                             }
                         }
@@ -403,6 +633,8 @@ impl Mixer {
                         if time >= drum_event.start_time
                             && time < drum_event.start_time + drum_duration
                         {
+                            has_active_event = true;
+
                             // Calculate sample index relative to drum start
                             let time_in_drum = time - drum_event.start_time;
                             let sample_index = (time_in_drum * sample_rate) as usize;
@@ -412,9 +644,16 @@ impl Mixer {
                 }
             }
 
-            // Apply modulation
+            // Skip all effect processing if track has no active events
+            if !has_active_event && track.delay.is_none() && track.reverb.is_none() {
+                continue;
+            }
+
+            // Filter envelope was already collected in the event loop above
+
+            // Apply LFO modulation on top of filter envelope
             let mut modulated_volume = track.volume;
-            let mut modulated_cutoff = track.filter.cutoff;
+            let mut modulated_cutoff = filter_env_cutoff;
             let mut modulated_resonance = track.filter.resonance;
 
             for mod_route in &track.modulation {

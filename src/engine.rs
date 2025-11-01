@@ -8,11 +8,26 @@ use std::f32::consts::PI;
 pub struct AudioEngine {
     device: cpal::Device,
     config: cpal::SupportedStreamConfig,
+    buffer_size: u32, // Buffer size in samples (larger = more stable, higher latency)
 }
 
 impl AudioEngine {
     /// Create a new audio engine with default output device
+    ///
+    /// Uses a large buffer size (8192 samples) for stable playback with complex synthesis.
+    /// For lower latency at the cost of potential underruns, use `with_buffer_size()`.
     pub fn new() -> Result<Self, anyhow::Error> {
+        Self::with_buffer_size(8192) // ~185ms at 44.1kHz - very stable for complex synthesis
+    }
+
+    /// Create a new audio engine with custom buffer size
+    ///
+    /// # Arguments
+    /// * `buffer_size` - Buffer size in samples
+    ///   - Smaller (512-1024): Lower latency, may underrun with complex synthesis
+    ///   - Medium (2048-4096): Balanced
+    ///   - Larger (8192+): Very stable, higher latency but fine for music playback
+    pub fn with_buffer_size(buffer_size: u32) -> Result<Self, anyhow::Error> {
         let host = cpal::default_host();
         let device = host
             .default_output_device()
@@ -21,11 +36,14 @@ impl AudioEngine {
             .default_output_config()
             .map_err(|e| anyhow::anyhow!("Failed to get default config: {}", e))?;
 
+        let latency_ms = (buffer_size as f32 / config.sample_rate().0 as f32) * 1000.0;
+
         println!("Audio Engine initialized:");
         println!("  Device: {}", device.name().unwrap_or_else(|_| "Unknown".to_string()));
         println!("  Sample rate: {}", config.sample_rate().0);
+        println!("  Buffer size: {} samples ({:.1}ms latency)", buffer_size, latency_ms);
 
-        Ok(Self { device, config })
+        Ok(Self { device, config, buffer_size })
     }
 
     /// Play a single note or chord for a duration in seconds
@@ -106,7 +124,10 @@ impl AudioEngine {
 
         let sample_rate = self.config.sample_rate().0 as f32;
         let channels = self.config.channels() as usize;
-        let config: cpal::StreamConfig = self.config.clone().into();
+
+        // Use configured buffer size to prevent underruns
+        let mut config: cpal::StreamConfig = self.config.clone().into();
+        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
 
         let mut sample_clock = 0f32;
         let frequencies = frequencies.to_vec();
@@ -154,7 +175,10 @@ impl AudioEngine {
         let sample_rate = self.config.sample_rate().0 as f32;
         let channels = self.config.channels() as usize;
         let duration_secs = drum_type.duration();
-        let config: cpal::StreamConfig = self.config.clone().into();
+
+        // Use configured buffer size to prevent underruns
+        let mut config: cpal::StreamConfig = self.config.clone().into();
+        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
 
         let mut sample_index = 0usize;
 
@@ -191,7 +215,10 @@ impl AudioEngine {
         let sample_rate = self.config.sample_rate().0 as f32;
         let channels = self.config.channels() as usize;
         let duration_secs = mixer.total_duration();
-        let config: cpal::StreamConfig = self.config.clone().into();
+
+        // Create config with configured buffer size to prevent underruns with complex synthesis
+        let mut config: cpal::StreamConfig = self.config.clone().into();
+        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
 
         let mut mixer_owned = mixer.clone();
         let mut sample_clock = 0f32;

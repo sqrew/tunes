@@ -4,25 +4,37 @@ use crate::drums::DrumType;
 impl<'a> TrackBuilder<'a> {
     /// Add a note or chord at the current cursor position
     pub fn note(mut self, frequencies: &[f32], duration: f32) -> Self {
-        self.track.add_note_with_waveform_envelope_and_bend(
+        let cursor = self.cursor;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let filter_envelope = self.filter_envelope;
+        let fm_params = self.fm_params;
+        let pitch_bend = self.pitch_bend;
+
+        self.get_track_mut().add_note_with_complete_params(
             frequencies,
-            self.cursor,
+            cursor,
             duration,
-            self.waveform,
-            self.envelope,
-            self.pitch_bend,
+            waveform,
+            envelope,
+            filter_envelope,
+            fm_params,
+            pitch_bend,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
+        self.update_section_duration();
         self
     }
 
     /// Add a drum hit at the current cursor position
     pub fn drum(mut self, drum_type: DrumType) -> Self {
-        self.track.add_drum(drum_type, self.cursor);
+        let cursor = self.cursor;
+        self.get_track_mut().add_drum(drum_type, cursor);
         let base_duration = drum_type.duration();
         let swung_duration = self.apply_swing(base_duration);
         self.cursor += swung_duration;
+        self.update_section_duration();
         self
     }
 
@@ -38,48 +50,62 @@ impl<'a> TrackBuilder<'a> {
         if segments == 0 {
             return self; // Nothing to play
         }
+
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+
         if segments == 1 {
             // Just play the start frequency
-            self.track.add_note_with_waveform_and_envelope(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_and_envelope(
                 &[start_freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
+                waveform,
+                envelope,
             );
             self.cursor += note_duration;
+            self.update_section_duration();
             return self;
         }
 
         for i in 0..segments {
             let t = i as f32 / (segments - 1) as f32;
             let freq = start_freq + (end_freq - start_freq) * t;
-            self.track.add_note_with_waveform_and_envelope(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_and_envelope(
                 &[freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
+                waveform,
+                envelope,
             );
             self.cursor += note_duration;
         }
+        self.update_section_duration();
         self
     }
 
     /// Add a sequence of notes with equal duration starting at the current cursor position
     pub fn notes(mut self, frequencies: &[f32], note_duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         for &freq in frequencies {
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
+        self.update_section_duration();
         self
     }
 }
@@ -231,8 +257,9 @@ mod tests {
         // Check cursor first before moving comp
         assert_eq!(builder.cursor, 0.0, "Cursor should not advance");
 
-        let track = &comp.into_mixer().tracks[0];
-        assert_eq!(track.events.len(), 0, "Zero segments should create no notes");
+        let mixer = comp.into_mixer();
+        // With zero segments, no track is created since interpolated returns early
+        assert_eq!(mixer.tracks.len(), 0, "Zero segments should create no track");
     }
 
     #[test]
@@ -275,8 +302,9 @@ mod tests {
         // Check cursor first before moving comp
         assert_eq!(builder.cursor, 0.0, "Cursor should not advance for empty array");
 
-        let track = &comp.into_mixer().tracks[0];
-        assert_eq!(track.events.len(), 0);
+        let mixer = comp.into_mixer();
+        // With empty array, no track is created since loop doesn't execute
+        assert_eq!(mixer.tracks.len(), 0, "Empty array should create no track");
     }
 
     #[test]

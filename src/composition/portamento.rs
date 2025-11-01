@@ -21,25 +21,31 @@ impl<'a> TrackBuilder<'a> {
             .filter(|&f| f >= min_freq && f <= max_freq)
             .collect();
 
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
         if scale_notes.is_empty() {
             // No scale notes in range, just play start and end
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[start_freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             self.cursor += note_duration;
 
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[end_freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             self.cursor += note_duration;
         } else {
@@ -47,13 +53,14 @@ impl<'a> TrackBuilder<'a> {
             if start_freq < end_freq {
                 // Ascending
                 for &freq in &scale_notes {
-                    self.track.add_note_with_waveform_envelope_and_bend(
+                    let cursor = self.cursor;
+                    self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                         &[freq],
-                        self.cursor,
+                        cursor,
                         note_duration,
-                        self.waveform,
-                        self.envelope,
-                        self.pitch_bend,
+                        waveform,
+                        envelope,
+                        pitch_bend,
                     );
                     let swung_duration = self.apply_swing(note_duration);
                     self.cursor += swung_duration;
@@ -61,13 +68,14 @@ impl<'a> TrackBuilder<'a> {
             } else {
                 // Descending
                 for &freq in scale_notes.iter().rev() {
-                    self.track.add_note_with_waveform_envelope_and_bend(
+                    let cursor = self.cursor;
+                    self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                         &[freq],
-                        self.cursor,
+                        cursor,
                         note_duration,
-                        self.waveform,
-                        self.envelope,
-                        self.pitch_bend,
+                        waveform,
+                        envelope,
+                        pitch_bend,
                     );
                     let swung_duration = self.apply_swing(note_duration);
                     self.cursor += swung_duration;
@@ -75,6 +83,7 @@ impl<'a> TrackBuilder<'a> {
             }
         }
 
+        self.update_section_duration();
         self
     }
 
@@ -107,20 +116,25 @@ impl<'a> TrackBuilder<'a> {
         // Use enough segments for smooth interpolation (roughly 50ms per segment)
         let segments = ((duration / 0.05).ceil() as usize).max(4);
         let note_duration = duration / segments as f32;
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
 
         for i in 0..segments {
             let t = i as f32 / (segments - 1) as f32;
             let freq = from + (to - from) * t;
-            self.track.add_note_with_waveform_envelope_and_bend(
+            let cursor = self.cursor;
+            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
                 &[freq],
-                self.cursor,
+                cursor,
                 note_duration,
-                self.waveform,
-                self.envelope,
-                self.pitch_bend,
+                waveform,
+                envelope,
+                pitch_bend,
             );
             self.cursor += note_duration;
         }
+        self.update_section_duration();
         self
     }
 }

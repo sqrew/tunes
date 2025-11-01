@@ -8,14 +8,25 @@ mod effects;
 mod engine;
 mod envelope;
 mod filter;
+mod filter_envelope;
+mod fm_synthesis;
 mod instruments;
 mod lfo;
+mod microtonal;
 mod notes;
 mod rhythm;
 mod scales;
 mod sequences;
+mod theory;
 mod track;
 mod waveform;
+mod wavetable;
+
+// Prelude module for convenient imports
+pub mod prelude {
+    pub use crate::filter_envelope::FilterEnvelope;
+    pub use crate::fm_synthesis::FMParams;
+}
 
 use chords::*;
 use composition::Composition;
