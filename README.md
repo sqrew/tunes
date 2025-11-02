@@ -187,17 +187,6 @@ fn main() -> Result<(), anyhow::Error> {
 
 Run `cargo doc --open` to view the full API documentation with detailed examples for each module.
 
-## Project Structure
-
-- `src/composition/` - Musical composition DSL and builders
-- `src/instruments/` - Pre-configured instrument presets
-- `src/effects/` - Audio effects (reverb, delay, filters, etc.)
-- `src/drums/` - Drum synthesis and sequencing
-- `src/sample.rs` - WAV file loading and sample playback
-- `src/theory.rs` - Music theory (scales, chords, progressions)
-- `src/engine.rs` - Audio playback engine
-- `examples/` - 50 complete examples demonstrating features (check out sequences_showcase!)
-
 ## Testing
 
 ```bash

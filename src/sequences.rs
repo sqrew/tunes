@@ -3,6 +3,56 @@
 //! Mathematical sequence generators for algorithmic music
 
 /// Generate Fibonacci sequence up to n terms
+///
+/// The Fibonacci sequence is one of the most famous mathematical sequences, where each
+/// number is the sum of the two preceding ones: F(n) = F(n-1) + F(n-2)
+///
+/// Starting with 1, 1, the sequence goes: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144...
+///
+/// This sequence appears throughout nature and has been used in composition since the
+/// Middle Ages. The ratio between consecutive Fibonacci numbers converges to the
+/// golden ratio (φ ≈ 1.618), making it naturally pleasing to human perception.
+///
+/// Found in:
+/// - Flower petal counts (3, 5, 8, 13, 21 petals are common)
+/// - Nautilus shell spirals and pine cone patterns
+/// - Musical phrase lengths in classical compositions (Bartók, Debussy)
+/// - Polyrhythmic relationships
+///
+/// # Arguments
+/// * `n` - Number of Fibonacci terms to generate
+///
+/// # Returns
+/// Vector of the first n Fibonacci numbers: [1, 1, 2, 3, 5, 8, 13, ...]
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// let fib = sequences::fibonacci(8);
+/// assert_eq!(fib, vec![1, 1, 2, 3, 5, 8, 13, 21]);
+///
+/// // Use for rhythm - note durations following Fibonacci
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// let durations = sequences::normalize(&fib, 0.125, 1.0);
+/// for (i, &duration) in durations.iter().enumerate() {
+///     comp.track("fib_rhythm")
+///         .at(i as f32)
+///         .note(&[440.0], duration);
+/// }
+///
+/// // Use for phrase lengths (in beats)
+/// let phrase_lengths = sequences::fibonacci(5); // [1, 1, 2, 3, 5] beats
+/// ```
+///
+/// # Musical Applications
+/// - **Phrase structure**: Use Fibonacci numbers for phrase lengths (5-bar phrases, 8-bar sections)
+/// - **Rhythmic patterns**: Note durations or rests following the sequence
+/// - **Melodic intervals**: Map to semitone jumps for organic-sounding melodies
+/// - **Formal structure**: Section lengths in larger compositions
+/// - **Polyrhythms**: Layer rhythms based on different Fibonacci numbers (3 against 5, 5 against 8)
+/// - **Dynamic curves**: Volume or filter changes following Fibonacci proportions
 pub fn fibonacci(n: usize) -> Vec<u32> {
     let mut fib = vec![1, 1];
     for i in 2..n {
@@ -13,10 +63,65 @@ pub fn fibonacci(n: usize) -> Vec<u32> {
     fib
 }
 
-/// Normalize a sequence to a range (e.g., 0.0 to 1.0)
+/// Normalize a sequence to a range (map values to a new min/max)
 ///
-/// Returns an empty vector if the input sequence is empty.
-/// If all values are identical, returns a vector of the min value.
+/// Takes a sequence of integers and scales them proportionally to fit within a new range.
+/// This is essential for converting abstract numeric sequences into musical parameters
+/// like frequencies, durations, velocities, or filter cutoffs.
+///
+/// The normalization preserves the relative proportions of the original sequence:
+/// - The smallest input value maps to `min`
+/// - The largest input value maps to `max`
+/// - All other values are linearly interpolated between them
+///
+/// # Arguments
+/// * `sequence` - The sequence of values to normalize
+/// * `min` - The minimum value in the output range
+/// * `max` - The maximum value in the output range
+///
+/// # Returns
+/// Vector of f32 values scaled to the range [min, max]
+/// - Returns empty vector if input is empty
+/// - Returns vector of `min` values if all input values are identical
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// // Map Fibonacci to frequency range (200-800 Hz)
+/// let fib = sequences::fibonacci(8);
+/// let freqs = sequences::normalize(&fib, 200.0, 800.0);
+/// // Result: [200.0, 200.0, 230.0, 260.0, 320.0, 410.0, 530.0, 800.0]
+///
+/// // Map to MIDI velocity (0-127)
+/// let primes = sequences::primes(10);
+/// let velocities = sequences::normalize(&primes, 40.0, 127.0);
+///
+/// // Map to note durations (eighth to whole note)
+/// let seq = sequences::arithmetic(1, 2, 8);
+/// let durations = sequences::normalize(&seq, 0.125, 1.0);
+///
+/// // Use normalized sequence for melody
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// let collatz = sequences::collatz(27, 20);
+/// let melody = sequences::normalize(&collatz, 220.0, 880.0);
+/// comp.track("collatz_melody").notes(&melody, 0.25);
+/// ```
+///
+/// # Musical Applications
+/// - **Pitch mapping**: Convert any sequence to frequency range (e.g., 200-800 Hz for melody)
+/// - **Rhythm variation**: Map to note durations (0.125 = eighth note, 1.0 = whole note)
+/// - **Dynamics**: Convert to velocity/volume levels (0.0-1.0 or MIDI 0-127)
+/// - **Parameter automation**: Map to filter cutoff (0.0-1.0), pan (-1.0 to 1.0), etc.
+/// - **Microtonal scales**: Distribute values across pitch space
+/// - **Tempo changes**: Map to BPM range for tempo modulation
+///
+/// # Technical Notes
+/// This is a linear normalization (min-max scaling). The formula is:
+/// ```text
+/// normalized = (value - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+/// ```
 pub fn normalize(sequence: &[u32], min: f32, max: f32) -> Vec<f32> {
     if sequence.is_empty() {
         return vec![];
@@ -39,12 +144,115 @@ pub fn normalize(sequence: &[u32], min: f32, max: f32) -> Vec<f32> {
         .collect()
 }
 
-/// Generate powers of 2 sequence: 1, 2, 4, 8, 16...
+/// Generate powers of 2 sequence: 1, 2, 4, 8, 16, 32, 64...
+///
+/// Powers of 2 are fundamental to digital audio, binary systems, and musical structure.
+/// The sequence is: 2⁰=1, 2¹=2, 2²=4, 2³=8, 2⁴=16, 2⁵=32...
+///
+/// This sequence appears everywhere in music and digital systems:
+/// - **Octaves**: Each octave is a frequency doubling (power of 2)
+/// - **Time signatures**: Common meters use powers of 2 (2/4, 4/4, 8/8, 16/16)
+/// - **Note subdivisions**: Whole → half → quarter → eighth → sixteenth
+/// - **Digital audio**: Buffer sizes, FFT sizes (512, 1024, 2048, 4096)
+/// - **MIDI**: Pitch bend range often uses powers of 2
+///
+/// # Arguments
+/// * `n` - Number of powers of 2 to generate
+///
+/// # Returns
+/// Vector containing [1, 2, 4, 8, 16, 32, ...] (2⁰, 2¹, 2², ...)
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// let powers = sequences::powers_of_two(8);
+/// assert_eq!(powers, vec![1, 2, 4, 8, 16, 32, 64, 128]);
+///
+/// // Use for rhythmic subdivision (whole, half, quarter, eighth...)
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// let subdivisions = sequences::powers_of_two(5); // [1, 2, 4, 8, 16]
+/// let durations = sequences::normalize(&subdivisions, 0.0625, 1.0);
+///
+/// // Use for octave relationships (frequency doubling)
+/// let octaves = sequences::powers_of_two(4);
+/// let freqs: Vec<f32> = octaves.iter()
+///     .map(|&mult| 110.0 * mult as f32)  // A2, A3, A4, A5
+///     .collect();
+/// comp.track("octaves").notes(&freqs, 0.5);
+/// ```
+///
+/// # Musical Applications
+/// - **Rhythmic subdivision**: Whole notes → half → quarter → eighth → sixteenth
+/// - **Octave generation**: Multiply base frequency by 2ⁿ for octaves
+/// - **Time signatures**: 2/4, 4/4, 8/8 patterns
+/// - **Structural proportions**: Section lengths doubling (8 bars, 16 bars, 32 bars)
+/// - **Polyrhythms**: Layer patterns with power-of-2 relationships (4 against 8, 8 against 16)
+/// - **Digital timing**: Synchronize with digital audio buffer boundaries
 pub fn powers_of_two(n: usize) -> Vec<u32> {
     (0..n).map(|i| 2u32.pow(i as u32)).collect()
 }
 
-/// Generate prime numbers up to n terms
+/// Generate prime numbers sequence
+///
+/// Prime numbers are integers greater than 1 that have no divisors other than 1 and themselves.
+/// The sequence starts: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47...
+///
+/// Primes have fascinated mathematicians for millennia and create interesting musical patterns
+/// because they resist regular subdivision - they're inherently "unpredictable" while still
+/// being deterministic. This makes them excellent for creating rhythms and melodies that
+/// feel organic and non-mechanical.
+///
+/// Properties that make primes useful in music:
+/// - **Irregular spacing**: No obvious pattern, but not random
+/// - **Avoid common factors**: Create polyrhythms that rarely align
+/// - **Mathematical beauty**: Deterministic but complex
+/// - **Ancient mystery**: Used in composition since medieval times
+///
+/// # Arguments
+/// * `n` - Number of prime numbers to generate
+///
+/// # Returns
+/// Vector containing the first n prime numbers: [2, 3, 5, 7, 11, 13, 17, ...]
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// let primes = sequences::primes(10);
+/// assert_eq!(primes, vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]);
+///
+/// // Use for rhythmic patterns that avoid repetition
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(140.0));
+/// let prime_rhythm = sequences::primes(8);
+/// let hits = sequences::normalize(&prime_rhythm, 0.0, 16.0);
+/// for &hit_time in &hits {
+///     comp.track("prime_kicks")
+///         .at(hit_time)
+///         .note(&[110.0], 0.1);
+/// }
+///
+/// // Use for melodic intervals (semitone jumps)
+/// let intervals = sequences::primes(12);
+/// let pitches = sequences::normalize(&intervals, 200.0, 800.0);
+/// comp.track("prime_melody").notes(&pitches, 0.25);
+/// ```
+///
+/// # Musical Applications
+/// - **Polyrhythms**: Primes create patterns that rarely align (3 against 5, 7 against 11)
+/// - **Non-repetitive rhythms**: Use primes for hit positions to avoid obvious patterns
+/// - **Melodic contours**: Prime-based intervals create interesting, unpredictable melodies
+/// - **Phrase lengths**: Prime-numbered bar counts (5-bar, 7-bar, 11-bar phrases)
+/// - **Harmonic ratios**: Prime number ratios create inharmonic/dissonant timbres
+/// - **Form and structure**: Section lengths using primes (13 bars, 17 bars, 23 bars)
+///
+/// # Why Primes Matter in Music
+/// Composers like Olivier Messiaen used prime numbers extensively to create rhythms that
+/// "never repeat" within practical performance time. The lack of common factors means
+/// patterns layer in complex, non-obvious ways - perfect for generative music that needs
+/// to sound structured but not mechanical.
 pub fn primes(n: usize) -> Vec<u32> {
     let mut primes = Vec::new();
     let mut candidate = 2u32;
@@ -58,6 +266,7 @@ pub fn primes(n: usize) -> Vec<u32> {
     primes
 }
 
+/// Helper function to check if a number is prime
 fn is_prime(n: u32) -> bool {
     if n < 2 {
         return false;
@@ -70,17 +279,213 @@ fn is_prime(n: u32) -> bool {
     true
 }
 
-/// Generate arithmetic sequence: start, start+step, start+2*step, ...
+/// Generate arithmetic sequence (linear progression)
+///
+/// An arithmetic sequence is formed by adding a constant value (the "step" or "common difference")
+/// to each term: a, a+d, a+2d, a+3d, a+4d, ...
+///
+/// This is the simplest type of progression - just counting up (or down) by a fixed amount.
+/// Examples:
+/// - 1, 2, 3, 4, 5, 6... (step = 1)
+/// - 2, 4, 6, 8, 10... (step = 2, even numbers)
+/// - 5, 10, 15, 20, 25... (step = 5, multiples of 5)
+/// - 100, 90, 80, 70... (step = -10, counting down - use with caution for u32)
+///
+/// # Arguments
+/// * `start` - The first value in the sequence
+/// * `step` - Amount to add to each subsequent term (common difference)
+/// * `n` - Number of terms to generate
+///
+/// # Returns
+/// Vector containing [start, start+step, start+2*step, ...]
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// // Simple counting sequence
+/// let count = sequences::arithmetic(1, 1, 10);
+/// assert_eq!(count, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+///
+/// // Even numbers
+/// let evens = sequences::arithmetic(2, 2, 8);
+/// assert_eq!(evens, vec![2, 4, 6, 8, 10, 12, 14, 16]);
+///
+/// // Use for ascending scale pattern
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// # use tunes::scales::C4_MAJOR_SCALE;
+/// let scale_indices = sequences::arithmetic(0, 1, 8); // [0, 1, 2, 3, 4, 5, 6, 7]
+/// comp.track("ascending")
+///     .sequence_from(&scale_indices, &C4_MAJOR_SCALE, 0.25);
+///
+/// // Use for regular rhythm (every 4 beats)
+/// let beat_positions = sequences::arithmetic(0, 4, 16);
+/// let times = sequences::normalize(&beat_positions, 0.0, 16.0);
+/// ```
+///
+/// # Musical Applications
+/// - **Scales**: Ascending/descending through scale degrees (0, 1, 2, 3...)
+/// - **Regular rhythms**: Evenly spaced beats (every 2, 3, or 4 steps)
+/// - **Velocity ramps**: Linear increase/decrease in volume
+/// - **Filter sweeps**: Linear cutoff frequency changes
+/// - **Time markers**: Evenly spaced section boundaries
+/// - **Melodic steps**: Stepwise motion up or down
+///
+/// # Why Use Arithmetic Sequences
+/// They're predictable and regular - perfect for:
+/// - Creating steady, mechanical patterns
+/// - Building foundations for more complex variations
+/// - Establishing a baseline before applying transformations
+/// - Simulating linear motion or growth
 pub fn arithmetic(start: u32, step: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start + step * i as u32).collect()
 }
 
-/// Generate geometric sequence: start, start*ratio, start*ratio^2, ...
+/// Generate geometric sequence (exponential progression)
+///
+/// A geometric sequence is formed by multiplying each term by a constant value (the "ratio"
+/// or "common ratio"): a, a×r, a×r², a×r³, a×r⁴, ...
+///
+/// Unlike arithmetic sequences (which grow linearly), geometric sequences grow exponentially.
+/// This creates dramatic acceleration - values get much larger very quickly.
+///
+/// Examples:
+/// - 1, 2, 4, 8, 16, 32... (ratio = 2, doubling sequence)
+/// - 3, 9, 27, 81, 243... (ratio = 3, tripling sequence)
+/// - 5, 25, 125, 625... (ratio = 5)
+///
+/// # Arguments
+/// * `start` - The first value in the sequence
+/// * `ratio` - The multiplier for each subsequent term (common ratio)
+/// * `n` - Number of terms to generate
+///
+/// # Returns
+/// Vector containing [start, start×ratio, start×ratio², ...]
+///
+/// # Warning
+/// Geometric sequences with ratio > 2 grow VERY rapidly. For example, with start=2 and ratio=3:
+/// - Term 5: 162
+/// - Term 10: 39,366
+/// - Term 15: 9,565,938
+/// Use normalize() to map to usable ranges.
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// // Doubling sequence (same as powers of 2 but with custom start)
+/// let doubling = sequences::geometric(1, 2, 8);
+/// assert_eq!(doubling, vec![1, 2, 4, 8, 16, 32, 64, 128]);
+///
+/// // Tripling sequence
+/// let tripling = sequences::geometric(1, 3, 5);
+/// assert_eq!(tripling, vec![1, 3, 9, 27, 81]);
+///
+/// // Use for accelerating rhythms
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// let accel = sequences::geometric(1, 2, 6);
+/// let durations = sequences::normalize(&accel, 0.125, 1.0);
+/// // Creates accelerating pattern: long → medium → short → very short
+///
+/// // Use for exponential volume increase (careful!)
+/// let growth = sequences::geometric(1, 2, 8);
+/// let volumes = sequences::normalize(&growth, 0.1, 1.0);
+/// ```
+///
+/// # Musical Applications
+/// - **Accelerando**: Exponentially decreasing note durations (tempo acceleration)
+/// - **Crescendo curves**: Exponential volume increase (more dramatic than linear)
+/// - **Octave stacking**: Multiply base frequency by 2ⁿ
+/// - **Rhythmic density**: Exponentially increasing subdivisions
+/// - **Filter sweeps**: Exponential cutoff changes (more natural than linear)
+/// - **Spatial effects**: Exponential pan or reverb changes
+///
+/// # Musical Context
+/// Geometric sequences feel more "natural" than arithmetic for many parameters because:
+/// - Human hearing is logarithmic (each octave is a doubling)
+/// - Perceived loudness scales logarithmically
+/// - Musical intervals are multiplicative ratios, not additive
+/// - Natural phenomena (sound decay, reverberation) are exponential
+///
+/// However, they grow very fast - almost always use normalize() to constrain the output
+/// to musical ranges.
 pub fn geometric(start: u32, ratio: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start * ratio.pow(i as u32)).collect()
 }
 
-/// Collatz sequence (3n+1 problem)
+/// Generate Collatz sequence (3n+1 problem)
+///
+/// The Collatz conjecture, also known as the 3n+1 problem, is one of mathematics' most famous
+/// unsolved problems. Despite its simple rules, it produces complex, unpredictable behavior.
+///
+/// The rules are:
+/// - If n is even: divide by 2
+/// - If n is odd: multiply by 3 and add 1
+/// - Repeat until reaching 1
+///
+/// The **Collatz conjecture** states that no matter what positive integer you start with,
+/// you'll always eventually reach 1. This has been verified for enormous numbers but never proven!
+///
+/// Examples:
+/// - Start with 10: 10 → 5 → 16 → 8 → 4 → 2 → 1
+/// - Start with 27: 27 → 82 → 41 → 124 → 62 → 31 → 94 → 47 → 142... (111 steps to 1!)
+/// - Start with 7: 7 → 22 → 11 → 34 → 17 → 52 → 26 → 13 → 40 → 20 → 10 → 5 → 16 → 8 → 4 → 2 → 1
+///
+/// # Arguments
+/// * `start` - The starting positive integer
+/// * `max_terms` - Maximum number of terms to generate (safety limit to prevent infinite loops)
+///
+/// # Returns
+/// Vector containing the Collatz sequence from start until reaching 1 (or max_terms)
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// let seq = sequences::collatz(10, 100);
+/// assert_eq!(seq, vec![10, 5, 16, 8, 4, 2, 1]);
+///
+/// let seq27 = sequences::collatz(27, 150);
+/// // Takes 111 steps to reach 1, with dramatic ups and downs!
+/// assert_eq!(seq27.len(), 112); // 111 steps + starting value
+///
+/// // Use for unpredictable melodic contours
+/// # use tunes::prelude::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// let melody_seq = sequences::collatz(19, 50);
+/// let melody = sequences::normalize(&melody_seq, 220.0, 880.0);
+/// comp.track("collatz_melody").notes(&melody, 0.2);
+///
+/// // Use for rhythmic variation
+/// let rhythm_seq = sequences::collatz(15, 30);
+/// let durations = sequences::normalize(&rhythm_seq, 0.1, 0.5);
+/// ```
+///
+/// # Musical Applications
+/// - **Unpredictable melodies**: Creates wandering pitch contours with dramatic jumps
+/// - **Organic rhythms**: Maps to note durations for non-mechanical timing
+/// - **Dynamic contrast**: Use for volume, filter, or pan automation
+/// - **Structural form**: Different starting values create unique "narratives"
+/// - **Polyrhythmic cycles**: Different start values create different length sequences
+/// - **Generative variation**: Each start number produces a unique musical gesture
+///
+/// # Why Collatz for Music
+/// The Collatz sequence has special properties that make it musically interesting:
+/// - **Deterministic but unpredictable**: You can't predict the path without computing it
+/// - **Mix of ascent and descent**: Creates natural rise and fall (unlike monotonic sequences)
+/// - **Unique character**: Each starting number produces a distinct "personality"
+/// - **Natural climax**: Often spikes high before descending to 1
+/// - **Mathematical mystery**: Adds conceptual depth to algorithmic compositions
+///
+/// # Famous Starting Values
+/// - **27**: Reaches 9,232 before descending (takes 111 steps)
+/// - **31**: Also goes very high (9,232) before reaching 1
+/// - **97**: Short but spiky sequence
+/// - **127**: Long journey with interesting patterns
+///
+/// Try different starting values to find interesting contours for your music!
 pub fn collatz(start: u32, max_terms: usize) -> Vec<u32> {
     let mut seq = vec![start];
     let mut current = start;

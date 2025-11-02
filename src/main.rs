@@ -41,7 +41,7 @@ use engine::AudioEngine;
 use filter::Filter;
 use instruments::Instrument;
 use lfo::{LFO, ModRoute, ModTarget};
-use notes::{C1, *};
+use notes::*;
 use rhythm::Tempo;
 use scales::*;
 use sequences::euclidean;
@@ -51,12 +51,15 @@ fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(120.0));
 
-    let collatz = sequences::collatz(55, 40);
-    let collatz_freqs = sequences::normalize(&collatz, 100.0, 1000.0);
+    let x = sequences::collatz(27, 300);
+    let x = sequences::normalize(&x, 20.0, 10000.0);
 
-    comp.instrument("piano", &Instrument::electric_piano())
-        .notes(&collatz_freqs, 0.1);
+    comp.instrument("collatz", &Instrument::harpsichord())
+        .notes(&x, 0.05);
 
+    let y = &ScalePattern::
+
+cioEoBH1FfwBpKqh5Uy71qXTaJiJE0KjtY6
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
 }
