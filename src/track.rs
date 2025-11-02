@@ -1131,7 +1131,7 @@ impl Mixer {
 
                 // Apply reverb
                 if let Some(ref mut reverb) = track.reverb {
-                    track_value = reverb.process(track_value);
+                    track_value = reverb.process(track_value, time);
                 }
             }
 

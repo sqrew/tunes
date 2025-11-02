@@ -1,3 +1,5 @@
+use crate::automation::Automation;
+
 /// Standard audio sample rate
 const DEFAULT_SAMPLE_RATE: f32 = 44100.0;
 
@@ -64,6 +66,11 @@ pub struct Reverb {
     comb_buffers: Vec<Vec<f32>>,
     comb_positions: Vec<usize>,
     filter_state: Vec<f32>,
+
+    // Automation (optional)
+    mix_automation: Option<Automation>,
+    room_size_automation: Option<Automation>,
+    damping_automation: Option<Automation>,
 }
 
 impl Reverb {
@@ -93,11 +100,58 @@ impl Reverb {
             comb_positions: vec![0; comb_buffers.len()],
             filter_state: vec![0.0; comb_buffers.len()],
             comb_buffers,
+            mix_automation: None,
+            room_size_automation: None,
+            damping_automation: None,
         }
     }
 
+    /// Add automation for the mix parameter
+    ///
+    /// # Example
+    /// ```no_run
+    /// use tunes::prelude::*;
+    ///
+    /// let reverb = Reverb::new(0.7, 0.6, 0.0)
+    ///     .with_mix_automation(Automation::linear(&[
+    ///         (0.0, 0.0),   // Start dry
+    ///         (4.0, 0.8),   // Fade in over 4 seconds
+    ///     ]));
+    /// ```
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the room size parameter
+    pub fn with_room_size_automation(mut self, automation: Automation) -> Self {
+        self.room_size_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the damping parameter
+    pub fn with_damping_automation(mut self, automation: Automation) -> Self {
+        self.damping_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    pub fn process(&mut self, input: f32, time: f32) -> f32 {
+        // Update parameters from automation
+        if let Some(auto) = &self.mix_automation {
+            self.mix = auto.value_at(time).clamp(0.0, 1.0);
+        }
+        if let Some(auto) = &self.room_size_automation {
+            self.room_size = auto.value_at(time).clamp(0.0, 1.0);
+        }
+        if let Some(auto) = &self.damping_automation {
+            self.damping = auto.value_at(time).clamp(0.0, 1.0);
+        }
+
         if self.mix < 0.0001 {
             return input;
         }

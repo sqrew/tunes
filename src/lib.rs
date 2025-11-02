@@ -22,6 +22,7 @@
 //! }
 //! ```
 
+pub mod automation;
 pub mod chords;
 pub mod composition;
 pub mod drum_grid;
@@ -95,6 +96,9 @@ pub mod prelude {
 
     // LFO
     pub use crate::lfo::{LFO, ModRoute, ModTarget};
+
+    // Automation
+    pub use crate::automation::{Automation, Interpolation};
 
     // Microtonal
     pub use crate::microtonal::{

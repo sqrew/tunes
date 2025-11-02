@@ -1,6 +1,7 @@
 #![allow(unused, dead_code)]
 
 // mod actions;  // Unused module with broken imports
+mod automation;
 mod chords;
 mod composition;
 mod drum_grid;
