@@ -30,21 +30,31 @@ impl AudioEngine {
     ///   - Larger (8192+): Very stable, higher latency but fine for music playback
     pub fn with_buffer_size(buffer_size: u32) -> Result<Self> {
         let host = cpal::default_host();
-        let device = host
-            .default_output_device()
-            .ok_or_else(|| TunesError::AudioEngineError("No output device available".to_string()))?;
-        let config = device
-            .default_output_config()
-            .map_err(|e| TunesError::AudioEngineError(format!("Failed to get default config: {}", e)))?;
+        let device = host.default_output_device().ok_or_else(|| {
+            TunesError::AudioEngineError("No output device available".to_string())
+        })?;
+        let config = device.default_output_config().map_err(|e| {
+            TunesError::AudioEngineError(format!("Failed to get default config: {}", e))
+        })?;
 
         let latency_ms = (buffer_size as f32 / config.sample_rate().0 as f32) * 1000.0;
 
         println!("Audio Engine initialized:");
-        println!("  Device: {}", device.name().unwrap_or_else(|_| "Unknown".to_string()));
+        println!(
+            "  Device: {}",
+            device.name().unwrap_or_else(|_| "Unknown".to_string())
+        );
         println!("  Sample rate: {}", config.sample_rate().0);
-        println!("  Buffer size: {} samples ({:.1}ms latency)", buffer_size, latency_ms);
+        println!(
+            "  Buffer size: {} samples ({:.1}ms latency)",
+            buffer_size, latency_ms
+        );
 
-        Ok(Self { device, config, buffer_size })
+        Ok(Self {
+            device,
+            config,
+            buffer_size,
+        })
     }
 
     /// Play a single note or chord for a duration in seconds
@@ -53,7 +63,9 @@ impl AudioEngine {
             cpal::SampleFormat::F32 => self.run::<f32>(frequencies, duration_secs),
             cpal::SampleFormat::I16 => self.run::<i16>(frequencies, duration_secs),
             cpal::SampleFormat::U16 => self.run::<u16>(frequencies, duration_secs),
-            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
+            _ => Err(TunesError::InvalidAudioFormat(
+                "Unsupported sample format".to_string(),
+            )),
         }
     }
 
@@ -74,7 +86,9 @@ impl AudioEngine {
             cpal::SampleFormat::F32 => self.run_drum::<f32>(drum_type),
             cpal::SampleFormat::I16 => self.run_drum::<i16>(drum_type),
             cpal::SampleFormat::U16 => self.run_drum::<u16>(drum_type),
-            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
+            _ => Err(TunesError::InvalidAudioFormat(
+                "Unsupported sample format".to_string(),
+            )),
         }
     }
 
@@ -109,7 +123,9 @@ impl AudioEngine {
             cpal::SampleFormat::F32 => self.run_mixer::<f32>(mixer),
             cpal::SampleFormat::I16 => self.run_mixer::<i16>(mixer),
             cpal::SampleFormat::U16 => self.run_mixer::<u16>(mixer),
-            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
+            _ => Err(TunesError::InvalidAudioFormat(
+                "Unsupported sample format".to_string(),
+            )),
         }
     }
 
@@ -231,7 +247,8 @@ impl AudioEngine {
             &config,
             move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
                 for frame in data.chunks_mut(channels) {
-                    let (left, right) = mixer_owned.sample_at(elapsed_time, sample_rate, sample_clock);
+                    let (left, right) =
+                        mixer_owned.sample_at(elapsed_time, sample_rate, sample_clock);
                     sample_clock = (sample_clock + 1.0) % sample_rate;
                     elapsed_time += 1.0 / sample_rate;
 
@@ -288,7 +305,8 @@ impl AudioEngine {
     /// ```
     pub fn render_to_wav(&self, mixer: &mut Mixer, path: &str) -> Result<()> {
         let sample_rate = self.config.sample_rate().0;
-        mixer.export_wav(path, sample_rate)
+        mixer
+            .export_wav(path, sample_rate)
             .map_err(|e| TunesError::WavWriteError(e.to_string()))
     }
 }

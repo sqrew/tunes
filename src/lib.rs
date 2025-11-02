@@ -7,7 +7,7 @@
 //! ```no_run
 //! use tunes::prelude::*;
 //!
-//! fn main() -> Result<(), anyhow::Error> {
+//! fn main() -> anyhow::Result<()> {
 //!     let engine = AudioEngine::new()?;
 //!     let mut comp = Composition::new(Tempo::new(120.0));
 //!

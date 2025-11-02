@@ -1,5 +1,6 @@
 #![allow(unused, dead_code)]
 
+// mod actions;  // Unused module with broken imports
 mod chords;
 mod composition;
 mod drum_grid;
@@ -7,12 +8,15 @@ mod drums;
 mod effects;
 mod engine;
 mod envelope;
+mod error;
 mod filter;
 mod filter_envelope;
 mod fm_synthesis;
 mod instruments;
+mod key_signature;
 mod lfo;
 mod microtonal;
+mod midi;
 mod notes;
 mod rhythm;
 mod sample;

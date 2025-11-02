@@ -102,7 +102,7 @@ impl Composition {
     /// comp.load_sample("kick", "samples/kick.wav")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
-    pub fn load_sample(&mut self, name: &str, path: &str) -> Result<(), anyhow::Error> {
+    pub fn load_sample(&mut self, name: &str, path: &str) -> anyhow::Result<()> {
         let sample = Sample::from_wav(path)?;
         self.samples.insert(name.to_string(), sample);
         Ok(())

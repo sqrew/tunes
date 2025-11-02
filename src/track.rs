@@ -924,7 +924,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
     ///
@@ -933,7 +933,7 @@ impl Mixer {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_wav(&mut self, path: &str, sample_rate: u32) -> Result<(), anyhow::Error> {
+    pub fn export_wav(&mut self, path: &str, sample_rate: u32) -> anyhow::Result<()> {
         let spec = hound::WavSpec {
             channels: 2,
             sample_rate,

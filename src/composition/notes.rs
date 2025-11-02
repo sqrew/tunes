@@ -52,7 +52,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.load_sample("kick", "samples/kick.wav")?;
     ///
@@ -97,7 +97,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.load_sample("kick", "samples/kick.wav")?;
     ///
