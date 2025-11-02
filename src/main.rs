@@ -51,15 +51,8 @@ fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(120.0));
 
-    let x = sequences::collatz(27, 300);
-    let x = sequences::normalize(&x, 20.0, 10000.0);
 
-    comp.instrument("collatz", &Instrument::harpsichord())
-        .notes(&x, 0.05);
 
-    let y = &ScalePattern::
-
-cioEoBH1FfwBpKqh5Uy71qXTaJiJE0KjtY6
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
 }
