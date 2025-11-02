@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 fn main() -> anyhow::Result<()> {
     println!("\n🎼  Arrangement System Demo\n");
     println!("Demonstrating section-based composition and arrangement\n");

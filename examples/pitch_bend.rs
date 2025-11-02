@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 
     // Dramatic octave bend
     comp.track("bend_octave")
-        .bend(12.0)  // Full octave up!
+        .bend(12.0) // Full octave up!
         .at(6.0)
         .note(&[C3], 1.0);
 

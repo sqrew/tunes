@@ -89,7 +89,9 @@ fn main() -> anyhow::Result<()> {
     println!("🎯 Next Steps:");
     println!("   • Open verse_draft.mid in your DAW to see the notation");
     println!("   • Refine individual sections based on what you hear");
-    println!("   • Export sections as WAV: comp.export_section_wav(\"verse\", \"verse.wav\", 44100)?");
+    println!(
+        "   • Export sections as WAV: comp.export_section_wav(\"verse\", \"verse.wav\", 44100)?"
+    );
     println!("   • Loop a section: Play same mixer multiple times\n");
 
     Ok(())

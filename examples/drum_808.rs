@@ -55,7 +55,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("=== Playback ===");
     let mixer = comp.into_mixer();
-    println!("Playing {:.1}s composition with 808 drums...\n", mixer.total_duration());
+    println!(
+        "Playing {:.1}s composition with 808 drums...\n",
+        mixer.total_duration()
+    );
 
     engine.play_mixer(&mixer)?;
 

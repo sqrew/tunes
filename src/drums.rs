@@ -434,7 +434,7 @@ pub fn hihat_808_sample(sample_index: usize, sample_rate: f32, closed: bool) -> 
     // Simple high-pass effect by adding derivative
     let prev_t = (sample_index.saturating_sub(1)) as f32 / sample_rate;
     let prev_output = if prev_t > 0.0 {
-        output * 0.5  // Approximate previous value
+        output * 0.5 // Approximate previous value
     } else {
         0.0
     };
@@ -574,29 +574,29 @@ pub fn pitched_tom_sample(sample_index: usize, sample_rate: f32, pitch_hz: f32) 
 #[derive(Debug, Clone, Copy)]
 pub enum DrumType {
     Kick,
-    Kick808,         // Long, pitched 808 kick
-    SubKick,         // Ultra-low sub kick
+    Kick808, // Long, pitched 808 kick
+    SubKick, // Ultra-low sub kick
     Snare,
-    Snare808,        // 808 snare (dual triangle oscillators)
+    Snare808, // 808 snare (dual triangle oscillators)
     HiHatClosed,
     HiHatOpen,
-    HiHat808Closed,  // 808 closed hi-hat (6 square oscillators)
-    HiHat808Open,    // 808 open hi-hat (6 square oscillators)
+    HiHat808Closed, // 808 closed hi-hat (6 square oscillators)
+    HiHat808Open,   // 808 open hi-hat (6 square oscillators)
     Clap,
-    Clap808,         // 808 clap (multiple noise bursts)
-    Tom,             // Mid tom (original)
-    TomHigh,         // High tom
-    TomLow,          // Low tom
+    Clap808, // 808 clap (multiple noise bursts)
+    Tom,     // Mid tom (original)
+    TomHigh, // High tom
+    TomLow,  // Low tom
     Rimshot,
     Cowbell,
     Crash,
     Ride,
-    China,           // China cymbal
-    Splash,          // Splash cymbal
+    China,  // China cymbal
+    Splash, // Splash cymbal
     Tambourine,
     Shaker,
-    BassDrop,        // Dramatic bass drop impact
-    Boom,            // Deep cinematic boom
+    BassDrop, // Dramatic bass drop impact
+    Boom,     // Deep cinematic boom
 }
 
 impl DrumType {
@@ -676,7 +676,11 @@ mod tests {
                 value,
                 i
             );
-            assert!(value.is_finite(), "Noise produced non-finite value at seed {}", i);
+            assert!(
+                value.is_finite(),
+                "Noise produced non-finite value at seed {}",
+                i
+            );
         }
     }
 
@@ -704,7 +708,11 @@ mod tests {
         // Test kick drum generates valid samples
         for i in 0..1000 {
             let sample = kick_drum_sample(i, SAMPLE_RATE);
-            assert!(sample.is_finite(), "Kick drum produced non-finite sample at index {}", i);
+            assert!(
+                sample.is_finite(),
+                "Kick drum produced non-finite sample at index {}",
+                i
+            );
             assert!(
                 sample >= -1.0 && sample <= 1.0,
                 "Kick drum sample {} out of range at index {}",
@@ -721,19 +729,32 @@ mod tests {
         let mid_sample = kick_drum_sample(1000, SAMPLE_RATE);
         let end_sample = kick_drum_sample(10000, SAMPLE_RATE); // Well past duration
 
-        assert!(early_sample.abs() > 0.0, "Kick should have non-zero amplitude early on");
-        assert!(mid_sample.abs() > 0.0, "Kick should still be audible mid-duration");
+        assert!(
+            early_sample.abs() > 0.0,
+            "Kick should have non-zero amplitude early on"
+        );
+        assert!(
+            mid_sample.abs() > 0.0,
+            "Kick should still be audible mid-duration"
+        );
         assert_eq!(end_sample, 0.0, "Kick should be silent after duration");
 
         // Verify decay is happening
-        assert!(mid_sample.abs() < early_sample.abs(), "Kick should decay over time");
+        assert!(
+            mid_sample.abs() < early_sample.abs(),
+            "Kick should decay over time"
+        );
     }
 
     #[test]
     fn test_snare_drum_valid_samples() {
         for i in 0..1000 {
             let sample = snare_drum_sample(i, SAMPLE_RATE);
-            assert!(sample.is_finite(), "Snare produced non-finite sample at index {}", i);
+            assert!(
+                sample.is_finite(),
+                "Snare produced non-finite sample at index {}",
+                i
+            );
             assert!(
                 sample >= -1.0 && sample <= 1.0,
                 "Snare sample {} out of range at index {}",
@@ -750,7 +771,10 @@ mod tests {
         let open_sample = hihat_sample(3000, SAMPLE_RATE, false);
 
         // At the same time point, closed should be silent but open still going
-        assert_eq!(closed_sample, 0.0, "Closed hihat should be silent by this point");
+        assert_eq!(
+            closed_sample, 0.0,
+            "Closed hihat should be silent by this point"
+        );
         assert_ne!(open_sample, 0.0, "Open hihat should still be audible");
     }
 
@@ -873,7 +897,11 @@ mod tests {
         for point in &burst_points {
             let sample = DrumType::Clap.sample(*point, SAMPLE_RATE);
             // Just verify it produces valid output at these points
-            assert!(sample.is_finite(), "Clap produced non-finite sample at {}", point);
+            assert!(
+                sample.is_finite(),
+                "Clap produced non-finite sample at {}",
+                point
+            );
         }
     }
 

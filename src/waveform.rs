@@ -1,4 +1,4 @@
-use crate::wavetable::{WAVETABLE, SAWTOOTH_WAVETABLE, SQUARE_WAVETABLE, TRIANGLE_WAVETABLE};
+use crate::wavetable::{SAWTOOTH_WAVETABLE, SQUARE_WAVETABLE, TRIANGLE_WAVETABLE, WAVETABLE};
 
 /// Different waveform types for synthesis
 ///
@@ -64,12 +64,7 @@ impl Waveform {
     }
 
     /// Generate a sample for a frequency at a given sample clock and sample rate
-    pub fn sample_at(
-        &self,
-        frequency: f32,
-        sample_clock: f32,
-        sample_rate: f32,
-    ) -> f32 {
+    pub fn sample_at(&self, frequency: f32, sample_clock: f32, sample_rate: f32) -> f32 {
         let phase = (sample_clock * frequency / sample_rate) % 1.0;
         self.sample(phase)
     }
@@ -93,8 +88,12 @@ mod tests {
             for i in 0..100 {
                 let phase = i as f32 / 100.0;
                 let sample = waveform.sample(phase);
-                assert!(sample >= -1.0 && sample <= 1.0,
-                    "{:?} produced out of range sample: {}", waveform, sample);
+                assert!(
+                    sample >= -1.0 && sample <= 1.0,
+                    "{:?} produced out of range sample: {}",
+                    waveform,
+                    sample
+                );
             }
         }
     }

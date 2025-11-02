@@ -85,7 +85,10 @@ impl Automation {
     /// # Panics
     /// Panics if points is empty
     fn new(points: &[(f32, f32)], interpolation: Interpolation) -> Self {
-        assert!(!points.is_empty(), "Automation must have at least one point");
+        assert!(
+            !points.is_empty(),
+            "Automation must have at least one point"
+        );
 
         let mut sorted_points = points.to_vec();
         sorted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -136,7 +139,15 @@ impl Automation {
 
         // Interpolate based on method
         match self.interpolation {
-            Interpolation::Step => p1.1,
+            Interpolation::Step => {
+                // For step interpolation, snap to the new value when we reach it
+                // This makes it "right-continuous" - value changes AT the time point
+                if (time - p2.0).abs() < 0.00001 {
+                    p2.1
+                } else {
+                    p1.1
+                }
+            }
             Interpolation::Linear => {
                 // Simple linear interpolation
                 p1.1 + (p2.1 - p1.1) * t
@@ -213,7 +224,7 @@ mod tests {
         assert_eq!(auto.value_at(4.0), 1.0);
 
         // Smooth interpolation should have different curve than linear
-        let linear_mid = 0.5; // Linear would be 0.5 at t=2.0
+        let _linear_mid = 0.5; // Linear would be 0.5 at t=2.0
         let smooth_mid = auto.value_at(2.0);
         assert_eq!(smooth_mid, 0.5); // At midpoint, smoothstep == linear
 

@@ -13,7 +13,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: Pre-configured synthesizers, bass, pads, leads, and more
-- **Effects**: Delay, reverb, distortion, chorus, filters, and modulation
+- **Effects, Automation and Filters**: Delay, reverb, distortion, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
@@ -204,7 +204,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **534 comprehensive tests and 144 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **550 comprehensive tests and 150 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
@@ -223,17 +223,9 @@ cargo run --release --example synthesis_demo
 # Theory and scales
 cargo run --example theory_demo
 
-# Instrument showcase
-cargo run --example instrument_showcase
-
-# Classical techniques
-cargo run --example classical_techniques
-
-# Effects demonstration
+# Effects and effect automation (dynamic parameter changes over time)
 cargo run --example effects_showcase
-
-# Drum patterns
-cargo run --example drum_grid
+cargo run --example automation_demo
 
 # And many more...
 ```

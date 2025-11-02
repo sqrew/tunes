@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
         .at(22.0)
         .pedal(G2, &[D4, E4, F4, G4, A4, B4], 0.3)
         .at(22.0)
-        .note(&[C4], 1.0);  // Resolution
+        .note(&[C4], 1.0); // Resolution
 
     println!("✓ .pedal(pedal_note, melody_notes, duration_per_note):");
     println!("  - Sustains bass note while melody plays above");

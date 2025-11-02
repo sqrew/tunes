@@ -23,8 +23,8 @@ fn main() -> anyhow::Result<()> {
     println!("Example 1: Basic Playback");
     comp.track("basic")
         .at(0.0)
-        .sample("tone")  // Play at normal speed
-        .sample("tone")  // Play again
+        .sample("tone") // Play at normal speed
+        .sample("tone") // Play again
         .sample("tone"); // And once more
     println!("  ✓ Playing sample 3 times\n");
 
@@ -32,10 +32,10 @@ fn main() -> anyhow::Result<()> {
     println!("Example 2: Pitch Shifting");
     comp.track("pitched")
         .at(2.0)
-        .sample_with_rate("tone", 1.0)    // Normal (A4 = 440Hz)
-        .sample_with_rate("tone", 1.5)    // 1.5x speed (≈ perfect fifth up)
-        .sample_with_rate("tone", 2.0)    // 2x speed (octave up = A5 = 880Hz)
-        .sample_with_rate("tone", 0.5);   // 0.5x speed (octave down = A3 = 220Hz)
+        .sample_with_rate("tone", 1.0) // Normal (A4 = 440Hz)
+        .sample_with_rate("tone", 1.5) // 1.5x speed (≈ perfect fifth up)
+        .sample_with_rate("tone", 2.0) // 2x speed (octave up = A5 = 880Hz)
+        .sample_with_rate("tone", 0.5); // 0.5x speed (octave down = A3 = 220Hz)
     println!("  ✓ Playing with different pitch shifts\n");
 
     // Example 3: Rhythmic pattern
@@ -56,7 +56,10 @@ fn main() -> anyhow::Result<()> {
     let engine = AudioEngine::new()?;
     let mixer = comp.into_mixer();
 
-    println!("Playing {:.1}s composition with samples...\n", mixer.total_duration());
+    println!(
+        "Playing {:.1}s composition with samples...\n",
+        mixer.total_duration()
+    );
     engine.play_mixer(&mixer)?;
 
     println!("\n✅ Demo complete!");
@@ -92,9 +95,9 @@ fn create_test_sample(path: &str, frequency: f32, duration: f32) -> anyhow::Resu
 
         // Apply envelope to avoid clicks
         let envelope = if t < 0.01 {
-            t / 0.01  // 10ms fade-in
+            t / 0.01 // 10ms fade-in
         } else if t > duration - 0.01 {
-            (duration - t) / 0.01  // 10ms fade-out
+            (duration - t) / 0.01 // 10ms fade-out
         } else {
             1.0
         };

@@ -12,8 +12,8 @@ use crate::prelude::{FMParams, FilterEnvelope};
 
 // Import effect types and filter
 use crate::effects::{
-    BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator,
-    Saturation,
+    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
+    Reverb, RingModulator, Saturation, Tremolo,
 };
 use crate::filter::Filter;
 use crate::lfo::ModRoute;
@@ -49,12 +49,16 @@ pub struct TrackTemplate {
     pub distortion: Option<Distortion>,
     pub bitcrusher: Option<BitCrusher>,
     pub compressor: Option<Compressor>,
+    pub gate: Option<Gate>,
     pub chorus: Option<Chorus>,
     pub eq: Option<EQ>,
     pub saturation: Option<Saturation>,
     pub phaser: Option<Phaser>,
     pub flanger: Option<Flanger>,
     pub ring_mod: Option<RingModulator>,
+    pub tremolo: Option<Tremolo>,
+    pub autopan: Option<AutoPan>,
+    pub limiter: Option<Limiter>,
     pub modulation: Vec<ModRoute>,
     pub midi_program: Option<u8>,
 
@@ -181,12 +185,16 @@ impl Composition {
                     distortion: None,
                     bitcrusher: None,
                     compressor: None,
+                    gate: None,
                     chorus: None,
                     eq: None,
                     saturation: None,
                     phaser: None,
                     flanger: None,
                     ring_mod: None,
+                    tremolo: None,
+                    autopan: None,
+                    limiter: None,
                     modulation: Vec::new(),
                     midi_program: None,
                     waveform: Waveform::Sine,
@@ -229,12 +237,16 @@ impl Composition {
         track.distortion = template.distortion;
         track.bitcrusher = template.bitcrusher;
         track.compressor = template.compressor;
+        track.gate = template.gate;
         track.chorus = template.chorus;
         track.eq = template.eq;
         track.saturation = template.saturation;
         track.phaser = template.phaser;
         track.flanger = template.flanger;
         track.ring_mod = template.ring_mod;
+        track.tremolo = template.tremolo;
+        track.autopan = template.autopan;
+        track.limiter = template.limiter;
         track.modulation = template.modulation.clone();
         track.midi_program = template.midi_program;
 
@@ -269,7 +281,7 @@ impl Composition {
         track.filter = instrument.filter;
         track.delay = instrument.delay.clone();
         track.reverb = instrument.reverb.clone();
-        track.distortion = instrument.distortion;
+        track.distortion = instrument.distortion.clone();
         track.modulation = instrument.modulation.clone();
 
         builder
@@ -619,15 +631,19 @@ impl<'a> TrackBuilder<'a> {
         let filter = track.filter;
         let delay = track.delay.clone();
         let reverb = track.reverb.clone();
-        let distortion = track.distortion;
+        let distortion = track.distortion.clone();
         let bitcrusher = track.bitcrusher.clone();
         let compressor = track.compressor.clone();
+        let gate = track.gate.clone();
         let chorus = track.chorus.clone();
-        let eq = track.eq;
-        let saturation = track.saturation;
+        let eq = track.eq.clone();
+        let saturation = track.saturation.clone();
         let phaser = track.phaser.clone();
         let flanger = track.flanger.clone();
         let ring_mod = track.ring_mod.clone();
+        let tremolo = track.tremolo.clone();
+        let autopan = track.autopan.clone();
+        let limiter = track.limiter.clone();
         let modulation = track.modulation.clone();
         let midi_program = track.midi_program;
 
@@ -641,12 +657,16 @@ impl<'a> TrackBuilder<'a> {
             distortion,
             bitcrusher,
             compressor,
+            gate,
             chorus,
             eq,
             saturation,
             phaser,
             flanger,
             ring_mod,
+            tremolo,
+            autopan,
+            limiter,
             modulation,
             midi_program,
 

@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     println!("🔊 AM (Ring Modulation):");
     comp.instrument("am_demo", &Instrument::pluck())
         .at(0.0)
-        .ring_mod(RingModulator::new(440.0, 0.7))  // 440 Hz carrier, 70% wet
+        .ring_mod(RingModulator::new(440.0, 0.7)) // 440 Hz carrier, 70% wet
         .note(&[C4], 0.5)
         .note(&[E4], 0.5)
         .note(&[G4], 0.5);
@@ -24,8 +24,8 @@ fn main() -> anyhow::Result<()> {
     // Classic analog filter sweep
     comp.instrument("classic_sweep", &Instrument::pluck())
         .at(3.0)
-        .filter(Filter::low_pass(200.0, 0.7))  // Start with resonant filter
-        .filter_envelope(FilterEnvelope::classic())  // Add classic filter envelope
+        .filter(Filter::low_pass(200.0, 0.7)) // Start with resonant filter
+        .filter_envelope(FilterEnvelope::classic()) // Add classic filter envelope
         .note(&[C3], 1.0)
         .note(&[G3], 1.0);
     println!("   ✓ Classic filter envelope: fast attack, medium decay");
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("pluck_synth", &Instrument::warm_pad())
         .at(6.0)
         .filter(Filter::low_pass(300.0, 0.8))
-        .filter_envelope(FilterEnvelope::pluck())  // Quick decay for percussive sound
+        .filter_envelope(FilterEnvelope::pluck()) // Quick decay for percussive sound
         .note(&[E3], 0.3)
         .note(&[G3], 0.3)
         .note(&[A3], 0.3)
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("evolving_pad", &Instrument::warm_pad())
         .at(8.5)
         .filter(Filter::low_pass(400.0, 0.5))
-        .filter_envelope(FilterEnvelope::pad())  // Slow evolution
+        .filter_envelope(FilterEnvelope::pad()) // Slow evolution
         .note(&[C3, E3, G3], 3.0);
     println!("   ✓ Pad filter: slow attack and release for atmosphere\n");
 
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     // Custom FM sound
     comp.instrument("custom_fm", &Instrument::synth_lead())
         .at(28.0)
-        .fm_custom(2.0, 4.0)  // Octave up, moderate index
+        .fm_custom(2.0, 4.0) // Octave up, moderate index
         .notes(&[C4, D4, E4, G4, A4, C5], 0.25);
     println!("   ✓ Custom FM: mod_ratio=2.0, mod_index=4.0\n");
 
@@ -115,10 +115,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("fm_filtered", &Instrument::synth_lead())
         .at(30.0)
         .filter(Filter::low_pass(500.0, 0.6))
-        .fm_with_filter(
-            FMParams::brass(),
-            FilterEnvelope::classic()
-        )
+        .fm_with_filter(FMParams::brass(), FilterEnvelope::classic())
         .note(&[C3, E3, G3], 2.0);
     println!("   ✓ FM brass + filter sweep = rich, evolving timbre\n");
 
@@ -129,7 +126,10 @@ fn main() -> anyhow::Result<()> {
     println!("✅ Combined: FM + filter envelopes for maximum expressiveness\n");
 
     let mixer = comp.into_mixer();
-    println!("Playing {:.1} seconds of synthesis examples...", mixer.total_duration());
+    println!(
+        "Playing {:.1} seconds of synthesis examples...",
+        mixer.total_duration()
+    );
     engine.play_mixer(&mixer)?;
     Ok(())
 }

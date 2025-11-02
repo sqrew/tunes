@@ -2,9 +2,8 @@
 ///
 /// This example shows how to create and use custom wavetables for unique timbres.
 /// Run with: cargo run --example wavetable_demo
-
 use tunes::prelude::*;
-use tunes::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+use tunes::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
 fn main() -> anyhow::Result<()> {
     println!("Custom Wavetable Synthesis Demo");

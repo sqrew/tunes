@@ -311,7 +311,10 @@ impl AudioEngine {
         loop {
             let buf_len = buffer.lock().unwrap().len();
             if buf_len >= min_buffer_samples {
-                println!("Buffered {:.1}s, starting playback...", buf_len as f32 / (sample_rate * 2.0));
+                println!(
+                    "Buffered {:.1}s, starting playback...",
+                    buf_len as f32 / (sample_rate * 2.0)
+                );
                 break;
             }
             thread::sleep(std::time::Duration::from_millis(50));
@@ -396,9 +399,12 @@ impl AudioEngine {
             let rendered_buffer = mixer_owned.render_to_buffer(sample_rate);
 
             let render_time = start.elapsed();
-            println!("  Rendered {:.2}s of audio in {:.2}s ({:.1}x realtime)",
-                     duration_secs, render_time.as_secs_f32(),
-                     duration_secs / render_time.as_secs_f32());
+            println!(
+                "  Rendered {:.2}s of audio in {:.2}s ({:.1}x realtime)",
+                duration_secs,
+                render_time.as_secs_f32(),
+                duration_secs / render_time.as_secs_f32()
+            );
 
             // Playback simply reads from the pre-rendered buffer (trivial CPU load)
             let mut sample_index = 0;

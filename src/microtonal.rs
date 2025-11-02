@@ -315,19 +315,19 @@ pub fn just_minor_scale(root: f32) -> Vec<f32> {
 /// but impure thirds (Pythagorean thirds are sharper than just thirds)
 pub fn pythagorean_scale(root: f32) -> Vec<f32> {
     vec![
-        root * 1.0,                                    // C (1:1)
-        root * 256.0 / 243.0,                          // C# (Pythagorean minor second)
-        root * 9.0 / 8.0,                              // D (Pythagorean major second)
-        root * 32.0 / 27.0,                            // D# (Pythagorean minor third)
-        root * 81.0 / 64.0,                            // E (Pythagorean major third)
-        root * 4.0 / 3.0,                              // F (Perfect fourth)
-        root * 729.0 / 512.0,                          // F# (Pythagorean tritone)
-        root * 3.0 / 2.0,                              // G (Perfect fifth)
-        root * 128.0 / 81.0,                           // G# (Pythagorean minor sixth)
-        root * 27.0 / 16.0,                            // A (Pythagorean major sixth)
-        root * 16.0 / 9.0,                             // A# (Pythagorean minor seventh)
-        root * 243.0 / 128.0,                          // B (Pythagorean major seventh)
-        root * 2.0,                                    // C (octave)
+        root * 1.0,           // C (1:1)
+        root * 256.0 / 243.0, // C# (Pythagorean minor second)
+        root * 9.0 / 8.0,     // D (Pythagorean major second)
+        root * 32.0 / 27.0,   // D# (Pythagorean minor third)
+        root * 81.0 / 64.0,   // E (Pythagorean major third)
+        root * 4.0 / 3.0,     // F (Perfect fourth)
+        root * 729.0 / 512.0, // F# (Pythagorean tritone)
+        root * 3.0 / 2.0,     // G (Perfect fifth)
+        root * 128.0 / 81.0,  // G# (Pythagorean minor sixth)
+        root * 27.0 / 16.0,   // A (Pythagorean major sixth)
+        root * 16.0 / 9.0,    // A# (Pythagorean minor seventh)
+        root * 243.0 / 128.0, // B (Pythagorean major seventh)
+        root * 2.0,           // C (octave)
     ]
 }
 

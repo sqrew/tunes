@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 /// Comprehensive showcase of all ornamental and expressive techniques
 fn main() -> anyhow::Result<()> {
     println!("🎵 Ornaments and Expression Showcase\n");
@@ -49,34 +48,23 @@ fn main() -> anyhow::Result<()> {
     println!("\n3. Trill - Rapid alternation between two notes");
 
     // Slow trill
-    track = track
-        .trill(C4, D4, 8, 0.1)
-        .wait(pause);
+    track = track.trill(C4, D4, 8, 0.1).wait(pause);
 
     // Fast trill (classic)
-    track = track
-        .trill(E4, F4, 16, 0.05)
-        .wait(pause);
+    track = track.trill(E4, F4, 16, 0.05).wait(pause);
 
     // Major third trill
-    track = track
-        .trill(G4, B4, 12, 0.08)
-        .wait(pause);
+    track = track.trill(G4, B4, 12, 0.08).wait(pause);
 
     // ===== 4. TREMOLO =====
     println!("\n4. Tremolo - Rapid repetition of same note");
 
-    track = track
-        .tremolo(C4, 16, 0.06)
-        .wait(pause);
+    track = track.tremolo_note(C4, 16, 0.06).wait(pause);
 
     // ===== 5. MORDENT =====
     println!("\n5. Mordent - Quick alternation: Main-Upper-Main");
 
-    track = track
-        .mordent(E4, 0.8)
-        .mordent(G4, 0.8)
-        .wait(pause);
+    track = track.mordent(E4, 0.8).mordent(G4, 0.8).wait(pause);
 
     track = track
         .inverted_mordent(E4, 0.8)
@@ -86,10 +74,7 @@ fn main() -> anyhow::Result<()> {
     // ===== 6. TURN =====
     println!("\n6. Turn - Upper-Main-Lower-Main");
 
-    track = track
-        .turn(C4, 0.8)
-        .turn(E4, 0.8)
-        .wait(pause);
+    track = track.turn(C4, 0.8).turn(E4, 0.8).wait(pause);
 
     track = track
         .inverted_turn(C4, 0.8)
@@ -102,28 +87,19 @@ fn main() -> anyhow::Result<()> {
     let c_major_chord = vec![C3, E3, G3, C4, E4];
 
     // Fast cascade up
-    track = track
-        .cascade(&c_major_chord, 1.0, 0.05)
-        .wait(pause);
+    track = track.cascade(&c_major_chord, 1.0, 0.05).wait(pause);
 
     // Slow cascade up
-    track = track
-        .cascade(&c_major_chord, 1.5, 0.15)
-        .wait(pause);
+    track = track.cascade(&c_major_chord, 1.5, 0.15).wait(pause);
 
     // Strum down and up
-    track = track
-        .strum(&c_major_chord, 1.0, 0.03)
-        .wait(0.5);
+    track = track.strum(&c_major_chord, 1.0, 0.03).wait(0.5);
 
     let c_major_reversed: Vec<f32> = c_major_chord.iter().rev().copied().collect();
-    track = track
-        .strum(&c_major_reversed, 1.0, 0.03)
-        .wait(pause);
+    track = track.strum(&c_major_reversed, 1.0, 0.03).wait(pause);
 
     // Cascade down (reversed)
-    let _ = track
-        .cascade(&c_major_reversed, 1.0, 0.06);
+    let _ = track.cascade(&c_major_reversed, 1.0, 0.06);
 
     println!("\n▶ Playing ornaments demonstration...\n");
 

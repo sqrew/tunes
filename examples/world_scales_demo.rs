@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 fn main() -> anyhow::Result<()> {
     println!("\n🌍  World Scales Showcase\n");
     println!("Demonstrating 55 scale patterns from around the world!\n");
@@ -56,11 +55,15 @@ fn main() -> anyhow::Result<()> {
 
     println!("  • Hungarian Minor - Dramatic Gypsy sound");
     let hungarian_minor = scale(E4, &ScalePattern::HUNGARIAN_MINOR);
-    track_builder = track_builder.notes(&hungarian_minor, note_duration).wait(pause);
+    track_builder = track_builder
+        .notes(&hungarian_minor, note_duration)
+        .wait(pause);
 
     println!("  • Hungarian Major - Unique major variant");
     let hungarian_major = scale(A3, &ScalePattern::HUNGARIAN_MAJOR);
-    track_builder = track_builder.notes(&hungarian_major, note_duration).wait(pause);
+    track_builder = track_builder
+        .notes(&hungarian_major, note_duration)
+        .wait(pause);
 
     // === SPANISH & FLAMENCO ===
     println!("\n💃 Spanish & Flamenco:");

@@ -1,4 +1,4 @@
-use tunes::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+use tunes::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
 /// Demonstrate user-definable wavetable synthesis
 ///
@@ -120,8 +120,8 @@ fn main() -> anyhow::Result<()> {
 
     // Create a simple stepped waveform
     let steps = vec![
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0, -0.2, -0.4, -0.6, -0.8, -1.0,
-        -0.8, -0.6, -0.4, -0.2,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0, -0.2, -0.4, -0.6, -0.8, -1.0, -0.8,
+        -0.6, -0.4, -0.2,
     ];
     let _stepped_wt = Wavetable::from_samples(steps.clone());
 

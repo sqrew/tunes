@@ -7,13 +7,13 @@
 /// a peak frequency and back, following an ADSR curve.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FilterEnvelope {
-    pub attack: f32,    // Time to reach peak cutoff (seconds)
-    pub decay: f32,     // Time to decay from peak to sustain level (seconds)
-    pub sustain: f32,   // Sustain level (0.0 to 1.0, relative to peak)
-    pub release: f32,   // Time to return to base after note ends (seconds)
-    pub base_cutoff: f32,  // Starting cutoff frequency (Hz)
-    pub peak_cutoff: f32,  // Peak cutoff frequency (Hz)
-    pub amount: f32,    // Envelope amount/intensity (0.0 to 1.0)
+    pub attack: f32,      // Time to reach peak cutoff (seconds)
+    pub decay: f32,       // Time to decay from peak to sustain level (seconds)
+    pub sustain: f32,     // Sustain level (0.0 to 1.0, relative to peak)
+    pub release: f32,     // Time to return to base after note ends (seconds)
+    pub base_cutoff: f32, // Starting cutoff frequency (Hz)
+    pub peak_cutoff: f32, // Peak cutoff frequency (Hz)
+    pub amount: f32,      // Envelope amount/intensity (0.0 to 1.0)
 }
 
 impl FilterEnvelope {

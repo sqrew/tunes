@@ -69,7 +69,10 @@ impl<'a> TrackBuilder<'a> {
         let sample = match self.composition.get_sample(sample_name) {
             Some(s) => s.clone(),
             None => {
-                eprintln!("Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.", sample_name);
+                eprintln!(
+                    "Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.",
+                    sample_name
+                );
                 return self;
             }
         };
@@ -79,7 +82,9 @@ impl<'a> TrackBuilder<'a> {
         let sample_event = SampleEvent::new(sample.clone(), cursor);
         let duration = sample.duration;
 
-        self.get_track_mut().events.push(AudioEvent::Sample(sample_event));
+        self.get_track_mut()
+            .events
+            .push(AudioEvent::Sample(sample_event));
         self.get_track_mut().invalidate_time_cache();
 
         let swung_duration = self.apply_swing(duration);
@@ -114,17 +119,22 @@ impl<'a> TrackBuilder<'a> {
         let sample = match self.composition.get_sample(sample_name) {
             Some(s) => s.clone(),
             None => {
-                eprintln!("Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.", sample_name);
+                eprintln!(
+                    "Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.",
+                    sample_name
+                );
                 return self;
             }
         };
 
         use crate::track::{AudioEvent, SampleEvent};
-        let sample_event = SampleEvent::new(sample.clone(), cursor)
-            .with_playback_rate(playback_rate);
+        let sample_event =
+            SampleEvent::new(sample.clone(), cursor).with_playback_rate(playback_rate);
         let duration = sample.duration / playback_rate;
 
-        self.get_track_mut().events.push(AudioEvent::Sample(sample_event));
+        self.get_track_mut()
+            .events
+            .push(AudioEvent::Sample(sample_event));
         self.get_track_mut().invalidate_time_cache();
 
         let swung_duration = self.apply_swing(duration);
@@ -217,8 +227,8 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use super::*;
     use crate::composition::Composition;
-    use crate::rhythm::Tempo;
     use crate::notes::*;
+    use crate::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]
@@ -362,7 +372,11 @@ mod tests {
 
         let mixer = comp.into_mixer();
         // With zero segments, no track is created since interpolated returns early
-        assert_eq!(mixer.tracks.len(), 0, "Zero segments should create no track");
+        assert_eq!(
+            mixer.tracks.len(),
+            0,
+            "Zero segments should create no track"
+        );
     }
 
     #[test]
@@ -403,7 +417,10 @@ mod tests {
         let builder = comp.track("melody").notes(&[], 0.5);
 
         // Check cursor first before moving comp
-        assert_eq!(builder.cursor, 0.0, "Cursor should not advance for empty array");
+        assert_eq!(
+            builder.cursor, 0.0,
+            "Cursor should not advance for empty array"
+        );
 
         let mixer = comp.into_mixer();
         // With empty array, no track is created since loop doesn't execute

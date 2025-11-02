@@ -940,7 +940,11 @@ pub fn cellular_automaton(
             let neighborhood = (left << 2) | (center << 1) | right;
 
             // Check if rule bit is set for this neighborhood
-            next[i] = if (rule >> neighborhood) & 1 == 1 { 1 } else { 0 };
+            next[i] = if (rule >> neighborhood) & 1 == 1 {
+                1
+            } else {
+                0
+            };
         }
 
         current = next;
@@ -1020,15 +1024,18 @@ mod tests {
         // Test basic harmonic series of A2 (110 Hz)
         let harmonics = harmonic_series(110.0, 8);
         assert_eq!(harmonics.len(), 8);
-        assert_eq!(harmonics, vec![110.0, 220.0, 330.0, 440.0, 550.0, 660.0, 770.0, 880.0]);
+        assert_eq!(
+            harmonics,
+            vec![110.0, 220.0, 330.0, 440.0, 550.0, 660.0, 770.0, 880.0]
+        );
 
         // Test that harmonics are integer multiples
         let h = harmonic_series(100.0, 5);
-        assert_eq!(h[0], 100.0);   // 1st harmonic (fundamental)
-        assert_eq!(h[1], 200.0);   // 2nd harmonic (octave)
-        assert_eq!(h[2], 300.0);   // 3rd harmonic (fifth above octave)
-        assert_eq!(h[3], 400.0);   // 4th harmonic (two octaves)
-        assert_eq!(h[4], 500.0);   // 5th harmonic (major third)
+        assert_eq!(h[0], 100.0); // 1st harmonic (fundamental)
+        assert_eq!(h[1], 200.0); // 2nd harmonic (octave)
+        assert_eq!(h[2], 300.0); // 3rd harmonic (fifth above octave)
+        assert_eq!(h[3], 400.0); // 4th harmonic (two octaves)
+        assert_eq!(h[4], 500.0); // 5th harmonic (major third)
     }
 
     #[test]
@@ -1044,17 +1051,17 @@ mod tests {
         let h = harmonic_series(55.0, 16);
 
         // Harmonics 1, 2, 4, 8, 16 are octaves
-        assert_eq!(h[1], h[0] * 2.0);   // Octave relationship
-        assert_eq!(h[3], h[0] * 4.0);   // Two octaves
-        assert_eq!(h[7], h[0] * 8.0);   // Three octaves
+        assert_eq!(h[1], h[0] * 2.0); // Octave relationship
+        assert_eq!(h[3], h[0] * 4.0); // Two octaves
+        assert_eq!(h[7], h[0] * 8.0); // Three octaves
         assert_eq!(h[15], h[0] * 16.0); // Four octaves
 
         // Harmonics 4-5-6 form a major triad
         // h[3] (4th harmonic) = root
         // h[4] (5th harmonic) = major third above
         // h[5] (6th harmonic) = perfect fifth above
-        let ratio_maj3 = h[4] / h[3];  // 5/4 = 1.25 (major third)
-        let ratio_p5 = h[5] / h[3];    // 6/4 = 1.5 (perfect fifth)
+        let ratio_maj3 = h[4] / h[3]; // 5/4 = 1.25 (major third)
+        let ratio_p5 = h[5] / h[3]; // 6/4 = 1.5 (perfect fifth)
         assert!((ratio_maj3 - 1.25).abs() < 0.001);
         assert!((ratio_p5 - 1.5).abs() < 0.001);
     }
@@ -1065,11 +1072,11 @@ mod tests {
         let seq = golden_ratio(5);
 
         assert_eq!(seq.len(), 5);
-        assert!((seq[0] - 1.0).abs() < 0.001);           // φ^0 = 1
-        assert!((seq[1] - PHI).abs() < 0.001);           // φ^1 = φ
-        assert!((seq[2] - PHI * PHI).abs() < 0.001);     // φ^2
-        assert!((seq[3] - PHI.powi(3)).abs() < 0.001);   // φ^3
-        assert!((seq[4] - PHI.powi(4)).abs() < 0.001);   // φ^4
+        assert!((seq[0] - 1.0).abs() < 0.001); // φ^0 = 1
+        assert!((seq[1] - PHI).abs() < 0.001); // φ^1 = φ
+        assert!((seq[2] - PHI * PHI).abs() < 0.001); // φ^2
+        assert!((seq[3] - PHI.powi(3)).abs() < 0.001); // φ^3
+        assert!((seq[4] - PHI.powi(4)).abs() < 0.001); // φ^4
 
         // Verify golden ratio property: φ^2 = φ + 1
         assert!((seq[2] - (seq[1] + 1.0)).abs() < 0.001);
@@ -1158,8 +1165,11 @@ mod tests {
         // After many iterations, should converge (last few values nearly equal)
         let last_five: Vec<f32> = seq.iter().rev().take(5).copied().collect();
         for i in 1..last_five.len() {
-            assert!((last_five[i] - last_five[0]).abs() < 0.01,
-                "Should converge to stable value, got {:?}", last_five);
+            assert!(
+                (last_five[i] - last_five[0]).abs() < 0.01,
+                "Should converge to stable value, got {:?}",
+                last_five
+            );
         }
 
         // All values should be in 0-1 range
@@ -1177,11 +1187,13 @@ mod tests {
 
         // Chaotic sequence should have high variance (not converging to a single point)
         let mean: f32 = seq.iter().sum::<f32>() / seq.len() as f32;
-        let variance: f32 = seq.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f32>() / seq.len() as f32;
+        let variance: f32 = seq.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / seq.len() as f32;
 
-        assert!(variance > 0.01, "Chaotic sequence should have significant variance, got {}", variance);
+        assert!(
+            variance > 0.01,
+            "Chaotic sequence should have significant variance, got {}",
+            variance
+        );
 
         // All values should still be in 0-1 range
         for &val in &seq {
@@ -1223,7 +1235,7 @@ mod tests {
 
         // Each step should change by at most step_size
         for i in 1..walk.len() {
-            let delta = (walk[i] - walk[i-1]).abs();
+            let delta = (walk[i] - walk[i - 1]).abs();
             assert!(delta <= 10.0, "Step {} too large: {}", i, delta);
         }
     }
@@ -1282,7 +1294,11 @@ mod tests {
         let walk = bounded_walk(0.5, 0.1, 0.0, 1.0, 32);
 
         for &val in &walk {
-            assert!(val >= 0.0 && val <= 1.0, "Normalized value {} out of range", val);
+            assert!(
+                val >= 0.0 && val <= 1.0,
+                "Normalized value {} out of range",
+                val
+            );
         }
     }
 
@@ -1333,15 +1349,15 @@ mod tests {
 
         // Check no "000" pattern
         for i in 0..tm.len().saturating_sub(2) {
-            if tm[i] == 0 && tm[i+1] == 0 {
-                assert_ne!(tm[i+2], 0, "Found three consecutive 0s at position {}", i);
+            if tm[i] == 0 && tm[i + 1] == 0 {
+                assert_ne!(tm[i + 2], 0, "Found three consecutive 0s at position {}", i);
             }
         }
 
         // Check no "111" pattern
         for i in 0..tm.len().saturating_sub(2) {
-            if tm[i] == 1 && tm[i+1] == 1 {
-                assert_ne!(tm[i+2], 1, "Found three consecutive 1s at position {}", i);
+            if tm[i] == 1 && tm[i + 1] == 1 {
+                assert_ne!(tm[i + 2], 1, "Found three consecutive 1s at position {}", i);
             }
         }
     }
@@ -1362,7 +1378,8 @@ mod tests {
     fn test_thue_morse_as_rhythm() {
         // Convert to hit indices like Euclidean rhythms
         let tm = thue_morse(16);
-        let hits: Vec<usize> = tm.iter()
+        let hits: Vec<usize> = tm
+            .iter()
             .enumerate()
             .filter(|(_, &v)| v == 1)
             .map(|(i, _)| i)
@@ -1383,7 +1400,9 @@ mod tests {
         let seq = recaman(20);
 
         // Known Recamán sequence values
-        let expected = vec![0, 1, 3, 6, 2, 7, 13, 20, 12, 21, 11, 22, 10, 23, 9, 24, 8, 25, 43, 62];
+        let expected = vec![
+            0, 1, 3, 6, 2, 7, 13, 20, 12, 21, 11, 22, 10, 23, 9, 24, 8, 25, 43, 62,
+        ];
         assert_eq!(seq, expected);
     }
 
@@ -1534,8 +1553,7 @@ mod tests {
             // Check some symmetry (not perfect at edges)
             for i in 1..mid {
                 if i < gen.len() - i - 1 {
-                    assert_eq!(gen[mid - i], gen[mid + i],
-                        "Rule 90 should be symmetric");
+                    assert_eq!(gen[mid - i], gen[mid + i], "Rule 90 should be symmetric");
                 }
             }
         }
@@ -1576,13 +1594,16 @@ mod tests {
 
         // Rule 110 should create complex but structured patterns
         // Not all zeros, not all ones
-        let total_ones: usize = ca.iter()
+        let total_ones: usize = ca
+            .iter()
             .map(|gen| gen.iter().filter(|&&x| x == 1).count())
             .sum();
 
         let total_cells = ca.len() * ca[0].len();
-        assert!(total_ones > 0 && total_ones < total_cells,
-            "Rule 110 should create mixed patterns");
+        assert!(
+            total_ones > 0 && total_ones < total_cells,
+            "Rule 110 should create mixed patterns"
+        );
     }
 
     #[test]
@@ -1593,8 +1614,12 @@ mod tests {
 
             for gen in &ca {
                 for &cell in gen {
-                    assert!(cell == 0 || cell == 1,
-                        "Rule {} produced non-binary value: {}", rule, cell);
+                    assert!(
+                        cell == 0 || cell == 1,
+                        "Rule {} produced non-binary value: {}",
+                        rule,
+                        cell
+                    );
                 }
             }
         }
@@ -1606,7 +1631,8 @@ mod tests {
         let ca = cellular_automaton(30, 8, 16, None);
 
         // Convert 5th generation to rhythm
-        let rhythm: Vec<usize> = ca[4].iter()
+        let rhythm: Vec<usize> = ca[4]
+            .iter()
             .enumerate()
             .filter(|(_, &v)| v == 1)
             .map(|(i, _)| i)

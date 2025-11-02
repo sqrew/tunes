@@ -26,6 +26,19 @@
 //! - Effects (reverb, delay, distortion, chorus, etc.)
 //! - Modulation routes (LFO modulation of parameters)
 //!
+//! # Effect Processing Order
+//!
+//! Effects are processed in order of their priority (lower priority = earlier in signal chain).
+//! Use the provided constants or any u8 value (0-255) for custom ordering:
+//!
+//! - **`PRIORITY_FIRST`** (0) - Process first
+//! - **`PRIORITY_EARLY`** (25) - Early in chain (EQ, compression)
+//! - **`PRIORITY_NORMAL`** (100) - Normal position (distortion, saturation)
+//! - **`PRIORITY_MODULATION`** (125) - Modulation effects (chorus, phaser, flanger)
+//! - **`PRIORITY_TIME_BASED`** (150) - Time-based effects (delay)
+//! - **`PRIORITY_SPATIAL`** (200) - Spatial effects (reverb)
+//! - **`PRIORITY_LAST`** (255) - Process last
+//!
 //! # Example
 //!
 //! ```
@@ -42,8 +55,35 @@
 //!     .notes(&[C4, E4, G4], 0.5);
 //! ```
 
+// Effect priority constants
+// Lower priority = earlier in signal chain (0 is first, 255 is last)
+
+/// Process effect first in the chain
+pub const PRIORITY_FIRST: u8 = 0;
+
+/// Early in chain - typically EQ and compression
+pub const PRIORITY_EARLY: u8 = 25;
+
+/// Normal position - distortion, saturation, bit crushing
+pub const PRIORITY_NORMAL: u8 = 100;
+
+/// Modulation effects - chorus, phaser, flanger, ring mod
+pub const PRIORITY_MODULATION: u8 = 125;
+
+/// Time-based effects - delay
+pub const PRIORITY_TIME_BASED: u8 = 150;
+
+/// Spatial effects - reverb (usually last)
+pub const PRIORITY_SPATIAL: u8 = 200;
+
+/// Process effect last in the chain
+pub const PRIORITY_LAST: u8 = 255;
+
 use crate::drums::DrumType;
-use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
+use crate::effects::{
+    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
+    Reverb, RingModulator, Saturation, Tremolo,
+};
 use crate::envelope::Envelope;
 use crate::filter::Filter;
 use crate::filter_envelope::FilterEnvelope;
@@ -114,7 +154,7 @@ pub struct NoteEvent {
     pub fm_params: FMParams, // FM synthesis parameters (mod_index=0 disables FM)
     pub pitch_bend_semitones: f32, // Pitch bend amount in semitones (0.0 = no bend)
     pub custom_wavetable: Option<crate::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
-    pub velocity: f32,      // Note velocity (0.0 to 1.0), affects MIDI export and can be used for expression
+    pub velocity: f32, // Note velocity (0.0 to 1.0), affects MIDI export and can be used for expression
 }
 
 /// Represents a drum hit event
@@ -129,8 +169,8 @@ pub struct DrumEvent {
 pub struct SampleEvent {
     pub sample: Sample,
     pub start_time: f32,
-    pub playback_rate: f32,  // 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed
-    pub volume: f32,         // 0.0 to 1.0
+    pub playback_rate: f32, // 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed
+    pub volume: f32,        // 0.0 to 1.0
 }
 
 /// Represents a tempo change event
@@ -368,23 +408,30 @@ impl NoteEvent {
 #[derive(Debug, Clone)]
 pub struct Track {
     pub events: Vec<AudioEvent>,
-    pub name: Option<String>,           // Track name (used in MIDI export)
-    pub midi_program: Option<u8>,       // MIDI program number (0-127) for this track
-    pub volume: f32,                    // 0.0 to 1.0
-    pub pan: f32,                       // -1.0 (left) to 1.0 (right), 0.0 = center
-    pub filter: Filter,                 // Filter applied to this track
-    pub delay: Option<Delay>,           // Optional delay effect
-    pub reverb: Option<Reverb>,         // Optional reverb effect
-    pub distortion: Option<Distortion>, // Optional distortion effect
-    pub bitcrusher: Option<BitCrusher>, // Optional bitcrusher effect
-    pub compressor: Option<Compressor>, // Optional compressor effect
-    pub chorus: Option<Chorus>,         // Optional chorus effect
-    pub eq: Option<EQ>,                 // Optional EQ effect
-    pub saturation: Option<Saturation>, // Optional saturation effect
-    pub phaser: Option<Phaser>,         // Optional phaser effect
-    pub flanger: Option<Flanger>,       // Optional flanger effect
+    pub name: Option<String>,     // Track name (used in MIDI export)
+    pub midi_program: Option<u8>, // MIDI program number (0-127) for this track
+    pub volume: f32,              // 0.0 to 1.0
+    pub pan: f32,                 // -1.0 (left) to 1.0 (right), 0.0 = center
+    pub filter: Filter,           // Filter applied to this track
+
+    // Effects (each effect carries its own priority for ordering)
+    pub eq: Option<EQ>,                  // Optional EQ effect
+    pub compressor: Option<Compressor>,  // Optional compressor effect
+    pub gate: Option<Gate>,              // Optional gate effect
+    pub saturation: Option<Saturation>,  // Optional saturation effect
+    pub bitcrusher: Option<BitCrusher>,  // Optional bitcrusher effect
+    pub distortion: Option<Distortion>,  // Optional distortion effect
+    pub chorus: Option<Chorus>,          // Optional chorus effect
+    pub phaser: Option<Phaser>,          // Optional phaser effect
+    pub flanger: Option<Flanger>,        // Optional flanger effect
     pub ring_mod: Option<RingModulator>, // Optional ring modulator effect
-    pub modulation: Vec<ModRoute>,      // LFO modulation routes
+    pub tremolo: Option<Tremolo>,        // Optional tremolo effect
+    pub autopan: Option<AutoPan>,        // Optional auto-pan effect
+    pub delay: Option<Delay>,            // Optional delay effect
+    pub reverb: Option<Reverb>,          // Optional reverb effect
+    pub limiter: Option<Limiter>,        // Optional limiter effect
+
+    pub modulation: Vec<ModRoute>, // LFO modulation routes
 
     // Cached time bounds for performance (computed on-demand)
     cached_start_time: Option<f32>,
@@ -407,17 +454,24 @@ impl Track {
             volume: 1.0,
             pan: 0.0, // Center by default
             filter: Filter::none(),
-            delay: None,
-            reverb: None,
-            distortion: None,
-            bitcrusher: None,
-            compressor: None,
-            chorus: None,
+
+            // Effects (priority is stored within each effect)
             eq: None,
+            compressor: None,
+            gate: None,
             saturation: None,
+            bitcrusher: None,
+            distortion: None,
+            chorus: None,
             phaser: None,
             flanger: None,
             ring_mod: None,
+            tremolo: None,
+            autopan: None,
+            delay: None,
+            reverb: None,
+            limiter: None,
+
             modulation: Vec::new(),
             cached_start_time: None,
             cached_end_time: None,
@@ -434,7 +488,9 @@ impl Track {
             return cached;
         }
 
-        let start = self.events.iter()
+        let start = self
+            .events
+            .iter()
             .map(|e| match e {
                 AudioEvent::Note(n) => n.start_time,
                 AudioEvent::Drum(d) => d.start_time,
@@ -481,7 +537,8 @@ impl Track {
     fn ensure_sorted(&mut self) {
         if !self.events_sorted {
             self.events.sort_by(|a, b| {
-                a.start_time().partial_cmp(&b.start_time())
+                a.start_time()
+                    .partial_cmp(&b.start_time())
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
             self.events_sorted = true;
@@ -502,7 +559,9 @@ impl Track {
         // For simplicity, we search for events that start before or at current time + lookahead
 
         // Find first event that ends after current time
-        let start_idx = self.events.partition_point(|event| event.end_time() <= time);
+        let start_idx = self
+            .events
+            .partition_point(|event| event.end_time() <= time);
 
         // All remaining events could potentially be active (they end after current time)
         // We could further optimize by finding events that start after current time,
@@ -692,8 +751,8 @@ impl Track {
         custom_wavetable: Option<crate::wavetable::Wavetable>,
         velocity: f32,
     ) {
-        self.events.push(AudioEvent::Note(
-            NoteEvent::with_complete_params(
+        self.events
+            .push(AudioEvent::Note(NoteEvent::with_complete_params(
                 frequencies,
                 start_time,
                 duration,
@@ -704,8 +763,7 @@ impl Track {
                 pitch_bend_semitones,
                 custom_wavetable,
                 velocity,
-            ),
-        ));
+            )));
         self.invalidate_time_cache();
     }
 
@@ -774,6 +832,7 @@ impl Default for Track {
 pub struct Mixer {
     pub tracks: Vec<Track>,
     pub tempo: Tempo,
+    sample_count: u64, // For quantized automation lookups
 }
 
 impl Mixer {
@@ -785,6 +844,7 @@ impl Mixer {
         Self {
             tracks: Vec::new(),
             tempo,
+            sample_count: 0,
         }
     }
 
@@ -857,34 +917,42 @@ impl Mixer {
                             track.add_drum(drum.drum_type, drum.start_time + offset);
                         }
                         AudioEvent::Sample(sample) => {
-                            track.events.push(AudioEvent::Sample(crate::track::SampleEvent {
-                                sample: sample.sample.clone(),
-                                start_time: sample.start_time + offset,
-                                playback_rate: sample.playback_rate,
-                                volume: sample.volume,
-                            }));
+                            track
+                                .events
+                                .push(AudioEvent::Sample(crate::track::SampleEvent {
+                                    sample: sample.sample.clone(),
+                                    start_time: sample.start_time + offset,
+                                    playback_rate: sample.playback_rate,
+                                    volume: sample.volume,
+                                }));
                             track.invalidate_time_cache();
                         }
                         AudioEvent::TempoChange(tempo) => {
-                            track.events.push(AudioEvent::TempoChange(crate::track::TempoChangeEvent {
-                                start_time: tempo.start_time + offset,
-                                bpm: tempo.bpm,
-                            }));
+                            track.events.push(AudioEvent::TempoChange(
+                                crate::track::TempoChangeEvent {
+                                    start_time: tempo.start_time + offset,
+                                    bpm: tempo.bpm,
+                                },
+                            ));
                             track.invalidate_time_cache();
                         }
                         AudioEvent::TimeSignature(time_sig) => {
-                            track.events.push(AudioEvent::TimeSignature(crate::track::TimeSignatureEvent {
-                                start_time: time_sig.start_time + offset,
-                                numerator: time_sig.numerator,
-                                denominator: time_sig.denominator,
-                            }));
+                            track.events.push(AudioEvent::TimeSignature(
+                                crate::track::TimeSignatureEvent {
+                                    start_time: time_sig.start_time + offset,
+                                    numerator: time_sig.numerator,
+                                    denominator: time_sig.denominator,
+                                },
+                            ));
                             track.invalidate_time_cache();
                         }
                         AudioEvent::KeySignature(key_sig) => {
-                            track.events.push(AudioEvent::KeySignature(KeySignatureEvent {
-                                start_time: key_sig.start_time + offset,
-                                key_signature: key_sig.key_signature,
-                            }));
+                            track
+                                .events
+                                .push(AudioEvent::KeySignature(KeySignatureEvent {
+                                    start_time: key_sig.start_time + offset,
+                                    key_signature: key_sig.key_signature,
+                                }));
                             track.invalidate_time_cache();
                         }
                     }
@@ -911,6 +979,9 @@ impl Mixer {
     /// # Returns
     /// A tuple of (left_channel, right_channel) audio samples in range -1.0 to 1.0
     pub fn sample_at(&mut self, time: f32, sample_rate: f32, _sample_clock: f32) -> (f32, f32) {
+        // Increment sample count for quantized automation lookups
+        self.sample_count = self.sample_count.wrapping_add(1);
+
         let mut mixed_left = 0.0;
         let mut mixed_right = 0.0;
 
@@ -927,7 +998,8 @@ impl Mixer {
             // (unless it has delay/reverb which can extend beyond the events)
             if (time < track_start || time > track_end)
                 && track.delay.is_none()
-                && track.reverb.is_none() {
+                && track.reverb.is_none()
+            {
                 continue;
             }
 
@@ -944,15 +1016,17 @@ impl Mixer {
                 match event {
                     AudioEvent::Sample(sample_event) => {
                         let time_in_sample = time - sample_event.start_time;
-                        let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
+                        let sample_duration =
+                            sample_event.sample.duration / sample_event.playback_rate;
 
                         if time_in_sample >= 0.0 && time_in_sample < sample_duration {
                             has_active_event = true;
-                            let (sample_left, sample_right) = sample_event.sample.sample_at_interpolated(
-                                time_in_sample,
-                                sample_event.playback_rate,
-                                sample_rate
-                            );
+                            let (sample_left, sample_right) =
+                                sample_event.sample.sample_at_interpolated(
+                                    time_in_sample,
+                                    sample_event.playback_rate,
+                                    sample_rate,
+                                );
                             track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
                         }
                     }
@@ -971,10 +1045,14 @@ impl Mixer {
                             // Get filter envelope from this note (if it has one)
                             // Use the first active note's filter envelope we encounter
                             if !filter_env_found && note_event.filter_envelope.amount > 0.0 {
-                                let filter_total_duration = note_event.filter_envelope.total_duration(note_event.duration);
+                                let filter_total_duration = note_event
+                                    .filter_envelope
+                                    .total_duration(note_event.duration);
                                 let filter_end = note_event.start_time + filter_total_duration;
                                 if time >= note_event.start_time && time < filter_end {
-                                    filter_env_cutoff = note_event.filter_envelope.cutoff_at(time_in_note, note_event.duration);
+                                    filter_env_cutoff = note_event
+                                        .filter_envelope
+                                        .cutoff_at(time_in_note, note_event.duration);
                                     filter_env_found = true;
                                 }
                             }
@@ -991,9 +1069,11 @@ impl Mixer {
                                 // Apply pitch bend (linear over note duration)
                                 // Skip expensive math if no pitch bend
                                 let freq = if note_event.pitch_bend_semitones != 0.0 {
-                                    let bend_progress = (time_in_note / note_event.duration).min(1.0);
-                                    let bend_multiplier = 2.0f32
-                                        .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
+                                    let bend_progress =
+                                        (time_in_note / note_event.duration).min(1.0);
+                                    let bend_multiplier = 2.0f32.powf(
+                                        (note_event.pitch_bend_semitones * bend_progress) / 12.0,
+                                    );
                                     base_freq * bend_multiplier
                                 } else {
                                     base_freq
@@ -1001,7 +1081,11 @@ impl Mixer {
 
                                 let sample = if note_event.fm_params.mod_index > 0.0 {
                                     // Use FM synthesis
-                                    note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                    note_event.fm_params.sample(
+                                        freq,
+                                        time_in_note,
+                                        note_event.duration,
+                                    )
                                 } else if let Some(ref wavetable) = note_event.custom_wavetable {
                                     // Use custom wavetable
                                     let phase = (time_in_note * freq) % 1.0;
@@ -1079,65 +1163,183 @@ impl Mixer {
                 track.filter.resonance = modulated_resonance;
                 track_value = track.filter.process(track_value, sample_rate);
 
-                // Apply EQ (shape frequencies early in chain)
-                if let Some(ref mut eq) = track.eq {
-                    track_value = eq.process(track_value, sample_rate);
-                }
+                // Build list of active effects with their priorities
+                // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
+                //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
+                //             11=Delay, 12=Reverb, 13=Limiter
+                // Note: AutoPan (14) is handled separately at the stereo stage
+                let mut effect_order: Vec<(u8, u8)> = Vec::with_capacity(14);
 
-                // Apply compressor (dynamics control)
-                if let Some(ref mut compressor) = track.compressor {
-                    track_value = compressor.process(track_value, sample_rate);
+                if let Some(ref eq) = track.eq {
+                    effect_order.push((eq.priority, 0));
                 }
-
-                // Apply saturation (warm coloration)
+                if let Some(ref compressor) = track.compressor {
+                    effect_order.push((compressor.priority, 1));
+                }
+                if let Some(ref gate) = track.gate {
+                    effect_order.push((gate.priority, 2));
+                }
                 if let Some(ref saturation) = track.saturation {
-                    track_value = saturation.process(track_value);
+                    effect_order.push((saturation.priority, 3));
                 }
-
-                // Apply bitcrusher (lo-fi degradation)
-                if let Some(ref mut bitcrusher) = track.bitcrusher {
-                    track_value = bitcrusher.process(track_value);
+                if let Some(ref bitcrusher) = track.bitcrusher {
+                    effect_order.push((bitcrusher.priority, 4));
                 }
-
-                // Apply distortion
                 if let Some(ref distortion) = track.distortion {
-                    track_value = distortion.process(track_value);
+                    effect_order.push((distortion.priority, 5));
+                }
+                if let Some(ref chorus) = track.chorus {
+                    effect_order.push((chorus.priority, 6));
+                }
+                if let Some(ref phaser) = track.phaser {
+                    effect_order.push((phaser.priority, 7));
+                }
+                if let Some(ref flanger) = track.flanger {
+                    effect_order.push((flanger.priority, 8));
+                }
+                if let Some(ref ring_mod) = track.ring_mod {
+                    effect_order.push((ring_mod.priority, 9));
+                }
+                if let Some(ref tremolo) = track.tremolo {
+                    effect_order.push((tremolo.priority, 10));
+                }
+                if let Some(ref delay) = track.delay {
+                    effect_order.push((delay.priority, 11));
+                }
+                if let Some(ref reverb) = track.reverb {
+                    effect_order.push((reverb.priority, 12));
+                }
+                if let Some(ref limiter) = track.limiter {
+                    effect_order.push((limiter.priority, 13));
                 }
 
-                // Apply chorus (modulation effect)
-                if let Some(ref mut chorus) = track.chorus {
-                    track_value = chorus.process(track_value, sample_rate);
-                }
+                // Sort by priority (lower priority = earlier in chain)
+                effect_order.sort_by_key(|&(priority, _)| priority);
 
-                // Apply phaser (sweeping notch filter)
-                if let Some(ref mut phaser) = track.phaser {
-                    track_value = phaser.process(track_value);
-                }
-
-                // Apply flanger (jet-plane swoosh)
-                if let Some(ref mut flanger) = track.flanger {
-                    track_value = flanger.process(track_value);
-                }
-
-                // Apply ring modulator (metallic/robotic tones)
-                if let Some(ref mut ring_mod) = track.ring_mod {
-                    track_value = ring_mod.process(track_value);
-                }
-
-                // Apply delay
-                if let Some(ref mut delay) = track.delay {
-                    track_value = delay.process(track_value);
-                }
-
-                // Apply reverb
-                if let Some(ref mut reverb) = track.reverb {
-                    track_value = reverb.process(track_value, time);
+                // Apply effects in priority order
+                for (_, effect_id) in effect_order {
+                    match effect_id {
+                        0 => {
+                            // EQ
+                            if let Some(ref mut eq) = track.eq {
+                                track_value =
+                                    eq.process(track_value, sample_rate, time, self.sample_count);
+                            }
+                        }
+                        1 => {
+                            // Compressor
+                            if let Some(ref mut compressor) = track.compressor {
+                                track_value = compressor.process(
+                                    track_value,
+                                    sample_rate,
+                                    time,
+                                    self.sample_count,
+                                );
+                            }
+                        }
+                        2 => {
+                            // Gate
+                            if let Some(ref mut gate) = track.gate {
+                                track_value =
+                                    gate.process(track_value, sample_rate, time, self.sample_count);
+                            }
+                        }
+                        3 => {
+                            // Saturation
+                            if let Some(ref mut saturation) = track.saturation {
+                                track_value =
+                                    saturation.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        4 => {
+                            // BitCrusher
+                            if let Some(ref mut bitcrusher) = track.bitcrusher {
+                                track_value =
+                                    bitcrusher.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        5 => {
+                            // Distortion
+                            if let Some(ref mut distortion) = track.distortion {
+                                track_value =
+                                    distortion.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        6 => {
+                            // Chorus
+                            if let Some(ref mut chorus) = track.chorus {
+                                track_value = chorus.process(
+                                    track_value,
+                                    sample_rate,
+                                    time,
+                                    self.sample_count,
+                                );
+                            }
+                        }
+                        7 => {
+                            // Phaser
+                            if let Some(ref mut phaser) = track.phaser {
+                                track_value = phaser.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        8 => {
+                            // Flanger
+                            if let Some(ref mut flanger) = track.flanger {
+                                track_value = flanger.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        9 => {
+                            // Ring Modulator
+                            if let Some(ref mut ring_mod) = track.ring_mod {
+                                track_value =
+                                    ring_mod.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        10 => {
+                            // Tremolo
+                            if let Some(ref mut tremolo) = track.tremolo {
+                                track_value = tremolo.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        11 => {
+                            // Delay
+                            if let Some(ref mut delay) = track.delay {
+                                track_value = delay.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        12 => {
+                            // Reverb
+                            if let Some(ref mut reverb) = track.reverb {
+                                track_value = reverb.process(track_value, time, self.sample_count);
+                            }
+                        }
+                        13 => {
+                            // Limiter
+                            if let Some(ref mut limiter) = track.limiter {
+                                track_value = limiter.process(
+                                    track_value,
+                                    sample_rate,
+                                    time,
+                                    self.sample_count,
+                                );
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
                 }
             }
 
             // Apply stereo panning using constant power panning
             // pan: -1.0 (full left), 0.0 (center), 1.0 (full right)
-            let pan_clamped = track.pan.clamp(-1.0, 1.0);
+
+            // Add AutoPan offset if present
+            let pan_offset = if let Some(ref mut autopan) = track.autopan {
+                autopan.get_pan_offset(time, self.sample_count)
+            } else {
+                0.0
+            };
+
+            let pan_clamped = (track.pan + pan_offset).clamp(-1.0, 1.0);
             let pan_angle = (pan_clamped + 1.0) * 0.25 * std::f32::consts::PI; // 0 to PI/2
             let left_gain = pan_angle.cos();
             let right_gain = pan_angle.sin();
@@ -1291,11 +1493,16 @@ mod tests {
     #[test]
     fn test_note_event_truncates_frequencies() {
         // Test that more than 8 frequencies are truncated
-        let freqs = [100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0];
+        let freqs = [
+            100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0,
+        ];
         let note = NoteEvent::new(&freqs, 0.0, 1.0);
 
         assert_eq!(note.num_freqs, 8, "Should truncate to max 8 frequencies");
-        assert_eq!(note.frequencies[7], 800.0, "Should include first 8 frequencies");
+        assert_eq!(
+            note.frequencies[7], 800.0,
+            "Should include first 8 frequencies"
+        );
     }
 
     #[test]
@@ -1448,7 +1655,11 @@ mod tests {
         mixer.add_track(track1);
         mixer.add_track(track2);
 
-        assert_eq!(mixer.total_duration(), 4.0, "Should return longest track duration");
+        assert_eq!(
+            mixer.total_duration(),
+            4.0,
+            "Should return longest track duration"
+        );
     }
 
     #[test]

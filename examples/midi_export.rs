@@ -52,7 +52,10 @@ fn main() -> anyhow::Result<()> {
     println!("  • File: output.mid");
     println!("  • Tempo: 120 BPM");
     println!("  • Format: Standard MIDI File (Type 1)");
-    println!("  • Tracks: {} (including tempo track)", mixer.tracks.len() + 1);
+    println!(
+        "  • Tracks: {} (including tempo track)",
+        mixer.tracks.len() + 1
+    );
     println!("  • Resolution: 480 PPQ (Pulses Per Quarter Note)\n");
 
     println!("What's Exported:");

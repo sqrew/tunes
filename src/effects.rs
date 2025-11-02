@@ -1,4 +1,8 @@
 use crate::automation::Automation;
+use crate::track::{
+    PRIORITY_EARLY, PRIORITY_LAST, PRIORITY_MODULATION, PRIORITY_NORMAL, PRIORITY_SPATIAL,
+    PRIORITY_TIME_BASED,
+};
 
 /// Standard audio sample rate
 const DEFAULT_SAMPLE_RATE: f32 = 44100.0;
@@ -6,11 +10,17 @@ const DEFAULT_SAMPLE_RATE: f32 = 44100.0;
 /// Delay effect with feedback
 #[derive(Debug, Clone)]
 pub struct Delay {
-    pub delay_time: f32,  // Delay time in seconds
-    pub feedback: f32,    // Feedback amount (0.0 to 0.99)
-    pub mix: f32,         // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub delay_time: f32, // Delay time in seconds
+    pub feedback: f32,   // Feedback amount (0.0 to 0.99)
+    pub mix: f32,        // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,    // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
+
+    // Automation (optional)
+    delay_time_automation: Option<Automation>,
+    feedback_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl Delay {
@@ -26,13 +36,59 @@ impl Delay {
             delay_time,
             feedback: feedback.clamp(0.0, 0.99),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_TIME_BASED, // Time-based effects typically come late in chain
             buffer: vec![0.0; buffer_size.max(1)],
             write_pos: 0,
+            delay_time_automation: None,
+            feedback_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the feedback parameter
+    pub fn with_feedback_automation(mut self, automation: Automation) -> Self {
+        self.feedback_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the delay time parameter
+    pub fn with_delay_time_automation(mut self, automation: Automation) -> Self {
+        self.delay_time_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.99);
+            }
+            if let Some(auto) = &self.delay_time_automation {
+                self.delay_time = auto.value_at(time).clamp(0.001, 10.0);
+            }
+        }
+
         if self.buffer.is_empty() || self.mix < 0.0001 {
             return input;
         }
@@ -60,9 +116,10 @@ impl Delay {
 /// Simple reverb using multiple comb filters
 #[derive(Debug, Clone)]
 pub struct Reverb {
-    pub room_size: f32,   // Room size (0.0 to 1.0)
-    pub damping: f32,     // High frequency damping (0.0 to 1.0)
-    pub mix: f32,         // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub room_size: f32, // Room size (0.0 to 1.0)
+    pub damping: f32,   // High frequency damping (0.0 to 1.0)
+    pub mix: f32,       // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     comb_buffers: Vec<Vec<f32>>,
     comb_positions: Vec<usize>,
     filter_state: Vec<f32>,
@@ -97,6 +154,7 @@ impl Reverb {
             room_size: room_size.clamp(0.0, 1.0),
             damping: damping.clamp(0.0, 1.0),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_SPATIAL, // Reverb typically comes last in chain
             comb_positions: vec![0; comb_buffers.len()],
             filter_state: vec![0.0; comb_buffers.len()],
             comb_buffers,
@@ -104,6 +162,12 @@ impl Reverb {
             room_size_automation: None,
             damping_automation: None,
         }
+    }
+
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
     }
 
     /// Add automation for the mix parameter
@@ -140,16 +204,20 @@ impl Reverb {
     /// # Arguments
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
-    pub fn process(&mut self, input: f32, time: f32) -> f32 {
-        // Update parameters from automation
-        if let Some(auto) = &self.mix_automation {
-            self.mix = auto.value_at(time).clamp(0.0, 1.0);
-        }
-        if let Some(auto) = &self.room_size_automation {
-            self.room_size = auto.value_at(time).clamp(0.0, 1.0);
-        }
-        if let Some(auto) = &self.damping_automation {
-            self.damping = auto.value_at(time).clamp(0.0, 1.0);
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        // This reduces automation overhead by 64x with no perceptible quality loss
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.room_size_automation {
+                self.room_size = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.damping_automation {
+                self.damping = auto.value_at(time).clamp(0.0, 1.0);
+            }
         }
 
         if self.mix < 0.0001 {
@@ -168,7 +236,8 @@ impl Reverb {
             let delayed = buffer[pos];
 
             // Apply damping filter (simple lowpass)
-            self.filter_state[i] = delayed * (1.0 - self.damping) + self.filter_state[i] * self.damping;
+            self.filter_state[i] =
+                delayed * (1.0 - self.damping) + self.filter_state[i] * self.damping;
 
             // Write to buffer with feedback
             buffer[pos] = input + self.filter_state[i] * feedback;
@@ -196,10 +265,15 @@ impl Reverb {
 }
 
 /// Distortion/overdrive effect
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Distortion {
-    pub drive: f32,       // Drive amount (1.0 = no distortion, higher = more)
-    pub mix: f32,         // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub drive: f32,   // Drive amount (1.0 = no distortion, higher = more)
+    pub mix: f32,     // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8, // Processing priority (lower = earlier in signal chain)
+
+    // Automation (optional)
+    drive_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl Distortion {
@@ -208,11 +282,47 @@ impl Distortion {
         Self {
             drive: drive.max(1.0),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_NORMAL, // Distortion in normal/middle position
+            drive_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the drive parameter
+    pub fn with_drive_automation(mut self, automation: Automation) -> Self {
+        self.drive_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample using soft clipping
-    pub fn process(&self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.drive_automation {
+                self.drive = auto.value_at(time).max(1.0);
+            }
+        }
+
         if self.mix < 0.0001 {
             return input;
         }
@@ -233,11 +343,17 @@ impl Distortion {
 /// Bit crusher - lo-fi digital degradation effect
 #[derive(Debug, Clone)]
 pub struct BitCrusher {
-    pub bit_depth: f32,        // Bit depth (1.0 to 16.0, lower = more crushing)
+    pub bit_depth: f32,             // Bit depth (1.0 to 16.0, lower = more crushing)
     pub sample_rate_reduction: f32, // Sample rate divisor (1.0 = no reduction, higher = more lo-fi)
-    pub mix: f32,              // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub mix: f32,                   // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,               // Processing priority (lower = earlier in signal chain)
     hold_sample: f32,
     sample_counter: f32,
+
+    // Automation (optional)
+    bit_depth_automation: Option<Automation>,
+    sample_rate_reduction_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl BitCrusher {
@@ -252,13 +368,59 @@ impl BitCrusher {
             bit_depth: bit_depth.clamp(1.0, 16.0),
             sample_rate_reduction: sample_rate_reduction.max(1.0),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_NORMAL, // BitCrusher in normal position
             hold_sample: 0.0,
             sample_counter: 0.0,
+            bit_depth_automation: None,
+            sample_rate_reduction_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the bit depth parameter
+    pub fn with_bit_depth_automation(mut self, automation: Automation) -> Self {
+        self.bit_depth_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the sample rate reduction parameter
+    pub fn with_sample_rate_reduction_automation(mut self, automation: Automation) -> Self {
+        self.sample_rate_reduction_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.bit_depth_automation {
+                self.bit_depth = auto.value_at(time).clamp(1.0, 16.0);
+            }
+            if let Some(auto) = &self.sample_rate_reduction_automation {
+                self.sample_rate_reduction = auto.value_at(time).max(1.0);
+            }
+        }
+
         // Sample rate reduction (sample & hold)
         self.sample_counter += 1.0;
         if self.sample_counter >= self.sample_rate_reduction {
@@ -285,12 +447,20 @@ impl BitCrusher {
 /// Compressor - dynamic range control
 #[derive(Debug, Clone)]
 pub struct Compressor {
-    pub threshold: f32,    // Threshold in amplitude 0.0-1.0 (NOT dB! 0.3 ≈ -10dB, 0.5 ≈ -6dB)
-    pub ratio: f32,        // Compression ratio (1.0 = no compression, 10.0 = heavy)
-    pub attack: f32,       // Attack time in seconds
-    pub release: f32,      // Release time in seconds
-    pub makeup_gain: f32,  // Makeup gain to compensate for volume reduction
+    pub threshold: f32, // Threshold in amplitude 0.0-1.0 (NOT dB! 0.3 ≈ -10dB, 0.5 ≈ -6dB)
+    pub ratio: f32,     // Compression ratio (1.0 = no compression, 10.0 = heavy)
+    pub attack: f32,    // Attack time in seconds
+    pub release: f32,   // Release time in seconds
+    pub makeup_gain: f32, // Makeup gain to compensate for volume reduction
+    pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     envelope: f32,
+
+    // Automation (optional)
+    threshold_automation: Option<Automation>,
+    ratio_automation: Option<Automation>,
+    attack_automation: Option<Automation>,
+    release_automation: Option<Automation>,
+    makeup_gain_automation: Option<Automation>,
 }
 
 impl Compressor {
@@ -310,12 +480,79 @@ impl Compressor {
             attack: attack.max(0.001),
             release: release.max(0.001),
             makeup_gain: makeup_gain.max(0.1),
+            priority: PRIORITY_EARLY, // Compressor typically early in chain
             envelope: 0.0,
+            threshold_automation: None,
+            ratio_automation: None,
+            attack_automation: None,
+            release_automation: None,
+            makeup_gain_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the threshold parameter
+    pub fn with_threshold_automation(mut self, automation: Automation) -> Self {
+        self.threshold_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the ratio parameter
+    pub fn with_ratio_automation(mut self, automation: Automation) -> Self {
+        self.ratio_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the attack parameter
+    pub fn with_attack_automation(mut self, automation: Automation) -> Self {
+        self.attack_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the release parameter
+    pub fn with_release_automation(mut self, automation: Automation) -> Self {
+        self.release_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the makeup gain parameter
+    pub fn with_makeup_gain_automation(mut self, automation: Automation) -> Self {
+        self.makeup_gain_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample at given sample rate
-    pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+            if let Some(auto) = &self.attack_automation {
+                self.attack = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.release_automation {
+                self.release = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.makeup_gain_automation {
+                self.makeup_gain = auto.value_at(time).max(0.1);
+            }
+        }
+
         let input_level = input.abs();
 
         // Envelope follower
@@ -353,12 +590,18 @@ impl Compressor {
 /// Chorus - creates thickness by layering detuned copies
 #[derive(Debug, Clone)]
 pub struct Chorus {
-    pub rate: f32,         // LFO rate in Hz (typical: 0.5 to 3.0)
-    pub depth: f32,        // Modulation depth in milliseconds (typical: 2.0 to 10.0)
-    pub mix: f32,          // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub rate: f32,    // LFO rate in Hz (typical: 0.5 to 3.0)
+    pub depth: f32,   // Modulation depth in milliseconds (typical: 2.0 to 10.0)
+    pub mix: f32,     // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8, // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
     lfo_phase: f32,
+
+    // Automation (optional)
+    rate_automation: Option<Automation>,
+    depth_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl Chorus {
@@ -382,14 +625,61 @@ impl Chorus {
             rate: rate.clamp(0.1, 10.0),
             depth: depth.clamp(0.5, 50.0),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             buffer: vec![0.0; buffer_size],
             write_pos: 0,
             lfo_phase: 0.0,
+            rate_automation: None,
+            depth_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the rate parameter
+    pub fn with_rate_automation(mut self, automation: Automation) -> Self {
+        self.rate_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the depth parameter
+    pub fn with_depth_automation(mut self, automation: Automation) -> Self {
+        self.depth_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample at given sample rate
-    pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.5, 50.0);
+            }
+        }
+
         if self.mix < 0.0001 {
             return input;
         }
@@ -428,17 +718,23 @@ impl Chorus {
 }
 
 /// Parametric EQ - 3-band equalizer
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct EQ {
-    pub low_gain: f32,     // Low frequency gain (0.0 to 2.0, 1.0 = unity)
-    pub mid_gain: f32,     // Mid frequency gain (0.0 to 2.0, 1.0 = unity)
-    pub high_gain: f32,    // High frequency gain (0.0 to 2.0, 1.0 = unity)
-    pub low_freq: f32,     // Low band center frequency (Hz)
-    pub high_freq: f32,    // High band center frequency (Hz)
+    pub low_gain: f32,  // Low frequency gain (0.0 to 2.0, 1.0 = unity)
+    pub mid_gain: f32,  // Mid frequency gain (0.0 to 2.0, 1.0 = unity)
+    pub high_gain: f32, // High frequency gain (0.0 to 2.0, 1.0 = unity)
+    pub low_freq: f32,  // Low band center frequency (Hz)
+    pub high_freq: f32, // High band center frequency (Hz)
+    pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     // State variables for filters
     low_state: [f32; 2],
     mid_state: [f32; 2],
     high_state: [f32; 2],
+
+    // Automation (optional)
+    low_gain_automation: Option<Automation>,
+    mid_gain_automation: Option<Automation>,
+    high_gain_automation: Option<Automation>,
 }
 
 impl EQ {
@@ -450,25 +746,79 @@ impl EQ {
     /// * `high_gain` - High frequency gain
     /// * `low_freq` - Low/mid crossover frequency (typical: 250 Hz)
     /// * `high_freq` - Mid/high crossover frequency (typical: 4000 Hz)
-    pub fn new(low_gain: f32, mid_gain: f32, high_gain: f32, low_freq: f32, high_freq: f32) -> Self {
+    pub fn new(
+        low_gain: f32,
+        mid_gain: f32,
+        high_gain: f32,
+        low_freq: f32,
+        high_freq: f32,
+    ) -> Self {
         Self {
             low_gain: low_gain.clamp(0.0, 4.0),
             mid_gain: mid_gain.clamp(0.0, 4.0),
             high_gain: high_gain.clamp(0.0, 4.0),
             low_freq: low_freq.clamp(20.0, 20000.0),
             high_freq: high_freq.clamp(20.0, 20000.0),
+            priority: PRIORITY_EARLY, // EQ typically early in chain
             low_state: [0.0; 2],
             mid_state: [0.0; 2],
             high_state: [0.0; 2],
+            low_gain_automation: None,
+            mid_gain_automation: None,
+            high_gain_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the low gain parameter
+    pub fn with_low_gain_automation(mut self, automation: Automation) -> Self {
+        self.low_gain_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the mid gain parameter
+    pub fn with_mid_gain_automation(mut self, automation: Automation) -> Self {
+        self.mid_gain_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the high gain parameter
+    pub fn with_high_gain_automation(mut self, automation: Automation) -> Self {
+        self.high_gain_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample at given sample rate
-    pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.low_gain_automation {
+                self.low_gain = auto.value_at(time).clamp(0.0, 4.0);
+            }
+            if let Some(auto) = &self.mid_gain_automation {
+                self.mid_gain = auto.value_at(time).clamp(0.0, 4.0);
+            }
+            if let Some(auto) = &self.high_gain_automation {
+                self.high_gain = auto.value_at(time).clamp(0.0, 4.0);
+            }
+        }
+
         // Early exit if all gains are unity (no EQ needed)
         if (self.low_gain - 1.0).abs() < 0.01
             && (self.mid_gain - 1.0).abs() < 0.01
-            && (self.high_gain - 1.0).abs() < 0.01 {
+            && (self.high_gain - 1.0).abs() < 0.01
+        {
             return input;
         }
 
@@ -499,11 +849,17 @@ impl EQ {
 }
 
 /// Saturation - warm analog-style clipping
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Saturation {
-    pub drive: f32,        // Drive amount (1.0 to 10.0)
-    pub character: f32,    // Saturation character (0.0 = soft, 1.0 = hard)
-    pub mix: f32,          // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub drive: f32,     // Drive amount (1.0 to 10.0)
+    pub character: f32, // Saturation character (0.0 = soft, 1.0 = hard)
+    pub mix: f32,       // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,   // Processing priority (lower = earlier in signal chain)
+
+    // Automation (optional)
+    drive_automation: Option<Automation>,
+    character_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl Saturation {
@@ -518,11 +874,57 @@ impl Saturation {
             drive: drive.clamp(1.0, 20.0),
             character: character.clamp(0.0, 1.0),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_NORMAL, // Saturation in normal position
+            drive_automation: None,
+            character_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the drive parameter
+    pub fn with_drive_automation(mut self, automation: Automation) -> Self {
+        self.drive_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the character parameter
+    pub fn with_character_automation(mut self, automation: Automation) -> Self {
+        self.character_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.drive_automation {
+                self.drive = auto.value_at(time).clamp(1.0, 20.0);
+            }
+            if let Some(auto) = &self.character_automation {
+                self.character = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
         if self.mix < 0.0001 {
             return input;
         }
@@ -547,14 +949,21 @@ impl Saturation {
 /// Phaser - creates sweeping notches in the frequency spectrum
 #[derive(Debug, Clone)]
 pub struct Phaser {
-    pub rate: f32,      // LFO rate in Hz (typical: 0.1 to 5.0)
-    pub depth: f32,     // Modulation depth (0.0 to 1.0)
-    pub feedback: f32,  // Feedback amount (0.0 to 0.95)
-    pub mix: f32,       // Wet/dry mix (0.0 = dry, 1.0 = wet)
-    pub stages: usize,  // Number of all-pass filter stages (2, 4, 6, or 8)
+    pub rate: f32,     // LFO rate in Hz (typical: 0.1 to 5.0)
+    pub depth: f32,    // Modulation depth (0.0 to 1.0)
+    pub feedback: f32, // Feedback amount (0.0 to 0.95)
+    pub mix: f32,      // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub stages: usize, // Number of all-pass filter stages (2, 4, 6, or 8)
+    pub priority: u8,  // Processing priority (lower = earlier in signal chain)
     allpass_states: Vec<AllPassFilter>,
     lfo_phase: f32,
     sample_rate: f32,
+
+    // Automation (optional)
+    rate_automation: Option<Automation>,
+    depth_automation: Option<Automation>,
+    feedback_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 #[derive(Debug, Clone)]
@@ -604,14 +1013,70 @@ impl Phaser {
             feedback: feedback.clamp(0.0, 0.95),
             mix: mix.clamp(0.0, 1.0),
             stages,
+            priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             allpass_states: vec![AllPassFilter::new(); stages],
             lfo_phase: 0.0,
             sample_rate,
+            rate_automation: None,
+            depth_automation: None,
+            feedback_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the rate parameter
+    pub fn with_rate_automation(mut self, automation: Automation) -> Self {
+        self.rate_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the depth parameter
+    pub fn with_depth_automation(mut self, automation: Automation) -> Self {
+        self.depth_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the feedback parameter
+    pub fn with_feedback_automation(mut self, automation: Automation) -> Self {
+        self.feedback_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.95);
+            }
+        }
+
         if self.mix < 0.0001 || self.depth < 0.0001 {
             return input;
         }
@@ -654,14 +1119,21 @@ impl Phaser {
 /// Flanger - creates jet-plane/swoosh effects with very short delays
 #[derive(Debug, Clone)]
 pub struct Flanger {
-    pub rate: f32,      // LFO rate in Hz (typical: 0.1 to 2.0)
-    pub depth: f32,     // Modulation depth in milliseconds (typical: 1.0 to 5.0)
-    pub feedback: f32,  // Feedback amount (0.0 to 0.95)
-    pub mix: f32,       // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub rate: f32,     // LFO rate in Hz (typical: 0.1 to 2.0)
+    pub depth: f32,    // Modulation depth in milliseconds (typical: 1.0 to 5.0)
+    pub feedback: f32, // Feedback amount (0.0 to 0.95)
+    pub mix: f32,      // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,  // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
     lfo_phase: f32,
     sample_rate: f32,
+
+    // Automation (optional)
+    rate_automation: Option<Automation>,
+    depth_automation: Option<Automation>,
+    feedback_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl Flanger {
@@ -677,7 +1149,13 @@ impl Flanger {
     }
 
     /// Create a new flanger effect with custom sample rate
-    pub fn with_sample_rate(rate: f32, depth: f32, feedback: f32, mix: f32, sample_rate: f32) -> Self {
+    pub fn with_sample_rate(
+        rate: f32,
+        depth: f32,
+        feedback: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
         // Buffer size needs to accommodate maximum delay (in samples)
         let max_delay_samples = ((depth * 2.0) * sample_rate / 1000.0) as usize;
         let buffer_size = max_delay_samples.max(1);
@@ -687,15 +1165,71 @@ impl Flanger {
             depth,
             feedback: feedback.clamp(0.0, 0.95),
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             buffer: vec![0.0; buffer_size],
             write_pos: 0,
             lfo_phase: 0.0,
             sample_rate,
+            rate_automation: None,
+            depth_automation: None,
+            feedback_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the rate parameter
+    pub fn with_rate_automation(mut self, automation: Automation) -> Self {
+        self.rate_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the depth parameter
+    pub fn with_depth_automation(mut self, automation: Automation) -> Self {
+        self.depth_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the feedback parameter
+    pub fn with_feedback_automation(mut self, automation: Automation) -> Self {
+        self.feedback_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.5, 50.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.95);
+            }
+        }
+
         // Safety check: if buffer is empty, just pass through
         if self.buffer.is_empty() || self.mix < 0.0001 {
             return input;
@@ -704,7 +1238,8 @@ impl Flanger {
         // Calculate modulated delay time using sine LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
         let delay_ms = self.depth * (1.0 + lfo) * 0.5; // 0 to depth milliseconds
-        let delay_samples = ((delay_ms * self.sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
+        let delay_samples =
+            ((delay_ms * self.sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
 
         // Read from delayed position
         let read_pos = if self.write_pos >= delay_samples {
@@ -741,10 +1276,15 @@ impl Flanger {
 /// Ring Modulator - creates metallic/robotic inharmonic tones
 #[derive(Debug, Clone)]
 pub struct RingModulator {
-    pub carrier_freq: f32,  // Carrier frequency in Hz (typical: 50 to 5000)
-    pub mix: f32,           // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub carrier_freq: f32, // Carrier frequency in Hz (typical: 50 to 5000)
+    pub mix: f32,          // Wet/dry mix (0.0 = dry, 1.0 = wet)
+    pub priority: u8,      // Processing priority (lower = earlier in signal chain)
     phase: f32,
     sample_rate: f32,
+
+    // Automation (optional)
+    carrier_freq_automation: Option<Automation>,
+    mix_automation: Option<Automation>,
 }
 
 impl RingModulator {
@@ -762,13 +1302,49 @@ impl RingModulator {
         Self {
             carrier_freq,
             mix: mix.clamp(0.0, 1.0),
+            priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             phase: 0.0,
             sample_rate,
+            carrier_freq_automation: None,
+            mix_automation: None,
         }
     }
 
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the mix parameter
+    pub fn with_mix_automation(mut self, automation: Automation) -> Self {
+        self.mix_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the carrier frequency parameter
+    pub fn with_carrier_freq_automation(mut self, automation: Automation) -> Self {
+        self.carrier_freq_automation = Some(automation);
+        self
+    }
+
     /// Process a single sample
-    pub fn process(&mut self, input: f32) -> f32 {
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.carrier_freq_automation {
+                self.carrier_freq = auto.value_at(time).clamp(20.0, 10000.0);
+            }
+        }
+
         if self.mix < 0.0001 {
             return input;
         }
@@ -795,6 +1371,453 @@ impl RingModulator {
     }
 }
 
+/// Tremolo - rhythmic amplitude modulation
+///
+/// Creates periodic volume changes, adding rhythmic movement to the signal.
+/// Lower frequency rates (< 10 Hz) create a pulsing effect, while higher rates
+/// can create vibrato-like timbral changes.
+#[derive(Debug, Clone)]
+pub struct Tremolo {
+    pub rate: f32,    // LFO rate in Hz (typically 1-20 Hz)
+    pub depth: f32,   // Modulation depth 0.0 to 1.0
+    pub priority: u8, // Processing priority
+    phase: f32,       // LFO phase (0.0 to 1.0)
+    sample_rate: f32,
+
+    // Automation (optional)
+    rate_automation: Option<Automation>,
+    depth_automation: Option<Automation>,
+}
+
+impl Tremolo {
+    /// Create a new tremolo effect
+    ///
+    /// # Arguments
+    /// * `rate` - LFO frequency in Hz (typically 1-20 Hz)
+    /// * `depth` - Modulation depth 0.0 (no effect) to 1.0 (full tremolo)
+    /// * `sample_rate` - Audio sample rate in Hz
+    pub fn with_sample_rate(rate: f32, depth: f32, sample_rate: f32) -> Self {
+        Self {
+            rate: rate.max(0.01),
+            depth: depth.clamp(0.0, 1.0),
+            priority: PRIORITY_MODULATION,
+            phase: 0.0,
+            sample_rate,
+            rate_automation: None,
+            depth_automation: None,
+        }
+    }
+
+    /// Create a tremolo with default sample rate (44100 Hz)
+    pub fn new(rate: f32, depth: f32) -> Self {
+        Self::with_sample_rate(rate, depth, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the rate parameter
+    pub fn with_rate_automation(mut self, automation: Automation) -> Self {
+        self.rate_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the depth parameter
+    pub fn with_depth_automation(mut self, automation: Automation) -> Self {
+        self.depth_automation = Some(automation);
+        self
+    }
+
+    /// Process a single sample
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).max(0.01);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
+        // Early out if no modulation
+        if self.depth < 0.0001 {
+            return input;
+        }
+
+        // Generate LFO (sine wave)
+        let lfo = (self.phase * 2.0 * std::f32::consts::PI).sin();
+
+        // Convert bipolar LFO (-1 to 1) to unipolar modulation
+        // depth controls how much the volume varies
+        let modulation = 1.0 - (self.depth * (1.0 - lfo) * 0.5);
+
+        // Advance phase
+        self.phase += self.rate / self.sample_rate;
+        if self.phase >= 1.0 {
+            self.phase -= 1.0;
+        }
+
+        input * modulation
+    }
+
+    /// Reset the tremolo state
+    pub fn reset(&mut self) {
+        self.phase = 0.0;
+    }
+}
+
+/// AutoPan - automatic stereo panning modulation
+///
+/// Creates rhythmic stereo movement by automatically panning the signal
+/// left and right. This is applied at the stereo stage after mono effects.
+#[derive(Debug, Clone)]
+pub struct AutoPan {
+    pub rate: f32,    // LFO rate in Hz (typically 0.1-10 Hz)
+    pub depth: f32,   // Panning depth 0.0 to 1.0 (0.5 = full L-R sweep)
+    pub priority: u8, // Processing priority (processed at stereo stage)
+    phase: f32,       // LFO phase (0.0 to 1.0)
+    sample_rate: f32,
+
+    // Automation (optional)
+    rate_automation: Option<Automation>,
+    depth_automation: Option<Automation>,
+}
+
+impl AutoPan {
+    /// Create a new auto-pan effect
+    ///
+    /// # Arguments
+    /// * `rate` - LFO frequency in Hz (typically 0.1-10 Hz)
+    /// * `depth` - Pan modulation depth 0.0 to 1.0 (0.5 pans full left-right)
+    /// * `sample_rate` - Audio sample rate in Hz
+    pub fn with_sample_rate(rate: f32, depth: f32, sample_rate: f32) -> Self {
+        Self {
+            rate: rate.max(0.01),
+            depth: depth.clamp(0.0, 1.0),
+            priority: PRIORITY_MODULATION,
+            phase: 0.0,
+            sample_rate,
+            rate_automation: None,
+            depth_automation: None,
+        }
+    }
+
+    /// Create an auto-pan with default sample rate (44100 Hz)
+    pub fn new(rate: f32, depth: f32) -> Self {
+        Self::with_sample_rate(rate, depth, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the rate parameter
+    pub fn with_rate_automation(mut self, automation: Automation) -> Self {
+        self.rate_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the depth parameter
+    pub fn with_depth_automation(mut self, automation: Automation) -> Self {
+        self.depth_automation = Some(automation);
+        self
+    }
+
+    /// Get the current pan position (-1.0 to 1.0)
+    ///
+    /// This should be called once per sample to advance the LFO phase.
+    /// The returned value is added to the track's base pan.
+    ///
+    /// # Arguments
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn get_pan_offset(&mut self, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).max(0.01);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
+        // Early out if no modulation
+        if self.depth < 0.0001 {
+            return 0.0;
+        }
+
+        // Generate LFO (sine wave)
+        let lfo = (self.phase * 2.0 * std::f32::consts::PI).sin();
+
+        // Advance phase
+        self.phase += self.rate / self.sample_rate;
+        if self.phase >= 1.0 {
+            self.phase -= 1.0;
+        }
+
+        // Return pan offset (-depth to +depth)
+        lfo * self.depth
+    }
+
+    /// Reset the auto-pan state
+    pub fn reset(&mut self) {
+        self.phase = 0.0;
+    }
+}
+
+/// Gate - noise gate / expander
+///
+/// Reduces the level of signals below a threshold, useful for removing
+/// background noise or creating rhythmic gating effects.
+#[derive(Debug, Clone)]
+pub struct Gate {
+    pub threshold: f32, // Threshold in dB (e.g., -40.0)
+    pub ratio: f32,     // Expansion ratio (typically 10:1 to ∞:1, where ∞ = hard gate)
+    pub attack: f32,    // Attack time in seconds
+    pub release: f32,   // Release time in seconds
+    pub priority: u8,   // Processing priority
+    envelope: f32,      // Current envelope value (0.0 to 1.0)
+    sample_rate: f32,
+
+    // Automation (optional)
+    threshold_automation: Option<Automation>,
+    ratio_automation: Option<Automation>,
+}
+
+impl Gate {
+    /// Create a new gate effect
+    ///
+    /// # Arguments
+    /// * `threshold` - Threshold in dB (signals below this are reduced)
+    /// * `ratio` - Expansion ratio (10.0 = 10:1, f32::INFINITY = hard gate)
+    /// * `attack` - Attack time in seconds (how quickly gate opens)
+    /// * `release` - Release time in seconds (how quickly gate closes)
+    /// * `sample_rate` - Audio sample rate in Hz
+    pub fn with_sample_rate(
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self {
+            threshold,
+            ratio: ratio.max(1.0),
+            attack: attack.max(0.0001),
+            release: release.max(0.001),
+            priority: PRIORITY_EARLY, // Gates typically go early in the chain
+            envelope: 0.0,
+            sample_rate,
+            threshold_automation: None,
+            ratio_automation: None,
+        }
+    }
+
+    /// Create a gate with default sample rate (44100 Hz)
+    pub fn new(threshold: f32, ratio: f32, attack: f32, release: f32) -> Self {
+        Self::with_sample_rate(threshold, ratio, attack, release, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the threshold parameter
+    pub fn with_threshold_automation(mut self, automation: Automation) -> Self {
+        self.threshold_automation = Some(automation);
+        self
+    }
+
+    /// Add automation for the ratio parameter
+    pub fn with_ratio_automation(mut self, automation: Automation) -> Self {
+        self.ratio_automation = Some(automation);
+        self
+    }
+
+    /// Process a single sample
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+        }
+
+        // Convert input to dB
+        let input_db = if input.abs() > 0.0001 {
+            20.0 * input.abs().log10()
+        } else {
+            -100.0 // Very quiet = -100 dB
+        };
+
+        // Determine target envelope based on threshold
+        let target_envelope = if input_db > self.threshold {
+            1.0 // Above threshold: gate open
+        } else {
+            // Below threshold: apply expansion/gating
+            let db_below = self.threshold - input_db;
+            let expansion = db_below * (self.ratio - 1.0) / self.ratio;
+            10.0_f32.powf(-expansion / 20.0) // Convert back to linear
+        };
+
+        // Smooth envelope with attack/release
+        let coeff = if target_envelope > self.envelope {
+            // Attack (gate opening)
+            (-1.0 / (self.attack * sample_rate)).exp()
+        } else {
+            // Release (gate closing)
+            (-1.0 / (self.release * sample_rate)).exp()
+        };
+
+        self.envelope = target_envelope + coeff * (self.envelope - target_envelope);
+
+        // Apply gating
+        input * self.envelope
+    }
+
+    /// Reset the gate state
+    pub fn reset(&mut self) {
+        self.envelope = 0.0;
+    }
+}
+
+/// Limiter - brick-wall peak limiter
+///
+/// Prevents signal from exceeding a threshold, acting as a safety net
+/// against clipping. Typically used as the final stage in the signal chain.
+#[derive(Debug, Clone)]
+pub struct Limiter {
+    pub threshold: f32,  // Threshold in dB (e.g., -0.1 dB)
+    pub release: f32,    // Release time in seconds
+    pub priority: u8,    // Processing priority
+    gain_reduction: f32, // Current gain reduction (0.0 to 1.0)
+    sample_rate: f32,
+
+    // Automation (optional)
+    threshold_automation: Option<Automation>,
+}
+
+impl Limiter {
+    /// Create a new limiter effect
+    ///
+    /// # Arguments
+    /// * `threshold` - Threshold in dB (signals above this are limited)
+    /// * `release` - Release time in seconds (how quickly limiter recovers)
+    /// * `sample_rate` - Audio sample rate in Hz
+    pub fn with_sample_rate(threshold: f32, release: f32, sample_rate: f32) -> Self {
+        Self {
+            threshold,
+            release: release.max(0.001),
+            priority: PRIORITY_LAST, // Limiters go last to catch peaks
+            gain_reduction: 1.0,
+            sample_rate,
+            threshold_automation: None,
+        }
+    }
+
+    /// Create a limiter with default sample rate (44100 Hz)
+    pub fn new(threshold: f32, release: f32) -> Self {
+        Self::with_sample_rate(threshold, release, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Set the processing priority (lower = earlier in signal chain)
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add automation for the threshold parameter
+    pub fn with_threshold_automation(mut self, automation: Automation) -> Self {
+        self.threshold_automation = Some(automation);
+        self
+    }
+
+    /// Process a single sample
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Quantized automation lookups (every 64 samples)
+        if sample_count % 64 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+        }
+
+        // Convert threshold from dB to linear
+        let threshold_linear = 10.0_f32.powf(self.threshold / 20.0);
+
+        // Detect peak
+        let input_abs = input.abs();
+
+        // Calculate required gain reduction
+        let target_gain = if input_abs > threshold_linear {
+            threshold_linear / input_abs
+        } else {
+            1.0
+        };
+
+        // Apply gain reduction with instant attack and release envelope
+        // Instant attack (0 ms) for true peak limiting
+        if target_gain < self.gain_reduction {
+            self.gain_reduction = target_gain;
+        } else {
+            // Smooth release
+            let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.gain_reduction = target_gain + release_coeff * (self.gain_reduction - target_gain);
+        }
+
+        // Apply limiting
+        input * self.gain_reduction
+    }
+
+    /// Get the current gain reduction in dB
+    ///
+    /// Useful for metering how much limiting is occurring
+    pub fn get_gain_reduction_db(&self) -> f32 {
+        if self.gain_reduction > 0.0 {
+            20.0 * self.gain_reduction.log10()
+        } else {
+            -100.0
+        }
+    }
+
+    /// Reset the limiter state
+    pub fn reset(&mut self) {
+        self.gain_reduction = 1.0;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -802,21 +1825,21 @@ mod tests {
     #[test]
     fn test_delay() {
         let mut delay = Delay::new(0.01, 0.5, 0.5);
-        let output = delay.process(1.0);
+        let output = delay.process(1.0, 0.0, 0);
         assert!(output >= 0.0 && output <= 1.0);
     }
 
     #[test]
     fn test_reverb() {
         let mut reverb = Reverb::new(0.5, 0.5, 0.3);
-        let output = reverb.process(1.0);
+        let output = reverb.process(1.0, 0.0, 0);
         assert!(output.is_finite());
     }
 
     #[test]
     fn test_distortion() {
-        let dist = Distortion::new(5.0, 1.0);
-        let output = dist.process(0.5);
+        let mut dist = Distortion::new(5.0, 1.0);
+        let output = dist.process(0.5, 0.0, 0);
         assert!(output >= -1.0 && output <= 1.0);
     }
 }

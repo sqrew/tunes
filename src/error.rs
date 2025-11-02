@@ -65,7 +65,11 @@ impl fmt::Display for TunesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TunesError::SampleNotFound(name) => {
-                write!(f, "Sample '{}' not found. Load it first with comp.load_sample()", name)
+                write!(
+                    f,
+                    "Sample '{}' not found. Load it first with comp.load_sample()",
+                    name
+                )
             }
             TunesError::SectionNotFound(name) => {
                 write!(f, "Section '{}' not found", name)
@@ -74,7 +78,11 @@ impl fmt::Display for TunesError {
                 write!(f, "Track '{}' not found", name)
             }
             TunesError::TemplateNotFound(name) => {
-                write!(f, "Template '{}' not found. Create it first with comp.track_template()", name)
+                write!(
+                    f,
+                    "Template '{}' not found. Create it first with comp.track_template()",
+                    name
+                )
             }
             TunesError::MarkerNotFound(name) => {
                 write!(f, "Marker '{}' not found", name)
@@ -82,7 +90,11 @@ impl fmt::Display for TunesError {
             TunesError::AudioEngineError(msg) => {
                 write!(f, "Audio engine error: {}", msg)
             }
-            TunesError::InvalidEventType { expected, found, operation } => {
+            TunesError::InvalidEventType {
+                expected,
+                found,
+                operation,
+            } => {
                 write!(
                     f,
                     "Invalid event type for {}: expected {}, found {}",

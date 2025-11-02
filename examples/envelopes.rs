@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
 
     // Pluck: Fast attack and decay, no sustain
     comp.track("pluck")
-        .envelope(Envelope::pluck())  // Built-in preset
+        .envelope(Envelope::pluck()) // Built-in preset
         .at(0.0)
         .note(&[C4], 0.5);
 
@@ -34,10 +34,10 @@ fn main() -> anyhow::Result<()> {
     // Custom envelope
     comp.track("custom")
         .envelope(Envelope::new(
-            0.1,   // Attack: 0.1s
-            0.2,   // Decay: 0.2s
-            0.7,   // Sustain: 70% level
-            0.5    // Release: 0.5s
+            0.1, // Attack: 0.1s
+            0.2, // Decay: 0.2s
+            0.7, // Sustain: 70% level
+            0.5, // Release: 0.5s
         ))
         .at(3.0)
         .note(&[E5], 0.8);

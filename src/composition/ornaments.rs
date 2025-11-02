@@ -21,14 +21,15 @@ impl<'a> TrackBuilder<'a> {
         for i in 0..count {
             let freq = if i % 2 == 0 { note1 } else { note2 };
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -63,21 +64,22 @@ impl<'a> TrackBuilder<'a> {
         let pitch_bend = self.pitch_bend;
 
         for (i, &freq) in notes.iter().enumerate() {
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                start_cursor + (i as f32 * stagger),
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    start_cursor + (i as f32 * stagger),
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
         }
         // Move cursor to the end of the cascade (last note start + its duration)
         self.cursor = start_cursor + ((notes.len() - 1) as f32 * stagger) + note_duration;
         self.update_section_duration();
         self
     }
-    /// Rapidly repeat the same note (tremolo effect)
+    /// Rapidly repeat the same note (tremolo note ornament)
     ///
     /// Creates a rapid repetition of a single note, common in strings and synth pads.
     /// Different from trill which alternates between two notes.
@@ -90,23 +92,24 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("strings", &Instrument::pluck())
-    ///     .tremolo(C4, 16, 0.05);  // Rapid C4-C4-C4-C4... (16 times)
+    ///     .tremolo_note(C4, 16, 0.05);  // Rapid C4-C4-C4-C4... (16 times)
     /// ```
-    pub fn tremolo(mut self, note: f32, count: usize, note_duration: f32) -> Self {
+    pub fn tremolo_note(mut self, note: f32, count: usize, note_duration: f32) -> Self {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
 
         for _ in 0..count {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[note],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[note],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -168,26 +171,28 @@ impl<'a> TrackBuilder<'a> {
 
         // Play grace note
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[grace_note],
-            cursor,
-            grace_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[grace_note],
+                cursor,
+                grace_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += grace_duration;
 
         // Play main note
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[main_note],
-            cursor,
-            main_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[main_note],
+                cursor,
+                main_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += main_duration;
 
         self.update_section_duration();
@@ -214,7 +219,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .mordent(C4, 0.15);  // Quick C4→D4→C4 ornament
     /// ```
     pub fn mordent(mut self, main_note: f32, duration: f32) -> Self {
-        if duration <= 0.0 || !duration.is_finite() { return self; }
+        if duration <= 0.0 || !duration.is_finite() {
+            return self;
+        }
         let note_duration = duration / 3.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
         let waveform = self.waveform;
@@ -223,36 +230,39 @@ impl<'a> TrackBuilder<'a> {
 
         // Main → Upper → Main
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[main_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[main_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[upper_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[upper_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[main_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[main_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         self.update_section_duration();
@@ -279,7 +289,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .inverted_mordent(C4, 0.15);  // Quick C4→B3→C4 ornament
     /// ```
     pub fn inverted_mordent(mut self, main_note: f32, duration: f32) -> Self {
-        if duration <= 0.0 || !duration.is_finite() { return self; }
+        if duration <= 0.0 || !duration.is_finite() {
+            return self;
+        }
         let note_duration = duration / 3.0;
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
         let waveform = self.waveform;
@@ -288,36 +300,39 @@ impl<'a> TrackBuilder<'a> {
 
         // Main → Lower → Main
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[main_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[main_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[lower_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[lower_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[main_note],
-            cursor,
-            note_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[main_note],
+                cursor,
+                note_duration,
+                waveform,
+                envelope,
+                pitch_bend,
+            );
         self.cursor += note_duration;
 
         self.update_section_duration();
@@ -344,7 +359,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .turn(E4, 0.2);  // F4→E4→D4→E4 ornament
     /// ```
     pub fn turn(mut self, main_note: f32, duration: f32) -> Self {
-        if duration <= 0.0 || !duration.is_finite() { return self; }
+        if duration <= 0.0 || !duration.is_finite() {
+            return self;
+        }
         let note_duration = duration / 4.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
@@ -357,14 +374,15 @@ impl<'a> TrackBuilder<'a> {
 
         for &note in &notes {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[note],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[note],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += note_duration;
         }
 
@@ -392,7 +410,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .inverted_turn(E4, 0.2);  // D4→E4→F4→E4 ornament
     /// ```
     pub fn inverted_turn(mut self, main_note: f32, duration: f32) -> Self {
-        if duration <= 0.0 || !duration.is_finite() { return self; }
+        if duration <= 0.0 || !duration.is_finite() {
+            return self;
+        }
         let note_duration = duration / 4.0;
         let upper_note = main_note * 2.0f32.powf(2.0 / 12.0); // Whole step up
         let lower_note = main_note * 2.0f32.powf(-2.0 / 12.0); // Whole step down
@@ -405,14 +425,15 @@ impl<'a> TrackBuilder<'a> {
 
         for &note in &notes {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[note],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[note],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += note_duration;
         }
 
@@ -504,9 +525,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tremolo_repeats_note() {
+    fn test_tremolo_note_repeats_note() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("tremolo").tremolo(C4, 5, 0.05);
+        comp.track("tremolo").tremolo_note(C4, 5, 0.05);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 5);
@@ -520,9 +541,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tremolo_advances_cursor() {
+    fn test_tremolo_note_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("tremolo").tremolo(C4, 10, 0.1);
+        let builder = comp.track("tremolo").tremolo_note(C4, 10, 0.1);
 
         // 10 notes * 0.1 = 1.0 (with floating point tolerance)
         assert!((builder.cursor - 1.0).abs() < 0.01);
@@ -692,10 +713,10 @@ mod tests {
         comp.track("chain")
             .grace(C4, B3, 0.05, 0.5)
             .trill(D4, E4, 4, 0.1)
-            .tremolo(G4, 3, 0.1);
+            .tremolo_note(G4, 3, 0.1);
 
         let track = &comp.into_mixer().tracks[0];
-        // 2 (grace) + 4 (trill) + 3 (tremolo) = 9 total
+        // 2 (grace) + 4 (trill) + 3 (tremolo_note) = 9 total
         assert_eq!(track.events.len(), 9);
     }
 

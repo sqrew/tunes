@@ -168,14 +168,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -201,14 +202,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -234,14 +236,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -267,14 +270,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -300,14 +304,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -333,14 +338,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -366,14 +372,15 @@ impl<'a> TrackBuilder<'a> {
             let waveform = self.waveform;
             let envelope = self.envelope;
             let pitch_bend = self.pitch_bend;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(duration);
             self.cursor += swung_duration;
         }
@@ -400,14 +407,10 @@ impl<'a> TrackBuilder<'a> {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            notes,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                notes, cursor, duration, waveform, envelope, pitch_bend,
+            );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self
@@ -431,14 +434,10 @@ impl<'a> TrackBuilder<'a> {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            notes,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                notes, cursor, duration, waveform, envelope, pitch_bend,
+            );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self
@@ -462,14 +461,10 @@ impl<'a> TrackBuilder<'a> {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            notes,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                notes, cursor, duration, waveform, envelope, pitch_bend,
+            );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self
@@ -493,14 +488,10 @@ impl<'a> TrackBuilder<'a> {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            notes,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                notes, cursor, duration, waveform, envelope, pitch_bend,
+            );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self
@@ -524,14 +515,10 @@ impl<'a> TrackBuilder<'a> {
         let waveform = self.waveform;
         let envelope = self.envelope;
         let pitch_bend = self.pitch_bend;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            notes,
-            cursor,
-            duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                notes, cursor, duration, waveform, envelope, pitch_bend,
+            );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self
@@ -772,7 +759,8 @@ mod tests {
     #[test]
     fn test_sixteenths_creates_notes_with_correct_duration() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test").sixteenths(&[C4, D4, E4, F4, G4, A4, B4, C5]);
+        comp.track("test")
+            .sixteenths(&[C4, D4, E4, F4, G4, A4, B4, C5]);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 8);
@@ -913,7 +901,7 @@ mod tests {
     fn test_at_bar_then_quarters() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test")
-            .at_bar(3)  // Bar 3 = 4.0 seconds
+            .at_bar(3) // Bar 3 = 4.0 seconds
             .quarters(&[C4, D4]);
 
         let track = &comp.into_mixer().tracks[0];
@@ -928,12 +916,13 @@ mod tests {
     #[test]
     fn test_complex_musical_time_sequence() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test")
-            .at_bar(2)              // Start at bar 2 (2.0 seconds)
-            .quarter(&[C4])         // +0.5 = 2.5
-            .eighth(&[D4])          // +0.25 = 2.75
-            .beats(1.0)             // +0.5 = 3.25
-            .half(&[E4]);           // +1.0 = 4.25
+        let builder = comp
+            .track("test")
+            .at_bar(2) // Start at bar 2 (2.0 seconds)
+            .quarter(&[C4]) // +0.5 = 2.5
+            .eighth(&[D4]) // +0.25 = 2.75
+            .beats(1.0) // +0.5 = 3.25
+            .half(&[E4]); // +1.0 = 4.25
 
         assert!((builder.cursor - 4.25).abs() < 0.01);
     }
@@ -965,12 +954,13 @@ mod tests {
     #[test]
     fn test_mixed_note_durations() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test")
-            .wholes(&[C4])          // 2.0
-            .halves(&[D4])          // +1.0 = 3.0
-            .quarters(&[E4])        // +0.5 = 3.5
-            .eighths(&[F4])         // +0.25 = 3.75
-            .sixteenths(&[G4]);     // +0.125 = 3.875
+        let builder = comp
+            .track("test")
+            .wholes(&[C4]) // 2.0
+            .halves(&[D4]) // +1.0 = 3.0
+            .quarters(&[E4]) // +0.5 = 3.5
+            .eighths(&[F4]) // +0.25 = 3.75
+            .sixteenths(&[G4]); // +0.125 = 3.875
 
         assert!((builder.cursor - 3.875).abs() < 0.01);
     }
@@ -979,7 +969,7 @@ mod tests {
     fn test_at_beat_then_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test")
-            .at_beat(5)  // Beat 5 = 2.0 seconds
+            .at_beat(5) // Beat 5 = 2.0 seconds
             .quarter(&[C4]);
 
         let track = &comp.into_mixer().tracks[0];
@@ -992,10 +982,11 @@ mod tests {
     #[test]
     fn test_bars_between_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test")
-            .quarter(&[C4])   // 0.0-0.5
-            .bars(1.0)        // +2.0 = 2.5
-            .quarter(&[E4]);  // 2.5-3.0
+        let builder = comp
+            .track("test")
+            .quarter(&[C4]) // 0.0-0.5
+            .bars(1.0) // +2.0 = 2.5
+            .quarter(&[E4]); // 2.5-3.0
 
         assert_eq!(builder.cursor, 3.0);
     }
@@ -1004,8 +995,8 @@ mod tests {
     fn test_dotted_notes_timing() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test")
-            .dotted_quarters(&[C4, E4])     // 0.75 each
-            .dotted_eighths(&[G4, B4]);     // 0.375 each
+            .dotted_quarters(&[C4, E4]) // 0.75 each
+            .dotted_eighths(&[G4, B4]); // 0.375 each
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 4);
@@ -1028,9 +1019,10 @@ mod tests {
     #[test]
     fn test_single_and_multiple_methods_together() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("test")
-            .quarter(&[C4, E4, G4])     // Chord: 0.5
-            .quarters(&[D4, E4]);       // Notes: +1.0 = 1.5
+        let builder = comp
+            .track("test")
+            .quarter(&[C4, E4, G4]) // Chord: 0.5
+            .quarters(&[D4, E4]); // Notes: +1.0 = 1.5
 
         assert_eq!(builder.cursor, 1.5);
     }

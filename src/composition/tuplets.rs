@@ -34,14 +34,15 @@ impl<'a> TrackBuilder<'a> {
 
         for &freq in notes {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -273,7 +274,8 @@ mod tests {
     #[test]
     fn test_septuplet_creates_seven_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test").septuplet(&[C4, D4, E4, F4, G4, A4, B4], 1.4);
+        comp.track("test")
+            .septuplet(&[C4, D4, E4, F4, G4, A4, B4], 1.4);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 7);

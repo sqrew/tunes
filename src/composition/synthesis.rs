@@ -109,20 +109,18 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::rhythm::Tempo;
     use crate::notes::*;
-    use crate::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+    use crate::rhythm::Tempo;
     use crate::track::AudioEvent;
+    use crate::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
     #[test]
     fn test_custom_waveform_stored_in_note() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
         // Create a custom wavetable
-        let custom_wt = Wavetable::from_harmonics(
-            DEFAULT_TABLE_SIZE,
-            &[(1, 1.0), (3, 0.5), (5, 0.3)],
-        );
+        let custom_wt =
+            Wavetable::from_harmonics(DEFAULT_TABLE_SIZE, &[(1, 1.0), (3, 0.5), (5, 0.3)]);
 
         // Use it in a track
         comp.track("test")
@@ -134,7 +132,10 @@ mod tests {
         let track = &mixer.tracks[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
-            assert!(note.custom_wavetable.is_some(), "Custom wavetable should be stored in note");
+            assert!(
+                note.custom_wavetable.is_some(),
+                "Custom wavetable should be stored in note"
+            );
         } else {
             panic!("Expected NoteEvent");
         }
@@ -158,7 +159,10 @@ mod tests {
         assert_eq!(track.events.len(), 3);
         for event in &track.events {
             if let AudioEvent::Note(note) = event {
-                assert!(note.custom_wavetable.is_some(), "All notes should have custom wavetable");
+                assert!(
+                    note.custom_wavetable.is_some(),
+                    "All notes should have custom wavetable"
+                );
             }
         }
     }
@@ -225,8 +229,7 @@ mod tests {
             .note(&[C4], 0.5);
 
         // Second note without custom waveform (new builder)
-        comp.track("test")
-            .note(&[E4], 0.5);
+        comp.track("test").note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];

@@ -79,28 +79,55 @@ fn main() -> anyhow::Result<()> {
         .at(20.5)
         .note(&[A3, C4, E4], 2.5);
 
-    // ===== 4. LO-FI EFFECTS =====
-    println!("\n4. Lo-Fi Effects - BitCrusher, Ring Modulator");
+    // Tremolo - Amplitude modulation
+    comp.instrument("tremolo_demo", &Instrument::warm_pad())
+        .tremolo(Tremolo::new(5.0, 0.8)) // rate (Hz), depth
+        .at(23.5)
+        .note(&[C4, E4, G4], 2.5);
+
+    // AutoPan - Stereo movement
+    comp.instrument("autopan_demo", &Instrument::warm_pad())
+        .autopan(AutoPan::new(0.5, 0.9)) // rate (Hz), depth
+        .at(26.5)
+        .note(&[G3, B3, D4], 2.5);
+
+    // ===== 4. DYNAMIC CONTROL =====
+    println!("\n4. Dynamic Control - Gate, Limiter");
+
+    // Gate - Noise reduction and gating
+    comp.instrument("gate_demo", &Instrument::synth_lead())
+        .gate(Gate::new(-30.0, 10.0, 0.001, 0.05)) // threshold (dB), ratio, attack, release
+        .at(29.5)
+        .notes(&[C4, 0.0, E4, 0.0, G4, 0.0, C5], 0.15); // 0.0 = silence to show gating
+
+    // Limiter - Peak control (subtle effect, prevents clipping)
+    comp.instrument("limiter_demo", &Instrument::synth_lead())
+        .limiter(Limiter::new(-3.0, 0.05)) // threshold (dB), release
+        .at(31.5)
+        .notes(&[C4, E4, G4, C5], 0.3);
+
+    // ===== 5. LO-FI EFFECTS =====
+    println!("\n5. Lo-Fi Effects - BitCrusher, Ring Modulator");
 
     // BitCrusher - Retro degradation
     comp.instrument("bitcrush_demo", &Instrument::synth_lead())
         .bitcrusher(BitCrusher::new(4.0, 8.0, 0.7)) // bit_depth, sample_rate_div, mix
-        .at(23.5)
+        .at(33.5)
         .notes(&[C4, E4, G4, E4], 0.3);
 
     // Ring Modulator - Metallic/robotic
     comp.instrument("ringmod_demo", &Instrument::synth_lead())
         .ring_mod(RingModulator::new(440.0, 0.8)) // carrier_freq, mix
-        .at(25.5)
+        .at(35.5)
         .notes(&[C4, E4, G4, C5], 0.5);
 
-    // ===== 5. COMPARISON DEMONSTRATIONS =====
-    println!("\n5. Comparison Demonstrations");
+    // ===== 6. COMPARISON DEMONSTRATIONS =====
+    println!("\n6. Comparison Demonstrations");
 
     // Compressor comparison
     println!("  • Compressor: Before and after");
     comp.instrument("uncomp", &Instrument::synth_lead())
-        .at(28.0)
+        .at(38.0)
         .note(&[C4], 0.2)
         .note(&[E4], 0.2)
         .note(&[G4], 0.2)
@@ -108,11 +135,35 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("comp", &Instrument::synth_lead())
         .compressor(Compressor::new(0.2, 6.0, 0.005, 0.05, 2.0))
-        .at(28.8)
+        .at(38.8)
         .note(&[C4], 0.2)
         .note(&[E4], 0.2)
         .note(&[G4], 0.2)
         .note(&[C5], 0.2);
+
+    // Tremolo rate comparison
+    println!("  • Tremolo: Slow vs Fast");
+    comp.instrument("tremolo_slow", &Instrument::warm_pad())
+        .tremolo(Tremolo::new(2.0, 0.7)) // Slow 2Hz
+        .at(40.0)
+        .note(&[C4, E4, G4], 2.0);
+
+    comp.instrument("tremolo_fast", &Instrument::warm_pad())
+        .tremolo(Tremolo::new(8.0, 0.7)) // Fast 8Hz
+        .at(42.2)
+        .note(&[C4, E4, G4], 2.0);
+
+    // AutoPan comparison
+    println!("  • AutoPan: Width variations");
+    comp.instrument("autopan_narrow", &Instrument::warm_pad())
+        .autopan(AutoPan::new(1.0, 0.3)) // Narrow panning
+        .at(44.5)
+        .note(&[E3, G3, B3], 1.5);
+
+    comp.instrument("autopan_wide", &Instrument::warm_pad())
+        .autopan(AutoPan::new(1.0, 0.9)) // Wide panning
+        .at(46.2)
+        .note(&[E3, G3, B3], 1.5);
 
     // EQ comparison
     println!("  • EQ: Bass boost, Mid boost, Treble boost");
@@ -120,17 +171,17 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("eq_bass_boost", &Instrument::warm_pad())
         .eq(EQ::new(3.0, 1.0, 0.5, 300.0, 2000.0))
-        .at(30.0)
+        .at(48.0)
         .note(eq_chord, 1.0);
 
     comp.instrument("eq_mid_boost", &Instrument::warm_pad())
         .eq(EQ::new(0.7, 2.5, 0.7, 300.0, 2000.0))
-        .at(31.2)
+        .at(49.2)
         .note(eq_chord, 1.0);
 
     comp.instrument("eq_treble_boost", &Instrument::warm_pad())
         .eq(EQ::new(0.6, 1.0, 2.5, 300.0, 2000.0))
-        .at(32.4)
+        .at(50.4)
         .note(eq_chord, 1.0);
 
     // BitCrusher sweep
@@ -139,18 +190,18 @@ fn main() -> anyhow::Result<()> {
         let bit_depth = 16.0 - (i as f32 * 2.0);
         comp.instrument(&format!("bitcrush_{}", i), &Instrument::synth_lead())
             .bitcrusher(BitCrusher::new(bit_depth, (i + 1) as f32 * 2.0, 0.8))
-            .at(34.0 + (i as f32 * 0.3))
+            .at(52.0 + (i as f32 * 0.3))
             .note(&[A4], 0.25);
     }
 
-    // ===== 6. COMBINED EFFECTS =====
-    println!("\n6. Combined Effects - Multiple effects working together");
+    // ===== 7. COMBINED EFFECTS =====
+    println!("\n7. Combined Effects - Multiple effects working together");
 
     // Classic combo: Delay + Reverb
     comp.track("delay_reverb")
         .delay(Delay::new(0.25, 0.3, 0.4))
         .reverb(Reverb::new(0.4, 0.5, 0.3))
-        .at(36.5)
+        .at(54.5)
         .notes(&[C4, E4, G4], 0.5);
 
     // Production combo: EQ + Compressor + Chorus
@@ -158,7 +209,7 @@ fn main() -> anyhow::Result<()> {
         .eq(EQ::new(0.9, 1.2, 0.8, 200.0, 3000.0))
         .compressor(Compressor::new(0.25, 3.0, 0.02, 0.15, 1.3))
         .chorus(Chorus::new(0.4, 0.002, 0.3))
-        .at(38.5)
+        .at(56.5)
         .chords(
             &[
                 &[C4, E4, G4, B4],
@@ -173,45 +224,69 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("lofi_combo", &Instrument::synth_lead())
         .bitcrusher(BitCrusher::new(3.0, 12.0, 0.8))
         .saturation(Saturation::new(3.0, 0.7, 0.7))
-        .at(42.0)
+        .at(60.0)
         .notes(&[C5, D5, E5, G5], 0.3);
 
-    // Thick modulation: Phaser + Flanger
+    // Thick modulation: Phaser + Flanger + Tremolo
     comp.instrument("mod_combo", &Instrument::warm_pad())
         .phaser(Phaser::new(0.3, 0.6, 0.4, 0.5, 4))
         .flanger(Flanger::new(0.4, 2.5, 0.5, 0.4))
-        .at(44.0)
+        .tremolo(Tremolo::new(4.0, 0.5))
+        .at(62.0)
         .note(&[D3, F3, A3, C4], 2.5);
 
-    // All effects combined (extreme)
-    comp.track("all_effects")
-        .delay(Delay::new(0.25, 0.3, 0.4))
-        .reverb(Reverb::new(0.4, 0.5, 0.3))
-        .distortion(Distortion::new(2.0, 0.5))
-        .at(47.0)
-        .notes(&[C4, E4, G4], 0.5);
+    // Stereo dynamics: AutoPan + Chorus + Reverb
+    comp.instrument("stereo_combo", &Instrument::warm_pad())
+        .autopan(AutoPan::new(0.3, 0.7))
+        .chorus(Chorus::new(0.5, 0.003, 0.3))
+        .reverb(Reverb::new(0.5, 0.5, 0.4))
+        .at(65.0)
+        .note(&[E3, G3, B3, D4], 2.5);
 
-    // ===== 7. MUSICAL EXAMPLES =====
-    println!("\n7. Musical Examples - Effects in context");
+    // Clean production chain: Gate + Compressor + EQ + Limiter
+    comp.instrument("production_chain", &Instrument::synth_lead())
+        .gate(Gate::new(-35.0, 10.0, 0.001, 0.05))
+        .compressor(Compressor::new(0.25, 4.0, 0.01, 0.1, 1.5))
+        .eq(EQ::new(1.2, 1.0, 0.9, 200.0, 3000.0))
+        .limiter(Limiter::new(-1.0, 0.05))
+        .at(68.0)
+        .notes(&[C4, E4, G4, C5, G4, E4], 0.3);
+
+    // ===== 8. MUSICAL EXAMPLES =====
+    println!("\n8. Musical Examples - Effects in context");
 
     // Dub delay melody
     comp.instrument("dub_delay", &Instrument::synth_lead())
         .delay(Delay::new(0.375, 0.6, 0.5))
         .reverb(Reverb::new(0.6, 0.5, 0.4))
-        .at(49.5)
+        .at(70.5)
         .notes(&[C4, E4, G4, A4, G4, E4, D4, C4], 0.25);
 
     // Phaser progression
     comp.instrument("phaser_progression", &Instrument::warm_pad())
         .phaser(Phaser::new(0.6, 0.7, 0.5, 0.6, 4))
-        .at(51.5)
+        .at(72.5)
         .note(&[C4, E4, G4], 2.0)
         .note(&[F3, A3, C4], 2.0);
+
+    // Tremolo melody with delay
+    comp.instrument("tremolo_melody", &Instrument::synth_lead())
+        .tremolo(Tremolo::new(6.0, 0.6))
+        .delay(Delay::new(0.25, 0.4, 0.3))
+        .at(76.5)
+        .notes(&[E4, G4, A4, B4, A4, G4, E4], 0.25);
+
+    // AutoPan with reverb (spacious)
+    comp.instrument("autopan_space", &Instrument::warm_pad())
+        .autopan(AutoPan::new(0.4, 0.8))
+        .reverb(Reverb::new(0.6, 0.6, 0.4))
+        .at(78.5)
+        .chords(&[&[F3, A3, C4], &[G3, B3, D4], &[E3, G3, B3]], 1.5);
 
     // Ring mod drums (experimental)
     comp.instrument("ringmod_drums", &Instrument::sub_bass())
         .ring_mod(RingModulator::new(300.0, 0.6))
-        .at(55.5)
+        .at(83.0)
         .drum_grid(16, 0.125)
         .kick(&[0, 4, 8, 12])
         .snare(&[4, 12])
@@ -222,19 +297,23 @@ fn main() -> anyhow::Result<()> {
         .chorus(Chorus::new(0.4, 0.003, 0.3))
         .phaser(Phaser::new(0.4, 0.6, 0.4, 0.4, 4))
         .flanger(Flanger::new(0.3, 2.0, 0.5, 0.3))
+        .tremolo(Tremolo::new(3.0, 0.4))
+        .autopan(AutoPan::new(0.25, 0.5))
         .reverb(Reverb::new(0.7, 0.6, 0.5))
-        .at(57.5)
-        .note(&[C3, E3, G3, C4, E4, G4], 3.5);
+        .at(85.0)
+        .note(&[C3, E3, G3, C4, E4, G4], 4.0);
 
     println!("\n▶️  Playing comprehensive effects showcase...");
-    println!("    Duration: ~61 seconds\n");
+    println!("    Duration: ~89 seconds\n");
     println!("    💎 Effects Demonstrated:");
     println!("       CORE EFFECTS:");
     println!("       • Delay, Reverb, Distortion");
     println!("       DYNAMIC EFFECTS:");
     println!("       • Compressor, Saturation, EQ");
     println!("       MODULATION EFFECTS:");
-    println!("       • Chorus, Phaser, Flanger");
+    println!("       • Chorus, Phaser, Flanger, Tremolo, AutoPan");
+    println!("       DYNAMIC CONTROL:");
+    println!("       • Gate, Limiter");
     println!("       LO-FI EFFECTS:");
     println!("       • BitCrusher, Ring Modulator");
     println!("       COMBINATIONS:");
@@ -246,7 +325,7 @@ fn main() -> anyhow::Result<()> {
     engine.play_mixer(&mixer)?;
 
     println!("\n✅ Showcase complete!");
-    println!("   All {} audio effects in one comprehensive example!", 11);
+    println!("   All {} audio effects in one comprehensive example!", 15);
     println!("   Experiment with parameters to craft your unique sound!");
 
     Ok(())

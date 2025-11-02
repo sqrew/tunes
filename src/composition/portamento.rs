@@ -28,25 +28,27 @@ impl<'a> TrackBuilder<'a> {
         if scale_notes.is_empty() {
             // No scale notes in range, just play start and end
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[start_freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[start_freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += note_duration;
 
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[end_freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[end_freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += note_duration;
         } else {
             // Play all scale notes in order (ascending or descending)
@@ -54,14 +56,15 @@ impl<'a> TrackBuilder<'a> {
                 // Ascending
                 for &freq in &scale_notes {
                     let cursor = self.cursor;
-                    self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                        &[freq],
-                        cursor,
-                        note_duration,
-                        waveform,
-                        envelope,
-                        pitch_bend,
-                    );
+                    self.get_track_mut()
+                        .add_note_with_waveform_envelope_and_bend(
+                            &[freq],
+                            cursor,
+                            note_duration,
+                            waveform,
+                            envelope,
+                            pitch_bend,
+                        );
                     let swung_duration = self.apply_swing(note_duration);
                     self.cursor += swung_duration;
                 }
@@ -69,14 +72,15 @@ impl<'a> TrackBuilder<'a> {
                 // Descending
                 for &freq in scale_notes.iter().rev() {
                     let cursor = self.cursor;
-                    self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                        &[freq],
-                        cursor,
-                        note_duration,
-                        waveform,
-                        envelope,
-                        pitch_bend,
-                    );
+                    self.get_track_mut()
+                        .add_note_with_waveform_envelope_and_bend(
+                            &[freq],
+                            cursor,
+                            note_duration,
+                            waveform,
+                            envelope,
+                            pitch_bend,
+                        );
                     let swung_duration = self.apply_swing(note_duration);
                     self.cursor += swung_duration;
                 }
@@ -124,14 +128,15 @@ impl<'a> TrackBuilder<'a> {
             let t = i as f32 / (segments - 1) as f32;
             let freq = from + (to - from) * t;
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += note_duration;
         }
         self.update_section_duration();

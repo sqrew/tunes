@@ -64,7 +64,13 @@ pub fn random_walk_sequence(start: u32, steps: usize, min: u32, max: u32) -> Vec
 /// let ascending = biased_random_walk_sequence(0, 16, 0, 12, 0.7);  // Tends upward
 /// let descending = biased_random_walk_sequence(11, 16, 0, 12, 0.3);  // Tends downward
 /// ```
-pub fn biased_random_walk_sequence(start: u32, steps: usize, min: u32, max: u32, up_bias: f32) -> Vec<u32> {
+pub fn biased_random_walk_sequence(
+    start: u32,
+    steps: usize,
+    min: u32,
+    max: u32,
+    up_bias: f32,
+) -> Vec<u32> {
     if steps == 0 || min >= max {
         return Vec::new();
     }
@@ -215,7 +221,8 @@ impl<'a> TrackBuilder<'a> {
                                 // Mirror it
                                 let inverted_semitones = -semitones_from_axis;
                                 // Convert back to frequency
-                                inverted_freqs[i] = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
+                                inverted_freqs[i] =
+                                    axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
                             }
 
                             Some(AudioEvent::Note(crate::track::NoteEvent {
@@ -232,7 +239,11 @@ impl<'a> TrackBuilder<'a> {
                                 velocity: note.velocity,
                             }))
                         }
-                        AudioEvent::Drum(_) | AudioEvent::Sample(_) | AudioEvent::TempoChange(_) | AudioEvent::TimeSignature(_) | AudioEvent::KeySignature(_) => {
+                        AudioEvent::Drum(_)
+                        | AudioEvent::Sample(_)
+                        | AudioEvent::TempoChange(_)
+                        | AudioEvent::TimeSignature(_)
+                        | AudioEvent::KeySignature(_) => {
                             // Pass through drums, samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
@@ -252,8 +263,8 @@ impl<'a> TrackBuilder<'a> {
                 AudioEvent::Drum(drum) => drum.start_time,
                 AudioEvent::Sample(sample) => sample.start_time,
                 AudioEvent::TempoChange(tempo) => tempo.start_time,
-                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -305,7 +316,8 @@ impl<'a> TrackBuilder<'a> {
                                 let freq = note.frequencies[i];
                                 let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
                                 let inverted_semitones = -semitones_from_axis;
-                                let mut inverted_freq = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
+                                let mut inverted_freq =
+                                    axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
 
                                 // Octave-shift to keep in range
                                 while inverted_freq < min_freq {
@@ -332,7 +344,11 @@ impl<'a> TrackBuilder<'a> {
                                 velocity: note.velocity,
                             }))
                         }
-                        AudioEvent::Drum(_) | AudioEvent::Sample(_) | AudioEvent::TempoChange(_) | AudioEvent::TimeSignature(_) | AudioEvent::KeySignature(_) => {
+                        AudioEvent::Drum(_)
+                        | AudioEvent::Sample(_)
+                        | AudioEvent::TempoChange(_)
+                        | AudioEvent::TimeSignature(_)
+                        | AudioEvent::KeySignature(_) => {
                             // Pass through drums, samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
@@ -352,8 +368,8 @@ impl<'a> TrackBuilder<'a> {
                 AudioEvent::Drum(drum) => drum.start_time,
                 AudioEvent::Sample(sample) => sample.start_time,
                 AudioEvent::TempoChange(tempo) => tempo.start_time,
-                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -399,7 +415,11 @@ mod tests {
         let seq = biased_random_walk_sequence(0, 50, 0, 20, 0.8);
         // Starting at 0 with 80% upward bias, should generally increase
         let avg = seq.iter().sum::<u32>() as f32 / seq.len() as f32;
-        assert!(avg > 5.0, "Average {} should be > 5.0 with upward bias", avg);
+        assert!(
+            avg > 5.0,
+            "Average {} should be > 5.0 with upward bias",
+            avg
+        );
     }
 
     #[test]
@@ -407,14 +427,19 @@ mod tests {
         let seq = biased_random_walk_sequence(19, 50, 0, 20, 0.2);
         // Starting at 19 with 20% upward bias (80% down), should generally decrease
         let avg = seq.iter().sum::<u32>() as f32 / seq.len() as f32;
-        assert!(avg < 15.0, "Average {} should be < 15.0 with downward bias", avg);
+        assert!(
+            avg < 15.0,
+            "Average {} should be < 15.0 with downward bias",
+            avg
+        );
     }
 
     #[test]
     fn test_random_walk_sequence_with_sequence_from() {
         let mut comp = Composition::new(Tempo::new(120.0));
         let walk = random_walk_sequence(3, 16, 0, 7);
-        comp.track("walk").sequence_from(&walk, &C4_MAJOR_SCALE, 0.25);
+        comp.track("walk")
+            .sequence_from(&walk, &C4_MAJOR_SCALE, 0.25);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks[0].events.len(), 16);
@@ -425,7 +450,8 @@ mod tests {
     #[test]
     fn test_random_walk_generates_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("walk").random_walk(C4, 16, 0.25, &C4_MAJOR_SCALE);
+        comp.track("walk")
+            .random_walk(C4, 16, 0.25, &C4_MAJOR_SCALE);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks[0].events.len(), 16);
@@ -434,7 +460,8 @@ mod tests {
     #[test]
     fn test_random_walk_stays_in_scale() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("walk").random_walk(C4, 32, 0.25, &C4_MAJOR_SCALE);
+        comp.track("walk")
+            .random_walk(C4, 32, 0.25, &C4_MAJOR_SCALE);
 
         let mixer = comp.into_mixer();
 
@@ -442,9 +469,9 @@ mod tests {
         for event in &mixer.tracks[0].events {
             if let AudioEvent::Note(note) = event {
                 let freq = note.frequencies[0];
-                let in_scale = C4_MAJOR_SCALE.iter().any(|&scale_note| {
-                    (freq - scale_note).abs() < 0.1
-                });
+                let in_scale = C4_MAJOR_SCALE
+                    .iter()
+                    .any(|&scale_note| (freq - scale_note).abs() < 0.1);
                 assert!(in_scale, "Generated note {} not in scale", freq);
             }
         }
@@ -491,9 +518,7 @@ mod tests {
     fn test_invert_empty_pattern() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        comp.track("melody")
-            .pattern_start()
-            .invert(C4);  // Invert with no notes
+        comp.track("melody").pattern_start().invert(C4); // Invert with no notes
 
         let mixer = comp.into_mixer();
         // Should create no track

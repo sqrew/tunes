@@ -18,7 +18,6 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C4, D4, E4, F4], 0.25)
         .notes(&[G4, A4, B4, C5], 0.25)
         .wait(0.5)
-
         // Sudden change to slow (80 BPM)
         .tempo(80.0)
         .notes(&[C5, B4, A4, G4], 0.5)
@@ -29,20 +28,20 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("ritardando", &Instrument::warm_pad())
         .at(6.0)
-        .note(&[C3, E3, G3], 1.0)  // 80 BPM (from previous section)
+        .note(&[C3, E3, G3], 1.0) // 80 BPM (from previous section)
         .tempo(75.0)
         .note(&[D3, F3, A3], 1.0)
         .tempo(70.0)
         .note(&[E3, G3, B3], 1.0)
         .tempo(60.0)
-        .note(&[F3, A3, C4], 2.0);  // Final chord held longer
+        .note(&[F3, A3, C4], 2.0); // Final chord held longer
 
     // ===== 3. ACCELERANDO (GRADUAL SPEEDUP) =====
     println!("3. Accelerando - Gradual Speedup");
 
     comp.instrument("accelerando", &Instrument::synth_lead())
         .at(12.0)
-        .tempo(60.0)  // Start slow
+        .tempo(60.0) // Start slow
         .notes(&[G4, G4], 0.5)
         .tempo(80.0)
         .notes(&[A4, A4], 0.4)
@@ -62,19 +61,16 @@ fn main() -> anyhow::Result<()> {
         .tempo(90.0)
         .notes(&[C2, C2, G2, G2], 0.5)
         .wait(0.5)
-
         // Verse - Upbeat
         .tempo(120.0)
         .notes(&[C2, G2, A2, F2], 0.25)
         .notes(&[C2, G2, A2, F2], 0.25)
         .wait(0.5)
-
         // Chorus - Driving
         .tempo(140.0)
         .notes(&[C2, C2, E2, E2], 0.2)
         .notes(&[G2, G2, C3, C3], 0.2)
         .wait(0.5)
-
         // Outro - Slow down
         .tempo(100.0)
         .notes(&[A1, F2, C2], 0.75)

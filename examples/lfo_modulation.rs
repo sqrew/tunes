@@ -12,9 +12,9 @@ fn main() -> anyhow::Result<()> {
         .waveform(Waveform::Sawtooth)
         .filter(Filter::low_pass(800.0, 0.6))
         .modulate(ModRoute::new(
-            LFO::new(Waveform::Sine, 2.0, 1.0),  // 2 Hz sine wave
+            LFO::new(Waveform::Sine, 2.0, 1.0), // 2 Hz sine wave
             ModTarget::FilterCutoff,
-            0.8,  // 80% modulation depth
+            0.8, // 80% modulation depth
         ))
         .at(0.0)
         .notes(&[C2, C2, C2, C2], 0.5);
@@ -22,9 +22,9 @@ fn main() -> anyhow::Result<()> {
     // Vibrato: Pitch modulation
     comp.instrument("vibrato", &Instrument::bright_lead())
         .modulate(ModRoute::new(
-            LFO::fast_sine(0.5),  // Fast sine at 5 Hz
+            LFO::fast_sine(0.5), // Fast sine at 5 Hz
             ModTarget::Pitch,
-            0.3,  // Subtle pitch variation
+            0.3, // Subtle pitch variation
         ))
         .at(2.5)
         .notes(&[E4, F4, G4, A4], 0.8);
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         .modulate(ModRoute::new(
             LFO::new(Waveform::Sine, 6.0, 1.0),
             ModTarget::Volume,
-            0.7,  // 70% volume modulation
+            0.7, // 70% volume modulation
         ))
         .at(6.0)
         .note(&[C4, E4, G4], 2.0);
@@ -44,7 +44,7 @@ fn main() -> anyhow::Result<()> {
         .modulate(ModRoute::new(
             LFO::slow_sine(1.0),
             ModTarget::Pan,
-            1.0,  // Full pan sweep
+            1.0, // Full pan sweep
         ))
         .at(8.5)
         .notes(&[C4, D4, E4, F4, G4, F4, E4, D4], 0.25);
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
         .waveform(Waveform::Square)
         .filter(Filter::low_pass(400.0, 0.7))
         .modulate(ModRoute::new(
-            LFO::triangle(0.5, 1.0),  // Slow triangle
+            LFO::triangle(0.5, 1.0), // Slow triangle
             ModTarget::FilterCutoff,
             1.0,
         ))
@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         .waveform(Waveform::Sawtooth)
         .filter(Filter::low_pass(600.0, 0.5))
         .modulate(ModRoute::new(
-            LFO::square(4.0, 1.0),  // Stepped at 4 Hz
+            LFO::square(4.0, 1.0), // Stepped at 4 Hz
             ModTarget::FilterCutoff,
             0.7,
         ))
@@ -78,7 +78,7 @@ fn main() -> anyhow::Result<()> {
         .waveform(Waveform::Sawtooth)
         .filter(Filter::low_pass(1000.0, 0.8))
         .modulate(ModRoute::new(
-            LFO::new(Waveform::Sine, 8.0, 1.0),  // 8 Hz wobble
+            LFO::new(Waveform::Sine, 8.0, 1.0), // 8 Hz wobble
             ModTarget::FilterCutoff,
             0.9,
         ))
@@ -97,7 +97,7 @@ fn main() -> anyhow::Result<()> {
         .modulate(ModRoute::new(
             LFO::new(Waveform::Sine, 5.0, 0.5),
             ModTarget::Pitch,
-            0.2,  // Subtle vibrato
+            0.2, // Subtle vibrato
         ))
         .at(19.5)
         .notes(&[G3, G3, G3, G3], 0.5);
@@ -119,7 +119,7 @@ fn main() -> anyhow::Result<()> {
         .waveform(Waveform::Sawtooth)
         .filter(Filter::low_pass(600.0, 0.4))
         .modulate(ModRoute::new(
-            LFO::new(Waveform::Triangle, 0.3, 1.0),  // Very slow
+            LFO::new(Waveform::Triangle, 0.3, 1.0), // Very slow
             ModTarget::FilterCutoff,
             0.5,
         ))

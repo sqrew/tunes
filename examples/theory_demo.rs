@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 fn main() -> anyhow::Result<()> {
     println!("🎵 Music Theory Helpers Demo\n");
     println!("This demo shows how to use programmatic scale and chord generation");

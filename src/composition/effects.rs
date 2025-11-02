@@ -1,5 +1,8 @@
 use super::TrackBuilder;
-use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
+use crate::effects::{
+    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
+    Reverb, RingModulator, Saturation, Tremolo,
+};
 use crate::filter::Filter;
 use crate::lfo::ModRoute;
 
@@ -208,6 +211,104 @@ impl<'a> TrackBuilder<'a> {
         self.get_track_mut().ring_mod = Some(ring_mod);
         self
     }
+    /// Add tremolo effect to this track
+    ///
+    /// Tremolo creates rhythmic amplitude modulation for pulsing volume effects.
+    ///
+    /// # Arguments
+    /// * `tremolo` - Tremolo effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Tremolo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("synth", &Instrument::synth_lead())
+    ///     .tremolo(Tremolo::new(5.0, 0.7))
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn tremolo(mut self, tremolo: Tremolo) -> Self {
+        self.get_track_mut().tremolo = Some(tremolo);
+        self
+    }
+
+    /// Add auto-pan effect to this track
+    ///
+    /// AutoPan creates automatic stereo panning modulation for movement in the stereo field.
+    ///
+    /// # Arguments
+    /// * `autopan` - AutoPan effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::AutoPan;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("pad", &Instrument::warm_pad())
+    ///     .autopan(AutoPan::new(0.5, 0.8))
+    ///     .note(&[C4, E4, G4], 4.0);
+    /// ```
+    pub fn autopan(mut self, autopan: AutoPan) -> Self {
+        self.get_track_mut().autopan = Some(autopan);
+        self
+    }
+
+    /// Add gate effect to this track
+    ///
+    /// Gate reduces the level of signals below a threshold, useful for noise reduction
+    /// or creating rhythmic gating effects.
+    ///
+    /// # Arguments
+    /// * `gate` - Gate effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Gate;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("drums", &Instrument::synth_lead())
+    ///     .gate(Gate::new(-40.0, 10.0, 0.001, 0.05))
+    ///     .note(&[C4], 1.0);
+    /// ```
+    pub fn gate(mut self, gate: Gate) -> Self {
+        self.get_track_mut().gate = Some(gate);
+        self
+    }
+
+    /// Add limiter effect to this track
+    ///
+    /// Limiter prevents the signal from exceeding a threshold, acting as a safety net
+    /// against clipping. Typically used as the final stage in the signal chain.
+    ///
+    /// # Arguments
+    /// * `limiter` - Limiter effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::effects::Limiter;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("master", &Instrument::synth_lead())
+    ///     .limiter(Limiter::new(-0.1, 0.05))
+    ///     .note(&[C4], 1.0);
+    /// ```
+    pub fn limiter(mut self, limiter: Limiter) -> Self {
+        self.get_track_mut().limiter = Some(limiter);
+        self
+    }
+
     /// Add an LFO modulation route to this track
     pub fn modulate(mut self, mod_route: ModRoute) -> Self {
         self.get_track_mut().modulation.push(mod_route);
@@ -220,7 +321,7 @@ mod tests {
     use crate::composition::Composition;
     use crate::effects::*;
     use crate::filter::{Filter, FilterType};
-    use crate::lfo::{ModRoute, ModTarget, LFO};
+    use crate::lfo::{LFO, ModRoute, ModTarget};
     use crate::notes::*;
     use crate::rhythm::Tempo;
     use crate::waveform::Waveform;
@@ -503,17 +604,29 @@ mod tests {
     fn test_filter_different_types() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        comp.track("lp").filter(Filter::new(FilterType::LowPass, 1000.0, 0.5));
-        comp.track("hp").filter(Filter::new(FilterType::HighPass, 500.0, 0.7));
-        comp.track("bp").filter(Filter::new(FilterType::BandPass, 800.0, 0.6));
+        comp.track("lp")
+            .filter(Filter::new(FilterType::LowPass, 1000.0, 0.5));
+        comp.track("hp")
+            .filter(Filter::new(FilterType::HighPass, 500.0, 0.7));
+        comp.track("bp")
+            .filter(Filter::new(FilterType::BandPass, 800.0, 0.6));
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks.len(), 3);
 
         // Check that all three filter types exist (HashMap order not guaranteed)
-        let has_lowpass = mixer.tracks.iter().any(|t| matches!(t.filter.filter_type, FilterType::LowPass));
-        let has_highpass = mixer.tracks.iter().any(|t| matches!(t.filter.filter_type, FilterType::HighPass));
-        let has_bandpass = mixer.tracks.iter().any(|t| matches!(t.filter.filter_type, FilterType::BandPass));
+        let has_lowpass = mixer
+            .tracks
+            .iter()
+            .any(|t| matches!(t.filter.filter_type, FilterType::LowPass));
+        let has_highpass = mixer
+            .tracks
+            .iter()
+            .any(|t| matches!(t.filter.filter_type, FilterType::HighPass));
+        let has_bandpass = mixer
+            .tracks
+            .iter()
+            .any(|t| matches!(t.filter.filter_type, FilterType::BandPass));
 
         assert!(has_lowpass, "Should have a LowPass filter");
         assert!(has_highpass, "Should have a HighPass filter");
@@ -670,12 +783,14 @@ mod tests {
         assert_eq!(mixer.tracks.len(), 2);
 
         // Check that both effects exist with correct depths (HashMap order not guaranteed)
-        let has_flanger_5 = mixer.tracks.iter().any(|t| {
-            t.flanger.as_ref().map_or(false, |f| f.depth == 5.0)
-        });
-        let has_chorus_3 = mixer.tracks.iter().any(|t| {
-            t.chorus.as_ref().map_or(false, |c| c.depth == 3.0)
-        });
+        let has_flanger_5 = mixer
+            .tracks
+            .iter()
+            .any(|t| t.flanger.as_ref().map_or(false, |f| f.depth == 5.0));
+        let has_chorus_3 = mixer
+            .tracks
+            .iter()
+            .any(|t| t.chorus.as_ref().map_or(false, |c| c.depth == 3.0));
 
         assert!(has_flanger_5, "Should have flanger with depth 5.0");
         assert!(has_chorus_3, "Should have chorus with depth 3.0");
@@ -697,10 +812,14 @@ mod tests {
 
         // Check that both ring modulators exist with correct frequencies (HashMap order not guaranteed)
         let has_200hz = mixer.tracks.iter().any(|t| {
-            t.ring_mod.as_ref().map_or(false, |rm| rm.carrier_freq == 200.0)
+            t.ring_mod
+                .as_ref()
+                .map_or(false, |rm| rm.carrier_freq == 200.0)
         });
         let has_880hz = mixer.tracks.iter().any(|t| {
-            t.ring_mod.as_ref().map_or(false, |rm| rm.carrier_freq == 880.0)
+            t.ring_mod
+                .as_ref()
+                .map_or(false, |rm| rm.carrier_freq == 880.0)
         });
 
         assert!(has_200hz, "Should have ring modulator with 200Hz carrier");

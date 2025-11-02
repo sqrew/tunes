@@ -64,12 +64,15 @@ pub mod prelude {
     pub use crate::notes::*;
 
     // Scales and Chords
-    pub use crate::scales::*;
     pub use crate::chords::*;
+    pub use crate::scales::*;
 
     // Theory
-    pub use crate::theory::{chord, scale, transpose, transpose_sequence, ChordPattern, ScalePattern, ProgressionType, progression};
-    pub use crate::key_signature::{KeySignature, KeyRoot, KeyMode};
+    pub use crate::key_signature::{KeyMode, KeyRoot, KeySignature};
+    pub use crate::theory::{
+        ChordPattern, ProgressionType, ScalePattern, chord, progression, scale, transpose,
+        transpose_sequence,
+    };
 
     // Instruments
     pub use crate::instruments::Instrument;
@@ -79,8 +82,8 @@ pub mod prelude {
     pub use crate::filter::{Filter, FilterType};
 
     // Drums
-    pub use crate::drums::DrumType;
     pub use crate::drum_grid::DrumGrid;
+    pub use crate::drums::DrumType;
 
     // Envelopes and waveforms
     pub use crate::envelope::Envelope;
@@ -90,8 +93,8 @@ pub mod prelude {
 
     // Sequences
     pub use crate::sequences::{
-        euclidean, euclidean_pattern, harmonic_series,
-        golden_ratio, golden_ratio_rhythm, golden_sections,
+        euclidean, euclidean_pattern, golden_ratio, golden_ratio_rhythm, golden_sections,
+        harmonic_series,
     };
 
     // LFO
@@ -102,10 +105,8 @@ pub mod prelude {
 
     // Microtonal
     pub use crate::microtonal::{
-        Edo, EDO12, EDO19, EDO24, EDO31, EDO53,
-        cents_to_ratio, ratio_to_cents, freq_from_cents,
-        just_ratio, just_scale, just_major_scale, just_minor_scale,
-        pythagorean_scale,
-        quarter_sharp, quarter_flat, half_sharp, half_flat,
+        EDO12, EDO19, EDO24, EDO31, EDO53, Edo, cents_to_ratio, freq_from_cents, half_flat,
+        half_sharp, just_major_scale, just_minor_scale, just_ratio, just_scale, pythagorean_scale,
+        quarter_flat, quarter_sharp, ratio_to_cents,
     };
 }

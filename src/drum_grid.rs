@@ -178,18 +178,19 @@ impl<'a> DrumGrid<'a> {
         let grid_end_time = self.start_time + grid_duration;
 
         // Collect all drum events in this grid's time range
-        let pattern_events: Vec<_> = self.track.events.iter()
-            .filter_map(|event| {
-                match event {
-                    crate::track::AudioEvent::Drum(drum) => {
-                        if drum.start_time >= self.start_time && drum.start_time < grid_end_time {
-                            Some((drum.drum_type, drum.start_time - self.start_time))
-                        } else {
-                            None
-                        }
+        let pattern_events: Vec<_> = self
+            .track
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                crate::track::AudioEvent::Drum(drum) => {
+                    if drum.start_time >= self.start_time && drum.start_time < grid_end_time {
+                        Some((drum.drum_type, drum.start_time - self.start_time))
+                    } else {
+                        None
                     }
-                    _ => None,
                 }
+                _ => None,
             })
             .collect();
 
@@ -197,7 +198,8 @@ impl<'a> DrumGrid<'a> {
         for i in 0..times {
             let offset = grid_duration * (i + 1) as f32;
             for &(drum_type, relative_time) in &pattern_events {
-                self.track.add_drum(drum_type, self.start_time + relative_time + offset);
+                self.track
+                    .add_drum(drum_type, self.start_time + relative_time + offset);
             }
         }
 
@@ -231,8 +233,7 @@ mod tests {
     #[test]
     fn test_drum_grid_hit_basic() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .hit(DrumType::Kick, &[0, 4, 8, 12]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).hit(DrumType::Kick, &[0, 4, 8, 12]);
 
         assert_eq!(track.events.len(), 4);
 
@@ -252,8 +253,7 @@ mod tests {
     #[test]
     fn test_drum_grid_hit_with_offset() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 2.0, 8, 0.25)
-            .hit(DrumType::Snare, &[2, 6]);
+        let _grid = DrumGrid::new(&mut track, 2.0, 8, 0.25).hit(DrumType::Snare, &[2, 6]);
 
         assert_eq!(track.events.len(), 2);
 
@@ -269,8 +269,8 @@ mod tests {
     #[test]
     fn test_drum_grid_out_of_bounds_steps() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .hit(DrumType::Kick, &[0, 8, 16, 20, 100]); // 16, 20, 100 are out of bounds
+        let _grid =
+            DrumGrid::new(&mut track, 0.0, 16, 0.125).hit(DrumType::Kick, &[0, 8, 16, 20, 100]); // 16, 20, 100 are out of bounds
 
         // Should only add hits for valid steps (0, 8)
         assert_eq!(track.events.len(), 2);
@@ -279,8 +279,7 @@ mod tests {
     #[test]
     fn test_drum_grid_kick_convenience_method() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .kick(&[0, 4, 8, 12]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick(&[0, 4, 8, 12]);
 
         assert_eq!(track.events.len(), 4);
 
@@ -294,8 +293,7 @@ mod tests {
     #[test]
     fn test_drum_grid_snare_convenience_method() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .snare(&[4, 12]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).snare(&[4, 12]);
 
         assert_eq!(track.events.len(), 2);
 
@@ -309,8 +307,7 @@ mod tests {
     #[test]
     fn test_drum_grid_hihat_convenience_method() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
 
         assert_eq!(track.events.len(), 8);
 
@@ -336,8 +333,7 @@ mod tests {
     #[test]
     fn test_drum_grid_empty_pattern() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .kick(&[]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick(&[]);
 
         assert_eq!(track.events.len(), 0);
     }
@@ -419,8 +415,7 @@ mod tests {
     #[test]
     fn test_drum_grid_duplicate_steps() {
         let mut track = Track::new();
-        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
-            .kick(&[0, 4, 4, 8]); // Step 4 is duplicated
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick(&[0, 4, 4, 8]); // Step 4 is duplicated
 
         // Should add all 4 events (including duplicate)
         assert_eq!(track.events.len(), 4);
@@ -447,8 +442,7 @@ mod tests {
     fn test_drum_grid_fine_step_resolution() {
         let mut track = Track::new();
         // 32nd note grid
-        let _grid = DrumGrid::new(&mut track, 0.0, 32, 0.0625)
-            .hihat(&[0, 1, 2, 3, 4, 5, 6, 7]);
+        let _grid = DrumGrid::new(&mut track, 0.0, 32, 0.0625).hihat(&[0, 1, 2, 3, 4, 5, 6, 7]);
 
         assert_eq!(track.events.len(), 8);
 

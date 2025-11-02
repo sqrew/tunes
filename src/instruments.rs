@@ -44,7 +44,7 @@ impl Instrument {
         track.filter = self.filter;
         track.delay = self.delay.clone();
         track.reverb = self.reverb.clone();
-        track.distortion = self.distortion;
+        track.distortion = self.distortion.clone();
         track.modulation = self.modulation.clone();
         track
     }
@@ -406,7 +406,7 @@ impl Instrument {
             name: "Acoustic Piano".to_string(),
             waveform: Waveform::Triangle,
             envelope: Envelope::new(0.001, 0.3, 0.6, 0.8), // Natural piano decay
-            filter: Filter::low_pass(8000.0, 0.15),         // Full frequency range
+            filter: Filter::low_pass(8000.0, 0.15),        // Full frequency range
             modulation: Vec::new(),
             delay: None,
             reverb: Some(Reverb::new(0.25, 0.4, 0.2)), // Subtle room ambience
@@ -423,7 +423,7 @@ impl Instrument {
             name: "Strings".to_string(),
             waveform: Waveform::Sawtooth,
             envelope: Envelope::new(0.15, 0.3, 0.85, 0.6), // Slow attack, sustained
-            filter: Filter::low_pass(4000.0, 0.25),         // Warm, not too bright
+            filter: Filter::low_pass(4000.0, 0.25),        // Warm, not too bright
             modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.15)],
             delay: None,
             reverb: Some(Reverb::new(0.6, 0.6, 0.45)), // Concert hall ambience
@@ -440,7 +440,7 @@ impl Instrument {
             name: "Brass".to_string(),
             waveform: Waveform::Sawtooth,
             envelope: Envelope::new(0.05, 0.15, 0.8, 0.4), // Moderate attack for brass punch
-            filter: Filter::low_pass(5000.0, 0.5),          // Bright and brassy
+            filter: Filter::low_pass(5000.0, 0.5),         // Bright and brassy
             modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
             delay: None,
             reverb: Some(Reverb::new(0.35, 0.5, 0.25)),
@@ -457,7 +457,7 @@ impl Instrument {
             name: "Flute".to_string(),
             waveform: Waveform::Sine,
             envelope: Envelope::new(0.08, 0.2, 0.7, 0.5), // Gentle attack
-            filter: Filter::low_pass(6000.0, 0.2),         // Soft, airy
+            filter: Filter::low_pass(6000.0, 0.2),        // Soft, airy
             modulation: vec![ModRoute::new(breath_lfo, ModTarget::Volume, 0.08)],
             delay: None,
             reverb: Some(Reverb::new(0.4, 0.5, 0.3)),
@@ -471,9 +471,9 @@ impl Instrument {
     pub fn clarinet() -> Self {
         Self {
             name: "Clarinet".to_string(),
-            waveform: Waveform::Square,                    // Square wave for hollow tone
+            waveform: Waveform::Square, // Square wave for hollow tone
             envelope: Envelope::new(0.06, 0.2, 0.75, 0.4), // Moderate attack
-            filter: Filter::low_pass(3500.0, 0.3),         // Warm, woody
+            filter: Filter::low_pass(3500.0, 0.3), // Warm, woody
             modulation: Vec::new(),
             delay: None,
             reverb: Some(Reverb::new(0.35, 0.45, 0.25)),
@@ -489,7 +489,7 @@ impl Instrument {
             name: "Upright Bass".to_string(),
             waveform: Waveform::Triangle,
             envelope: Envelope::new(0.002, 0.2, 0.4, 0.3), // Plucky attack, quick decay
-            filter: Filter::low_pass(800.0, 0.4),           // Warm, woody tone
+            filter: Filter::low_pass(800.0, 0.4),          // Warm, woody tone
             modulation: Vec::new(),
             delay: None,
             reverb: Some(Reverb::new(0.2, 0.3, 0.15)),
@@ -524,7 +524,7 @@ impl Instrument {
             name: "FM Bells".to_string(),
             waveform: Waveform::Sine,
             envelope: Envelope::new(0.001, 1.0, 0.3, 1.2), // Long decay like bells
-            filter: Filter::low_pass(8000.0, 0.2),          // Bright and clear
+            filter: Filter::low_pass(8000.0, 0.2),         // Bright and clear
             modulation: Vec::new(),
             delay: Some(Delay::new(0.5, 0.4, 0.3)),
             reverb: Some(Reverb::new(0.7, 0.6, 0.5)), // Spacious
@@ -590,7 +590,7 @@ impl Instrument {
             name: "Vocal Pad".to_string(),
             waveform: Waveform::Sawtooth,
             envelope: Envelope::new(0.5, 0.4, 0.9, 1.0), // Very slow attack
-            filter: Filter::low_pass(2500.0, 0.6),        // Vocal formant range
+            filter: Filter::low_pass(2500.0, 0.6),       // Vocal formant range
             modulation: vec![ModRoute::new(formant_sweep, ModTarget::FilterCutoff, 0.35)],
             delay: None,
             reverb: Some(Reverb::new(0.8, 0.7, 0.6)), // Cathedral-like

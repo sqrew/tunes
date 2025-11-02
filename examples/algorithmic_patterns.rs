@@ -1,5 +1,5 @@
-use tunes::prelude::*;
 use tunes::composition::generative::{biased_random_walk_sequence, random_walk_sequence};
+use tunes::prelude::*;
 use tunes::sequences;
 
 /// Demonstrate algorithmic pattern generation
@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("tremolo", &Instrument::pluck())
         .at(5.5)
-        .tremolo(E5, 16, 0.05);
+        .tremolo_note(E5, 16, 0.05);
 
     // Interpolation (smooth pitch glide)
     comp.instrument("glide", &Instrument::synth_lead())

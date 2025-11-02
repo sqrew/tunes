@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 // I let Claude Code compose a piece! It came out pretty interesting.
 
 fn main() -> anyhow::Result<()> {

@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
     // Playing a single chord
     comp.track("single_chord")
         .at(5.0)
-        .note(&[C4, E4, G4, C5], 1.0);  // C major chord
+        .note(&[C4, E4, G4, C5], 1.0); // C major chord
 
     println!("✓ .note(&[freq], duration) - Single note or chord");
     println!("✓ .notes(&[...], duration) - Sequence of single notes");

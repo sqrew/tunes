@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("octave_doubled", &Instrument::electric_piano())
         .at(2.0)
-        .octaves(&[C4, D4, E4, F4], 1, 0.4);  // Double one octave up
+        .octaves(&[C4, D4, E4, F4], 1, 0.4); // Double one octave up
 
     // Two octaves up
     comp.instrument("two_octaves", &Instrument::electric_piano())
@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("third_harmony", &Instrument::bright_lead())
         .pan(0.3)
         .at(8.0)
-        .harmonize(&[C4, D4, E4, F4, G4], 4, 0.4);  // Major third = 4 semitones
+        .harmonize(&[C4, D4, E4, F4, G4], 4, 0.4); // Major third = 4 semitones
 
     // Fifth harmony
     comp.instrument("melody_2", &Instrument::square_lead())
@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("fifth_harmony", &Instrument::square_lead())
         .pan(0.3)
         .at(10.5)
-        .harmonize(&[G4, F4, E4, D4], 7, 0.4);  // Perfect fifth = 7 semitones
+        .harmonize(&[G4, F4, E4, D4], 7, 0.4); // Perfect fifth = 7 semitones
 
     // Seventh harmony for jazz
     comp.instrument("jazz_melody", &Instrument::square_lead())
@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("seventh_harmony", &Instrument::square_lead())
         .pan(0.4)
         .at(12.5)
-        .harmonize(&[C4, E4, G4, B4], 10, 0.5);  // Minor seventh = 10 semitones
+        .harmonize(&[C4, E4, G4, B4], 10, 0.5); // Minor seventh = 10 semitones
 
     // Complex: Octave + harmony
     comp.instrument("thick_sound", &Instrument::warm_pad())

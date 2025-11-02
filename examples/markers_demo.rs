@@ -15,16 +15,16 @@ fn main() -> anyhow::Result<()> {
 
     // Define the song structure with markers
     comp.track("structure")
-        .mark("intro")          // 0.0
+        .mark("intro") // 0.0
         .wait(4.0)
-        .mark("verse1")         // 4.0
+        .mark("verse1") // 4.0
         .wait(8.0)
-        .mark("chorus")         // 12.0
+        .mark("chorus") // 12.0
         .wait(8.0)
-        .mark("verse2")         // 20.0
+        .mark("verse2") // 20.0
         .wait(8.0)
-        .mark("outro")          // 28.0
-        .wait(4.0);             // End at 32.0
+        .mark("outro") // 28.0
+        .wait(4.0); // End at 32.0
 
     // Drums enter at verse 1
     comp.track("drums")
@@ -33,14 +33,14 @@ fn main() -> anyhow::Result<()> {
         .kick(&[0, 4, 8, 12])
         .snare(&[4, 12])
         .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
-        .repeat(3);  // Plays through verse1, chorus, and part of verse2
+        .repeat(3); // Plays through verse1, chorus, and part of verse2
 
     // Bass starts at chorus
     comp.instrument("bass", &Instrument::sub_bass())
         .at_mark("chorus")
         .pattern_start()
         .notes(&[C2, C2, G2, C3], 0.5)
-        .repeat(7);  // 8 bars total
+        .repeat(7); // 8 bars total
 
     // Lead melody comes in at verse 2
     comp.instrument("lead", &Instrument::synth_lead())
@@ -74,8 +74,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut comp2 = Composition::new(Tempo::new(140.0));
 
-    let builder = comp2.track("debug_example")
-        .notes(&[C4, E4], 0.5);
+    let builder = comp2.track("debug_example").notes(&[C4, E4], 0.5);
 
     let pos1 = builder.peek_cursor();
     println!("  After 2 notes: cursor at {:.1}s", pos1);
@@ -84,9 +83,7 @@ fn main() -> anyhow::Result<()> {
     let pos2 = builder.peek_cursor();
     println!("  After wait(2.0): cursor at {:.1}s", pos2);
 
-    let builder = builder
-        .note(&[G4], 0.5)
-        .mark("checkpoint");
+    let builder = builder.note(&[G4], 0.5).mark("checkpoint");
 
     let pos3 = builder.peek_cursor();
     println!("  After 1 more note: cursor at {:.1}s", pos3);
@@ -98,25 +95,32 @@ fn main() -> anyhow::Result<()> {
     let mut comp3 = Composition::new(Tempo::new(128.0));
 
     // Setup markers
-    comp3.track("timeline")
-        .wait(4.0).mark("drop")
-        .wait(8.0).mark("breakdown")
-        .wait(4.0).mark("buildup");
+    comp3
+        .track("timeline")
+        .wait(4.0)
+        .mark("drop")
+        .wait(8.0)
+        .mark("breakdown")
+        .wait(4.0)
+        .mark("buildup");
 
     // Multiple tracks can all reference the same marker
-    comp3.track("kick")
+    comp3
+        .track("kick")
         .at_mark("drop")
         .drum_grid(16, 0.125)
         .kick(&[0, 4, 8, 12])
         .repeat(7);
 
-    comp3.track("snare")
+    comp3
+        .track("snare")
         .at_mark("drop")
         .drum_grid(16, 0.125)
         .snare(&[4, 12])
         .repeat(7);
 
-    comp3.instrument("wobble", &Instrument::wobble_bass())
+    comp3
+        .instrument("wobble", &Instrument::wobble_bass())
         .at_mark("drop")
         .notes(&[C2, C2, C2, C2], 0.5);
 

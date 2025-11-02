@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     println!("  Playing harmonics 8-16 as a chord (spectral music technique)\n");
 
     let high_harmonics = harmonic_series(55.0, 16);
-    let chord_cluster = &high_harmonics[7..16];  // Harmonics 8-16
+    let chord_cluster = &high_harmonics[7..16]; // Harmonics 8-16
 
     comp.instrument("cluster", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     println!("  Harmonics 4-5-6 create a perfectly tuned major triad\n");
 
     // Major triad from harmonics (C major in this case)
-    let c_fund = 65.41;  // C2
+    let c_fund = 65.41; // C2
     let c_harmonics = harmonic_series(c_fund, 6);
     let c_major_just = vec![c_harmonics[3], c_harmonics[4], c_harmonics[5]]; // 4th, 5th, 6th harmonics
 
@@ -88,7 +88,7 @@ fn main() -> anyhow::Result<()> {
 
     for (i, &fundamental) in blues_fundamentals.iter().enumerate() {
         let h = harmonic_series(fundamental, 7);
-        let seventh_harmonic = h[6];  // 7th harmonic
+        let seventh_harmonic = h[6]; // 7th harmonic
 
         comp.instrument(&format!("blues_{}", i), &Instrument::synth_lead())
             .reverb(Reverb::new(0.5, 0.5, 0.3))
@@ -102,10 +102,10 @@ fn main() -> anyhow::Result<()> {
     println!("  Creating a melody by walking through harmonics of changing fundamentals\n");
 
     let melody_fundamentals = vec![
-        110.0,   // A2
-        98.0,    // G2
-        82.41,   // E2
-        73.42,   // D2
+        110.0, // A2
+        98.0,  // G2
+        82.41, // E2
+        73.42, // D2
     ];
 
     let mut spectral_melody = Vec::new();
@@ -124,17 +124,29 @@ fn main() -> anyhow::Result<()> {
     println!("Part 8: Chord Progression Using Harmonic Subsets\n");
     println!("  Each chord uses different harmonics from the same series\n");
 
-    let prog_fund = 55.0;  // A1
+    let prog_fund = 55.0; // A1
     let full_harmonics = harmonic_series(prog_fund, 16);
 
     // Different harmonic subsets create different chord qualities
     comp.instrument("harm_chord1", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .at(30.5)
-        .note(&[full_harmonics[3], full_harmonics[4], full_harmonics[5]], 2.0)  // Major
-        .note(&[full_harmonics[5], full_harmonics[6], full_harmonics[7]], 2.0)  // Different voicing
-        .note(&[full_harmonics[7], full_harmonics[9], full_harmonics[11]], 2.0) // Dissonant
-        .note(&[full_harmonics[3], full_harmonics[4], full_harmonics[5]], 2.0); // Return home
+        .note(
+            &[full_harmonics[3], full_harmonics[4], full_harmonics[5]],
+            2.0,
+        ) // Major
+        .note(
+            &[full_harmonics[5], full_harmonics[6], full_harmonics[7]],
+            2.0,
+        ) // Different voicing
+        .note(
+            &[full_harmonics[7], full_harmonics[9], full_harmonics[11]],
+            2.0,
+        ) // Dissonant
+        .note(
+            &[full_harmonics[3], full_harmonics[4], full_harmonics[5]],
+            2.0,
+        ); // Return home
 
     // ===== PART 9: BELL-LIKE INHARMONIC TONES =====
     println!("Part 9: Comparing Harmonic vs Detuned (Bell-like)\n");
@@ -142,18 +154,14 @@ fn main() -> anyhow::Result<()> {
 
     // Pure harmonic (will sound very stable)
     let pure = harmonic_series(220.0, 8);
-    comp.track("pure_harmonics")
-        .at(39.0)
-        .note(&pure, 2.0);
+    comp.track("pure_harmonics").at(39.0).note(&pure, 2.0);
 
     // Detuned slightly (bell-like, metallic)
     let mut bell_like = harmonic_series(220.0, 8);
     for (i, freq) in bell_like.iter_mut().enumerate() {
         *freq *= 1.0 + (i as f32 * 0.03); // Progressive detuning
     }
-    comp.track("bell_like")
-        .at(41.5)
-        .note(&bell_like, 2.0);
+    comp.track("bell_like").at(41.5).note(&bell_like, 2.0);
 
     println!("\n▶️  Playing harmonic series demonstration...\n");
     println!("    Duration: ~44 seconds\n");

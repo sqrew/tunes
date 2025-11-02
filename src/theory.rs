@@ -415,9 +415,7 @@ impl ChordPattern {
     };
 
     /// Power chord (5th): R-P5 (0-7)
-    pub const POWER: ChordPattern = ChordPattern {
-        intervals: &[0, 7],
-    };
+    pub const POWER: ChordPattern = ChordPattern { intervals: &[0, 7] };
 
     /// Power chord with octave: R-P5-R8 (0-7-12)
     pub const POWER_OCTAVE: ChordPattern = ChordPattern {
@@ -505,22 +503,21 @@ fn determine_triad(scale_pattern: &ScalePattern, degree: usize) -> &'static Chor
     // For major scale: I, ii, iii, IV, V, vi, vii°
     if scale_pattern.intervals == ScalePattern::MAJOR.intervals {
         match degree {
-            1 | 4 | 5 => &ChordPattern::MAJOR,     // I, IV, V
-            2 | 3 | 6 => &ChordPattern::MINOR,     // ii, iii, vi
-            7 => &ChordPattern::DIMINISHED,        // vii°
+            1 | 4 | 5 => &ChordPattern::MAJOR, // I, IV, V
+            2 | 3 | 6 => &ChordPattern::MINOR, // ii, iii, vi
+            7 => &ChordPattern::DIMINISHED,    // vii°
             _ => &ChordPattern::MAJOR,
         }
     }
     // For minor scale: i, ii°, III, iv, v, VI, VII
     else if scale_pattern.intervals == ScalePattern::MINOR.intervals {
         match degree {
-            3 | 6 | 7 => &ChordPattern::MAJOR,     // III, VI, VII
-            1 | 4 | 5 => &ChordPattern::MINOR,     // i, iv, v
-            2 => &ChordPattern::DIMINISHED,        // ii°
+            3 | 6 | 7 => &ChordPattern::MAJOR, // III, VI, VII
+            1 | 4 | 5 => &ChordPattern::MINOR, // i, iv, v
+            2 => &ChordPattern::DIMINISHED,    // ii°
             _ => &ChordPattern::MINOR,
         }
-    }
-    else {
+    } else {
         // Default to major for other scales
         &ChordPattern::MAJOR
     }
@@ -530,24 +527,23 @@ fn determine_seventh(scale_pattern: &ScalePattern, degree: usize) -> &'static Ch
     // For major scale: Imaj7, ii7, iii7, IVmaj7, V7, vi7, viiø7
     if scale_pattern.intervals == ScalePattern::MAJOR.intervals {
         match degree {
-            1 | 4 => &ChordPattern::MAJOR7,        // Imaj7, IVmaj7
-            5 => &ChordPattern::DOMINANT7,         // V7
-            2 | 3 | 6 => &ChordPattern::MINOR7,    // ii7, iii7, vi7
-            7 => &ChordPattern::HALF_DIMINISHED7,  // viiø7
+            1 | 4 => &ChordPattern::MAJOR7,       // Imaj7, IVmaj7
+            5 => &ChordPattern::DOMINANT7,        // V7
+            2 | 3 | 6 => &ChordPattern::MINOR7,   // ii7, iii7, vi7
+            7 => &ChordPattern::HALF_DIMINISHED7, // viiø7
             _ => &ChordPattern::MAJOR7,
         }
     }
     // For minor scale: i7, iiø7, IIImaj7, iv7, v7, VImaj7, VII7
     else if scale_pattern.intervals == ScalePattern::MINOR.intervals {
         match degree {
-            1 | 4 | 5 => &ChordPattern::MINOR7,    // i7, iv7, v7
-            3 | 6 => &ChordPattern::MAJOR7,        // IIImaj7, VImaj7
-            7 => &ChordPattern::DOMINANT7,         // VII7
-            2 => &ChordPattern::HALF_DIMINISHED7,  // iiø7
+            1 | 4 | 5 => &ChordPattern::MINOR7,   // i7, iv7, v7
+            3 | 6 => &ChordPattern::MAJOR7,       // IIImaj7, VImaj7
+            7 => &ChordPattern::DOMINANT7,        // VII7
+            2 => &ChordPattern::HALF_DIMINISHED7, // iiø7
             _ => &ChordPattern::MINOR7,
         }
-    }
-    else {
+    } else {
         // Default to major 7 for other scales
         &ChordPattern::MAJOR7
     }
@@ -568,7 +564,10 @@ fn determine_seventh(scale_pattern: &ScalePattern, degree: usize) -> &'static Ch
 /// let transposed = transpose_sequence(&melody, 2); // D4, E4, F#4
 /// ```
 pub fn transpose_sequence(notes: &[f32], semitones: i32) -> Vec<f32> {
-    notes.iter().map(|&note| transpose(note, semitones)).collect()
+    notes
+        .iter()
+        .map(|&note| transpose(note, semitones))
+        .collect()
 }
 
 /// Get a specific scale degree from a scale

@@ -646,8 +646,8 @@ mod tests {
 
         // Should not panic, just leave cursor unchanged
         comp.track("test")
-            .at(1.0)  // Set cursor to 1.0
-            .at_mark("nonexistent")  // Try to use non-existent marker
+            .at(1.0) // Set cursor to 1.0
+            .at_mark("nonexistent") // Try to use non-existent marker
             .note(&[C4], 0.5);
 
         let mixer = comp.into_mixer();

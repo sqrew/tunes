@@ -314,9 +314,7 @@ mod tests {
     #[test]
     fn test_bend_sets_pitch_bend() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .bend(2.0)
-            .note(&[C4], 1.0);
+        comp.track("test").bend(2.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -330,9 +328,7 @@ mod tests {
     #[test]
     fn test_bend_clamps_low() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .bend(-30.0)
-            .note(&[C4], 1.0);
+        comp.track("test").bend(-30.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -346,9 +342,7 @@ mod tests {
     #[test]
     fn test_bend_clamps_high() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .bend(30.0)
-            .note(&[C4], 1.0);
+        comp.track("test").bend(30.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -379,9 +373,7 @@ mod tests {
     fn test_envelope_sets_for_subsequent_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
         let env = Envelope::new(0.1, 0.2, 0.7, 0.3);
-        comp.track("test")
-            .envelope(env)
-            .note(&[C4], 1.0);
+        comp.track("test").envelope(env).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -409,9 +401,7 @@ mod tests {
     #[test]
     fn test_vibrato_multiple_calls() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .vibrato(5.0, 0.3)
-            .vibrato(3.0, 0.1);
+        comp.track("test").vibrato(5.0, 0.3).vibrato(3.0, 0.1);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -432,9 +422,7 @@ mod tests {
     #[test]
     fn test_fade_to_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .fade_to(0.5, 3.0)
-            .note(&[C4], 1.0);
+        comp.track("test").fade_to(0.5, 3.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -486,9 +474,7 @@ mod tests {
     #[test]
     fn test_volume_with_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .volume(0.5)
-            .note(&[C4], 1.0);
+        comp.track("test").volume(0.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks[0].volume, 0.5);
@@ -515,9 +501,7 @@ mod tests {
     #[test]
     fn test_bend_zero_is_no_bend() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .bend(0.0)
-            .note(&[C4], 1.0);
+        comp.track("test").bend(0.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -531,9 +515,7 @@ mod tests {
     #[test]
     fn test_velocity_sets_note_velocity() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .velocity(0.6)
-            .note(&[C4], 1.0);
+        comp.track("test").velocity(0.6).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -547,9 +529,7 @@ mod tests {
     #[test]
     fn test_velocity_clamps_low() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .velocity(-0.5)
-            .note(&[C4], 1.0);
+        comp.track("test").velocity(-0.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -563,9 +543,7 @@ mod tests {
     #[test]
     fn test_velocity_clamps_high() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .velocity(1.5)
-            .note(&[C4], 1.0);
+        comp.track("test").velocity(1.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
@@ -579,9 +557,7 @@ mod tests {
     #[test]
     fn test_velocity_affects_multiple_notes() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("test")
-            .velocity(0.9)
-            .notes(&[C4, E4, G4], 0.5);
+        comp.track("test").velocity(0.9).notes(&[C4, E4, G4], 0.5);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];

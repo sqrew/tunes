@@ -1210,9 +1210,13 @@ pub const AS10_HARMONIC_MINOR_SCALE: &[f32] = &[AS10, C11, CS11, DS11, F11, FS11
 pub const B10_HARMONIC_MINOR_SCALE: &[f32] = &[B10, CS11, D11, E11, FS11, G11, AS11, B11];
 
 // ===== CHROMATIC SCALES =====
-pub const C_1_CHROMATIC_SCALE: &[f32] = &[C_1, CS_1, D_1, DS_1, E_1, F_1, FS_1, G_1, GS_1, A_1, AS_1, B_1, C0];
+pub const C_1_CHROMATIC_SCALE: &[f32] = &[
+    C_1, CS_1, D_1, DS_1, E_1, F_1, FS_1, G_1, GS_1, A_1, AS_1, B_1, C0,
+];
 pub const C0_CHROMATIC_SCALE: &[f32] = &[C0, CS0, D0, DS0, E0, F0, FS0, G0, GS0, A0, AS0, B0, C1];
 pub const C7_CHROMATIC_SCALE: &[f32] = &[C7, CS7, D7, DS7, E7, F7, FS7, G7, GS7, A7, AS7, B7, C8];
 pub const C8_CHROMATIC_SCALE: &[f32] = &[C8, CS8, D8, DS8, E8, F8, FS8, G8, GS8, A8, AS8, B8, C9];
 pub const C9_CHROMATIC_SCALE: &[f32] = &[C9, CS9, D9, DS9, E9, F9, FS9, G9, GS9, A9, AS9, B9, C10];
-pub const C10_CHROMATIC_SCALE: &[f32] = &[C10, CS10, D10, DS10, E10, F10, FS10, G10, GS10, A10, AS10, B10, C11];
+pub const C10_CHROMATIC_SCALE: &[f32] = &[
+    C10, CS10, D10, DS10, E10, F10, FS10, G10, GS10, A10, AS10, B10, C11,
+];

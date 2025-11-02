@@ -147,7 +147,11 @@ impl<'a> SectionBuilder<'a> {
     ///     .instrument("lead", &Instrument::synth_lead())
     ///     .notes(&[E4, G4, B4], 0.25);
     /// ```
-    pub fn instrument(self, name: &str, instrument: &Instrument) -> crate::composition::TrackBuilder<'a> {
+    pub fn instrument(
+        self,
+        name: &str,
+        instrument: &Instrument,
+    ) -> crate::composition::TrackBuilder<'a> {
         let mut builder = crate::composition::TrackBuilder {
             composition: self.composition,
             context: crate::composition::BuilderContext::Section(self.section_name),
@@ -181,7 +185,7 @@ impl Track {
         self.filter = instrument.filter;
         self.delay = instrument.delay.clone();
         self.reverb = instrument.reverb.clone();
-        self.distortion = instrument.distortion;
+        self.distortion = instrument.distortion.clone();
         self.modulation = instrument.modulation.clone();
     }
 }
@@ -189,8 +193,8 @@ impl Track {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::notes::*;
     use crate::drums::DrumType;
+    use crate::notes::*;
 
     #[test]
     fn test_create_empty_section() {
@@ -280,9 +284,7 @@ mod tests {
     fn test_arrange_single_section() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        comp.section("verse")
-            .track("melody")
-            .notes(&[C4, E4], 0.5);
+        comp.section("verse").track("melody").notes(&[C4, E4], 0.5);
 
         comp.arrange(&["verse"]);
 
@@ -294,13 +296,9 @@ mod tests {
     fn test_arrange_multiple_sections() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        comp.section("intro")
-            .track("melody")
-            .note(&[C4], 1.0);
+        comp.section("intro").track("melody").note(&[C4], 1.0);
 
-        comp.section("verse")
-            .track("melody")
-            .notes(&[E4, G4], 0.5);
+        comp.section("verse").track("melody").notes(&[E4, G4], 0.5);
 
         comp.arrange(&["intro", "verse"]);
 
@@ -323,9 +321,7 @@ mod tests {
     fn test_arrange_repeated_section() {
         let mut comp = Composition::new(Tempo::new(120.0));
 
-        comp.section("chorus")
-            .track("melody")
-            .notes(&[C4, E4], 0.5);
+        comp.section("chorus").track("melody").notes(&[C4, E4], 0.5);
 
         comp.arrange(&["chorus", "chorus"]);
 
@@ -363,13 +359,9 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
 
         // Define sections
-        comp.section("intro")
-            .track("melody")
-            .notes(&[C4], 2.0);
+        comp.section("intro").track("melody").notes(&[C4], 2.0);
 
-        comp.section("verse")
-            .track("melody")
-            .notes(&[E4, G4], 1.0);
+        comp.section("verse").track("melody").notes(&[E4, G4], 1.0);
 
         comp.section("chorus")
             .track("melody")

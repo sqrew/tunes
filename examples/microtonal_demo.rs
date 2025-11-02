@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 fn main() -> anyhow::Result<()> {
     println!("\n🎵 Microtonal Music Demonstration\n");
     println!("Exploring alternative tuning systems beyond 12-tone equal temperament.\n");
@@ -19,9 +18,9 @@ fn main() -> anyhow::Result<()> {
     println!("   Demonstrates notes between the standard semitones");
     let quarter_tone_scale = vec![
         C4,
-        quarter_sharp(C4),   // C quarter-sharp
-        CS4,                 // C sharp (half-sharp)
-        quarter_sharp(CS4),  // C three-quarter-sharp
+        quarter_sharp(C4),  // C quarter-sharp
+        CS4,                // C sharp (half-sharp)
+        quarter_sharp(CS4), // C three-quarter-sharp
         D4,
         quarter_sharp(D4),
         DS4,
@@ -59,30 +58,37 @@ fn main() -> anyhow::Result<()> {
         // 5. Just intonation
         .notes(&just_major, note_duration)
         .wait(pause)
-
         // 6. Just intonation chord progression
         .note(&[C4], note_duration)
-        .note(&[just_ratio(C4, 5, 4)], note_duration)   // Pure major third
-        .note(&[just_ratio(C4, 3, 2)], note_duration)   // Pure perfect fifth
-        .note(&[just_ratio(C4, 2, 1)], note_duration)   // Octave
+        .note(&[just_ratio(C4, 5, 4)], note_duration) // Pure major third
+        .note(&[just_ratio(C4, 3, 2)], note_duration) // Pure perfect fifth
+        .note(&[just_ratio(C4, 2, 1)], note_duration) // Octave
         .wait(pause)
         // 7. Pythagorean tuning
         .notes(&pythagorean_scale(D4), note_duration * 0.7)
         .wait(pause)
         // 8. 53-TET
-        .notes(&(0..27).map(|i| Edo::new(53).step(F4, i)).collect::<Vec<_>>(), note_duration * 0.5)
+        .notes(
+            &(0..27)
+                .map(|i| Edo::new(53).step(F4, i))
+                .collect::<Vec<_>>(),
+            note_duration * 0.5,
+        )
         .wait(pause)
         // 9. Cents-based detuning
-        .notes(&vec![
-            C4,
-            freq_from_cents(C4, 150.0),
-            freq_from_cents(C4, 350.0),
-            freq_from_cents(C4, 550.0),
-            freq_from_cents(C4, 700.0),
-            freq_from_cents(C4, 900.0),
-            freq_from_cents(C4, 1100.0),
-            freq_from_cents(C4, 1200.0),
-        ], note_duration)
+        .notes(
+            &vec![
+                C4,
+                freq_from_cents(C4, 150.0),
+                freq_from_cents(C4, 350.0),
+                freq_from_cents(C4, 550.0),
+                freq_from_cents(C4, 700.0),
+                freq_from_cents(C4, 900.0),
+                freq_from_cents(C4, 1100.0),
+                freq_from_cents(C4, 1200.0),
+            ],
+            note_duration,
+        )
         .wait(pause)
         // 10. Comparing tuning systems
         .note(&[C4], note_duration * 0.5)
@@ -95,7 +101,10 @@ fn main() -> anyhow::Result<()> {
         .note(&[EDO19.step(C4, 6)], note_duration * 0.5)
         .wait(pause)
         // 11. Harmonic series
-        .notes(&(1..=12).map(|n| C2 * n as f32).collect::<Vec<_>>(), note_duration * 0.8);
+        .notes(
+            &(1..=12).map(|n| C2 * n as f32).collect::<Vec<_>>(),
+            note_duration * 0.8,
+        );
 
     println!("\n6. Just Intonation - Pure Intervals");
     println!("   Demonstrating pure perfect fifth (3:2) and major third (5:4)");

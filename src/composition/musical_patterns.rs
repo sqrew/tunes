@@ -9,14 +9,15 @@ impl<'a> TrackBuilder<'a> {
 
         for chord in chord_sequence {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                chord,
-                cursor,
-                chord_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    chord,
+                    cursor,
+                    chord_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(chord_duration);
             self.cursor += swung_duration;
         }
@@ -129,14 +130,15 @@ impl<'a> TrackBuilder<'a> {
 
         for chord in chord_vecs {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                chord.as_slice(),
-                cursor,
-                chord_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    chord.as_slice(),
+                    cursor,
+                    chord_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(chord_duration);
             self.cursor += swung_duration;
         }
@@ -179,14 +181,15 @@ impl<'a> TrackBuilder<'a> {
         // Play the scale in reverse order
         for &freq in scale.iter().rev() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -221,14 +224,15 @@ impl<'a> TrackBuilder<'a> {
         // Play ascending
         for &freq in scale.iter() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -236,14 +240,15 @@ impl<'a> TrackBuilder<'a> {
         // Play descending, skipping the first note (which was the peak)
         for &freq in scale.iter().rev().skip(1) {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -279,14 +284,15 @@ impl<'a> TrackBuilder<'a> {
         // Play descending
         for &freq in scale.iter().rev() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -294,14 +300,15 @@ impl<'a> TrackBuilder<'a> {
         // Play ascending, skipping the first note (which was the bottom)
         for &freq in scale.iter().skip(1) {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -347,14 +354,15 @@ impl<'a> TrackBuilder<'a> {
         // Play the chord notes in reverse order
         for &freq in chord.iter().rev() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -389,14 +397,15 @@ impl<'a> TrackBuilder<'a> {
         // Play ascending
         for &freq in chord.iter() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -404,14 +413,15 @@ impl<'a> TrackBuilder<'a> {
         // Play descending, skipping the first note (which was the top)
         for &freq in chord.iter().rev().skip(1) {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -447,14 +457,15 @@ impl<'a> TrackBuilder<'a> {
         // Play descending
         for &freq in chord.iter().rev() {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -462,14 +473,15 @@ impl<'a> TrackBuilder<'a> {
         // Play ascending, skipping the first note (which was the bottom)
         for &freq in chord.iter().skip(1) {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -502,14 +514,15 @@ impl<'a> TrackBuilder<'a> {
         for &freq in notes {
             let doubled_freq = freq * multiplier;
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq, doubled_freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq, doubled_freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -539,14 +552,15 @@ impl<'a> TrackBuilder<'a> {
         for &freq in notes {
             let harmony_freq = freq * multiplier;
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq, harmony_freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq, harmony_freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -581,26 +595,28 @@ impl<'a> TrackBuilder<'a> {
         let pitch_bend = self.pitch_bend;
 
         // Add sustained pedal note
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[pedal_note],
-            start_cursor,
-            total_melody_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
-
-        // Add melody notes on top
-        for &freq in melody_notes {
-            let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[pedal_note],
+                start_cursor,
+                total_melody_duration,
                 waveform,
                 envelope,
                 pitch_bend,
             );
+
+        // Add melody notes on top
+        for &freq in melody_notes {
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -644,20 +660,20 @@ impl<'a> TrackBuilder<'a> {
             let freq = notes[note_index];
 
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[freq],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
         self
     }
-
 }
 
 #[cfg(test)]
@@ -1060,8 +1076,12 @@ mod tests {
     #[test]
     fn test_progression_7th_creates_seventh_chords() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("jazz")
-            .progression_7th(C4, &crate::theory::ScalePattern::MAJOR, &[2, 5, 1], 2.0);
+        comp.track("jazz").progression_7th(
+            C4,
+            &crate::theory::ScalePattern::MAJOR,
+            &[2, 5, 1],
+            2.0,
+        );
 
         let track = &comp.into_mixer().tracks[0];
         // Should have 3 chords (ii7-V7-Imaj7)
@@ -1078,8 +1098,12 @@ mod tests {
     #[test]
     fn test_progression_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("prog")
-            .progression(C4, &crate::theory::ScalePattern::MAJOR, &[1, 5, 6, 4], 1.5);
+        let builder = comp.track("prog").progression(
+            C4,
+            &crate::theory::ScalePattern::MAJOR,
+            &[1, 5, 6, 4],
+            1.5,
+        );
 
         // 4 chords * 1.5 duration = 6.0
         assert_eq!(builder.cursor, 6.0);

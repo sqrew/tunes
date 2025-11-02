@@ -1,10 +1,10 @@
 /// ADSR (Attack, Decay, Sustain, Release) envelope for shaping sound amplitude over time
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Envelope {
-    pub attack: f32,   // Time to reach peak amplitude (seconds)
-    pub decay: f32,    // Time to decay from peak to sustain level (seconds)
-    pub sustain: f32,  // Sustain level (0.0 to 1.0)
-    pub release: f32,  // Time to fade from sustain to silence after note ends (seconds)
+    pub attack: f32,  // Time to reach peak amplitude (seconds)
+    pub decay: f32,   // Time to decay from peak to sustain level (seconds)
+    pub sustain: f32, // Sustain level (0.0 to 1.0)
+    pub release: f32, // Time to fade from sustain to silence after note ends (seconds)
 }
 
 impl Envelope {

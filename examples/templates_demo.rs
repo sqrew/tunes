@@ -73,7 +73,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.from_template("pad_sound", "pad2")
         .at(3.0)
-        .pan(0.5)  // Override pan for stereo width
+        .pan(0.5) // Override pan for stereo width
         .note(&chord(F3, &ChordPattern::MAJOR), 2.0);
 
     comp.from_template("pad_sound", "pad3")
@@ -99,13 +99,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.from_template("bass_sound", "bass_filtered")
         .at(9.0)
-        .filter(Filter::low_pass(800.0, 0.7))  // Add filter on top of template
+        .filter(Filter::low_pass(800.0, 0.7)) // Add filter on top of template
         .notes(&[A2, A2, C3, E3], 0.5);
 
     // Use template but override volume
     comp.from_template("bass_sound", "bass_quiet")
         .at(11.0)
-        .volume(0.3)  // Override template volume
+        .volume(0.3) // Override template volume
         .notes(&[F2, F2, A2, C3], 0.5);
 
     // ===== PART 5: TEMPLATES WITH CUSTOM SYNTHESIS =====

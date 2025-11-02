@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 /// Demonstrate musical time notation (bars, beats, quarters, eighths, etc.)
 fn main() -> anyhow::Result<()> {
     println!("🎵 Musical Time Notation Demo\n");
@@ -12,13 +11,13 @@ fn main() -> anyhow::Result<()> {
     println!("1. Bar and Beat Positioning");
 
     comp.instrument("bars_demo", &Instrument::acoustic_piano())
-        .at_bar(1)  // Start at bar 1
+        .at_bar(1) // Start at bar 1
         .quarters(&[C4, D4, E4, F4])
-        .at_bar(2)  // Jump to bar 2
+        .at_bar(2) // Jump to bar 2
         .quarters(&[G4, A4, B4, C5]);
 
     comp.instrument("beats_demo", &Instrument::acoustic_piano())
-        .at_beat(9)  // Beat 9 (bar 3, beat 1 in 4/4)
+        .at_beat(9) // Beat 9 (bar 3, beat 1 in 4/4)
         .quarters(&[C5, B4, A4, G4]);
 
     // ===== 2. MUSICAL NOTE DURATIONS =====
@@ -34,7 +33,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("sixteenths", &Instrument::synth_lead())
         .at_bar(6)
-        .sixteenths(&[C5, B4, A4, G4, F4, E4, D4, C4, C4, D4, E4, F4, G4, A4, B4, C5]); // 16 sixteenths
+        .sixteenths(&[
+            C5, B4, A4, G4, F4, E4, D4, C4, C4, D4, E4, F4, G4, A4, B4, C5,
+        ]); // 16 sixteenths
 
     // ===== 3. LONGER NOTE VALUES =====
     println!("\n3. Longer Note Values - Halves and Wholes");
@@ -52,7 +53,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("dotted_quarters", &Instrument::pluck())
         .at_bar(9)
-        .dotted_quarters(&[C4, E4])  // Two dotted quarters (1.5 beats each = 3 beats total)
+        .dotted_quarters(&[C4, E4]) // Two dotted quarters (1.5 beats each = 3 beats total)
         .quarter(&[G4]); // One quarter to complete the bar
 
     comp.instrument("dotted_eighths", &Instrument::pluck())
@@ -64,11 +65,11 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("mixed", &Instrument::acoustic_piano())
         .at_bar(11)
-        .half(&[C4])            // Half note (2 beats)
-        .quarter(&[E4])         // Quarter note (1 beat)
-        .eighth(&[G4])          // Eighth note (0.5 beats)
-        .eighth(&[A4])          // Eighth note (0.5 beats)
-        .whole(&[C5]);          // Whole note (4 beats) - continues into next bar
+        .half(&[C4]) // Half note (2 beats)
+        .quarter(&[E4]) // Quarter note (1 beat)
+        .eighth(&[G4]) // Eighth note (0.5 beats)
+        .eighth(&[A4]) // Eighth note (0.5 beats)
+        .whole(&[C5]); // Whole note (4 beats) - continues into next bar
 
     // ===== 6. WAIT IN MUSICAL TIME =====
     println!("\n6. Waiting in Musical Time - .beats() and .bars()");
@@ -76,9 +77,9 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("waits", &Instrument::synth_lead())
         .at_bar(13)
         .quarter(&[C4])
-        .beats(2.0)             // Wait 2 quarter notes
+        .beats(2.0) // Wait 2 quarter notes
         .quarter(&[E4])
-        .bars(1.0)              // Wait 1 full bar
+        .bars(1.0) // Wait 1 full bar
         .quarter(&[G4]);
 
     // ===== 7. CHORD PROGRESSION WITH MUSICAL TIME =====
@@ -86,10 +87,10 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("chords", &Instrument::warm_pad())
         .at_bar(15)
-        .whole(&[C3, E3, G3])   // C major - 1 bar
-        .whole(&[F3, A3, C4])   // F major - 1 bar
-        .whole(&[G3, B3, D4])   // G major - 1 bar
-        .whole(&[C3, E3, G3]);  // C major - 1 bar
+        .whole(&[C3, E3, G3]) // C major - 1 bar
+        .whole(&[F3, A3, C4]) // F major - 1 bar
+        .whole(&[G3, B3, D4]) // G major - 1 bar
+        .whole(&[C3, E3, G3]); // C major - 1 bar
 
     // Bass line with mixed durations
     comp.instrument("bass", &Instrument::sub_bass())
@@ -123,7 +124,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("drums", &Instrument::sub_bass())
         .at_bar(19)
-        .drum_grid(16, 0.125)  // Still using seconds for drum grid (tempo-aware grid would be next step)
+        .drum_grid(16, 0.125) // Still using seconds for drum grid (tempo-aware grid would be next step)
         .kick(&[0, 8])
         .snare(&[4, 12])
         .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
@@ -140,16 +141,16 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("ornaments_tempo", &Instrument::harpsichord())
         .at_bar(41)
         .note(&[C4], qtr)
-        .trill(C4, D4, 16, sixteenth)  // Sixteenth note trill
+        .trill(C4, D4, 16, sixteenth) // Sixteenth note trill
         .note(&[E4], qtr)
-        .mordent(G4, eighth)           // Eighth note mordent
+        .mordent(G4, eighth) // Eighth note mordent
         .grace(C5, B4, sixteenth, qtr); // Quick grace into quarter
 
     // Option 2: Tempo returns a copy now, but still need to capture before builder chain
-    let tempo = comp.tempo();  // Get tempo copy
+    let tempo = comp.tempo(); // Get tempo copy
     comp.instrument("inline_calc", &Instrument::acoustic_piano())
         .at_bar(42)
-        .tremolo(C4, 8, tempo.eighth_note())
+        .tremolo_note(C4, 8, tempo.eighth_note())
         .trill(C4, D4, 8, tempo.eighth_note() / 2.0);
 
     // ===== 10. COMPARISON: OLD VS NEW =====
@@ -157,7 +158,7 @@ fn main() -> anyhow::Result<()> {
 
     // Old way (raw seconds)
     comp.instrument("old_way", &Instrument::pluck())
-        .at(88.0)  // Have to calculate: at 120 BPM, bar 45 = ?
+        .at(88.0) // Have to calculate: at 120 BPM, bar 45 = ?
         .notes(&[C4, E4, G4, C5], 0.5); // Have to calculate: quarter note at 120 BPM = 0.5s
 
     // New way (musical time)

@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
     println!("   • Ionian (Major) - Bright, happy: C-D-E-F-G-A-B");
     comp.section("ionian")
         .instrument("strings", &Instrument::warm_pad())
-        .key_signature(KeySignature::C_MAJOR)  // C Ionian = C Major
+        .key_signature(KeySignature::C_MAJOR) // C Ionian = C Major
         .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25);
 
     // Mode 2: Dorian
@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
     println!("   • Aeolian (Natural Minor) - Melancholic: A-B-C-D-E-F-G");
     comp.section("aeolian")
         .instrument("strings", &Instrument::warm_pad())
-        .key_signature(KeySignature::A_AEOLIAN)  // A Aeolian = A Natural Minor
+        .key_signature(KeySignature::A_AEOLIAN) // A Aeolian = A Natural Minor
         .notes(&[A4, B4, C5, D5, E5, F5, G5, A5], 0.25);
 
     // Mode 7: Locrian
@@ -143,14 +143,14 @@ fn main() -> anyhow::Result<()> {
     println!("   Creating a journey through different keys and modes\n");
 
     comp.arrange(&[
-        "c_major",      // Start bright
-        "a_minor",      // Move to relative minor
-        "dorian",       // Jazzy mode
-        "phrygian",     // Dark mode
-        "lydian",       // Dreamy mode
-        "mixolydian",   // Bluesy mode
-        "aeolian",      // Natural minor
-        "c_major",      // Return home
+        "c_major",    // Start bright
+        "a_minor",    // Move to relative minor
+        "dorian",     // Jazzy mode
+        "phrygian",   // Dark mode
+        "lydian",     // Dreamy mode
+        "mixolydian", // Bluesy mode
+        "aeolian",    // Natural minor
+        "c_major",    // Return home
     ]);
 
     // ===== PLAYBACK =====

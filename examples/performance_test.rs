@@ -75,7 +75,10 @@ fn main() -> anyhow::Result<()> {
     println!("  Audio duration: {:.2}s", duration);
     println!();
     println!("Note: Playback time ≈ audio duration because we play through speakers.");
-    println!("The audio engine successfully rendered {} events without underruns!", num_tracks * events_per_track);
+    println!(
+        "The audio engine successfully rendered {} events without underruns!",
+        num_tracks * events_per_track
+    );
     println!();
     println!("Optimizations verified:");
     println!("  ✓ No ALSA underruns during playback");

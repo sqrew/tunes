@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("basic_accent")
         .pattern_start()
         .rhythm("x-x-", DrumType::Kick, 0.125)
-        .repeat(7)  // 16 kicks total
+        .repeat(7) // 16 kicks total
         .every_n(4, DrumType::Crash);
 
     // ===== PART 2: MULTIPLE VARIATIONS =====
@@ -27,9 +27,9 @@ fn main() -> anyhow::Result<()> {
         .at(2.0)
         .pattern_start()
         .rhythm("x-x-x-x-", DrumType::HiHatClosed, 0.0625)
-        .repeat(7)  // 32 hihats
-        .every_n(4, DrumType::Crash)   // Crash every 4th
-        .every_n(8, DrumType::Ride);   // Ride every 8th
+        .repeat(7) // 32 hihats
+        .every_n(4, DrumType::Crash) // Crash every 4th
+        .every_n(8, DrumType::Ride); // Ride every 8th
 
     // ===== PART 3: MELODIC ACCENTS =====
     println!("Part 3: Melodic Pattern with Percussion Accents\n");
@@ -39,8 +39,8 @@ fn main() -> anyhow::Result<()> {
         .at(4.0)
         .pattern_start()
         .notes(&[C4, E4, G4, C5], 0.2)
-        .repeat(5)  // 24 notes total
-        .every_n(3, DrumType::Cowbell);  // Every 3rd gets cowbell
+        .repeat(5) // 24 notes total
+        .every_n(3, DrumType::Cowbell); // Every 3rd gets cowbell
 
     // ===== PART 4: DRUM PATTERN VARIATION =====
     println!("Part 4: Adding Variation to Drum Loops\n");
@@ -50,8 +50,8 @@ fn main() -> anyhow::Result<()> {
         .at(9.0)
         .pattern_start()
         .rhythm("x---x---", DrumType::Kick, 0.125)
-        .repeat(7)  // 16 kicks
-        .every_n(8, DrumType::Snare);  // Fill on 8th, 16th
+        .repeat(7) // 16 kicks
+        .every_n(8, DrumType::Snare); // Fill on 8th, 16th
 
     // ===== PART 5: COMPLEX POLYRHYTHM =====
     println!("Part 5: Polyrhythmic Accents\n");
@@ -61,9 +61,9 @@ fn main() -> anyhow::Result<()> {
         .at(11.0)
         .pattern_start()
         .rhythm("x-", DrumType::HiHatClosed, 0.0625)
-        .repeat(29)  // 30 hits
-        .every_n(3, DrumType::Clap)      // Every 3rd
-        .every_n(5, DrumType::Rimshot);  // Every 5th
+        .repeat(29) // 30 hits
+        .every_n(3, DrumType::Clap) // Every 3rd
+        .every_n(5, DrumType::Rimshot); // Every 5th
 
     // ===== PART 6: RHYTHMIC HIHAT PATTERN =====
     println!("Part 6: Hi-Hat Pattern with Open Hats\n");
@@ -73,8 +73,8 @@ fn main() -> anyhow::Result<()> {
         .at(13.0)
         .pattern_start()
         .rhythm("xxxx xxxx", DrumType::HiHatClosed, 0.0625)
-        .repeat(3)  // 32 closed hihats
-        .every_n(6, DrumType::HiHatOpen);  // Open every 6th
+        .repeat(3) // 32 closed hihats
+        .every_n(6, DrumType::HiHatOpen); // Open every 6th
 
     // ===== PART 7: PROGRESSIVE DENSITY =====
     println!("Part 7: Building Intensity\n");
@@ -129,9 +129,9 @@ fn main() -> anyhow::Result<()> {
         .at(21.0)
         .pattern_start()
         .rhythm("x-x-", DrumType::Tom, 0.125)
-        .repeat(7)  // 16 toms
-        .every_n(4, DrumType::TomLow)   // Response on 4s
-        .every_n(8, DrumType::Crash);   // Accent on 8s
+        .repeat(7) // 16 toms
+        .every_n(4, DrumType::TomLow) // Response on 4s
+        .every_n(8, DrumType::Crash); // Accent on 8s
 
     println!("\n▶️  Playing every_n() demonstration...\n");
     println!("    Duration: ~23 seconds\n");

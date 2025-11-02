@@ -36,14 +36,15 @@ impl<'a> TrackBuilder<'a> {
 
         for &index in &pattern {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[chord[index]],
-                cursor,
-                note_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[chord[index]],
+                    cursor,
+                    note_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
         }
@@ -80,27 +81,29 @@ impl<'a> TrackBuilder<'a> {
 
         // Beat 1: Root note alone
         let cursor = self.cursor;
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[root],
-            cursor,
-            beat_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
-        self.cursor += beat_duration;
-
-        // Beats 2 and 3: Chord
-        for _ in 0..2 {
-            let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                chord,
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[root],
                 cursor,
                 beat_duration,
                 waveform,
                 envelope,
                 pitch_bend,
             );
+        self.cursor += beat_duration;
+
+        // Beats 2 and 3: Chord
+        for _ in 0..2 {
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    chord,
+                    cursor,
+                    beat_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += beat_duration;
         }
 
@@ -144,26 +147,28 @@ impl<'a> TrackBuilder<'a> {
         for _ in 0..(measures * 2) {
             // Beats 1 & 3: Bass note
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                &[root],
-                cursor,
-                beat_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[root],
+                    cursor,
+                    beat_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += beat_duration;
 
             // Beats 2 & 4: Chord
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                chord,
-                cursor,
-                beat_duration,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    chord,
+                    cursor,
+                    beat_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += beat_duration;
         }
 
@@ -216,13 +221,16 @@ impl<'a> TrackBuilder<'a> {
             2 => {
                 // Up twice: 0, 1, 2, 0, 1, 2
                 let indices: Vec<usize> = (0..chord.len()).collect();
-                indices.iter().cycle().take(chord.len() * 2).copied().collect()
+                indices
+                    .iter()
+                    .cycle()
+                    .take(chord.len() * 2)
+                    .copied()
+                    .collect()
             }
             3 => {
                 // Ascending pairs: 0, 0, 1, 1, 2, 2
-                (0..chord.len())
-                    .flat_map(|i| vec![i, i])
-                    .collect()
+                (0..chord.len()).flat_map(|i| vec![i, i]).collect()
             }
             _ => (0..chord.len()).collect(), // Default: simple ascending
         };
@@ -234,14 +242,15 @@ impl<'a> TrackBuilder<'a> {
         for index in pattern {
             if index < chord.len() {
                 let cursor = self.cursor;
-                self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                    &[chord[index]],
-                    cursor,
-                    note_duration,
-                    waveform,
-                    envelope,
-                    pitch_bend,
-                );
+                self.get_track_mut()
+                    .add_note_with_waveform_envelope_and_bend(
+                        &[chord[index]],
+                        cursor,
+                        note_duration,
+                        waveform,
+                        envelope,
+                        pitch_bend,
+                    );
                 let swung_duration = self.apply_swing(note_duration);
                 self.cursor += swung_duration;
             }
@@ -291,12 +300,7 @@ impl<'a> TrackBuilder<'a> {
     /// comp.instrument("strings", &Instrument::strings())
     ///     .tremolo_strings(&[C4, E4, G4], 2.0, 0.03);  // Tremolo chord for 2 seconds
     /// ```
-    pub fn tremolo_strings(
-        mut self,
-        notes: &[f32],
-        total_duration: f32,
-        note_speed: f32,
-    ) -> Self {
+    pub fn tremolo_strings(mut self, notes: &[f32], total_duration: f32, note_speed: f32) -> Self {
         if note_speed <= 0.0 || !note_speed.is_finite() || total_duration <= 0.0 {
             return self;
         }
@@ -308,14 +312,10 @@ impl<'a> TrackBuilder<'a> {
 
         for _ in 0..repetitions {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                notes,
-                cursor,
-                note_speed,
-                waveform,
-                envelope,
-                pitch_bend,
-            );
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    notes, cursor, note_speed, waveform, envelope, pitch_bend,
+                );
             self.cursor += note_speed;
         }
 
@@ -345,14 +345,15 @@ impl<'a> TrackBuilder<'a> {
         for _ in 0..repeats {
             for &freq in pattern {
                 let cursor = self.cursor;
-                self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                    &[freq],
-                    cursor,
-                    note_duration,
-                    waveform,
-                    envelope,
-                    pitch_bend,
-                );
+                self.get_track_mut()
+                    .add_note_with_waveform_envelope_and_bend(
+                        &[freq],
+                        cursor,
+                        note_duration,
+                        waveform,
+                        envelope,
+                        pitch_bend,
+                    );
                 let swung_duration = self.apply_swing(note_duration);
                 self.cursor += swung_duration;
             }
@@ -401,26 +402,28 @@ impl<'a> TrackBuilder<'a> {
         let pitch_bend = self.pitch_bend;
 
         // Add sustained pedal note for entire duration
-        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-            &[pedal_note],
-            start_cursor,
-            total_duration,
-            waveform,
-            envelope,
-            pitch_bend,
-        );
-
-        // Add chord progression above the pedal
-        for chord in chord_sequence {
-            let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                chord.as_slice(),
-                cursor,
-                chord_duration,
+        self.get_track_mut()
+            .add_note_with_waveform_envelope_and_bend(
+                &[pedal_note],
+                start_cursor,
+                total_duration,
                 waveform,
                 envelope,
                 pitch_bend,
             );
+
+        // Add chord progression above the pedal
+        for chord in chord_sequence {
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    chord.as_slice(),
+                    cursor,
+                    chord_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
             self.cursor += chord_duration;
         }
 
@@ -752,11 +755,7 @@ mod tests {
     #[test]
     fn test_pedal_point_creates_sustained_bass() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let chords = vec![
-            vec![C3, E3, G3],
-            vec![F3, A3, C4],
-            vec![G3, B3, D4],
-        ];
+        let chords = vec![vec![C3, E3, G3], vec![F3, A3, C4], vec![G3, B3, D4]];
         comp.track("test").pedal_point(C2, &chords, 1.0);
 
         let track = &comp.into_mixer().tracks[0];
@@ -782,10 +781,7 @@ mod tests {
     #[test]
     fn test_pedal_point_chord_timing() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let chords = vec![
-            vec![C3, E3, G3],
-            vec![F3, A3, C4],
-        ];
+        let chords = vec![vec![C3, E3, G3], vec![F3, A3, C4]];
         comp.track("test").pedal_point(C2, &chords, 0.5);
 
         let track = &comp.into_mixer().tracks[0];
@@ -802,11 +798,7 @@ mod tests {
     #[test]
     fn test_pedal_point_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let chords = vec![
-            vec![C3, E3, G3],
-            vec![F3, A3, C4],
-            vec![G3, B3, D4],
-        ];
+        let chords = vec![vec![C3, E3, G3], vec![F3, A3, C4], vec![G3, B3, D4]];
         let builder = comp.track("test").pedal_point(C2, &chords, 0.75);
 
         // 3 chords * 0.75 = 2.25

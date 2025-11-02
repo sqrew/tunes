@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 fn main() -> anyhow::Result<()> {
     println!("\n🎛️  Pattern Modifiers Demo\n");
     println!("Demonstrating .speed() and .probability() pattern transformations\n");
@@ -15,13 +14,13 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("melody_normal", &Instrument::pluck())
         .pattern_start()
         .notes(&[C4, E4, G4, C5], 0.25)
-        .repeat(1);  // Play twice at normal speed
+        .repeat(1); // Play twice at normal speed
 
     comp.instrument("melody_fast", &Instrument::synth_lead())
         .at(2.0)
         .pattern_start()
         .notes(&[C4, E4, G4, C5], 0.25)
-        .speed(2.0)  // Double-time!
+        .speed(2.0) // Double-time!
         .repeat(1);
 
     // Example 2: Probability for variation
@@ -30,8 +29,8 @@ fn main() -> anyhow::Result<()> {
         .at(4.0)
         .pattern_start()
         .note(&[/* hihat freq */], sixteenth)
-        .repeat(15)  // 16 hi-hats
-        .probability(0.7);  // Each has 70% chance - creates human feel!
+        .repeat(15) // 16 hi-hats
+        .probability(0.7); // Each has 70% chance - creates human feel!
 
     // Example 3: Combining speed and probability
     println!("3. Combined - Fast + probabilistic arpeggio");
@@ -39,7 +38,7 @@ fn main() -> anyhow::Result<()> {
         .at(6.0)
         .pattern_start()
         .notes(&[C5, E5, G5, B5, D6, G6], 0.2)
-        .speed(1.5)        // Speed up by 50%
+        .speed(1.5) // Speed up by 50%
         .probability(0.8); // Remove 20% for variation
 
     // Example 4: Generative drum pattern with euclidean rhythm

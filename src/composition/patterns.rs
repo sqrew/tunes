@@ -1,6 +1,6 @@
 use super::TrackBuilder;
-use crate::track::AudioEvent;
 use crate::drums::DrumType;
+use crate::track::AudioEvent;
 
 impl<'a> TrackBuilder<'a> {
     /// Create a rhythm pattern from a string notation
@@ -98,56 +98,65 @@ impl<'a> TrackBuilder<'a> {
             for event in &pattern_events {
                 match event {
                     crate::track::AudioEvent::Note(note) => {
-                        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                            &note.frequencies[..note.num_freqs],
-                            note.start_time + offset,
-                            note.duration,
-                            note.waveform,
-                            note.envelope,
-                            note.pitch_bend_semitones,
-                        );
+                        self.get_track_mut()
+                            .add_note_with_waveform_envelope_and_bend(
+                                &note.frequencies[..note.num_freqs],
+                                note.start_time + offset,
+                                note.duration,
+                                note.waveform,
+                                note.envelope,
+                                note.pitch_bend_semitones,
+                            );
                     }
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
                             .add_drum(drum.drum_type, drum.start_time + offset);
                     }
                     crate::track::AudioEvent::Sample(sample) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
-                            crate::track::SampleEvent {
-                                sample: sample.sample.clone(),
-                                start_time: sample.start_time + offset,
-                                playback_rate: sample.playback_rate,
-                                volume: sample.volume,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::Sample(
+                                crate::track::SampleEvent {
+                                    sample: sample.sample.clone(),
+                                    start_time: sample.start_time + offset,
+                                    playback_rate: sample.playback_rate,
+                                    volume: sample.volume,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::TempoChange(tempo) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::TempoChange(
-                            crate::track::TempoChangeEvent {
-                                start_time: tempo.start_time + offset,
-                                bpm: tempo.bpm,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::TempoChange(
+                                crate::track::TempoChangeEvent {
+                                    start_time: tempo.start_time + offset,
+                                    bpm: tempo.bpm,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::TimeSignature(time_sig) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::TimeSignature(
-                            crate::track::TimeSignatureEvent {
-                                start_time: time_sig.start_time + offset,
-                                numerator: time_sig.numerator,
-                                denominator: time_sig.denominator,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::TimeSignature(
+                                crate::track::TimeSignatureEvent {
+                                    start_time: time_sig.start_time + offset,
+                                    numerator: time_sig.numerator,
+                                    denominator: time_sig.denominator,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::KeySignature(key_sig) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::KeySignature(
-                            crate::track::KeySignatureEvent {
-                                start_time: key_sig.start_time + offset,
-                                key_signature: key_sig.key_signature,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::KeySignature(
+                                crate::track::KeySignatureEvent {
+                                    start_time: key_sig.start_time + offset,
+                                    key_signature: key_sig.key_signature,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                 }
@@ -331,9 +340,9 @@ impl<'a> TrackBuilder<'a> {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
                 crate::track::AudioEvent::Sample(sample) => sample.start_time,
-                    crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
-                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
+                AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -348,14 +357,15 @@ impl<'a> TrackBuilder<'a> {
                 crate::track::AudioEvent::Note(_) => {
                     let (freqs, num_freqs, duration, waveform, envelope, bend, _) =
                         note_data[reversed_idx];
-                    self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                        &freqs[..num_freqs],
-                        timing,
-                        duration,
-                        waveform,
-                        envelope,
-                        bend,
-                    );
+                    self.get_track_mut()
+                        .add_note_with_waveform_envelope_and_bend(
+                            &freqs[..num_freqs],
+                            timing,
+                            duration,
+                            waveform,
+                            envelope,
+                            bend,
+                        );
                 }
                 crate::track::AudioEvent::Drum(_) => {
                     drum_idx -= 1;
@@ -367,46 +377,54 @@ impl<'a> TrackBuilder<'a> {
                     sample_idx -= 1;
                     if sample_idx < sample_data.len() {
                         let sample = &sample_data[sample_idx];
-                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
-                            crate::track::SampleEvent {
-                                sample: sample.sample.clone(),
-                                start_time: timing,
-                                playback_rate: sample.playback_rate,
-                                volume: sample.volume,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::Sample(
+                                crate::track::SampleEvent {
+                                    sample: sample.sample.clone(),
+                                    start_time: timing,
+                                    playback_rate: sample.playback_rate,
+                                    volume: sample.volume,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                 }
                 crate::track::AudioEvent::TempoChange(tempo) => {
                     // Pass through tempo changes with their timing
-                    self.get_track_mut().events.push(crate::track::AudioEvent::TempoChange(
-                        crate::track::TempoChangeEvent {
-                            start_time: timing,
-                            bpm: tempo.bpm,
-                        }
-                    ));
+                    self.get_track_mut()
+                        .events
+                        .push(crate::track::AudioEvent::TempoChange(
+                            crate::track::TempoChangeEvent {
+                                start_time: timing,
+                                bpm: tempo.bpm,
+                            },
+                        ));
                     self.get_track_mut().invalidate_time_cache();
                 }
                 crate::track::AudioEvent::TimeSignature(time_sig) => {
                     // Pass through time signature changes with their timing
-                    self.get_track_mut().events.push(crate::track::AudioEvent::TimeSignature(
-                        crate::track::TimeSignatureEvent {
-                            start_time: timing,
-                            numerator: time_sig.numerator,
-                            denominator: time_sig.denominator,
-                        }
-                    ));
+                    self.get_track_mut()
+                        .events
+                        .push(crate::track::AudioEvent::TimeSignature(
+                            crate::track::TimeSignatureEvent {
+                                start_time: timing,
+                                numerator: time_sig.numerator,
+                                denominator: time_sig.denominator,
+                            },
+                        ));
                     self.get_track_mut().invalidate_time_cache();
                 }
                 crate::track::AudioEvent::KeySignature(key_sig) => {
                     // Pass through key signature changes with their timing
-                    self.get_track_mut().events.push(crate::track::AudioEvent::KeySignature(
-                        crate::track::KeySignatureEvent {
-                            start_time: timing,
-                            key_signature: key_sig.key_signature,
-                        }
-                    ));
+                    self.get_track_mut()
+                        .events
+                        .push(crate::track::AudioEvent::KeySignature(
+                            crate::track::KeySignatureEvent {
+                                start_time: timing,
+                                key_signature: key_sig.key_signature,
+                            },
+                        ));
                     self.get_track_mut().invalidate_time_cache();
                 }
             }
@@ -448,56 +466,65 @@ impl<'a> TrackBuilder<'a> {
             for event in &pattern_events {
                 match event {
                     crate::track::AudioEvent::Note(note) => {
-                        self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                            &note.frequencies[..note.num_freqs],
-                            note.start_time + offset,
-                            note.duration,
-                            note.waveform,
-                            note.envelope,
-                            note.pitch_bend_semitones,
-                        );
+                        self.get_track_mut()
+                            .add_note_with_waveform_envelope_and_bend(
+                                &note.frequencies[..note.num_freqs],
+                                note.start_time + offset,
+                                note.duration,
+                                note.waveform,
+                                note.envelope,
+                                note.pitch_bend_semitones,
+                            );
                     }
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
                             .add_drum(drum.drum_type, drum.start_time + offset);
                     }
                     crate::track::AudioEvent::Sample(sample) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
-                            crate::track::SampleEvent {
-                                sample: sample.sample.clone(),
-                                start_time: sample.start_time + offset,
-                                playback_rate: sample.playback_rate,
-                                volume: sample.volume,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::Sample(
+                                crate::track::SampleEvent {
+                                    sample: sample.sample.clone(),
+                                    start_time: sample.start_time + offset,
+                                    playback_rate: sample.playback_rate,
+                                    volume: sample.volume,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::TempoChange(tempo) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::TempoChange(
-                            crate::track::TempoChangeEvent {
-                                start_time: tempo.start_time + offset,
-                                bpm: tempo.bpm,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::TempoChange(
+                                crate::track::TempoChangeEvent {
+                                    start_time: tempo.start_time + offset,
+                                    bpm: tempo.bpm,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::TimeSignature(time_sig) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::TimeSignature(
-                            crate::track::TimeSignatureEvent {
-                                start_time: time_sig.start_time + offset,
-                                numerator: time_sig.numerator,
-                                denominator: time_sig.denominator,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::TimeSignature(
+                                crate::track::TimeSignatureEvent {
+                                    start_time: time_sig.start_time + offset,
+                                    numerator: time_sig.numerator,
+                                    denominator: time_sig.denominator,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::KeySignature(key_sig) => {
-                        self.get_track_mut().events.push(crate::track::AudioEvent::KeySignature(
-                            crate::track::KeySignatureEvent {
-                                start_time: key_sig.start_time + offset,
-                                key_signature: key_sig.key_signature,
-                            }
-                        ));
+                        self.get_track_mut()
+                            .events
+                            .push(crate::track::AudioEvent::KeySignature(
+                                crate::track::KeySignatureEvent {
+                                    start_time: key_sig.start_time + offset,
+                                    key_signature: key_sig.key_signature,
+                                },
+                            ));
                         self.get_track_mut().invalidate_time_cache();
                     }
                 }
@@ -570,7 +597,7 @@ impl<'a> TrackBuilder<'a> {
                                 true,
                                 note.frequencies,
                                 note.num_freqs,
-                                note.duration / factor,  // Scale duration
+                                note.duration / factor, // Scale duration
                                 new_time,
                                 note.waveform,
                                 note.envelope,
@@ -579,34 +606,34 @@ impl<'a> TrackBuilder<'a> {
                                 None,
                             ))
                         }
-                        crate::track::AudioEvent::Drum(drum) => {
+                        crate::track::AudioEvent::Drum(drum) => Some((
+                            false,
+                            [0.0; 8],
+                            0,
+                            0.0,
+                            new_time,
+                            crate::waveform::Waveform::Sine,
+                            crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                            0.0,
+                            drum.drum_type,
+                            None,
+                        )),
+                        crate::track::AudioEvent::Sample(sample) => Some((
+                            false,
+                            [0.0; 8],
+                            0,
+                            0.0,
+                            new_time,
+                            crate::waveform::Waveform::Sine,
+                            crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                            0.0,
+                            crate::drums::DrumType::Kick,
                             Some((
-                                false,
-                                [0.0; 8],
-                                0,
-                                0.0,
-                                new_time,
-                                crate::waveform::Waveform::Sine,
-                                crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
-                                0.0,
-                                drum.drum_type,
-                                None,
-                            ))
-                        }
-                        crate::track::AudioEvent::Sample(sample) => {
-                            Some((
-                                false,
-                                [0.0; 8],
-                                0,
-                                0.0,
-                                new_time,
-                                crate::waveform::Waveform::Sine,
-                                crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
-                                0.0,
-                                crate::drums::DrumType::Kick,
-                                Some((sample.sample.clone(), sample.playback_rate * factor, sample.volume)),
-                            ))
-                        }
+                                sample.sample.clone(),
+                                sample.playback_rate * factor,
+                                sample.volume,
+                            )),
+                        )),
                         crate::track::AudioEvent::TempoChange(_) => {
                             // Tempo changes don't make sense to speed up/slow down
                             None
@@ -634,34 +661,49 @@ impl<'a> TrackBuilder<'a> {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
                 crate::track::AudioEvent::Sample(sample) => sample.start_time,
-                    crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
-                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
+                AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
 
         // Add modified events
-        for (is_note, freqs, num_freqs, duration, time, waveform, envelope, bend, drum_type, sample_data) in modified_events {
+        for (
+            is_note,
+            freqs,
+            num_freqs,
+            duration,
+            time,
+            waveform,
+            envelope,
+            bend,
+            drum_type,
+            sample_data,
+        ) in modified_events
+        {
             if let Some((sample, playback_rate, volume)) = sample_data {
-                self.get_track_mut().events.push(crate::track::AudioEvent::Sample(
-                    crate::track::SampleEvent {
-                        sample,
-                        start_time: time,
-                        playback_rate,
-                        volume,
-                    }
-                ));
+                self.get_track_mut()
+                    .events
+                    .push(crate::track::AudioEvent::Sample(
+                        crate::track::SampleEvent {
+                            sample,
+                            start_time: time,
+                            playback_rate,
+                            volume,
+                        },
+                    ));
                 self.get_track_mut().invalidate_time_cache();
             } else if is_note {
-                self.get_track_mut().add_note_with_waveform_envelope_and_bend(
-                    &freqs[..num_freqs],
-                    time,
-                    duration,
-                    waveform,
-                    envelope,
-                    bend,
-                );
+                self.get_track_mut()
+                    .add_note_with_waveform_envelope_and_bend(
+                        &freqs[..num_freqs],
+                        time,
+                        duration,
+                        waveform,
+                        envelope,
+                        bend,
+                    );
             } else {
                 self.get_track_mut().add_drum(drum_type, time);
             }
@@ -701,7 +743,7 @@ impl<'a> TrackBuilder<'a> {
         let prob = prob.clamp(0.0, 1.0);
 
         if prob >= 1.0 {
-            return self;  // No filtering needed
+            return self; // No filtering needed
         }
 
         if prob <= 0.0 {
@@ -733,9 +775,9 @@ impl<'a> TrackBuilder<'a> {
                 crate::track::AudioEvent::Note(note) => note.start_time,
                 crate::track::AudioEvent::Drum(drum) => drum.start_time,
                 crate::track::AudioEvent::Sample(sample) => sample.start_time,
-                    crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
-                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
+                AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
 
             // Keep events outside pattern range
@@ -785,7 +827,8 @@ impl<'a> TrackBuilder<'a> {
         // Collect all events in pattern range with their times
         let mut events_in_range: Vec<f32> = {
             let track = self.get_track_mut();
-            track.events
+            track
+                .events
                 .iter()
                 .filter_map(|event| {
                     let event_time = match event {
@@ -794,7 +837,7 @@ impl<'a> TrackBuilder<'a> {
                         crate::track::AudioEvent::Sample(sample) => sample.start_time,
                         crate::track::AudioEvent::TempoChange(tempo) => tempo.start_time,
                         AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
-                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
+                        AudioEvent::KeySignature(key_sig) => key_sig.start_time,
                     };
 
                     if event_time >= pattern_start && event_time < cursor {
@@ -886,7 +929,8 @@ mod tests {
     #[test]
     fn test_repeat_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[440.0], 0.5)
             .note(&[550.0], 0.5)
@@ -927,10 +971,10 @@ mod tests {
     fn test_repeat_with_offset_pattern_start() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
-            .note(&[C4], 0.5)       // Not in pattern
-            .pattern_start()         // Mark start here
-            .note(&[E4], 0.5)       // In pattern
-            .note(&[G4], 0.5)       // In pattern
+            .note(&[C4], 0.5) // Not in pattern
+            .pattern_start() // Mark start here
+            .note(&[E4], 0.5) // In pattern
+            .note(&[G4], 0.5) // In pattern
             .repeat(1);
 
         let track = &comp.into_mixer().tracks[0];
@@ -996,7 +1040,8 @@ mod tests {
     #[test]
     fn test_reverse_maintains_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[C4], 0.25)
             .note(&[E4], 0.25)
@@ -1022,9 +1067,7 @@ mod tests {
     #[test]
     fn test_repeat_last_with_zero_times() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("melody")
-            .note(&[440.0], 0.5)
-            .repeat_last(0.5, 0);
+        comp.track("melody").note(&[440.0], 0.5).repeat_last(0.5, 0);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 1); // Only original note
@@ -1033,9 +1076,7 @@ mod tests {
     #[test]
     fn test_repeat_last_with_zero_duration() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
-            .note(&[440.0], 0.5)
-            .repeat_last(0.0, 2);
+        let builder = comp.track("melody").note(&[440.0], 0.5).repeat_last(0.0, 2);
 
         // Check cursor first before moving comp
         assert_eq!(builder.cursor, 0.5); // Cursor unchanged
@@ -1047,9 +1088,7 @@ mod tests {
     #[test]
     fn test_repeat_last_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
-            .note(&[440.0], 0.5)
-            .repeat_last(0.5, 2);
+        let builder = comp.track("melody").note(&[440.0], 0.5).repeat_last(0.5, 2);
 
         // Original 0.5s + 2 repeats * 0.5s = 1.5s total
         assert_eq!(builder.cursor, 1.5);
@@ -1059,10 +1098,10 @@ mod tests {
     fn test_repeat_last_partial_duration() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
-            .note(&[C4], 0.5)       // Starts at 0.0
-            .note(&[E4], 0.5)       // Starts at 0.5
-            .note(&[G4], 0.5)       // Starts at 1.0
-            .repeat_last(0.6, 1);   // Repeat last 0.6s (1.5 - 0.6 = 0.9, so captures G4 starting at 1.0)
+            .note(&[C4], 0.5) // Starts at 0.0
+            .note(&[E4], 0.5) // Starts at 0.5
+            .note(&[G4], 0.5) // Starts at 1.0
+            .repeat_last(0.6, 1); // Repeat last 0.6s (1.5 - 0.6 = 0.9, so captures G4 starting at 1.0)
 
         let track = &comp.into_mixer().tracks[0];
         // 3 original + 1 repeated (G4) = 4 total
@@ -1076,8 +1115,8 @@ mod tests {
             .pattern_start()
             .note(&[C4], 0.25)
             .note(&[E4], 0.25)
-            .repeat(1)              // Now have 4 notes
-            .reverse();             // Reverse all 4
+            .repeat(1) // Now have 4 notes
+            .reverse(); // Reverse all 4
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 4);
@@ -1105,13 +1144,14 @@ mod tests {
     #[test]
     fn test_complex_pattern_workflow() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
-            .notes(&[C4, E4, G4], 0.25)  // 3 notes in pattern
-            .repeat(2)                     // Repeat 2 more times = 9 notes total
-            .pattern_start()               // Mark new pattern start
-            .note(&[C5], 0.5)             // Add one more note
-            .repeat(1);                    // Repeat just this last note
+            .notes(&[C4, E4, G4], 0.25) // 3 notes in pattern
+            .repeat(2) // Repeat 2 more times = 9 notes total
+            .pattern_start() // Mark new pattern start
+            .note(&[C5], 0.5) // Add one more note
+            .repeat(1); // Repeat just this last note
 
         // Verify cursor advanced correctly first
         // 3 notes * 0.25 = 0.75 original
@@ -1132,8 +1172,8 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
             .pattern_start()
-            .note(&[440.0, 550.0], 0.5)  // Chord with 2 frequencies
-            .note(&[660.0], 0.25)         // Single note
+            .note(&[440.0, 550.0], 0.5) // Chord with 2 frequencies
+            .note(&[660.0], 0.25) // Single note
             .reverse();
 
         let track = &comp.into_mixer().tracks[0];
@@ -1162,7 +1202,7 @@ mod tests {
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
             .note(&[G4], 0.5)
-            .speed(2.0);  // Double speed
+            .speed(2.0); // Double speed
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 3);
@@ -1189,7 +1229,7 @@ mod tests {
             .pattern_start()
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
-            .speed(0.5);  // Half speed (slower)
+            .speed(0.5); // Half speed (slower)
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1207,7 +1247,8 @@ mod tests {
     #[test]
     fn test_speed_adjusts_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
@@ -1221,7 +1262,8 @@ mod tests {
     #[test]
     fn test_speed_with_zero_factor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[C4], 0.5)
             .speed(0.0);
@@ -1233,7 +1275,8 @@ mod tests {
     #[test]
     fn test_speed_with_negative_factor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[C4], 0.5)
             .speed(-2.0);
@@ -1247,7 +1290,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
             .pattern_start()
-            .note(&[C4, E4, G4], 0.5)  // Chord
+            .note(&[C4, E4, G4], 0.5) // Chord
             .speed(2.0);
 
         let track = &comp.into_mixer().tracks[0];
@@ -1269,8 +1312,8 @@ mod tests {
         comp.track("melody")
             .pattern_start()
             .note(&[C4], 0.125)
-            .repeat(31)  // 32 total notes
-            .probability(0.5);  // 50% chance each
+            .repeat(31) // 32 total notes
+            .probability(0.5); // 50% chance each
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1288,7 +1331,7 @@ mod tests {
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
             .note(&[G4], 0.5)
-            .probability(0.0);  // 0% chance = silence
+            .probability(0.0); // 0% chance = silence
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 0);
@@ -1302,7 +1345,7 @@ mod tests {
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
             .note(&[G4], 0.5)
-            .probability(1.0);  // 100% chance = all notes
+            .probability(1.0); // 100% chance = all notes
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 3);
@@ -1311,7 +1354,8 @@ mod tests {
     #[test]
     fn test_probability_doesnt_affect_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("melody")
+        let builder = comp
+            .track("melody")
             .pattern_start()
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
@@ -1326,10 +1370,10 @@ mod tests {
     fn test_probability_only_affects_pattern_range() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
-            .note(&[C4], 0.5)       // Before pattern - should stay
+            .note(&[C4], 0.5) // Before pattern - should stay
             .pattern_start()
-            .note(&[E4], 0.5)       // In pattern - probabilistic
-            .note(&[G4], 0.5)       // In pattern - probabilistic
+            .note(&[E4], 0.5) // In pattern - probabilistic
+            .note(&[G4], 0.5) // In pattern - probabilistic
             .probability(0.0);
 
         let track = &comp.into_mixer().tracks[0];
@@ -1350,8 +1394,8 @@ mod tests {
             .note(&[E4], 0.5)
             .note(&[G4], 0.5)
             .note(&[C5], 0.5)
-            .speed(2.0)          // First double the speed
-            .probability(1.0);   // Then keep all (no filtering)
+            .speed(2.0) // First double the speed
+            .probability(1.0); // Then keep all (no filtering)
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1380,7 +1424,7 @@ mod tests {
             assert_eq!(drum.start_time, 0.0);
         }
         if let AudioEvent::Drum(drum) = &track.events[1] {
-            assert!((drum.start_time - 0.25).abs() < 0.001);  // Was 0.5, now 0.25
+            assert!((drum.start_time - 0.25).abs() < 0.001); // Was 0.5, now 0.25
         }
     }
 
@@ -1393,7 +1437,7 @@ mod tests {
             .drum(DrumType::Kick)
             .drum(DrumType::Kick)
             .drum(DrumType::Kick)
-            .probability(1.0);  // All should stay
+            .probability(1.0); // All should stay
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 4);
@@ -1405,9 +1449,9 @@ mod tests {
         comp.track("melody")
             .pattern_start()
             .notes(&[C4, E4, G4, C5], 0.25)
-            .repeat(3)               // 16 notes total
-            .speed(1.5)              // Make it faster
-            .probability(0.8);       // Remove ~20% of notes
+            .repeat(3) // 16 notes total
+            .speed(1.5) // Make it faster
+            .probability(0.8); // Remove ~20% of notes
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1435,25 +1479,24 @@ mod tests {
 
         // Check timing of hits
         if let AudioEvent::Drum(drum) = &track.events[0] {
-            assert_eq!(drum.start_time, 0.0);  // Position 0
+            assert_eq!(drum.start_time, 0.0); // Position 0
             assert!(matches!(drum.drum_type, DrumType::Kick));
         }
         if let AudioEvent::Drum(drum) = &track.events[1] {
-            assert_eq!(drum.start_time, 0.25);  // Position 2 * 0.125
+            assert_eq!(drum.start_time, 0.25); // Position 2 * 0.125
         }
         if let AudioEvent::Drum(drum) = &track.events[2] {
-            assert_eq!(drum.start_time, 0.625);  // Position 5 * 0.125
+            assert_eq!(drum.start_time, 0.625); // Position 5 * 0.125
         }
         if let AudioEvent::Drum(drum) = &track.events[3] {
-            assert_eq!(drum.start_time, 0.875);  // Position 7 * 0.125
+            assert_eq!(drum.start_time, 0.875); // Position 7 * 0.125
         }
     }
 
     #[test]
     fn test_rhythm_different_hit_characters() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("drums")
-            .rhythm("xX1*", DrumType::Snare, 0.25);
+        comp.track("drums").rhythm("xX1*", DrumType::Snare, 0.25);
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1517,8 +1560,7 @@ mod tests {
     #[test]
     fn test_rhythm_all_hits() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("drums")
-            .rhythm("xxxx", DrumType::Kick, 0.25);
+        comp.track("drums").rhythm("xxxx", DrumType::Kick, 0.25);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 4);
@@ -1527,8 +1569,7 @@ mod tests {
     #[test]
     fn test_rhythm_all_rests() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("drums")
-            .rhythm("----", DrumType::Kick, 0.25);
+        comp.track("drums").rhythm("----", DrumType::Kick, 0.25);
 
         // Empty patterns create no events, so the track won't be in the mixer
         let mixer = comp.into_mixer();
@@ -1539,8 +1580,7 @@ mod tests {
     #[test]
     fn test_rhythm_empty_pattern() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("drums")
-            .rhythm("", DrumType::Kick, 0.125);
+        comp.track("drums").rhythm("", DrumType::Kick, 0.125);
 
         // Empty pattern creates no events, so the track won't be in the mixer
         let mixer = comp.into_mixer();
@@ -1550,7 +1590,8 @@ mod tests {
     #[test]
     fn test_rhythm_advances_cursor() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("drums")
+        let builder = comp
+            .track("drums")
             .rhythm("xxxx xxxx", DrumType::Kick, 0.125);
 
         // Pattern is 9 chars long (including space), each step is 0.125s
@@ -1633,7 +1674,7 @@ mod tests {
         assert_eq!(mixer.tracks.len(), 2);
 
         let total_events: usize = mixer.tracks.iter().map(|t| t.events.len()).sum();
-        assert_eq!(total_events, 6);  // 4 kicks + 2 snares
+        assert_eq!(total_events, 6); // 4 kicks + 2 snares
 
         // Verify one track has 4 events and one has 2
         let event_counts: Vec<usize> = mixer.tracks.iter().map(|t| t.events.len()).collect();
@@ -1650,7 +1691,7 @@ mod tests {
             .note(&[E4], 0.25)
             .note(&[G4], 0.25)
             .note(&[C5], 0.25)
-            .every_n(2, DrumType::Crash);  // Add crash on 2nd, 4th
+            .every_n(2, DrumType::Crash); // Add crash on 2nd, 4th
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1658,7 +1699,11 @@ mod tests {
         assert_eq!(track.events.len(), 6);
 
         // Count drum events
-        let crash_count = track.events.iter().filter(|e| matches!(e, AudioEvent::Drum(_))).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(_)))
+            .count();
         assert_eq!(crash_count, 2);
     }
 
@@ -1668,7 +1713,7 @@ mod tests {
         comp.track("hihat")
             .pattern_start()
             .note(&[1000.0], 0.125)
-            .repeat(15)  // 16 total notes
+            .repeat(15) // 16 total notes
             .every_n(4, DrumType::Crash);
 
         let track = &comp.into_mixer().tracks[0];
@@ -1676,9 +1721,11 @@ mod tests {
         // 16 notes + 4 crashes (on 4th, 8th, 12th, 16th) = 20 events
         assert_eq!(track.events.len(), 20);
 
-        let crash_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash))
-        }).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash)))
+            .count();
         assert_eq!(crash_count, 4);
     }
 
@@ -1698,9 +1745,11 @@ mod tests {
         // 4 kicks + 2 snares (on 2nd, 4th) = 6 events
         assert_eq!(track.events.len(), 6);
 
-        let snare_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Snare))
-        }).count();
+        let snare_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Snare)))
+            .count();
         assert_eq!(snare_count, 2);
     }
 
@@ -1711,10 +1760,10 @@ mod tests {
             .pattern_start()
             .note(&[440.0], 0.5)
             .note(&[550.0], 0.5)
-            .every_n(0, DrumType::Crash);  // n=0 should be no-op
+            .every_n(0, DrumType::Crash); // n=0 should be no-op
 
         let track = &comp.into_mixer().tracks[0];
-        assert_eq!(track.events.len(), 2);  // Only original notes
+        assert_eq!(track.events.len(), 2); // Only original notes
     }
 
     #[test]
@@ -1725,16 +1774,18 @@ mod tests {
             .note(&[C4], 0.25)
             .note(&[E4], 0.25)
             .note(&[G4], 0.25)
-            .every_n(1, DrumType::Crash);  // Every event gets a crash
+            .every_n(1, DrumType::Crash); // Every event gets a crash
 
         let track = &comp.into_mixer().tracks[0];
 
         // 3 notes + 3 crashes = 6 events
         assert_eq!(track.events.len(), 6);
 
-        let crash_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash))
-        }).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash)))
+            .count();
         assert_eq!(crash_count, 3);
     }
 
@@ -1745,7 +1796,7 @@ mod tests {
             .pattern_start()
             .note(&[C4], 0.5)
             .note(&[E4], 0.5)
-            .every_n(10, DrumType::Crash);  // n > pattern length
+            .every_n(10, DrumType::Crash); // n > pattern length
 
         let track = &comp.into_mixer().tracks[0];
 
@@ -1767,7 +1818,9 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // Find the crash events and verify timing
-        let crashes: Vec<f32> = track.events.iter()
+        let crashes: Vec<f32> = track
+            .events
+            .iter()
             .filter_map(|e| match e {
                 AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash) => Some(d.start_time),
                 _ => None,
@@ -1786,15 +1839,17 @@ mod tests {
         comp.track("drums")
             .pattern_start()
             .rhythm("x-x-", DrumType::Kick, 0.125)
-            .repeat(3)  // 2 * 4 = 8 kicks total
+            .repeat(3) // 2 * 4 = 8 kicks total
             .every_n(4, DrumType::Crash);
 
         let track = &comp.into_mixer().tracks[0];
 
         // Should have 2 crashes (on 4th and 8th kick)
-        let crash_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash))
-        }).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash)))
+            .count();
         assert_eq!(crash_count, 2);
     }
 
@@ -1804,39 +1859,45 @@ mod tests {
         comp.track("multi")
             .pattern_start()
             .note(&[C4], 0.125)
-            .repeat(15)  // 16 notes
-            .every_n(4, DrumType::Crash)   // Crash every 4
-            .every_n(8, DrumType::Ride);   // Ride every 8
+            .repeat(15) // 16 notes
+            .every_n(4, DrumType::Crash) // Crash every 4
+            .every_n(8, DrumType::Ride); // Ride every 8
 
         let track = &comp.into_mixer().tracks[0];
 
-        let crash_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash))
-        }).count();
-        let ride_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Ride))
-        }).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash)))
+            .count();
+        let ride_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Ride)))
+            .count();
 
-        assert_eq!(crash_count, 4);  // 4th, 8th, 12th, 16th
-        assert_eq!(ride_count, 2);   // 8th, 16th
+        assert_eq!(crash_count, 4); // 4th, 8th, 12th, 16th
+        assert_eq!(ride_count, 2); // 8th, 16th
     }
 
     #[test]
     fn test_every_n_only_affects_pattern_range() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test")
-            .note(&[C4], 0.25)       // Before pattern
+            .note(&[C4], 0.25) // Before pattern
             .pattern_start()
-            .note(&[E4], 0.25)       // In pattern
-            .note(&[G4], 0.25)       // In pattern
+            .note(&[E4], 0.25) // In pattern
+            .note(&[G4], 0.25) // In pattern
             .every_n(1, DrumType::Crash);
 
         let track = &comp.into_mixer().tracks[0];
 
         // Should only add crashes for the 2 notes in pattern (not the first one)
-        let crash_count = track.events.iter().filter(|e| {
-            matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash))
-        }).count();
+        let crash_count = track
+            .events
+            .iter()
+            .filter(|e| matches!(e, AudioEvent::Drum(d) if matches!(d.drum_type, DrumType::Crash)))
+            .count();
         assert_eq!(crash_count, 2);
     }
 }

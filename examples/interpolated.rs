@@ -10,7 +10,7 @@ fn main() -> anyhow::Result<()> {
     // Simple upward glissando
     comp.instrument("slide_up", &Instrument::synth_lead())
         .at(0.0)
-        .interpolated(C3, C5, 20, 0.05);  // 20 steps, 0.05s each = 1 second total
+        .interpolated(C3, C5, 20, 0.05); // 20 steps, 0.05s each = 1 second total
 
     // Downward glissando
     comp.instrument("slide_down", &Instrument::synth_lead())
@@ -20,12 +20,12 @@ fn main() -> anyhow::Result<()> {
     // Fast slide (swoosh effect)
     comp.instrument("fast_slide", &Instrument::synth_lead())
         .at(2.4)
-        .interpolated(A2, A5, 30, 0.02);  // 30 steps in 0.6s
+        .interpolated(A2, A5, 30, 0.02); // 30 steps in 0.6s
 
     // Slow smooth glide
     comp.instrument("slow_glide", &Instrument::warm_pad())
         .at(3.2)
-        .interpolated(E3, E4, 24, 0.08);  // Slow and smooth
+        .interpolated(E3, E4, 24, 0.08); // Slow and smooth
 
     // Trombone glissando
     comp.instrument("trombone", &Instrument::square_lead())
@@ -70,12 +70,12 @@ fn main() -> anyhow::Result<()> {
     // Sci-fi laser effect
     comp.instrument("laser", &Instrument::synth_lead())
         .at(13.0)
-        .interpolated(C6, C2, 40, 0.015);  // High to low, very fast
+        .interpolated(C6, C2, 40, 0.015); // High to low, very fast
 
     // Smooth chromatic transition
     comp.instrument("chromatic", &Instrument::electric_piano())
         .at(14.0)
-        .interpolated(C4, C5, 12, 0.08);  // One octave = 12 semitones
+        .interpolated(C4, C5, 12, 0.08); // One octave = 12 semitones
 
     println!("✓ .interpolated(start_note, end_note, steps, duration_per_step):");
     println!("  - Creates smooth pitch transitions (glissando)");
