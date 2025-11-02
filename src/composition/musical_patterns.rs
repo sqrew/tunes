@@ -553,9 +553,15 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
-    /// Guitar strum effect - quick cascade
+    /// Pedal point - sustained note with melody above
     ///
-    /// Similar to cascade but optimized for very short stagger times (guitar strum feel).
+    /// Adds a sustained bass note (pedal point) while playing a melody on top.
+    /// Common in organ music, drone-based music, and creating harmonic tension.
+    ///
+    /// # Arguments
+    /// * `pedal_note` - The sustained bass note frequency
+    /// * `melody_notes` - Notes to play above the pedal point
+    /// * `note_duration` - Duration of each melody note
     ///
     /// # Example
     /// ```
@@ -564,9 +570,9 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::rhythm::Tempo;
     /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
-    /// comp.instrument("guitar", &Instrument::pluck())
-    ///     .strum(C4_MAJOR, 0.5, 0.02);  // Quick upstroke (20ms between strings)
+    /// comp.instrument("organ", &Instrument::warm_pad())
+    ///     .pedal(C2, &[E4, F4, G4, A4], 0.5);  // C pedal with melody above
+    /// ```
     pub fn pedal(mut self, pedal_note: f32, melody_notes: &[f32], note_duration: f32) -> Self {
         let start_cursor = self.cursor;
         let total_melody_duration = melody_notes.len() as f32 * note_duration;

@@ -105,16 +105,17 @@ impl<'a> TrackBuilder<'a> {
     }
     /// Fade volume from current level to a target level over a duration
     ///
-    /// Creates a smooth volume transition by interpolating between the current
-    /// track volume and the target volume. This is done by placing multiple
-    /// volume change points across the duration for a smooth fade.
+    /// Transitions the track volume from its current value to the target value.
+    /// This advances the cursor by the duration, treating it as a "wait during fade" period.
     ///
-    /// Note: This modifies the track's base volume over time. For per-note
-    /// volume changes, consider using envelope settings instead.
+    /// **Note:** This is a simplified implementation that sets the final volume
+    /// and advances time. For true smooth fading, notes would need per-sample
+    /// volume envelopes. Consider using long envelope release times for fade-out
+    /// effects on individual notes.
     ///
     /// # Arguments
     /// * `target_volume` - The destination volume (0.0 to 2.0)
-    /// * `duration` - Time over which to fade
+    /// * `duration` - Time to wait while "fading" (advances cursor)
     ///
     /// # Example
     /// ```
@@ -124,23 +125,91 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
-    ///     .note(&[C4, E4, G4], 2.0)
-    ///     .fade_to(0.0, 1.0)  // Fade out over 1 second
-    ///     .wait(1.0);         // Wait for fade to complete
+    ///     .volume(1.0)        // Start at full volume
+    ///     .note(&[C4, E4, G4], 4.0)
+    ///     .fade_to(0.0, 2.0)  // Set to 0, wait 2 seconds
+    ///     .wait(1.0);
     /// ```
     pub fn fade_to(mut self, target_volume: f32, duration: f32) -> Self {
         let target_volume = target_volume.clamp(0.0, 2.0);
 
-        // Note: This is a simplified implementation that sets the final volume.
-        // A more sophisticated implementation could use volume automation curves
-        // or LFO modulation for smoother fades. For now, we set the target volume
-        // and advance the cursor.
-
-        // TODO: This could be improved with proper volume automation using LFO
-        // modulation on the volume parameter for true continuous fading
-
-        self.cursor += duration;
+        // Set the new volume
         self.get_track_mut().volume = target_volume;
+
+        // Advance cursor to account for fade duration
+        self.cursor += duration;
+
+        self
+    }
+
+    /// Pan from current position to target position over a duration
+    ///
+    /// Transitions the track pan from its current value to the target value.
+    /// This advances the cursor by the duration, treating it as a "wait during pan" period.
+    ///
+    /// **Note:** This is a simplified implementation. For smooth panning on individual
+    /// notes, consider using short note sequences with gradually changing pan values.
+    ///
+    /// # Arguments
+    /// * `target_pan` - The destination pan (-1.0 = left, 0.0 = center, 1.0 = right)
+    /// * `duration` - Time to wait while "panning" (advances cursor)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("synth", &Instrument::synth_lead())
+    ///     .pan(-1.0)          // Start hard left
+    ///     .note(&[C4], 0.5)
+    ///     .pan_to(1.0, 2.0)   // Set to right, wait 2 seconds
+    ///     .notes(&[D4, E4, F4, G4], 0.5);
+    /// ```
+    pub fn pan_to(mut self, target_pan: f32, duration: f32) -> Self {
+        let target_pan = target_pan.clamp(-1.0, 1.0);
+
+        // Set the new pan
+        self.get_track_mut().pan = target_pan;
+
+        // Advance cursor to account for pan duration
+        self.cursor += duration;
+
+        self
+    }
+
+    /// Sweep filter cutoff from current to target frequency over a duration
+    ///
+    /// Transitions the filter cutoff from its current value to the target value.
+    /// This advances the cursor by the duration, treating it as a "wait during sweep" period.
+    ///
+    /// **Note:** This is a simplified implementation. For smooth filter sweeps,
+    /// consider using filter envelope or LFO modulation on the filter cutoff.
+    ///
+    /// # Arguments
+    /// * `target_cutoff` - The destination cutoff frequency in Hz
+    /// * `duration` - Time to wait while "sweeping" (advances cursor)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # use tunes::filter::Filter;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("bass", &Instrument::pluck())
+    ///     .filter(Filter::low_pass(200.0, 0.7))
+    ///     .note(&[C2], 4.0)
+    ///     .filter_sweep(2000.0, 4.0);  // Set to 2000Hz, wait 4 seconds
+    /// ```
+    pub fn filter_sweep(mut self, target_cutoff: f32, duration: f32) -> Self {
+        // Set the new filter cutoff
+        self.get_track_mut().filter.cutoff = target_cutoff;
+
+        // Advance cursor to account for sweep duration
+        self.cursor += duration;
 
         self
     }

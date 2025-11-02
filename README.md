@@ -43,8 +43,7 @@ sudo dnf install alsa-lib-devel
 
 **macOS and Windows** work out of the box with no additional dependencies.
 
-## Quick Start
-
+## Quick Start: Super simple!!
 ### Real-time Playback
 
 ```rust
@@ -53,14 +52,16 @@ use tunes::prelude::*;
 fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(120.0));
+    let eighth = comp.tempo().eighth_note();  //getting this value to use in the next example
 
-    // Play a simple C major arpeggio
-    comp.track("piano")
-        .note(&[C4], 0.5)
-        .note(&[E4], 0.5)
-        .note(&[G4], 0.5)
-        .note(&[C5], 0.5);
-
+    // This is where you can do everything. 
+    // Notes and chords can be input as floats with frequencies in hz or using or by prelude constants
+    // Durations can be input as a duration of seconds as a float or using durations inferred by tempo
+    
+    comp.instrument("piano", &Instrument::electric_piano())
+        .note(&[C4], 0.5)    //plays a c4 for half a second
+        .note(&[280.0], eighth); //plays 280.0 hz note for half a second
+        //continue chaining methods after the second note if you want.
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
 }

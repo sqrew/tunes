@@ -282,6 +282,112 @@ impl Composition {
         mixer
     }
 
+    /// Convert a specific section into a Mixer for isolated playback or export
+    ///
+    /// This is useful for:
+    /// - Testing/iterating on a single section without playing the whole composition
+    /// - Exporting individual sections to separate files
+    /// - Looping a section for evaluation
+    ///
+    /// # Arguments
+    /// * `section_name` - Name of the section to convert
+    ///
+    /// # Returns
+    /// A Mixer containing only the tracks from this section, or an error if the section doesn't exist
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// comp.section("verse")
+    ///     .instrument("piano", &Instrument::acoustic_piano())
+    ///     .notes(&[C4, D4, E4, F4], 0.5);
+    ///
+    /// // Get just the verse section as a mixer
+    /// let verse_mixer = comp.section_to_mixer("verse")?;
+    ///
+    /// // Play just the verse
+    /// let engine = AudioEngine::new()?;
+    /// engine.play_mixer(&verse_mixer)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn section_to_mixer(&self, section_name: &str) -> crate::error::Result<Mixer> {
+        let section = self.sections.get(section_name).ok_or_else(|| {
+            crate::error::TunesError::SectionNotFound(section_name.to_string())
+        })?;
+
+        let mut mixer = Mixer::new(self.tempo);
+        for (track_name, track) in &section.tracks {
+            let mut track_copy = track.clone();
+            track_copy.name = Some(track_name.clone());
+            mixer.add_track(track_copy);
+        }
+        Ok(mixer)
+    }
+
+    /// Export a specific section to a MIDI file
+    ///
+    /// This allows you to export individual sections for review in a DAW or notation software,
+    /// which is especially useful during the composition process.
+    ///
+    /// # Arguments
+    /// * `section_name` - Name of the section to export
+    /// * `path` - Output file path (e.g., "verse.mid")
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// comp.section("chorus")
+    ///     .instrument("lead", &Instrument::synth_lead())
+    ///     .notes(&[C4, E4, G4, C5], 0.25);
+    ///
+    /// // Export just the chorus to review in your DAW
+    /// comp.export_section_midi("chorus", "chorus.mid")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn export_section_midi(&self, section_name: &str, path: &str) -> crate::error::Result<()> {
+        let mixer = self.section_to_mixer(section_name)?;
+        mixer.export_midi(path)
+    }
+
+    /// Export a specific section to a WAV file
+    ///
+    /// This allows you to export individual sections as audio files,
+    /// useful for composing one section at a time and reviewing it in detail.
+    ///
+    /// # Arguments
+    /// * `section_name` - Name of the section to export
+    /// * `path` - Output file path (e.g., "verse.wav")
+    /// * `sample_rate` - Sample rate for the output (e.g., 44100)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// comp.section("intro")
+    ///     .instrument("pad", &Instrument::warm_pad())
+    ///     .notes(&[C3, E3, G3], 2.0);
+    ///
+    /// // Export just the intro as audio
+    /// comp.export_section_wav("intro", "intro.wav", 44100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn export_section_wav(&self, section_name: &str, path: &str, sample_rate: u32) -> anyhow::Result<()> {
+        let mut mixer = self.section_to_mixer(section_name)
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        mixer.export_wav(path, sample_rate)
+    }
+
     /// Get the tempo (returns a copy since Tempo is Copy)
     pub fn tempo(&self) -> Tempo {
         self.tempo

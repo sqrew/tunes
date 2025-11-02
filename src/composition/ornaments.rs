@@ -113,6 +113,29 @@ impl<'a> TrackBuilder<'a> {
         self.update_section_duration();
         self
     }
+
+    /// Guitar strum effect - quick cascade of chord notes
+    ///
+    /// Plays a chord with notes slightly staggered in time to simulate
+    /// a guitar strum. This is essentially a very fast cascade optimized
+    /// for short stagger times (typically 10-30ms).
+    ///
+    /// # Arguments
+    /// * `chord` - The chord notes to strum (bottom to top)
+    /// * `note_duration` - How long each note sustains
+    /// * `stagger` - Time delay between notes (0.01-0.03 for realistic guitar strum)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// use tunes::chords::C4_MAJOR;
+    /// comp.instrument("guitar", &Instrument::pluck())
+    ///     .strum(&C4_MAJOR, 0.5, 0.02);  // Quick upstroke (20ms between strings)
+    /// ```
     pub fn strum(self, chord: &[f32], note_duration: f32, stagger: f32) -> Self {
         // Strum is just a fast cascade - keep it simple
         self.cascade(chord, note_duration, stagger)

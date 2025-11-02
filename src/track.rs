@@ -1,3 +1,47 @@
+//! Audio track and event system
+//!
+//! This module defines the core types for representing musical tracks and audio events.
+//! It provides the building blocks for composing music programmatically.
+//!
+//! # Main Types
+//!
+//! - **`Track`** - A single audio track containing timed events (notes, drums, samples)
+//! - **`Mixer`** - Combines multiple tracks for playback or export
+//! - **`AudioEvent`** - Enum of different event types (notes, drums, samples, tempo changes, etc.)
+//!
+//! # Event Types
+//!
+//! - **`NoteEvent`** - Synthesized notes with pitch, duration, envelopes, and effects
+//! - **`DrumEvent`** - Drum hits using built-in synthesis
+//! - **`SampleEvent`** - WAV sample playback with pitch shifting
+//! - **`TempoChangeEvent`** - Change tempo mid-composition
+//! - **`TimeSignatureEvent`** - Change time signature (e.g., 4/4 to 3/4)
+//! - **`KeySignatureEvent`** - Change key signature for MIDI export
+//!
+//! # Track Properties
+//!
+//! Tracks have several global properties that affect all events:
+//! - Volume and pan (stereo positioning)
+//! - Filter (low-pass, high-pass, band-pass, etc.)
+//! - Effects (reverb, delay, distortion, chorus, etc.)
+//! - Modulation routes (LFO modulation of parameters)
+//!
+//! # Example
+//!
+//! ```
+//! # use tunes::prelude::*;
+//! # use tunes::track::*;
+//! let mut track = Track::new();
+//! track.volume = 0.8;
+//! track.pan = -0.3;  // Slightly left
+//!
+//! // Tracks are typically created through Composition
+//! let mut comp = Composition::new(Tempo::new(120.0));
+//! comp.track("melody")
+//!     .volume(0.8)
+//!     .notes(&[C4, E4, G4], 0.5);
+//! ```
+
 use crate::drums::DrumType;
 use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
 use crate::envelope::Envelope;
@@ -11,6 +55,9 @@ use crate::sample::Sample;
 use crate::waveform::Waveform;
 
 /// Represents different types of audio events
+///
+/// Audio events are the fundamental building blocks of a track. Each event has
+/// a start time and contains specific parameters for its type (pitch, duration, etc.).
 #[derive(Debug, Clone)]
 pub enum AudioEvent {
     Note(NoteEvent),
@@ -109,6 +156,11 @@ pub struct KeySignatureEvent {
 }
 
 impl SampleEvent {
+    /// Create a sample playback event with default settings
+    ///
+    /// # Arguments
+    /// * `sample` - The audio sample to play
+    /// * `start_time` - When to start playback (in seconds from track start)
     pub fn new(sample: Sample, start_time: f32) -> Self {
         Self {
             sample,
@@ -118,11 +170,19 @@ impl SampleEvent {
         }
     }
 
+    /// Set playback rate (pitch shifting)
+    ///
+    /// # Arguments
+    /// * `rate` - Playback speed multiplier (1.0 = normal, 2.0 = double speed/octave up, 0.5 = half speed/octave down)
     pub fn with_playback_rate(mut self, rate: f32) -> Self {
         self.playback_rate = rate;
         self
     }
 
+    /// Set sample volume
+    ///
+    /// # Arguments
+    /// * `volume` - Volume level 0.0 (silent) to 1.0 (full)
     pub fn with_volume(mut self, volume: f32) -> Self {
         self.volume = volume.clamp(0.0, 1.0);
         self
@@ -130,10 +190,26 @@ impl SampleEvent {
 }
 
 impl NoteEvent {
+    /// Create a simple note event with sine wave
+    ///
+    /// Creates a note with default settings: sine waveform, default envelope,
+    /// no pitch bend, no FM synthesis, no custom wavetable.
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
     pub fn new(frequencies: &[f32], start_time: f32, duration: f32) -> Self {
         Self::with_waveform(frequencies, start_time, duration, Waveform::Sine)
     }
 
+    /// Create a note event with a specific waveform
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
     pub fn with_waveform(
         frequencies: &[f32],
         start_time: f32,
@@ -149,6 +225,14 @@ impl NoteEvent {
         )
     }
 
+    /// Create a note event with waveform and ADSR envelope
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
+    /// * `envelope` - ADSR amplitude envelope
     pub fn with_waveform_and_envelope(
         frequencies: &[f32],
         start_time: f32,
@@ -166,6 +250,15 @@ impl NoteEvent {
         )
     }
 
+    /// Create a note event with waveform, envelope, and pitch bend
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
+    /// * `envelope` - ADSR amplitude envelope
+    /// * `pitch_bend_semitones` - Pitch bend in semitones (e.g., 2.0 for up 2 semitones)
     pub fn with_waveform_envelope_and_bend(
         frequencies: &[f32],
         start_time: f32,
@@ -185,6 +278,16 @@ impl NoteEvent {
         )
     }
 
+    /// Create a note event with waveform, envelope, filter envelope, and pitch bend
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
+    /// * `envelope` - ADSR amplitude envelope
+    /// * `filter_envelope` - ADSR filter envelope for filter cutoff modulation
+    /// * `pitch_bend_semitones` - Pitch bend in semitones
     pub fn with_full_params(
         frequencies: &[f32],
         start_time: f32,
@@ -208,6 +311,22 @@ impl NoteEvent {
         )
     }
 
+    /// Create a note event with all possible parameters
+    ///
+    /// This is the most flexible constructor, allowing full control over all
+    /// synthesis parameters including FM synthesis and custom wavetables.
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Basic waveform (sine, square, saw, triangle)
+    /// * `envelope` - ADSR amplitude envelope
+    /// * `filter_envelope` - ADSR filter envelope
+    /// * `fm_params` - FM synthesis parameters
+    /// * `pitch_bend_semitones` - Pitch bend in semitones
+    /// * `custom_wavetable` - Custom wavetable (overrides waveform if Some)
+    /// * `velocity` - Note velocity 0.0-1.0 (affects MIDI export)
     pub fn with_complete_params(
         frequencies: &[f32],
         start_time: f32,
@@ -276,6 +395,10 @@ pub struct Track {
 }
 
 impl Track {
+    /// Create a new empty track with default settings
+    ///
+    /// Creates a track with volume 1.0, center pan, no filter, and no effects.
+    /// Events can be added using methods like `add_note()` and `add_drum()`.
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
@@ -303,6 +426,9 @@ impl Track {
     }
 
     /// Get the start time of the first event (cached for performance)
+    ///
+    /// Returns the earliest start time among all events in the track.
+    /// This value is cached and only recomputed when events are added.
     fn start_time(&mut self) -> f32 {
         if let Some(cached) = self.cached_start_time {
             return cached;
@@ -325,6 +451,9 @@ impl Track {
     }
 
     /// Get the end time of the last event (cached for performance)
+    ///
+    /// Returns the latest end time among all events in the track (including release times).
+    /// This value is cached and only recomputed when events are added.
     fn end_time(&mut self) -> f32 {
         if let Some(cached) = self.cached_end_time {
             return cached;
@@ -336,6 +465,9 @@ impl Track {
     }
 
     /// Invalidate time caches (call when events are added)
+    ///
+    /// Called internally whenever events are added or modified.
+    /// Clears cached start/end times and marks events as needing re-sort.
     pub(crate) fn invalidate_time_cache(&mut self) {
         self.cached_start_time = None;
         self.cached_end_time = None;
@@ -343,6 +475,9 @@ impl Track {
     }
 
     /// Ensure events are sorted by start_time (lazy sorting for performance)
+    ///
+    /// Events are sorted on-demand rather than on every insert.
+    /// This is more efficient when adding multiple events in a batch.
     fn ensure_sorted(&mut self) {
         if !self.events_sorted {
             self.events.sort_by(|a, b| {
@@ -376,37 +511,68 @@ impl Track {
         (start_idx, self.events.len())
     }
 
+    /// Set track volume (builder pattern)
+    ///
+    /// # Arguments
+    /// * `volume` - Volume level 0.0 (silent) to 2.0 (double), clamped to this range
     pub fn with_volume(mut self, volume: f32) -> Self {
         self.volume = volume.clamp(0.0, 2.0);
         self
     }
 
+    /// Set track filter (builder pattern)
+    ///
+    /// # Arguments
+    /// * `filter` - Filter to apply (low-pass, high-pass, band-pass, etc.)
     pub fn with_filter(mut self, filter: Filter) -> Self {
         self.filter = filter;
         self
     }
 
+    /// Add delay effect to track (builder pattern)
+    ///
+    /// # Arguments
+    /// * `delay` - Delay effect configuration
     pub fn with_delay(mut self, delay: Delay) -> Self {
         self.delay = Some(delay);
         self
     }
 
+    /// Add reverb effect to track (builder pattern)
+    ///
+    /// # Arguments
+    /// * `reverb` - Reverb effect configuration
     pub fn with_reverb(mut self, reverb: Reverb) -> Self {
         self.reverb = Some(reverb);
         self
     }
 
+    /// Add distortion effect to track (builder pattern)
+    ///
+    /// # Arguments
+    /// * `distortion` - Distortion effect configuration
     pub fn with_distortion(mut self, distortion: Distortion) -> Self {
         self.distortion = Some(distortion);
         self
     }
 
+    /// Add LFO modulation route to track (builder pattern)
+    ///
+    /// # Arguments
+    /// * `mod_route` - Modulation route (LFO modulating a parameter like volume or filter cutoff)
     pub fn with_modulation(mut self, mod_route: ModRoute) -> Self {
         self.modulation.push(mod_route);
         self
     }
 
-    /// Add a note event to the track
+    /// Add a simple note event to the track
+    ///
+    /// Creates a note with default sine waveform and envelope.
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
     pub fn add_note(&mut self, frequencies: &[f32], start_time: f32, duration: f32) {
         self.events.push(AudioEvent::Note(NoteEvent::new(
             frequencies,
@@ -417,6 +583,12 @@ impl Track {
     }
 
     /// Add a note event with a specific waveform
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
     pub fn add_note_with_waveform(
         &mut self,
         frequencies: &[f32],
@@ -433,7 +605,14 @@ impl Track {
         self.invalidate_time_cache();
     }
 
-    /// Add a note event with waveform and envelope
+    /// Add a note event with waveform and ADSR envelope
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
+    /// * `envelope` - ADSR amplitude envelope
     pub fn add_note_with_waveform_and_envelope(
         &mut self,
         frequencies: &[f32],
@@ -454,6 +633,14 @@ impl Track {
     }
 
     /// Add a note event with waveform, envelope, and pitch bend
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Waveform type (Sine, Square, Saw, Triangle)
+    /// * `envelope` - ADSR amplitude envelope
+    /// * `pitch_bend_semitones` - Pitch bend in semitones (e.g., 2.0 for up 2 semitones)
     pub fn add_note_with_waveform_envelope_and_bend(
         &mut self,
         frequencies: &[f32],
@@ -476,7 +663,22 @@ impl Track {
         self.invalidate_time_cache();
     }
 
-    /// Add a note event with complete synthesis parameters
+    /// Add a note event with all possible synthesis parameters
+    ///
+    /// This is the most flexible method, allowing full control over all
+    /// synthesis parameters including FM synthesis and custom wavetables.
+    ///
+    /// # Arguments
+    /// * `frequencies` - Note frequencies in Hz (up to 8 for chords)
+    /// * `start_time` - When to start playing (in seconds from track start)
+    /// * `duration` - How long to sustain the note (in seconds)
+    /// * `waveform` - Basic waveform (sine, square, saw, triangle)
+    /// * `envelope` - ADSR amplitude envelope
+    /// * `filter_envelope` - ADSR filter envelope
+    /// * `fm_params` - FM synthesis parameters
+    /// * `pitch_bend_semitones` - Pitch bend in semitones
+    /// * `custom_wavetable` - Custom wavetable (overrides waveform if Some)
+    /// * `velocity` - Note velocity 0.0-1.0 (affects MIDI export)
     pub fn add_note_with_complete_params(
         &mut self,
         frequencies: &[f32],
@@ -507,7 +709,11 @@ impl Track {
         self.invalidate_time_cache();
     }
 
-    /// Add a drum event to the track
+    /// Add a drum hit event to the track
+    ///
+    /// # Arguments
+    /// * `drum_type` - Type of drum (Kick, Snare, HiHat, etc.)
+    /// * `start_time` - When to trigger the drum (in seconds from track start)
     pub fn add_drum(&mut self, drum_type: DrumType, start_time: f32) {
         self.events.push(AudioEvent::Drum(DrumEvent {
             drum_type,
@@ -517,6 +723,14 @@ impl Track {
     }
 
     /// Add a sequence of notes with equal duration
+    ///
+    /// Convenience method for adding multiple notes sequentially,
+    /// each playing for the same duration.
+    ///
+    /// # Arguments
+    /// * `frequencies_list` - List of note frequency arrays to play sequentially
+    /// * `start_time` - When to start the sequence (in seconds from track start)
+    /// * `note_duration` - Duration of each note in the sequence (in seconds)
     pub fn add_sequence(
         &mut self,
         frequencies_list: Vec<&[f32]>,
@@ -530,7 +744,10 @@ impl Track {
         }
     }
 
-    /// Get the total duration of the track
+    /// Get the total duration of the track in seconds
+    ///
+    /// Returns the end time of the last event (including release times for notes).
+    /// Returns 0.0 for empty tracks.
     pub fn total_duration(&self) -> f32 {
         self.events
             .iter()
@@ -560,6 +777,10 @@ pub struct Mixer {
 }
 
 impl Mixer {
+    /// Create a new mixer with the specified tempo
+    ///
+    /// # Arguments
+    /// * `tempo` - Tempo for the composition (used for MIDI export)
     pub fn new(tempo: Tempo) -> Self {
         Self {
             tracks: Vec::new(),
@@ -567,11 +788,20 @@ impl Mixer {
         }
     }
 
+    /// Add a track to the mixer
+    ///
+    /// Tracks are played simultaneously when the mixer is rendered or played.
+    ///
+    /// # Arguments
+    /// * `track` - The track to add
     pub fn add_track(&mut self, track: Track) {
         self.tracks.push(track);
     }
 
-    /// Get the total duration across all tracks
+    /// Get the total duration across all tracks in seconds
+    ///
+    /// Returns the end time of the longest track.
+    /// Returns 0.0 if the mixer has no tracks.
     pub fn total_duration(&self) -> f32 {
         self.tracks
             .iter()
@@ -666,7 +896,20 @@ impl Mixer {
     }
 
     /// Generate a stereo sample at a given time by mixing all active tracks
-    /// Returns (left, right) channel values
+    ///
+    /// This is the core rendering method that generates audio samples by:
+    /// 1. Finding active events on all tracks at the given time
+    /// 2. Synthesizing audio for each event
+    /// 3. Applying track-level effects (filter, reverb, delay, etc.)
+    /// 4. Mixing tracks with stereo panning
+    ///
+    /// # Arguments
+    /// * `time` - The time position in seconds
+    /// * `sample_rate` - Sample rate in Hz (e.g., 44100)
+    /// * `_sample_clock` - Reserved for future use
+    ///
+    /// # Returns
+    /// A tuple of (left_channel, right_channel) audio samples in range -1.0 to 1.0
     pub fn sample_at(&mut self, time: f32, sample_rate: f32, _sample_clock: f32) -> (f32, f32) {
         let mut mixed_left = 0.0;
         let mut mixed_right = 0.0;

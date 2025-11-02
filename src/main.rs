@@ -50,6 +50,12 @@ fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(120.0));
 
+    let collatz = sequences::collatz(55, 40);
+    let collatz_freqs = sequences::normalize(&collatz, 100.0, 1000.0);
+
+    comp.instrument("piano", &Instrument::electric_piano())
+        .notes(&collatz_freqs, 0.1);
+
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
 }
