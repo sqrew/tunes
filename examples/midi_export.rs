@@ -4,7 +4,7 @@ use tunes::prelude::*;
 ///
 /// This example creates a simple composition and exports it to a MIDI file.
 /// MIDI files can be opened in DAWs, music notation software, or MIDI players.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎹 MIDI Export Demo\n");
 
     let mut comp = Composition::new(Tempo::new(120.0));

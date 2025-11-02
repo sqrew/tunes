@@ -1,11 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate smooth pitch interpolation (glissando/portamento)
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n〰️  Example: Interpolated Pitch Slides\n");
 
     let engine = AudioEngine::new()?;

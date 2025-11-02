@@ -1,12 +1,4 @@
-use tunes::composition::Composition;
-use tunes::effects::{Chorus, Delay, Reverb};
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::theory::{
-    ChordPattern, ProgressionType, ScalePattern, chord, progression, scale, transpose_sequence,
-};
+use tunes::prelude::*;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -65,32 +57,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .note(&chord(C3, &ChordPattern::ADD9), 1.5);
 
     // 7. Chord progression - I-V-vi-IV (Pop progression)
-    println!("7. Chord Progression - I-V-vi-IV in C Major");
-    let pop_prog = progression(
-        C4,
-        &ScalePattern::MAJOR,
-        &[1, 5, 6, 4],
-        ProgressionType::Triads,
-    );
-
+    println!("7. Chord Progression - I-V-vi-IV in C Major (using .progression() method)");
     comp.instrument("pop_prog", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .at(15.5)
-        .chords_from(&pop_prog, 1.5);
+        .progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], 1.5);
 
     // 8. Jazz progression - ii-V-I with 7th chords
-    println!("8. Jazz Progression - ii7-V7-Imaj7 in C Major");
-    let jazz_prog = progression(
-        C4,
-        &ScalePattern::MAJOR,
-        &[2, 5, 1],
-        ProgressionType::Sevenths,
-    );
-
+    println!("8. Jazz Progression - ii7-V7-Imaj7 in C Major (using .progression_7th() method)");
     comp.instrument("jazz_prog", &Instrument::warm_pad())
         .chorus(Chorus::new(0.3, 2.5, 0.4))
         .at(21.5)
-        .chords_from(&jazz_prog, 2.0);
+        .progression_7th(C4, &ScalePattern::MAJOR, &[2, 5, 1], 2.0);
 
     // 9. Transposition - Same melody in different keys
     println!("9. Transposition - Melody in C, then D, then E");
@@ -118,19 +96,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     // 10. Musical example - Full progression with melody
     println!("10. Full Musical Example - Progression with melody in G Major");
 
-    // Chord progression: I-vi-IV-V in G major
-    let g_prog = progression(
-        G3,
-        &ScalePattern::MAJOR,
-        &[1, 6, 4, 5],
-        ProgressionType::Triads,
-    );
-
+    // Chord progression: I-vi-IV-V in G major (using .progression() method)
     comp.instrument("full_chords", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .chorus(Chorus::new(0.3, 2.5, 0.3))
         .at(33.0)
-        .chords_from(&g_prog, 2.0);
+        .progression(G3, &ScalePattern::MAJOR, &[1, 6, 4, 5], 2.0);
 
     // Melody using G major scale
     let g_major = scale(G4, &ScalePattern::MAJOR);

@@ -4,7 +4,7 @@ use tunes::prelude::*;
 ///
 /// This example creates a short composition and exports it to a WAV file,
 /// showing both the direct mixer method and the AudioEngine convenience method.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎵 WAV Export Demo\n");
 
     let mut comp = Composition::new(Tempo::new(120.0));

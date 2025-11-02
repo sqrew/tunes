@@ -1,15 +1,9 @@
-use tunes::chords::*;
+use tunes::prelude::*;
 use tunes::composition::generative::{biased_random_walk_sequence, random_walk_sequence};
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::scales::*;
 use tunes::sequences;
 
 /// Demonstrate algorithmic pattern generation
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎼 Example: Algorithmic Pattern Generation\n");
 
     let engine = AudioEngine::new()?;

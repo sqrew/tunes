@@ -445,16 +445,16 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Pattern should be: lowest (0), highest (2), middle (1), highest (2)
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C3); // Lowest
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], G3); // Highest
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.frequencies[0], E3); // Middle
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], G3); // Highest again
         }
     }
@@ -516,13 +516,13 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // Verify timing: 0.0, 0.5, 1.0
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert!((note.start_time - 0.5).abs() < 0.01);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert!((note.start_time - 1.0).abs() < 0.01);
         }
     }
@@ -578,16 +578,16 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Pattern 0: Up and back - 0, 1, 2, 1
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], E4);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.frequencies[0], G4);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], E4);
         }
     }
@@ -601,16 +601,16 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Pattern 1: Down and back - 2, 1, 0, 1
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], G4);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], E4);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], E4);
         }
     }
@@ -635,16 +635,16 @@ mod tests {
         assert_eq!(track.events.len(), 6);
 
         // Check pairs
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.frequencies[0], E4);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], E4);
         }
     }
@@ -666,10 +666,10 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Verify notes in order
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C2);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], F2);
         }
     }
@@ -721,13 +721,13 @@ mod tests {
         assert_eq!(track.events.len(), 9);
 
         // Verify pattern repeats
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], C4); // Pattern starts again
         }
-        if let AudioEvent::Note(note) = track.events[6] {
+        if let AudioEvent::Note(note) = &track.events[6] {
             assert_eq!(note.frequencies[0], C4); // Pattern starts third time
         }
     }
@@ -791,10 +791,10 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // Check chord timing
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert!((note.start_time - 0.5).abs() < 0.01);
         }
     }
@@ -822,16 +822,16 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Pattern: lowest (0), highest (3), middle (1), highest (3)
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], C3);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], C4);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.frequencies[0], E3);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert_eq!(note.frequencies[0], C4);
         }
     }

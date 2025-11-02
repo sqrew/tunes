@@ -1,12 +1,7 @@
-use tunes::chords::*;
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate pattern_start() and repeat() for looping sections
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🔁 Example: Pattern Repeat\n");
 
     let engine = AudioEngine::new()?;

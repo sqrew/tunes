@@ -1,4 +1,5 @@
 use crate::{
+    error::{Result, TunesError},
     rhythm::{NoteDuration, Tempo},
     run,
 };
@@ -8,19 +9,20 @@ pub fn play_notes(
     config: &cpal::SupportedStreamConfig,
     frequencies: &[f32],
     duration_secs: f32,
-) {
+) -> Result<()> {
     match config.sample_format() {
         cpal::SampleFormat::F32 => {
-            run::<f32>(device, &config.clone().into(), frequencies, duration_secs).unwrap()
+            run::<f32>(device, &config.clone().into(), frequencies, duration_secs)?
         }
         cpal::SampleFormat::I16 => {
-            run::<i16>(device, &config.clone().into(), frequencies, duration_secs).unwrap()
+            run::<i16>(device, &config.clone().into(), frequencies, duration_secs)?
         }
         cpal::SampleFormat::U16 => {
-            run::<u16>(device, &config.clone().into(), frequencies, duration_secs).unwrap()
+            run::<u16>(device, &config.clone().into(), frequencies, duration_secs)?
         }
-        _ => panic!("Unsupported format"),
+        _ => return Err(TunesError::InvalidAudioFormat("Unsupported audio format".to_string())),
     }
+    Ok(())
 }
 pub fn play_notes_tempo(
     device: &cpal::Device,
@@ -28,9 +30,9 @@ pub fn play_notes_tempo(
     frequencies: &[f32],
     duration: NoteDuration,
     tempo: &Tempo,
-) {
+) -> Result<()> {
     let duration_secs = tempo.duration_to_seconds(duration);
-    play_notes(device, config, frequencies, duration_secs);
+    play_notes(device, config, frequencies, duration_secs)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -48,27 +50,27 @@ pub fn play_arpeggio_tempo(
     style: ArpeggioStyle,
     note_duration: NoteDuration,
     tempo: &Tempo,
-) {
+) -> Result<()> {
     let duration_secs = tempo.duration_to_seconds(note_duration);
     match style {
         ArpeggioStyle::Up => {
             for &freq in scale {
-                play_notes(device, config, &[freq], duration_secs);
+                play_notes(device, config, &[freq], duration_secs)?;
             }
         }
         ArpeggioStyle::Down => {
             for &freq in scale.iter().rev() {
-                play_notes(device, config, &[freq], duration_secs);
+                play_notes(device, config, &[freq], duration_secs)?;
             }
         }
         ArpeggioStyle::UpDown => {
             // Go up
             for &freq in scale {
-                play_notes(device, config, &[freq], duration_secs);
+                play_notes(device, config, &[freq], duration_secs)?;
             }
             // Go down (skip first note to avoid repetition)
             for &freq in scale.iter().rev().skip(1) {
-                play_notes(device, config, &[freq], duration_secs);
+                play_notes(device, config, &[freq], duration_secs)?;
             }
         }
         ArpeggioStyle::Random => {
@@ -77,10 +79,11 @@ pub fn play_arpeggio_tempo(
             let mut shuffled = scale.to_vec();
             shuffled.shuffle(&mut rng);
             for freq in shuffled {
-                play_notes(device, config, &[freq], duration_secs);
+                play_notes(device, config, &[freq], duration_secs)?;
             }
         }
     }
+    Ok(())
 }
 
 pub fn play_interpolated(
@@ -90,10 +93,11 @@ pub fn play_interpolated(
     end_freq: f32,
     segments: usize,
     note_duration: f32,
-) {
+) -> Result<()> {
     for i in 0..segments {
         let t = i as f32 / (segments - 1) as f32;
         let freq = start_freq + (end_freq - start_freq) * t;
-        play_notes(device, config, &[freq], note_duration);
+        play_notes(device, config, &[freq], note_duration)?;
     }
+    Ok(())
 }

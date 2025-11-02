@@ -10,7 +10,7 @@ use tunes::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
 ///
 /// Note: This demonstrates the wavetable API. Future versions will
 /// integrate custom wavetables directly into the Composition API.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🌊 Wavetable Synthesis API Demo\n");
 
     // Example 1: Band-limited waveforms (reduce aliasing)
@@ -123,7 +123,7 @@ fn main() -> Result<(), anyhow::Error> {
         0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0, -0.2, -0.4, -0.6, -0.8, -1.0,
         -0.8, -0.6, -0.4, -0.2,
     ];
-    let stepped_wt = Wavetable::from_samples(steps.clone());
+    let _stepped_wt = Wavetable::from_samples(steps.clone());
 
     println!("  Stepped waveform ({} samples):", steps.len());
     for i in 0..steps.len() {

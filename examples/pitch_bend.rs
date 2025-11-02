@@ -1,10 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate pitch bend
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎸 Example: Pitch Bend\n");
 
     let engine = AudioEngine::new()?;

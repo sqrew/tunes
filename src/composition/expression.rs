@@ -13,9 +13,57 @@ impl<'a> TrackBuilder<'a> {
         self.get_track_mut().pan = pan.clamp(-1.0, 1.0);
         self
     }
+    /// Set the MIDI program (instrument) for this track (0-127)
+    ///
+    /// This sets the General MIDI program number used when exporting to MIDI.
+    /// Common programs: 0 = Acoustic Grand Piano, 24 = Acoustic Guitar (nylon),
+    /// 33 = Acoustic Bass, 48 = String Ensemble, 80 = Square Lead, etc.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("piano")
+    ///     .program(0)  // Acoustic Grand Piano
+    ///     .notes(&[C4, E4, G4], 0.5);
+    ///
+    /// comp.track("bass")
+    ///     .program(33)  // Acoustic Bass
+    ///     .notes(&[C2, G2], 1.0);
+    /// ```
+    pub fn program(mut self, program: u8) -> Self {
+        self.get_track_mut().midi_program = Some(program.min(127));
+        self
+    }
     /// Set pitch bend for subsequent notes (in semitones, positive = up, negative = down)
     pub fn bend(mut self, semitones: f32) -> Self {
         self.pitch_bend = semitones.clamp(-24.0, 24.0);
+        self
+    }
+    /// Set velocity for subsequent notes (0.0 to 1.0)
+    ///
+    /// Velocity affects the note's expression and is used in MIDI export.
+    /// Higher velocity values typically result in louder, more emphasized notes.
+    ///
+    /// # Arguments
+    /// * `velocity` - Note velocity from 0.0 (silent) to 1.0 (maximum), clamped to range
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .velocity(0.9)  // Strong accent
+    ///     .note(&[C4], 0.5)
+    ///     .velocity(0.4)  // Soft note
+    ///     .note(&[E4], 0.5);
+    /// ```
+    pub fn velocity(mut self, velocity: f32) -> Self {
+        self.velocity = velocity.clamp(0.0, 1.0);
         self
     }
     /// Set the waveform for subsequent notes
@@ -408,6 +456,92 @@ mod tests {
             assert_eq!(note.pitch_bend_semitones, 0.0);
         } else {
             panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_velocity_sets_note_velocity() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .velocity(0.6)
+            .note(&[C4], 1.0);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.velocity, 0.6);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_velocity_clamps_low() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .velocity(-0.5)
+            .note(&[C4], 1.0);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.velocity, 0.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_velocity_clamps_high() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .velocity(1.5)
+            .note(&[C4], 1.0);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.velocity, 1.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_velocity_affects_multiple_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .velocity(0.9)
+            .notes(&[C4, E4, G4], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        // All notes should have the set velocity
+        for event in &track.events {
+            if let crate::track::AudioEvent::Note(note) = event {
+                assert_eq!(note.velocity, 0.9);
+            }
+        }
+    }
+
+    #[test]
+    fn test_velocity_can_change_between_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .velocity(0.9)
+            .note(&[C4], 0.5)
+            .velocity(0.3)
+            .note(&[E4], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.velocity, 0.9);
+        }
+        if let crate::track::AudioEvent::Note(note) = &track.events[1] {
+            assert_eq!(note.velocity, 0.3);
         }
     }
 

@@ -4,7 +4,7 @@ use tunes::prelude::*;
 ///
 /// This example shows how to load and play WAV file samples,
 /// including pitch shifting via playback rate changes.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎵 Sample Playback Demo\n");
 
     // First, create a simple test WAV file (a 440Hz tone)
@@ -74,7 +74,7 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 /// Helper function to create a test WAV file with a pure tone
-fn create_test_sample(path: &str, frequency: f32, duration: f32) -> Result<(), anyhow::Error> {
+fn create_test_sample(path: &str, frequency: f32, duration: f32) -> anyhow::Result<()> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: 44100,

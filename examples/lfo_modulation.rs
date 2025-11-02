@@ -1,14 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::filter::Filter;
-use tunes::instruments::Instrument;
-use tunes::lfo::{LFO, ModRoute, ModTarget};
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::waveform::Waveform;
+use tunes::prelude::*;
 
 /// Demonstrate LFO (Low Frequency Oscillator) modulation
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🌊 Example: LFO Modulation\n");
 
     let engine = AudioEngine::new()?;

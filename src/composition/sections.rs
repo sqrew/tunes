@@ -65,6 +65,15 @@ impl Section {
                         AudioEvent::Sample(sample) => {
                             sample.start_time += time_offset;
                         }
+                        AudioEvent::TempoChange(tempo) => {
+                            tempo.start_time += time_offset;
+                        }
+                        AudioEvent::TimeSignature(time_sig) => {
+                            time_sig.start_time += time_offset;
+                        }
+                        AudioEvent::KeySignature(key_sig) => {
+                            key_sig.start_time += time_offset;
+                        }
                     }
                 }
                 (name.clone(), new_track)
@@ -120,6 +129,8 @@ impl<'a> SectionBuilder<'a> {
             swing_counter: 0,
             pitch_bend: 0.0,
             tempo: self.tempo,
+            custom_wavetable: None,
+            velocity: 0.8,
         }
     }
 
@@ -151,6 +162,8 @@ impl<'a> SectionBuilder<'a> {
             swing_counter: 0,
             pitch_bend: 0.0,
             tempo: self.tempo,
+            custom_wavetable: None,
+            velocity: 0.8,
         };
 
         // Get or create the track and apply instrument settings
@@ -204,10 +217,10 @@ mod tests {
         let offset_tracks = section.clone_with_offset(4.0);
         let melody = &offset_tracks["melody"];
 
-        if let AudioEvent::Note(note) = melody.events[0] {
+        if let AudioEvent::Note(note) = &melody.events[0] {
             assert_eq!(note.start_time, 4.0);
         }
-        if let AudioEvent::Note(note) = melody.events[1] {
+        if let AudioEvent::Note(note) = &melody.events[1] {
             assert_eq!(note.start_time, 5.0);
         }
     }
@@ -295,13 +308,13 @@ mod tests {
         assert_eq!(melody.events.len(), 3); // 1 from intro + 2 from verse
 
         // Check timing
-        if let AudioEvent::Note(note) = melody.events[0] {
+        if let AudioEvent::Note(note) = &melody.events[0] {
             assert_eq!(note.start_time, 0.0); // Intro note
         }
-        if let AudioEvent::Note(note) = melody.events[1] {
+        if let AudioEvent::Note(note) = &melody.events[1] {
             assert_eq!(note.start_time, 1.0); // First verse note (after 1s intro)
         }
-        if let AudioEvent::Note(note) = melody.events[2] {
+        if let AudioEvent::Note(note) = &melody.events[2] {
             assert_eq!(note.start_time, 1.5); // Second verse note
         }
     }
@@ -320,10 +333,10 @@ mod tests {
         assert_eq!(melody.events.len(), 4); // 2 notes × 2 repetitions
 
         // Check timing
-        if let AudioEvent::Note(note) = melody.events[0] {
+        if let AudioEvent::Note(note) = &melody.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = melody.events[2] {
+        if let AudioEvent::Note(note) = &melody.events[2] {
             assert_eq!(note.start_time, 1.0); // Second chorus starts after first (1s)
         }
     }
@@ -372,7 +385,7 @@ mod tests {
 
         // Check last note timing
         // intro: 2s, verse: 2s, chorus: 2s, verse starts at 6s
-        if let AudioEvent::Note(note) = melody.events[8] {
+        if let AudioEvent::Note(note) = &melody.events[8] {
             assert_eq!(note.start_time, 7.0); // 6s + 1s
         }
     }
@@ -391,10 +404,10 @@ mod tests {
         let section = comp.sections.get("test").unwrap();
         let melody = section.tracks.get("melody").unwrap();
 
-        if let AudioEvent::Note(note) = melody.events[0] {
+        if let AudioEvent::Note(note) = &melody.events[0] {
             assert_eq!(note.start_time, 1.0);
         }
-        if let AudioEvent::Note(note) = melody.events[1] {
+        if let AudioEvent::Note(note) = &melody.events[1] {
             assert_eq!(note.start_time, 3.0);
         }
     }

@@ -1,11 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate octave doubling and harmonization techniques
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎼 Example: Octaves and Harmonization\n");
 
     let engine = AudioEngine::new()?;

@@ -228,10 +228,12 @@ impl<'a> TrackBuilder<'a> {
                                 filter_envelope: note.filter_envelope,
                                 fm_params: note.fm_params,
                                 pitch_bend_semitones: note.pitch_bend_semitones,
+                                custom_wavetable: note.custom_wavetable.clone(),
+                                velocity: note.velocity,
                             }))
                         }
-                        AudioEvent::Drum(_) | AudioEvent::Sample(_) => {
-                            // Pass through drums and samples unchanged
+                        AudioEvent::Drum(_) | AudioEvent::Sample(_) | AudioEvent::TempoChange(_) | AudioEvent::TimeSignature(_) | AudioEvent::KeySignature(_) => {
+                            // Pass through drums, samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
                     }
@@ -249,6 +251,9 @@ impl<'a> TrackBuilder<'a> {
                 AudioEvent::Note(note) => note.start_time,
                 AudioEvent::Drum(drum) => drum.start_time,
                 AudioEvent::Sample(sample) => sample.start_time,
+                AudioEvent::TempoChange(tempo) => tempo.start_time,
+                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -323,10 +328,12 @@ impl<'a> TrackBuilder<'a> {
                                 filter_envelope: note.filter_envelope,
                                 fm_params: note.fm_params,
                                 pitch_bend_semitones: note.pitch_bend_semitones,
+                                custom_wavetable: note.custom_wavetable.clone(),
+                                velocity: note.velocity,
                             }))
                         }
-                        AudioEvent::Drum(_) | AudioEvent::Sample(_) => {
-                            // Pass through drums and samples unchanged
+                        AudioEvent::Drum(_) | AudioEvent::Sample(_) | AudioEvent::TempoChange(_) | AudioEvent::TimeSignature(_) | AudioEvent::KeySignature(_) => {
+                            // Pass through drums, samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
                     }
@@ -344,6 +351,9 @@ impl<'a> TrackBuilder<'a> {
                 AudioEvent::Note(note) => note.start_time,
                 AudioEvent::Drum(drum) => drum.start_time,
                 AudioEvent::Sample(sample) => sample.start_time,
+                AudioEvent::TempoChange(tempo) => tempo.start_time,
+                    AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+                    AudioEvent::KeySignature(key_sig) => key_sig.start_time,
             };
             event_time < pattern_start || event_time >= cursor
         });
@@ -374,7 +384,7 @@ mod tests {
     fn test_random_walk_sequence_stays_in_bounds() {
         let seq = random_walk_sequence(5, 100, 0, 12);
         for &val in &seq {
-            assert!(val >= 0 && val < 12);
+            assert!(val < 12);
         }
     }
 

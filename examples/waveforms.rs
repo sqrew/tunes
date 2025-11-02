@@ -1,11 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::waveform::Waveform;
+use tunes::prelude::*;
 
 /// Demonstrate different waveform types
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🌊 Example: Waveforms\n");
 
     let engine = AudioEngine::new()?;

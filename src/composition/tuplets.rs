@@ -227,13 +227,13 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // Notes should start at 0.0, 0.5, 1.0
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert!((note.start_time - 0.5).abs() < 0.01);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert!((note.start_time - 1.0).abs() < 0.01);
         }
     }
@@ -347,16 +347,16 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // Verify exact start times: 0, 0.25, 0.5, 0.75
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert!((note.start_time - 0.25).abs() < 0.001);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert!((note.start_time - 0.5).abs() < 0.001);
         }
-        if let AudioEvent::Note(note) = track.events[3] {
+        if let AudioEvent::Note(note) = &track.events[3] {
             assert!((note.start_time - 0.75).abs() < 0.001);
         }
     }

@@ -29,10 +29,12 @@ pub mod drums;
 pub mod effects;
 pub mod engine;
 pub mod envelope;
+pub mod error;
 pub mod filter;
 pub mod filter_envelope;
 pub mod fm_synthesis;
 pub mod instruments;
+pub mod key_signature;
 pub mod lfo;
 pub mod microtonal;
 pub mod midi;
@@ -54,18 +56,26 @@ pub mod prelude {
     pub use crate::rhythm::Tempo;
     pub use crate::track::Mixer;
 
+    // Error handling
+    pub use crate::error::{Result, TunesError};
+
     // Notes
     pub use crate::notes::*;
 
+    // Scales and Chords
+    pub use crate::scales::*;
+    pub use crate::chords::*;
+
     // Theory
     pub use crate::theory::{chord, scale, transpose, transpose_sequence, ChordPattern, ScalePattern, ProgressionType, progression};
+    pub use crate::key_signature::{KeySignature, KeyRoot, KeyMode};
 
     // Instruments
     pub use crate::instruments::Instrument;
 
     // Effects
     pub use crate::effects::*;
-    pub use crate::filter::Filter;
+    pub use crate::filter::{Filter, FilterType};
 
     // Drums
     pub use crate::drums::DrumType;
@@ -78,7 +88,10 @@ pub mod prelude {
     pub use crate::waveform::Waveform;
 
     // Sequences
-    pub use crate::sequences::{euclidean, euclidean_pattern};
+    pub use crate::sequences::{
+        euclidean, euclidean_pattern, harmonic_series,
+        golden_ratio, golden_ratio_rhythm, golden_sections,
+    };
 
     // LFO
     pub use crate::lfo::{LFO, ModRoute, ModTarget};

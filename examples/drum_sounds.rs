@@ -1,10 +1,7 @@
-use tunes::composition::Composition;
-use tunes::drums::DrumType;
-use tunes::engine::AudioEngine;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate all drum sounds
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🥁 Example: Drum Sounds\n");
 
     let engine = AudioEngine::new()?;

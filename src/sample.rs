@@ -3,6 +3,7 @@
 /// This module provides functionality to load audio samples from WAV files
 /// and play them back with pitch shifting, looping, and effects.
 
+use crate::error::{Result, TunesError};
 use std::sync::Arc;
 use std::path::Path;
 
@@ -37,7 +38,7 @@ impl Sample {
     /// let kick = Sample::from_wav("samples/kick.wav")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
-    pub fn from_wav<P: AsRef<Path>>(path: P) -> Result<Self, anyhow::Error> {
+    pub fn from_wav<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut reader = hound::WavReader::open(path.as_ref())?;
         let spec = reader.spec();
 
@@ -47,26 +48,26 @@ impl Sample {
                 match spec.bits_per_sample {
                     16 => {
                         reader.samples::<i16>()
-                            .map(|s| s.unwrap() as f32 / 32768.0)
-                            .collect()
+                            .map(|s| s.map(|sample| sample as f32 / 32768.0).map_err(TunesError::from))
+                            .collect::<Result<Vec<f32>>>()?
                     }
                     24 => {
                         reader.samples::<i32>()
-                            .map(|s| s.unwrap() as f32 / 8388608.0)  // 2^23
-                            .collect()
+                            .map(|s| s.map(|sample| sample as f32 / 8388608.0).map_err(TunesError::from))  // 2^23
+                            .collect::<Result<Vec<f32>>>()?
                     }
                     32 => {
                         reader.samples::<i32>()
-                            .map(|s| s.unwrap() as f32 / 2147483648.0)  // 2^31
-                            .collect()
+                            .map(|s| s.map(|sample| sample as f32 / 2147483648.0).map_err(TunesError::from))  // 2^31
+                            .collect::<Result<Vec<f32>>>()?
                     }
-                    _ => return Err(anyhow::anyhow!("Unsupported bit depth: {}", spec.bits_per_sample)),
+                    _ => return Err(TunesError::WavReadError(format!("Unsupported bit depth: {}", spec.bits_per_sample))),
                 }
             }
             hound::SampleFormat::Float => {
                 reader.samples::<f32>()
-                    .map(|s| s.unwrap())
-                    .collect()
+                    .map(|s| s.map_err(TunesError::from))
+                    .collect::<Result<Vec<f32>>>()?
             }
         };
 
@@ -89,7 +90,7 @@ impl Sample {
     /// * `time` - Time in seconds from the start of the sample
     /// * `playback_rate` - Speed multiplier (1.0 = normal, 2.0 = double speed, 0.5 = half speed)
     /// * `target_sample_rate` - The sample rate of the audio engine
-    pub fn sample_at(&self, time: f32, playback_rate: f32, target_sample_rate: f32) -> (f32, f32) {
+    pub fn sample_at(&self, time: f32, playback_rate: f32, _target_sample_rate: f32) -> (f32, f32) {
         // Calculate the position in the original sample
         let position_seconds = time * playback_rate;
         let sample_position = position_seconds * self.sample_rate as f32;

@@ -1,10 +1,7 @@
-use tunes::composition::Composition;
-use tunes::drums::DrumType;
-use tunes::engine::AudioEngine;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate step sequencer-style drum programming with drum_grid
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎛️  Example: Drum Grid (Step Sequencer)\n");
 
     let engine = AudioEngine::new()?;

@@ -1,7 +1,7 @@
 use tunes::prelude::*;
 
 /// Demonstrate the synthesis capabilities: FM, filter envelopes, and AM
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎹 Synthesis Showcase: AM, Subtractive, and FM Synthesis\n");
 
     let engine = AudioEngine::new()?;
@@ -25,7 +25,7 @@ fn main() -> Result<(), anyhow::Error> {
     comp.instrument("classic_sweep", &Instrument::pluck())
         .at(3.0)
         .filter(Filter::low_pass(200.0, 0.7))  // Start with resonant filter
-        .classic_filter()  // Add classic filter envelope
+        .filter_envelope(FilterEnvelope::classic())  // Add classic filter envelope
         .note(&[C3], 1.0)
         .note(&[G3], 1.0);
     println!("   ✓ Classic filter envelope: fast attack, medium decay");
@@ -34,7 +34,7 @@ fn main() -> Result<(), anyhow::Error> {
     comp.instrument("pluck_synth", &Instrument::warm_pad())
         .at(6.0)
         .filter(Filter::low_pass(300.0, 0.8))
-        .pluck_filter()  // Quick decay for percussive sound
+        .filter_envelope(FilterEnvelope::pluck())  // Quick decay for percussive sound
         .note(&[E3], 0.3)
         .note(&[G3], 0.3)
         .note(&[A3], 0.3)
@@ -45,7 +45,7 @@ fn main() -> Result<(), anyhow::Error> {
     comp.instrument("evolving_pad", &Instrument::warm_pad())
         .at(8.5)
         .filter(Filter::low_pass(400.0, 0.5))
-        .pad_filter()  // Slow evolution
+        .filter_envelope(FilterEnvelope::pad())  // Slow evolution
         .note(&[C3, E3, G3], 3.0);
     println!("   ✓ Pad filter: slow attack and release for atmosphere\n");
 
@@ -55,14 +55,14 @@ fn main() -> Result<(), anyhow::Error> {
     // Electric piano (classic DX7 sound)
     comp.instrument("fm_piano", &Instrument::pluck())
         .at(12.0)
-        .fm_electric_piano()
+        .fm(FMParams::electric_piano())
         .notes(&[C4, E4, G4, C5, G4, E4], 0.3);
     println!("   ✓ Electric piano: mod_ratio=1.0, evolving brightness");
 
     // Bell sounds (inharmonic)
     comp.instrument("fm_bells", &Instrument::synth_lead())
         .at(14.5)
-        .fm_bell()
+        .fm(FMParams::bell())
         .note(&[C5], 0.5)
         .note(&[E5], 0.5)
         .note(&[G5], 0.5)
@@ -72,14 +72,14 @@ fn main() -> Result<(), anyhow::Error> {
     // Brass
     comp.instrument("fm_brass", &Instrument::synth_lead())
         .at(17.0)
-        .fm_brass()
+        .fm(FMParams::brass())
         .notes(&[F3, A3, C4, F4], 0.6);
     println!("   ✓ Brass: high modulation index with envelope");
 
     // FM bass
     comp.instrument("fm_bass", &Instrument::pluck())
         .at(19.5)
-        .fm_bass()
+        .fm(FMParams::bass())
         .note(&[C2], 0.4)
         .note(&[C2], 0.4)
         .note(&[G2], 0.4)
@@ -89,7 +89,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Growling bass (octave-down modulator)
     comp.instrument("growl_bass", &Instrument::pluck())
         .at(21.5)
-        .fm_growl()
+        .fm(FMParams::growl())
         .note(&[E2], 0.5)
         .note(&[E2], 0.5)
         .note(&[G2], 0.5)
@@ -99,7 +99,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Metallic pad
     comp.instrument("fm_pad", &Instrument::warm_pad())
         .at(24.0)
-        .fm_metallic_pad()
+        .fm(FMParams::metallic_pad())
         .note(&[A2, C3, E3], 3.0);
     println!("   ✓ Metallic pad: irrational ratio, evolving texture");
 

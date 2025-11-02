@@ -1,12 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::scales::*;
+use tunes::prelude::*;
 
 /// Demonstrate scale-aware portamento (glissando within a scale)
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎹 Example: Portamento (Scale-Aware Glides)\n");
 
     let engine = AudioEngine::new()?;

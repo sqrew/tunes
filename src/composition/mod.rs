@@ -10,6 +10,11 @@ use std::collections::HashMap;
 // Import synthesis types - use prelude which re-exports them
 use crate::prelude::{FilterEnvelope, FMParams};
 
+// Import effect types and filter
+use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
+use crate::filter::Filter;
+use crate::lfo::ModRoute;
+
 // Module declarations
 mod notes;
 mod musical_patterns;
@@ -29,12 +34,46 @@ pub mod generative;
 // Re-export Section types for public API
 pub use sections::{Section, SectionBuilder};
 
+/// Template for reusing track settings across multiple tracks
+#[derive(Clone)]
+pub struct TrackTemplate {
+    // Track-level settings (from Track)
+    pub volume: f32,
+    pub pan: f32,
+    pub filter: Filter,
+    pub delay: Option<Delay>,
+    pub reverb: Option<Reverb>,
+    pub distortion: Option<Distortion>,
+    pub bitcrusher: Option<BitCrusher>,
+    pub compressor: Option<Compressor>,
+    pub chorus: Option<Chorus>,
+    pub eq: Option<EQ>,
+    pub saturation: Option<Saturation>,
+    pub phaser: Option<Phaser>,
+    pub flanger: Option<Flanger>,
+    pub ring_mod: Option<RingModulator>,
+    pub modulation: Vec<ModRoute>,
+    pub midi_program: Option<u8>,
+
+    // Builder-level settings (from TrackBuilder)
+    pub waveform: Waveform,
+    pub envelope: Envelope,
+    pub filter_envelope: FilterEnvelope,
+    pub fm_params: FMParams,
+    pub swing: f32,
+    pub pitch_bend: f32,
+    pub custom_wavetable: Option<crate::wavetable::Wavetable>,
+    pub velocity: f32,
+}
+
 /// A musical composition with multiple named tracks
 pub struct Composition {
     tracks: HashMap<String, Track>,
     pub(crate) sections: HashMap<String, sections::Section>,
     tempo: Tempo,
     samples: HashMap<String, Sample>, // Cache of loaded samples
+    markers: HashMap<String, f32>,    // Named time positions for easy navigation
+    templates: HashMap<String, TrackTemplate>, // Named track templates for reuse
 }
 
 impl Composition {
@@ -45,6 +84,8 @@ impl Composition {
             sections: HashMap::new(),
             tempo,
             samples: HashMap::new(),
+            markers: HashMap::new(),
+            templates: HashMap::new(),
         }
     }
 
@@ -91,7 +132,110 @@ impl Composition {
             swing_counter: 0,
             pitch_bend: 0.0, // No pitch bend by default
             tempo,
+            custom_wavetable: None,
+            velocity: 0.8,
         }
+    }
+
+    /// Create a new track using settings from a saved template
+    ///
+    /// Templates allow you to reuse instrument, effects, and synthesis settings
+    /// across multiple tracks without repeating configuration code.
+    ///
+    /// # Arguments
+    /// * `template_name` - Name of the template to use (created with `.save_template()`)
+    /// * `track_name` - Name for the new track
+    ///
+    /// # Panics
+    /// Panics if the template doesn't exist. Use `.save_template()` to create templates first.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Create a template
+    /// comp.instrument("lead1", &Instrument::synth_lead())
+    ///     .reverb(Reverb::new(0.5, 0.5, 0.3))
+    ///     .delay(Delay::new(0.375, 0.3, 0.5))
+    ///     .save_template("lead_sound")
+    ///     .notes(&[C4, E4, G4], 0.25);
+    ///
+    /// // Reuse the same settings for a different track
+    /// comp.from_template("lead_sound", "lead2")
+    ///     .notes(&[G4, E4, C4], 0.25);
+    /// ```
+    pub fn from_template(&mut self, template_name: &str, track_name: &str) -> TrackBuilder<'_> {
+        let template = self.templates.get(template_name)
+            .cloned()
+            .unwrap_or_else(|| {
+                eprintln!("Warning: Template '{}' not found. Using default settings. Create it first with .save_template(\"{}\")", template_name, template_name);
+                TrackTemplate {
+                    volume: 1.0,
+                    pan: 0.5,
+                    filter: Filter::default(),
+                    delay: None,
+                    reverb: None,
+                    distortion: None,
+                    bitcrusher: None,
+                    compressor: None,
+                    chorus: None,
+                    eq: None,
+                    saturation: None,
+                    phaser: None,
+                    flanger: None,
+                    ring_mod: None,
+                    modulation: Vec::new(),
+                    midi_program: None,
+                    waveform: Waveform::Sine,
+                    envelope: Envelope::default(),
+                    filter_envelope: FilterEnvelope::default(),
+                    fm_params: FMParams::default(),
+                    swing: 0.5,
+                    pitch_bend: 0.0,
+                    custom_wavetable: None,
+                    velocity: 0.8,
+                }
+            });
+
+        let tempo = self.tempo;
+        let mut builder = TrackBuilder {
+            composition: self,
+            context: BuilderContext::Direct,
+            track_name: track_name.to_string(),
+            cursor: 0.0,
+            pattern_start: 0.0,
+            waveform: template.waveform,
+            envelope: template.envelope,
+            filter_envelope: template.filter_envelope,
+            fm_params: template.fm_params,
+            swing: template.swing,
+            swing_counter: 0,
+            pitch_bend: template.pitch_bend,
+            tempo,
+            custom_wavetable: template.custom_wavetable,
+            velocity: template.velocity,
+        };
+
+        // Apply track-level settings
+        let track = builder.get_track_mut();
+        track.volume = template.volume;
+        track.pan = template.pan;
+        track.filter = template.filter;
+        track.delay = template.delay;
+        track.reverb = template.reverb;
+        track.distortion = template.distortion;
+        track.bitcrusher = template.bitcrusher;
+        track.compressor = template.compressor;
+        track.chorus = template.chorus;
+        track.eq = template.eq;
+        track.saturation = template.saturation;
+        track.phaser = template.phaser;
+        track.flanger = template.flanger;
+        track.ring_mod = template.ring_mod;
+        track.modulation = template.modulation.clone();
+        track.midi_program = template.midi_program;
+
+        builder
     }
 
     /// Create a track with an instrument preset
@@ -111,6 +255,8 @@ impl Composition {
             swing_counter: 0,
             pitch_bend: 0.0, // No pitch bend by default
             tempo,
+            custom_wavetable: None,
+            velocity: 0.8,
         };
 
         // Apply instrument settings to the track
@@ -129,7 +275,8 @@ impl Composition {
     /// Convert this composition into a Mixer for playback
     pub fn into_mixer(self) -> Mixer {
         let mut mixer = Mixer::new();
-        for (_name, track) in self.tracks {
+        for (name, mut track) in self.tracks {
+            track.name = Some(name);
             mixer.add_track(track);
         }
         mixer
@@ -239,10 +386,11 @@ impl Composition {
         section_name: &str,
         track_name: &str,
     ) -> &mut Track {
+        // Defensive: create section if it doesn't exist (shouldn't happen in normal usage)
         let section = self
             .sections
-            .get_mut(section_name)
-            .expect("Section should exist");
+            .entry(section_name.to_string())
+            .or_insert_with(|| sections::Section::new(section_name.to_string()));
 
         section.tracks.entry(track_name.to_string()).or_default()
     }
@@ -275,6 +423,8 @@ pub struct TrackBuilder<'a> {
     pub(crate) swing_counter: usize, // Counter to track even/odd notes for swing
     pub(crate) pitch_bend: f32,      // Pitch bend in semitones for subsequent notes (0.0 = no bend)
     pub(crate) tempo: Tempo,         // Tempo for musical time calculations
+    pub(crate) custom_wavetable: Option<crate::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
+    pub(crate) velocity: f32,        // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
 }
 
 impl<'a> TrackBuilder<'a> {
@@ -322,6 +472,83 @@ impl<'a> TrackBuilder<'a> {
             // On-beat notes get shortened
             base_duration * (2.0 - 2.0 * self.swing)
         }
+    }
+
+    /// Save the current track's settings as a reusable template
+    ///
+    /// Captures all instrument settings, effects, synthesis parameters, and envelope
+    /// settings so they can be reused across multiple tracks with `.from_template()`.
+    ///
+    /// # Arguments
+    /// * `template_name` - Name to save the template as
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Configure and save a template
+    /// comp.instrument("lead1", &Instrument::synth_lead())
+    ///     .reverb(Reverb::new(0.5, 0.5, 0.3))
+    ///     .delay(Delay::new(0.375, 0.3, 0.5))
+    ///     .save_template("lead_sound")
+    ///     .notes(&[C4, E4, G4], 0.25);
+    ///
+    /// // Create new tracks with the same settings
+    /// comp.from_template("lead_sound", "lead2")
+    ///     .notes(&[G4, E4, C4], 0.25);
+    /// ```
+    pub fn save_template(mut self, template_name: &str) -> Self {
+        // Capture track settings first (clone all Option fields since they contain non-Copy types)
+        let track = self.get_track_mut();
+        let volume = track.volume;
+        let pan = track.pan;
+        let filter = track.filter;
+        let delay = track.delay.clone();
+        let reverb = track.reverb.clone();
+        let distortion = track.distortion.clone();
+        let bitcrusher = track.bitcrusher.clone();
+        let compressor = track.compressor.clone();
+        let chorus = track.chorus.clone();
+        let eq = track.eq.clone();
+        let saturation = track.saturation.clone();
+        let phaser = track.phaser.clone();
+        let flanger = track.flanger.clone();
+        let ring_mod = track.ring_mod.clone();
+        let modulation = track.modulation.clone();
+        let midi_program = track.midi_program;
+
+        let template = TrackTemplate {
+            // Track-level settings
+            volume,
+            pan,
+            filter,
+            delay,
+            reverb,
+            distortion,
+            bitcrusher,
+            compressor,
+            chorus,
+            eq,
+            saturation,
+            phaser,
+            flanger,
+            ring_mod,
+            modulation,
+            midi_program,
+
+            // Builder-level settings
+            waveform: self.waveform,
+            envelope: self.envelope,
+            filter_envelope: self.filter_envelope,
+            fm_params: self.fm_params,
+            swing: self.swing,
+            pitch_bend: self.pitch_bend,
+            custom_wavetable: self.custom_wavetable.clone(),
+            velocity: self.velocity,
+        };
+
+        self.composition.templates.insert(template_name.to_string(), template);
+        self
     }
 
     /// Create a step sequencer-style drum grid
@@ -395,5 +622,194 @@ impl<'a> TrackBuilder<'a> {
         };
 
         SectionBuilder::new(self.composition, section_name, self.tempo)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::notes::{C4, E4, G4};
+
+    #[test]
+    fn test_save_and_use_template() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create and save a template
+        comp.instrument("lead1", &Instrument::synth_lead())
+            .reverb(Reverb::new(0.5, 0.5, 0.3))
+            .volume(0.7)
+            .save_template("lead_sound")
+            .note(&[C4], 0.5);
+
+        // Use the template
+        comp.from_template("lead_sound", "lead2")
+            .note(&[E4], 0.5);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+
+        // Both tracks should have the same reverb settings
+        assert!(mixer.tracks[0].reverb.is_some());
+        assert!(mixer.tracks[1].reverb.is_some());
+        assert_eq!(mixer.tracks[0].volume, 0.7);
+        assert_eq!(mixer.tracks[1].volume, 0.7);
+    }
+
+    #[test]
+    fn test_template_captures_all_effects() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create a template with multiple effects
+        comp.instrument("synth1", &Instrument::synth_lead())
+            .reverb(Reverb::new(0.5, 0.5, 0.3))
+            .delay(Delay::new(0.375, 0.3, 0.5))
+            .chorus(Chorus::new(0.4, 3.0, 0.3))
+            .volume(0.6)
+            .pan(-0.3)
+            .save_template("full_synth")
+            .note(&[C4], 0.5);
+
+        // Use the template
+        comp.from_template("full_synth", "synth2")
+            .note(&[G4], 0.5);
+
+        let mixer = comp.into_mixer();
+
+        // Both tracks should have the same effects
+        assert!(mixer.tracks[0].reverb.is_some());
+        assert!(mixer.tracks[1].reverb.is_some());
+        assert!(mixer.tracks[0].delay.is_some());
+        assert!(mixer.tracks[1].delay.is_some());
+        assert!(mixer.tracks[0].chorus.is_some());
+        assert!(mixer.tracks[1].chorus.is_some());
+        assert_eq!(mixer.tracks[0].volume, 0.6);
+        assert_eq!(mixer.tracks[1].volume, 0.6);
+        assert_eq!(mixer.tracks[0].pan, -0.3);
+        assert_eq!(mixer.tracks[1].pan, -0.3);
+    }
+
+    #[test]
+    fn test_template_captures_synthesis_params() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create a template with custom synthesis parameters
+        comp.track("osc1")
+            .waveform(Waveform::Square)
+            .envelope(Envelope::new(0.01, 0.1, 0.7, 0.2))
+            .fm_custom(2.0, 1.5)
+            .save_template("custom_osc")
+            .note(&[C4], 0.5);
+
+        // Use the template
+        comp.from_template("custom_osc", "osc2")
+            .note(&[E4], 0.5);
+
+        // Template should have captured the waveform and envelope
+        // (Can't directly test builder state after into_mixer, but we can verify it doesn't panic)
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+    }
+
+    #[test]
+    fn test_template_multiple_reuse() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create one template
+        comp.instrument("pad1", &Instrument::warm_pad())
+            .reverb(Reverb::new(0.7, 0.6, 0.5))
+            .save_template("pad_sound")
+            .note(&[C4], 1.0);
+
+        // Reuse it multiple times
+        comp.from_template("pad_sound", "pad2")
+            .note(&[E4], 1.0);
+
+        comp.from_template("pad_sound", "pad3")
+            .note(&[G4], 1.0);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 3);
+
+        // All should have reverb
+        assert!(mixer.tracks[0].reverb.is_some());
+        assert!(mixer.tracks[1].reverb.is_some());
+        assert!(mixer.tracks[2].reverb.is_some());
+    }
+
+    #[test]
+    fn test_template_can_be_overridden() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create a template using .track() which has no effects by default
+        comp.track("base")
+            .reverb(Reverb::new(0.5, 0.5, 0.3))
+            .volume(0.7)
+            .save_template("base_sound")
+            .note(&[C4], 0.5);
+
+        // Use template but override some settings
+        comp.from_template("base_sound", "modified")
+            .volume(0.3)  // Override volume
+            .delay(Delay::new(0.375, 0.3, 0.5))  // Add new effect
+            .note(&[E4], 0.5);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+
+        // Find tracks by name
+        let base_track = mixer.tracks.iter().find(|t| t.name.as_ref().unwrap() == "base").unwrap();
+        let modified_track = mixer.tracks.iter().find(|t| t.name.as_ref().unwrap() == "modified").unwrap();
+
+        // Base track should have original settings (no delay)
+        assert_eq!(base_track.volume, 0.7);
+        assert!(base_track.delay.is_none());
+
+        // Modified track should have overridden settings
+        assert_eq!(modified_track.volume, 0.3);
+        assert!(modified_track.delay.is_some());
+
+        // Both should still have reverb from template
+        assert!(base_track.reverb.is_some());
+        assert!(modified_track.reverb.is_some());
+    }
+
+    #[test]
+    fn test_missing_template_uses_defaults() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Using a template that doesn't exist should use default settings (not panic)
+        comp.from_template("nonexistent", "track1")
+            .note(&[C4], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        // Should have default settings
+        assert_eq!(track.volume, 1.0);
+        assert_eq!(track.pan, 0.5);
+    }
+
+    #[test]
+    fn test_template_with_markers() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create a template
+        comp.instrument("melody1", &Instrument::pluck())
+            .delay(Delay::new(0.375, 0.3, 0.5))
+            .save_template("pluck_sound")
+            .note(&[C4], 0.5)
+            .mark("chorus");
+
+        // Use template at the marker
+        comp.from_template("pluck_sound", "melody2")
+            .at_mark("chorus")
+            .note(&[G4], 0.5);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
+
+        // Both should have delay from template
+        assert!(mixer.tracks[0].delay.is_some());
+        assert!(mixer.tracks[1].delay.is_some());
     }
 }

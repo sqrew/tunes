@@ -4,6 +4,7 @@ use crate::envelope::Envelope;
 use crate::filter::Filter;
 use crate::filter_envelope::FilterEnvelope;
 use crate::fm_synthesis::FMParams;
+use crate::key_signature::KeySignature;
 use crate::lfo::ModRoute;
 use crate::sample::Sample;
 use crate::waveform::Waveform;
@@ -14,6 +15,9 @@ pub enum AudioEvent {
     Note(NoteEvent),
     Drum(DrumEvent),
     Sample(SampleEvent),
+    TempoChange(TempoChangeEvent),
+    TimeSignature(TimeSignatureEvent),
+    KeySignature(KeySignatureEvent),
 }
 
 impl AudioEvent {
@@ -24,6 +28,9 @@ impl AudioEvent {
             AudioEvent::Note(note) => note.start_time,
             AudioEvent::Drum(drum) => drum.start_time,
             AudioEvent::Sample(sample) => sample.start_time,
+            AudioEvent::TempoChange(tempo) => tempo.start_time,
+            AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+            AudioEvent::KeySignature(key_sig) => key_sig.start_time,
         }
     }
 
@@ -39,22 +46,27 @@ impl AudioEvent {
             AudioEvent::Sample(sample) => {
                 sample.start_time + (sample.sample.duration / sample.playback_rate)
             }
+            AudioEvent::TempoChange(tempo) => tempo.start_time,
+            AudioEvent::TimeSignature(time_sig) => time_sig.start_time,
+            AudioEvent::KeySignature(key_sig) => key_sig.start_time,
         }
     }
 }
 
 /// Represents a note event with timing information
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct NoteEvent {
     pub frequencies: [f32; 8], // Support up to 8 simultaneous frequencies
     pub num_freqs: usize,
     pub start_time: f32,    // When to start playing (in seconds from track start)
     pub duration: f32,      // How long to play (in seconds)
-    pub waveform: Waveform, // Waveform type to use (ignored if FM is enabled)
+    pub waveform: Waveform, // Waveform type to use (ignored if FM is enabled or custom wavetable is set)
     pub envelope: Envelope, // ADSR envelope for amplitude
     pub filter_envelope: FilterEnvelope, // ADSR envelope for filter cutoff
     pub fm_params: FMParams, // FM synthesis parameters (mod_index=0 disables FM)
     pub pitch_bend_semitones: f32, // Pitch bend amount in semitones (0.0 = no bend)
+    pub custom_wavetable: Option<crate::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
+    pub velocity: f32,      // Note velocity (0.0 to 1.0), affects MIDI export and can be used for expression
 }
 
 /// Represents a drum hit event
@@ -71,6 +83,28 @@ pub struct SampleEvent {
     pub start_time: f32,
     pub playback_rate: f32,  // 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed
     pub volume: f32,         // 0.0 to 1.0
+}
+
+/// Represents a tempo change event
+#[derive(Debug, Clone, Copy)]
+pub struct TempoChangeEvent {
+    pub start_time: f32,
+    pub bpm: f32,
+}
+
+/// Represents a time signature change event
+#[derive(Debug, Clone, Copy)]
+pub struct TimeSignatureEvent {
+    pub start_time: f32,
+    pub numerator: u8,   // Top number (e.g., 3 in 3/4)
+    pub denominator: u8, // Bottom number (e.g., 4 in 3/4)
+}
+
+/// Represents a key signature change event
+#[derive(Debug, Clone, Copy)]
+pub struct KeySignatureEvent {
+    pub start_time: f32,
+    pub key_signature: KeySignature,
 }
 
 impl SampleEvent {
@@ -168,6 +202,8 @@ impl NoteEvent {
             filter_envelope,
             FMParams::default(),
             pitch_bend_semitones,
+            None,
+            0.8, // Default velocity
         )
     }
 
@@ -180,6 +216,8 @@ impl NoteEvent {
         filter_envelope: FilterEnvelope,
         fm_params: FMParams,
         pitch_bend_semitones: f32,
+        custom_wavetable: Option<crate::wavetable::Wavetable>,
+        velocity: f32,
     ) -> Self {
         let mut freq_array = [0.0; 8];
         let num_freqs = frequencies.len().min(8);
@@ -200,6 +238,8 @@ impl NoteEvent {
             filter_envelope,
             fm_params,
             pitch_bend_semitones,
+            custom_wavetable,
+            velocity,
         }
     }
 }
@@ -208,6 +248,8 @@ impl NoteEvent {
 #[derive(Debug, Clone)]
 pub struct Track {
     pub events: Vec<AudioEvent>,
+    pub name: Option<String>,           // Track name (used in MIDI export)
+    pub midi_program: Option<u8>,       // MIDI program number (0-127) for this track
     pub volume: f32,                    // 0.0 to 1.0
     pub pan: f32,                       // -1.0 (left) to 1.0 (right), 0.0 = center
     pub filter: Filter,                 // Filter applied to this track
@@ -236,6 +278,8 @@ impl Track {
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
+            name: None,
+            midi_program: None,
             volume: 1.0,
             pan: 0.0, // Center by default
             filter: Filter::none(),
@@ -268,6 +312,9 @@ impl Track {
                 AudioEvent::Note(n) => n.start_time,
                 AudioEvent::Drum(d) => d.start_time,
                 AudioEvent::Sample(s) => s.start_time,
+                AudioEvent::TempoChange(t) => t.start_time,
+                AudioEvent::TimeSignature(ts) => ts.start_time,
+                AudioEvent::KeySignature(ks) => ks.start_time,
             })
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0);
@@ -439,6 +486,8 @@ impl Track {
         filter_envelope: FilterEnvelope,
         fm_params: FMParams,
         pitch_bend_semitones: f32,
+        custom_wavetable: Option<crate::wavetable::Wavetable>,
+        velocity: f32,
     ) {
         self.events.push(AudioEvent::Note(
             NoteEvent::with_complete_params(
@@ -450,6 +499,8 @@ impl Track {
                 filter_envelope,
                 fm_params,
                 pitch_bend_semitones,
+                custom_wavetable,
+                velocity,
             ),
         ));
         self.invalidate_time_cache();
@@ -486,6 +537,9 @@ impl Track {
                 AudioEvent::Note(n) => n.start_time + n.duration,
                 AudioEvent::Drum(d) => d.start_time + d.drum_type.duration(),
                 AudioEvent::Sample(s) => s.start_time + (s.sample.duration / s.playback_rate),
+                AudioEvent::TempoChange(t) => t.start_time,
+                AudioEvent::TimeSignature(ts) => ts.start_time,
+                AudioEvent::KeySignature(ks) => ks.start_time,
             })
             .fold(0.0, f32::max)
     }
@@ -573,6 +627,28 @@ impl Mixer {
                                 start_time: sample.start_time + offset,
                                 playback_rate: sample.playback_rate,
                                 volume: sample.volume,
+                            }));
+                            track.invalidate_time_cache();
+                        }
+                        AudioEvent::TempoChange(tempo) => {
+                            track.events.push(AudioEvent::TempoChange(crate::track::TempoChangeEvent {
+                                start_time: tempo.start_time + offset,
+                                bpm: tempo.bpm,
+                            }));
+                            track.invalidate_time_cache();
+                        }
+                        AudioEvent::TimeSignature(time_sig) => {
+                            track.events.push(AudioEvent::TimeSignature(crate::track::TimeSignatureEvent {
+                                start_time: time_sig.start_time + offset,
+                                numerator: time_sig.numerator,
+                                denominator: time_sig.denominator,
+                            }));
+                            track.invalidate_time_cache();
+                        }
+                        AudioEvent::KeySignature(key_sig) => {
+                            track.events.push(AudioEvent::KeySignature(KeySignatureEvent {
+                                start_time: key_sig.start_time + offset,
+                                key_signature: key_sig.key_signature,
                             }));
                             track.invalidate_time_cache();
                         }
@@ -678,6 +754,10 @@ impl Mixer {
                                 let sample = if note_event.fm_params.mod_index > 0.0 {
                                     // Use FM synthesis
                                     note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                } else if let Some(ref wavetable) = note_event.custom_wavetable {
+                                    // Use custom wavetable
+                                    let phase = (time_in_note * freq) % 1.0;
+                                    wavetable.sample(phase)
                                 } else {
                                     // Use standard waveform
                                     let phase = (time_in_note * freq) % 1.0;
@@ -701,6 +781,15 @@ impl Mixer {
                             let sample_index = (time_in_drum * sample_rate) as usize;
                             track_value += drum_event.drum_type.sample(sample_index, sample_rate);
                         }
+                    }
+                    AudioEvent::TempoChange(_) => {
+                        // Tempo changes don't generate audio, they're metadata for MIDI export
+                    }
+                    AudioEvent::TimeSignature(_) => {
+                        // Time signatures don't generate audio, they're metadata for MIDI export
+                    }
+                    AudioEvent::KeySignature(_) => {
+                        // Key signatures don't generate audio, they're metadata for MIDI export
                     }
                 }
             }
@@ -834,7 +923,7 @@ impl Mixer {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
     ///
-    /// let mixer = comp.into_mixer();
+    /// let mut mixer = comp.into_mixer();
     /// mixer.export_wav("output.wav", 44100)?;
     /// # Ok(())
     /// # }
@@ -955,7 +1044,7 @@ mod tests {
 
         assert_eq!(track.events.len(), 2);
 
-        match track.events[0] {
+        match &track.events[0] {
             AudioEvent::Note(note) => {
                 assert_eq!(note.frequencies[0], 440.0);
                 assert_eq!(note.start_time, 0.0);
@@ -973,7 +1062,7 @@ mod tests {
 
         assert_eq!(track.events.len(), 2);
 
-        match track.events[0] {
+        match &track.events[0] {
             AudioEvent::Drum(drum) => {
                 assert!(matches!(drum.drum_type, DrumType::Kick));
                 assert_eq!(drum.start_time, 0.0);
@@ -1032,13 +1121,13 @@ mod tests {
         assert_eq!(track.events.len(), 3);
 
         // Verify timing
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.start_time, 0.5);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.start_time, 1.0);
         }
     }
@@ -1102,13 +1191,13 @@ mod tests {
         assert_eq!(repeated_mixer.tracks[0].events.len(), 3);
 
         // Verify timing offsets
-        if let AudioEvent::Note(note) = repeated_mixer.tracks[0].events[0] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = repeated_mixer.tracks[0].events[1] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[1] {
             assert_eq!(note.start_time, 1.0); // Original duration offset
         }
-        if let AudioEvent::Note(note) = repeated_mixer.tracks[0].events[2] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[2] {
             assert_eq!(note.start_time, 2.0); // 2x original duration
         }
     }

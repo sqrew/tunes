@@ -4,7 +4,7 @@ use tunes::prelude::*;
 ///
 /// This example creates a complex composition with many tracks and events
 /// to stress-test the audio engine's performance.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n⚡ Performance Test: Complex Multi-Track Composition\n");
 
     let engine = AudioEngine::new()?;
@@ -30,16 +30,16 @@ fn main() -> Result<(), anyhow::Error> {
             _ => Instrument::sub_bass(),
         };
 
-        let mut builder = comp.instrument(&track_name, &instrument)
-            .at(0.0)
-            .filter(Filter::low_pass(800.0, 0.6));
-
         // Add many notes to this track
         let base_freq = 200.0 + (track_idx as f32 * 50.0);
-        for i in 0..events_per_track {
-            let freq = base_freq * (1.0 + (i as f32 * 0.05));
-            builder = builder.note(&[freq], 0.15);
-        }
+        let freqs: Vec<f32> = (0..events_per_track)
+            .map(|i| base_freq * (1.0 + (i as f32 * 0.05)))
+            .collect();
+
+        comp.instrument(&track_name, &instrument)
+            .at(0.0)
+            .filter(Filter::low_pass(800.0, 0.6))
+            .notes(&freqs, 0.15);
     }
 
     let mixer = comp.into_mixer();
@@ -65,7 +65,7 @@ fn main() -> Result<(), anyhow::Error> {
     engine.play_mixer(&mixer)?;
 
     let elapsed = start.elapsed();
-    let real_time_ratio = duration / elapsed.as_secs_f32();
+    let _real_time_ratio = duration / elapsed.as_secs_f32();
 
     println!();
     println!("✅ Playback completed successfully!");

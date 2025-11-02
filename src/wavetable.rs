@@ -32,7 +32,7 @@ pub const DEFAULT_TABLE_SIZE: usize = 2048;
 /// let sine = Wavetable::sine();
 /// let saw = Wavetable::saw_bandlimited();
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Wavetable {
     table: Arc<Vec<f32>>,
 }

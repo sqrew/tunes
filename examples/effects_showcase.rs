@@ -1,12 +1,4 @@
-use tunes::composition::Composition;
-use tunes::effects::{
-    BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb,
-    RingModulator, Saturation,
-};
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 use std::error::Error;
 
 /// Comprehensive showcase of all audio effects

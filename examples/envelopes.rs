@@ -1,11 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::envelope::Envelope;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate ADSR envelopes
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n📈 Example: ADSR Envelopes\n");
 
     let engine = AudioEngine::new()?;

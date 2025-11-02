@@ -8,16 +8,18 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 
 - **Music Theory**: Scales, chords, patterns, progressions, and transposition
 - **Composition DSL**: Fluent API for building musical sequences
+- **Sections & Arrangements**: Create reusable sections (verse, chorus, bridge) and arrange them
 - **Synthesis**: FM synthesis, filter envelopes, wavetable oscillators
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: Pre-configured synthesizers, bass, pads, leads, and more
 - **Effects**: Delay, reverb, distortion, chorus, filters, and modulation
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
-- **Tempo & Timing**: Musical time abstractions (quarter notes, bars, beats)
+- **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
+- **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output via cpal
 - **WAV Import/Export**: Load samples and render compositions to WAV files
-- **MIDI Export**: Export compositions to Standard MIDI Files for use in DAWs
+- **MIDI Export**: Export compositions to Standard MIDI Files with proper metadata
 
 ## Installation
 
@@ -193,7 +195,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 - `src/sample.rs` - WAV file loading and sample playback
 - `src/theory.rs` - Music theory (scales, chords, progressions)
 - `src/engine.rs` - Audio playback engine
-- `examples/` - 20+ complete examples demonstrating features
+- `examples/` - 48 complete examples demonstrating features
 
 ## Testing
 
@@ -201,11 +203,11 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-The library includes 395 comprehensive tests ensuring reliability and correctness.
+The library includes **503 comprehensive tests** ensuring reliability and correctness.
 
 ## Examples
 
-Run the included examples to hear the library in action:
+Run the included **48 examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)

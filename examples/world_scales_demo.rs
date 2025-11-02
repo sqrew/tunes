@@ -1,9 +1,4 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::theory::{scale, ScalePattern};
+use tunes::prelude::*;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {

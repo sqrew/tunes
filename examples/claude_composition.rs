@@ -1,14 +1,4 @@
-use tunes::chords::*;
-use tunes::composition::Composition;
-use tunes::effects::{BitCrusher, Chorus, Compressor, Delay, Reverb, Saturation};
-use tunes::engine::AudioEngine;
-use tunes::filter::{Filter, FilterType};
-use tunes::instruments::Instrument;
-use tunes::lfo::{LFO, ModRoute, ModTarget};
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::scales::*;
-use tunes::waveform::Waveform;
+use tunes::prelude::*;
 use std::error::Error;
 
 // I let Claude Code compose a piece! It came out pretty interesting.

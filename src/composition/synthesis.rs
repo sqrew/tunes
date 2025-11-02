@@ -75,4 +75,170 @@ impl<'a> TrackBuilder<'a> {
     pub fn fm_with_filter(self, fm_params: FMParams, filter_env: FilterEnvelope) -> Self {
         self.fm(fm_params).filter_envelope(filter_env)
     }
+
+    /// Use a custom wavetable for subsequent notes
+    ///
+    /// This allows you to use custom waveforms created with `Wavetable::from_fn()`,
+    /// `Wavetable::from_harmonics()`, or other wavetable constructors.
+    /// When set, this overrides the standard `Waveform` enum.
+    ///
+    /// # Arguments
+    /// * `wavetable` - Custom wavetable to use for oscillation
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Create a custom wavetable with odd harmonics
+    /// let organ_wt = Wavetable::from_harmonics(
+    ///     DEFAULT_TABLE_SIZE,
+    ///     &[(1, 1.0), (3, 0.5), (5, 0.3), (7, 0.2)],
+    /// );
+    ///
+    /// comp.track("organ")
+    ///     .custom_waveform(organ_wt)
+    ///     .notes(&[C3, E3, G3], 0.5);
+    /// ```
+    pub fn custom_waveform(mut self, wavetable: crate::wavetable::Wavetable) -> Self {
+        self.custom_wavetable = Some(wavetable);
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::composition::Composition;
+    use crate::rhythm::Tempo;
+    use crate::notes::*;
+    use crate::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+    use crate::track::AudioEvent;
+
+    #[test]
+    fn test_custom_waveform_stored_in_note() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Create a custom wavetable
+        let custom_wt = Wavetable::from_harmonics(
+            DEFAULT_TABLE_SIZE,
+            &[(1, 1.0), (3, 0.5), (5, 0.3)],
+        );
+
+        // Use it in a track
+        comp.track("test")
+            .custom_waveform(custom_wt)
+            .note(&[440.0], 1.0);
+
+        // Verify the note has the custom wavetable
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        if let AudioEvent::Note(note) = &track.events[0] {
+            assert!(note.custom_wavetable.is_some(), "Custom wavetable should be stored in note");
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_custom_waveform_persists_across_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let custom_wt = Wavetable::triangle();
+
+        // Set custom waveform and play multiple notes
+        comp.track("test")
+            .custom_waveform(custom_wt)
+            .notes(&[C4, E4, G4], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        // All three notes should have the custom wavetable
+        assert_eq!(track.events.len(), 3);
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                assert!(note.custom_wavetable.is_some(), "All notes should have custom wavetable");
+            }
+        }
+    }
+
+    #[test]
+    fn test_custom_waveform_combines_with_envelope() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let custom_wt = Wavetable::pwm(0.25);
+        let env = crate::envelope::Envelope::new(0.1, 0.2, 0.7, 0.3);
+
+        // Use custom waveform with envelope
+        comp.track("test")
+            .custom_waveform(custom_wt)
+            .envelope(env)
+            .note(&[440.0], 1.0);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        if let AudioEvent::Note(note) = &track.events[0] {
+            assert!(note.custom_wavetable.is_some());
+            // Verify envelope is also set
+            assert_eq!(note.envelope.attack, 0.1);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_custom_waveform_combines_with_fm() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let custom_wt = Wavetable::saw_bandlimited();
+
+        // Set both custom waveform and FM
+        comp.track("test")
+            .custom_waveform(custom_wt.clone())
+            .fm_custom(2.0, 3.0)
+            .note(&[440.0], 1.0);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        if let AudioEvent::Note(note) = &track.events[0] {
+            // When FM is active, it takes precedence in rendering
+            // But custom wavetable should still be stored
+            assert!(note.custom_wavetable.is_some());
+            assert!(note.fm_params.mod_index > 0.0);
+        } else {
+            panic!("Expected NoteEvent");
+        }
+    }
+
+    #[test]
+    fn test_custom_waveform_can_be_cleared() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let custom_wt = Wavetable::sine();
+
+        // Use custom waveform for first note
+        comp.track("test")
+            .custom_waveform(custom_wt)
+            .note(&[C4], 0.5);
+
+        // Second note without custom waveform (new builder)
+        comp.track("test")
+            .note(&[E4], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks[0];
+
+        // First note has custom wavetable
+        if let AudioEvent::Note(note) = &track.events[0] {
+            assert!(note.custom_wavetable.is_some());
+        }
+
+        // Second note doesn't have custom wavetable (builder was recreated)
+        if let AudioEvent::Note(note) = &track.events[1] {
+            assert!(note.custom_wavetable.is_none());
+        }
+    }
 }

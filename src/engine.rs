@@ -1,4 +1,5 @@
 use crate::drums::DrumType;
+use crate::error::{Result, TunesError};
 use crate::rhythm::{NoteDuration, Tempo};
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -16,7 +17,7 @@ impl AudioEngine {
     ///
     /// Uses a large buffer size (8192 samples) for stable playback with complex synthesis.
     /// For lower latency at the cost of potential underruns, use `with_buffer_size()`.
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub fn new() -> Result<Self> {
         Self::with_buffer_size(8192) // ~185ms at 44.1kHz - very stable for complex synthesis
     }
 
@@ -27,14 +28,14 @@ impl AudioEngine {
     ///   - Smaller (512-1024): Lower latency, may underrun with complex synthesis
     ///   - Medium (2048-4096): Balanced
     ///   - Larger (8192+): Very stable, higher latency but fine for music playback
-    pub fn with_buffer_size(buffer_size: u32) -> Result<Self, anyhow::Error> {
+    pub fn with_buffer_size(buffer_size: u32) -> Result<Self> {
         let host = cpal::default_host();
         let device = host
             .default_output_device()
-            .ok_or_else(|| anyhow::anyhow!("No output device available"))?;
+            .ok_or_else(|| TunesError::AudioEngineError("No output device available".to_string()))?;
         let config = device
             .default_output_config()
-            .map_err(|e| anyhow::anyhow!("Failed to get default config: {}", e))?;
+            .map_err(|e| TunesError::AudioEngineError(format!("Failed to get default config: {}", e)))?;
 
         let latency_ms = (buffer_size as f32 / config.sample_rate().0 as f32) * 1000.0;
 
@@ -47,12 +48,12 @@ impl AudioEngine {
     }
 
     /// Play a single note or chord for a duration in seconds
-    pub fn play(&self, frequencies: &[f32], duration_secs: f32) -> Result<(), anyhow::Error> {
+    pub fn play(&self, frequencies: &[f32], duration_secs: f32) -> Result<()> {
         match self.config.sample_format() {
             cpal::SampleFormat::F32 => self.run::<f32>(frequencies, duration_secs),
             cpal::SampleFormat::I16 => self.run::<i16>(frequencies, duration_secs),
             cpal::SampleFormat::U16 => self.run::<u16>(frequencies, duration_secs),
-            _ => Err(anyhow::anyhow!("Unsupported sample format")),
+            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
         }
     }
 
@@ -62,18 +63,18 @@ impl AudioEngine {
         frequencies: &[f32],
         duration: NoteDuration,
         tempo: &Tempo,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<()> {
         let duration_secs = tempo.duration_to_seconds(duration);
         self.play(frequencies, duration_secs)
     }
 
     /// Play a drum sound
-    pub fn play_drum(&self, drum_type: DrumType) -> Result<(), anyhow::Error> {
+    pub fn play_drum(&self, drum_type: DrumType) -> Result<()> {
         match self.config.sample_format() {
             cpal::SampleFormat::F32 => self.run_drum::<f32>(drum_type),
             cpal::SampleFormat::I16 => self.run_drum::<i16>(drum_type),
             cpal::SampleFormat::U16 => self.run_drum::<u16>(drum_type),
-            _ => Err(anyhow::anyhow!("Unsupported sample format")),
+            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
         }
     }
 
@@ -84,7 +85,7 @@ impl AudioEngine {
         end_freq: f32,
         segments: usize,
         note_duration: f32,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<()> {
         // Handle edge cases
         if segments == 0 {
             return Ok(()); // Nothing to play
@@ -103,17 +104,17 @@ impl AudioEngine {
     }
 
     /// Play a complete composition with multiple tracks
-    pub fn play_mixer(&self, mixer: &Mixer) -> Result<(), anyhow::Error> {
+    pub fn play_mixer(&self, mixer: &Mixer) -> Result<()> {
         match self.config.sample_format() {
             cpal::SampleFormat::F32 => self.run_mixer::<f32>(mixer),
             cpal::SampleFormat::I16 => self.run_mixer::<i16>(mixer),
             cpal::SampleFormat::U16 => self.run_mixer::<u16>(mixer),
-            _ => Err(anyhow::anyhow!("Unsupported sample format")),
+            _ => Err(TunesError::InvalidAudioFormat("Unsupported sample format".to_string())),
         }
     }
 
     // Internal playback implementation for notes
-    fn run<T>(&self, frequencies: &[f32], duration_secs: f32) -> Result<(), anyhow::Error>
+    fn run<T>(&self, frequencies: &[f32], duration_secs: f32) -> Result<()>
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
     {
@@ -168,7 +169,7 @@ impl AudioEngine {
     }
 
     // Internal playback implementation for drums
-    fn run_drum<T>(&self, drum_type: DrumType) -> Result<(), anyhow::Error>
+    fn run_drum<T>(&self, drum_type: DrumType) -> Result<()>
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
     {
@@ -208,7 +209,7 @@ impl AudioEngine {
     }
 
     // Internal playback implementation for mixer
-    fn run_mixer<T>(&self, mixer: &Mixer) -> Result<(), anyhow::Error>
+    fn run_mixer<T>(&self, mixer: &Mixer) -> Result<()>
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
     {
@@ -275,7 +276,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> Result<()> {
     /// let engine = AudioEngine::new()?;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
@@ -285,15 +286,10 @@ impl AudioEngine {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn render_to_wav(&self, mixer: &mut Mixer, path: &str) -> Result<(), anyhow::Error> {
+    pub fn render_to_wav(&self, mixer: &mut Mixer, path: &str) -> Result<()> {
         let sample_rate = self.config.sample_rate().0;
         mixer.export_wav(path, sample_rate)
-    }
-}
-
-impl Default for AudioEngine {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default AudioEngine")
+            .map_err(|e| TunesError::WavWriteError(e.to_string()))
     }
 }
 

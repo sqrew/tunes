@@ -4,7 +4,7 @@ use tunes::prelude::*;
 ///
 /// This example showcases the TR-808-inspired drum synthesis,
 /// including authentic algorithms for kick, snare, hi-hat, and clap.
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🥁 808 Drum Machine Demo\n");
 
     let engine = AudioEngine::new()?;

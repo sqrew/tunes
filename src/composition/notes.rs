@@ -10,6 +10,8 @@ impl<'a> TrackBuilder<'a> {
         let filter_envelope = self.filter_envelope;
         let fm_params = self.fm_params;
         let pitch_bend = self.pitch_bend;
+        let custom_wavetable = self.custom_wavetable.clone();
+        let velocity = self.velocity;
 
         self.get_track_mut().add_note_with_complete_params(
             frequencies,
@@ -20,6 +22,8 @@ impl<'a> TrackBuilder<'a> {
             filter_envelope,
             fm_params,
             pitch_bend,
+            custom_wavetable,
+            velocity,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -62,9 +66,13 @@ impl<'a> TrackBuilder<'a> {
         let cursor = self.cursor;
 
         // Get the sample from the composition's cache
-        let sample = self.composition.get_sample(sample_name)
-            .expect(&format!("Sample '{}' not found. Load it first with comp.load_sample()", sample_name))
-            .clone();
+        let sample = match self.composition.get_sample(sample_name) {
+            Some(s) => s.clone(),
+            None => {
+                eprintln!("Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.", sample_name);
+                return self;
+            }
+        };
 
         // Add the sample event
         use crate::track::{AudioEvent, SampleEvent};
@@ -103,9 +111,13 @@ impl<'a> TrackBuilder<'a> {
     pub fn sample_with_rate(mut self, sample_name: &str, playback_rate: f32) -> Self {
         let cursor = self.cursor;
 
-        let sample = self.composition.get_sample(sample_name)
-            .expect(&format!("Sample '{}' not found. Load it first with comp.load_sample()", sample_name))
-            .clone();
+        let sample = match self.composition.get_sample(sample_name) {
+            Some(s) => s.clone(),
+            None => {
+                eprintln!("Warning: Sample '{}' not found. Load it first with comp.load_sample(). Skipping sample event.", sample_name);
+                return self;
+            }
+        };
 
         use crate::track::{AudioEvent, SampleEvent};
         let sample_event = SampleEvent::new(sample.clone(), cursor)
@@ -173,17 +185,25 @@ impl<'a> TrackBuilder<'a> {
     pub fn notes(mut self, frequencies: &[f32], note_duration: f32) -> Self {
         let waveform = self.waveform;
         let envelope = self.envelope;
+        let filter_envelope = self.filter_envelope;
+        let fm_params = self.fm_params;
         let pitch_bend = self.pitch_bend;
+        let custom_wavetable = self.custom_wavetable.clone();
+        let velocity = self.velocity;
 
         for &freq in frequencies {
             let cursor = self.cursor;
-            self.get_track_mut().add_note_with_waveform_envelope_and_bend(
+            self.get_track_mut().add_note_with_complete_params(
                 &[freq],
                 cursor,
                 note_duration,
                 waveform,
                 envelope,
+                filter_envelope,
+                fm_params,
                 pitch_bend,
+                custom_wavetable.clone(),
+                velocity,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;
@@ -209,7 +229,7 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 1);
 
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], 440.0);
             assert_eq!(note.start_time, 0.0);
             assert_eq!(note.duration, 1.0);
@@ -239,13 +259,13 @@ mod tests {
         assert_eq!(track.events.len(), 3);
 
         // Verify timing
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.start_time, 0.5);
         }
-        if let AudioEvent::Note(note) = track.events[2] {
+        if let AudioEvent::Note(note) = &track.events[2] {
             assert_eq!(note.start_time, 1.0);
         }
     }
@@ -258,7 +278,7 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 1);
 
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.num_freqs, 3);
             assert_eq!(note.frequencies[0], 440.0);
             assert_eq!(note.frequencies[1], 554.37);
@@ -274,7 +294,7 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 1);
 
-        if let AudioEvent::Drum(drum) = track.events[0] {
+        if let AudioEvent::Drum(drum) = &track.events[0] {
             assert!(matches!(drum.drum_type, DrumType::Kick));
             assert_eq!(drum.start_time, 0.0);
         } else {
@@ -303,13 +323,13 @@ mod tests {
         assert_eq!(track.events.len(), 3);
 
         // Verify different drum types
-        if let AudioEvent::Drum(drum) = track.events[0] {
+        if let AudioEvent::Drum(drum) = &track.events[0] {
             assert!(matches!(drum.drum_type, DrumType::Kick));
         }
-        if let AudioEvent::Drum(drum) = track.events[1] {
+        if let AudioEvent::Drum(drum) = &track.events[1] {
             assert!(matches!(drum.drum_type, DrumType::Snare));
         }
-        if let AudioEvent::Drum(drum) = track.events[2] {
+        if let AudioEvent::Drum(drum) = &track.events[2] {
             assert!(matches!(drum.drum_type, DrumType::HiHatClosed));
         }
     }
@@ -325,7 +345,7 @@ mod tests {
         // Verify frequencies interpolate smoothly
         let expected_freqs = [440.0, 550.0, 660.0, 770.0, 880.0];
         for (i, expected) in expected_freqs.iter().enumerate() {
-            if let AudioEvent::Note(note) = track.events[i] {
+            if let AudioEvent::Note(note) = &track.events[i] {
                 assert_eq!(note.frequencies[0], *expected);
                 assert_eq!(note.start_time, i as f32 * 0.1);
             }
@@ -353,7 +373,7 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 1);
 
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], 440.0); // Should use start freq
             assert_eq!(note.duration, 0.5);
         }
@@ -369,7 +389,7 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         for (i, &expected_freq) in freqs.iter().enumerate() {
-            if let AudioEvent::Note(note) = track.events[i] {
+            if let AudioEvent::Note(note) = &track.events[i] {
                 assert_eq!(note.frequencies[0], expected_freq);
                 assert_eq!(note.start_time, i as f32 * 0.25);
                 assert_eq!(note.duration, 0.25);

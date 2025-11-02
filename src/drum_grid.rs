@@ -237,13 +237,13 @@ mod tests {
         assert_eq!(track.events.len(), 4);
 
         // Verify first hit
-        if let AudioEvent::Drum(drum) = track.events[0] {
+        if let AudioEvent::Drum(drum) = &track.events[0] {
             assert!(matches!(drum.drum_type, DrumType::Kick));
             assert_eq!(drum.start_time, 0.0);
         }
 
         // Verify last hit
-        if let AudioEvent::Drum(drum) = track.events[3] {
+        if let AudioEvent::Drum(drum) = &track.events[3] {
             assert!(matches!(drum.drum_type, DrumType::Kick));
             assert_eq!(drum.start_time, 1.5); // step 12 * 0.125
         }
@@ -257,11 +257,11 @@ mod tests {
 
         assert_eq!(track.events.len(), 2);
 
-        if let AudioEvent::Drum(drum) = track.events[0] {
+        if let AudioEvent::Drum(drum) = &track.events[0] {
             assert_eq!(drum.start_time, 2.5); // 2.0 start + (2 * 0.25)
         }
 
-        if let AudioEvent::Drum(drum) = track.events[1] {
+        if let AudioEvent::Drum(drum) = &track.events[1] {
             assert_eq!(drum.start_time, 3.5); // 2.0 start + (6 * 0.25)
         }
     }
@@ -353,13 +353,13 @@ mod tests {
         assert_eq!(track.events.len(), 6);
 
         // Verify timing of repeats
-        if let AudioEvent::Drum(drum) = track.events[0] {
+        if let AudioEvent::Drum(drum) = &track.events[0] {
             assert_eq!(drum.start_time, 0.0); // Original
         }
-        if let AudioEvent::Drum(drum) = track.events[2] {
+        if let AudioEvent::Drum(drum) = &track.events[2] {
             assert_eq!(drum.start_time, 2.0); // First repeat
         }
-        if let AudioEvent::Drum(drum) = track.events[4] {
+        if let AudioEvent::Drum(drum) = &track.events[4] {
             assert_eq!(drum.start_time, 4.0); // Second repeat
         }
     }
@@ -436,8 +436,8 @@ mod tests {
         // Both should be added at the same time
         assert_eq!(track.events.len(), 2);
 
-        if let AudioEvent::Drum(drum1) = track.events[0] {
-            if let AudioEvent::Drum(drum2) = track.events[1] {
+        if let AudioEvent::Drum(drum1) = &track.events[0] {
+            if let AudioEvent::Drum(drum2) = &track.events[1] {
                 assert_eq!(drum1.start_time, drum2.start_time);
             }
         }
@@ -453,8 +453,8 @@ mod tests {
         assert_eq!(track.events.len(), 8);
 
         // Verify tight spacing
-        if let AudioEvent::Drum(drum1) = track.events[0] {
-            if let AudioEvent::Drum(drum2) = track.events[1] {
+        if let AudioEvent::Drum(drum1) = &track.events[0] {
+            if let AudioEvent::Drum(drum2) = &track.events[1] {
                 assert_eq!(drum2.start_time - drum1.start_time, 0.0625);
             }
         }

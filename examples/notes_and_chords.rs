@@ -1,11 +1,7 @@
-use tunes::chords::*;
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate notes and chords API
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎼 Example: Notes and Chords API\n");
 
     let engine = AudioEngine::new()?;

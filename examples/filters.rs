@@ -1,13 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::filter::Filter;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::waveform::Waveform;
+use tunes::prelude::*;
 
 /// Demonstrate filter types and parameters
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎛️  Example: Filters\n");
 
     let engine = AudioEngine::new()?;

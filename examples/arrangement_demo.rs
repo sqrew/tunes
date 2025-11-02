@@ -1,10 +1,4 @@
-use tunes::composition::Composition;
-use tunes::drums::DrumType;
-use tunes::engine::AudioEngine;
-use tunes::envelope::Envelope;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {

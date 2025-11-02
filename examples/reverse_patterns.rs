@@ -1,12 +1,7 @@
-use tunes::composition::Composition;
-use tunes::engine::AudioEngine;
-use tunes::instruments::Instrument;
-use tunes::notes::*;
-use tunes::rhythm::Tempo;
-use tunes::scales::C4_MAJOR_SCALE;
+use tunes::prelude::*;
 
 /// Demonstrate pattern reversal
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n⏮️  Example: Reverse Patterns\n");
 
     let engine = AudioEngine::new()?;

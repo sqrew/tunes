@@ -157,10 +157,10 @@ mod tests {
         assert_eq!(track.events.len(), 5);
 
         // Verify order
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], D4);
         }
-        if let AudioEvent::Note(note) = track.events[4] {
+        if let AudioEvent::Note(note) = &track.events[4] {
             assert_eq!(note.frequencies[0], A4);
         }
     }
@@ -176,10 +176,10 @@ mod tests {
         assert_eq!(track.events.len(), 5);
 
         // Verify descending order
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], G4);
         }
-        if let AudioEvent::Note(note) = track.events[4] {
+        if let AudioEvent::Note(note) = &track.events[4] {
             assert_eq!(note.frequencies[0], C4);
         }
     }
@@ -194,10 +194,10 @@ mod tests {
         // Should just play start and end
         assert_eq!(track.events.len(), 2);
 
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], F4);
         }
-        if let AudioEvent::Note(note) = track.events[1] {
+        if let AudioEvent::Note(note) = &track.events[1] {
             assert_eq!(note.frequencies[0], G4);
         }
     }
@@ -222,7 +222,7 @@ mod tests {
         // Only E4 is in range [D4, F4]
         assert_eq!(track.events.len(), 1);
 
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.frequencies[0], E4);
         }
     }
@@ -237,13 +237,13 @@ mod tests {
         assert!(track.events.len() >= 4);
 
         // First note should be close to C4
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert!((note.frequencies[0] - C4).abs() < 1.0);
         }
 
         // Last note should be close to G4
         let last_idx = track.events.len() - 1;
-        if let AudioEvent::Note(note) = track.events[last_idx] {
+        if let AudioEvent::Note(note) = &track.events[last_idx] {
             assert!((note.frequencies[0] - G4).abs() < 1.0);
         }
     }
@@ -256,13 +256,13 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // First note should be 100
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert!((note.frequencies[0] - 100.0).abs() < 0.1);
         }
 
         // Last note should be 200
         let last_idx = track.events.len() - 1;
-        if let AudioEvent::Note(note) = track.events[last_idx] {
+        if let AudioEvent::Note(note) = &track.events[last_idx] {
             assert!((note.frequencies[0] - 200.0).abs() < 0.1);
         }
     }
@@ -315,13 +315,13 @@ mod tests {
         let track = &comp.into_mixer().tracks[0];
 
         // First should be near G4
-        if let AudioEvent::Note(note) = track.events[0] {
+        if let AudioEvent::Note(note) = &track.events[0] {
             assert!((note.frequencies[0] - G4).abs() < 1.0);
         }
 
         // Last should be near C4
         let last_idx = track.events.len() - 1;
-        if let AudioEvent::Note(note) = track.events[last_idx] {
+        if let AudioEvent::Note(note) = &track.events[last_idx] {
             assert!((note.frequencies[0] - C4).abs() < 1.0);
         }
     }

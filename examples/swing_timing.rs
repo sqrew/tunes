@@ -1,10 +1,7 @@
-use tunes::composition::Composition;
-use tunes::drums::DrumType;
-use tunes::engine::AudioEngine;
-use tunes::rhythm::Tempo;
+use tunes::prelude::*;
 
 /// Demonstrate swing timing (straight vs swung)
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     println!("\n🎵 Example: Swing/Groove Timing\n");
 
     let engine = AudioEngine::new()?;
