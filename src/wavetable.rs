@@ -1,14 +1,11 @@
 /// Fast wavetable oscillator using pre-computed lookup tables
-///
 /// This replaces expensive sin() calls with table lookups + linear interpolation.
 /// Typical speedup: 10-100x faster than calling sin() every sample.
-///
 /// Wavetables can be created from:
 /// - Functions: `Wavetable::from_fn(|phase| phase.sin())`
 /// - Samples: `Wavetable::from_samples(vec![...])`
 /// - Harmonics: `Wavetable::from_harmonics(&[(1, 1.0), (3, 0.3)])`
 /// - Presets: `Wavetable::sine()`, `Wavetable::saw()`, etc.
-
 use std::f32::consts::PI;
 use std::sync::Arc;
 
@@ -106,10 +103,7 @@ impl Wavetable {
         }
 
         // Normalize to [-1.0, 1.0] range
-        let max_amp = table
-            .iter()
-            .map(|&x| x.abs())
-            .fold(0.0f32, |a, b| a.max(b));
+        let max_amp = table.iter().map(|&x| x.abs()).fold(0.0f32, |a, b| a.max(b));
         if max_amp > 0.0 {
             for sample in &mut table {
                 *sample /= max_amp;
@@ -186,11 +180,7 @@ impl Wavetable {
     /// * `duty_cycle` - Width of the pulse (0.0 to 1.0), where 0.5 is a square wave
     pub fn pwm(duty_cycle: f32) -> Self {
         Self::from_fn(DEFAULT_TABLE_SIZE, move |phase| {
-            if phase < duty_cycle {
-                1.0
-            } else {
-                -1.0
-            }
+            if phase < duty_cycle { 1.0 } else { -1.0 }
         })
     }
 

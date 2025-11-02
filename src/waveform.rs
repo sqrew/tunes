@@ -18,6 +18,7 @@ impl Waveform {
     /// All waveforms use pre-computed band-limited wavetables for high-quality,
     /// alias-free synthesis. This is much faster than computing waveforms
     /// mathematically and produces better audio quality.
+    #[inline(always)]
     pub fn sample(&self, phase: f32) -> f32 {
         match self {
             Waveform::Sine => Self::sine(phase),

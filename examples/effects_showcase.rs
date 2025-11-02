@@ -1,6 +1,5 @@
 use tunes::prelude::*;
 
-
 /// Comprehensive showcase of all audio effects
 fn main() -> anyhow::Result<()> {
     println!("🎛️  Audio Effects Showcase\n");
@@ -12,9 +11,7 @@ fn main() -> anyhow::Result<()> {
     println!("1. Core Effects - Delay, Reverb, Distortion");
 
     // Clean (reference)
-    comp.track("clean")
-        .at(0.0)
-        .notes(&[C4, E4, G4], 0.5);
+    comp.track("clean").at(0.0).notes(&[C4, E4, G4], 0.5);
 
     // Delay
     comp.track("delay_demo")
@@ -65,7 +62,10 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("chorus_demo", &Instrument::warm_pad())
         .chorus(Chorus::new(0.5, 0.003, 0.4)) // rate, depth, mix
         .at(14.5)
-        .chords(&[&[C4, E4, G4], &[A3, C4, E4], &[F3, A3, C4], &[G3, B3, D4]], 0.8);
+        .chords(
+            &[&[C4, E4, G4], &[A3, C4, E4], &[F3, A3, C4], &[G3, B3, D4]],
+            0.8,
+        );
 
     // Phaser - Swoosh effect
     comp.instrument("phaser_demo", &Instrument::warm_pad())
@@ -101,25 +101,17 @@ fn main() -> anyhow::Result<()> {
     println!("  • Compressor: Before and after");
     comp.instrument("uncomp", &Instrument::synth_lead())
         .at(28.0)
-        .volume(0.3)
         .note(&[C4], 0.2)
-        .volume(1.0)
         .note(&[E4], 0.2)
-        .volume(0.3)
         .note(&[G4], 0.2)
-        .volume(1.0)
         .note(&[C5], 0.2);
 
     comp.instrument("comp", &Instrument::synth_lead())
         .compressor(Compressor::new(0.2, 6.0, 0.005, 0.05, 2.0))
         .at(28.8)
-        .volume(0.3)
         .note(&[C4], 0.2)
-        .volume(1.0)
         .note(&[E4], 0.2)
-        .volume(0.3)
         .note(&[G4], 0.2)
-        .volume(1.0)
         .note(&[C5], 0.2);
 
     // EQ comparison
@@ -212,7 +204,6 @@ fn main() -> anyhow::Result<()> {
     // Phaser progression
     comp.instrument("phaser_progression", &Instrument::warm_pad())
         .phaser(Phaser::new(0.6, 0.7, 0.5, 0.6, 4))
-        .volume(0.6)
         .at(51.5)
         .note(&[C4, E4, G4], 2.0)
         .note(&[F3, A3, C4], 2.0);

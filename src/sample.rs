@@ -1,14 +1,11 @@
 /// Sample playback module for loading and playing WAV files
-///
 /// This module provides functionality to load audio samples from WAV files
 /// and play them back with pitch shifting, looping, and effects.
-
 use crate::error::{Result, TunesError};
-use std::sync::Arc;
 use std::path::Path;
+use std::sync::Arc;
 
 /// An audio sample loaded from a WAV file
-///
 /// Samples are stored in memory as f32 values (-1.0 to 1.0) and can be
 /// shared efficiently between multiple playback instances using Arc.
 #[derive(Debug, Clone)]
@@ -46,29 +43,43 @@ impl Sample {
         let samples: Vec<f32> = match spec.sample_format {
             hound::SampleFormat::Int => {
                 match spec.bits_per_sample {
-                    16 => {
-                        reader.samples::<i16>()
-                            .map(|s| s.map(|sample| sample as f32 / 32768.0).map_err(TunesError::from))
-                            .collect::<Result<Vec<f32>>>()?
-                    }
+                    16 => reader
+                        .samples::<i16>()
+                        .map(|s| {
+                            s.map(|sample| sample as f32 / 32768.0)
+                                .map_err(TunesError::from)
+                        })
+                        .collect::<Result<Vec<f32>>>()?,
                     24 => {
-                        reader.samples::<i32>()
-                            .map(|s| s.map(|sample| sample as f32 / 8388608.0).map_err(TunesError::from))  // 2^23
+                        reader
+                            .samples::<i32>()
+                            .map(|s| {
+                                s.map(|sample| sample as f32 / 8388608.0)
+                                    .map_err(TunesError::from)
+                            }) // 2^23
                             .collect::<Result<Vec<f32>>>()?
                     }
                     32 => {
-                        reader.samples::<i32>()
-                            .map(|s| s.map(|sample| sample as f32 / 2147483648.0).map_err(TunesError::from))  // 2^31
+                        reader
+                            .samples::<i32>()
+                            .map(|s| {
+                                s.map(|sample| sample as f32 / 2147483648.0)
+                                    .map_err(TunesError::from)
+                            }) // 2^31
                             .collect::<Result<Vec<f32>>>()?
                     }
-                    _ => return Err(TunesError::WavReadError(format!("Unsupported bit depth: {}", spec.bits_per_sample))),
+                    _ => {
+                        return Err(TunesError::WavReadError(format!(
+                            "Unsupported bit depth: {}",
+                            spec.bits_per_sample
+                        )));
+                    }
                 }
             }
-            hound::SampleFormat::Float => {
-                reader.samples::<f32>()
-                    .map(|s| s.map_err(TunesError::from))
-                    .collect::<Result<Vec<f32>>>()?
-            }
+            hound::SampleFormat::Float => reader
+                .samples::<f32>()
+                .map(|s| s.map_err(TunesError::from))
+                .collect::<Result<Vec<f32>>>()?,
         };
 
         let num_frames = samples.len() / spec.channels as usize;
@@ -128,7 +139,12 @@ impl Sample {
     /// Get interpolated sample at a specific time position (higher quality)
     ///
     /// Uses linear interpolation for smoother playback when pitch shifting.
-    pub fn sample_at_interpolated(&self, time: f32, playback_rate: f32, target_sample_rate: f32) -> (f32, f32) {
+    pub fn sample_at_interpolated(
+        &self,
+        time: f32,
+        playback_rate: f32,
+        target_sample_rate: f32,
+    ) -> (f32, f32) {
         let position_seconds = time * playback_rate;
         let sample_position = position_seconds * self.sample_rate as f32;
         let frame_index = sample_position as usize;

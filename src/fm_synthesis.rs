@@ -174,8 +174,9 @@ impl FMParams {
     ///
     /// # Returns
     /// Sample value between -1.0 and 1.0
+    #[inline]
     pub fn sample(&self, carrier_freq: f32, time_in_note: f32, note_duration: f32) -> f32 {
-        if self.mod_index == 0.0 {
+        if self.mod_index < 0.0001 {
             // Bypass - just return carrier sine wave (using fast wavetable)
             let phase = time_in_note * carrier_freq;
             return WAVETABLE.sample(phase);

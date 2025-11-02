@@ -8,28 +8,31 @@ use crate::waveform::Waveform;
 use std::collections::HashMap;
 
 // Import synthesis types - use prelude which re-exports them
-use crate::prelude::{FilterEnvelope, FMParams};
+use crate::prelude::{FMParams, FilterEnvelope};
 
 // Import effect types and filter
-use crate::effects::{BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator, Saturation};
+use crate::effects::{
+    BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Phaser, Reverb, RingModulator,
+    Saturation,
+};
 use crate::filter::Filter;
 use crate::lfo::ModRoute;
 
 // Module declarations
-mod notes;
-mod musical_patterns;
-mod ornaments;
-mod portamento;
-mod timing;
-mod patterns;
+mod classical_patterns;
 mod effects;
 mod expression;
-mod tuplets;
-mod classical_patterns;
+pub mod generative;
+mod musical_patterns;
 mod musical_time;
+mod notes;
+mod ornaments;
+mod patterns;
+mod portamento;
 mod sections;
 mod synthesis;
-pub mod generative;
+mod timing;
+mod tuplets;
 
 // Re-export Section types for public API
 pub use sections::{Section, SectionBuilder};
@@ -250,8 +253,8 @@ impl Composition {
             waveform: instrument.waveform,
             envelope: instrument.envelope,
             filter_envelope: FilterEnvelope::default(), // Default (no filter envelope)
-            fm_params: FMParams::default(), // Default (no FM)
-            swing: 0.5, // No swing by default (straight timing)
+            fm_params: FMParams::default(),             // Default (no FM)
+            swing: 0.5,                                 // No swing by default (straight timing)
             swing_counter: 0,
             pitch_bend: 0.0, // No pitch bend by default
             tempo,
@@ -315,9 +318,10 @@ impl Composition {
     /// # }
     /// ```
     pub fn section_to_mixer(&self, section_name: &str) -> crate::error::Result<Mixer> {
-        let section = self.sections.get(section_name).ok_or_else(|| {
-            crate::error::TunesError::SectionNotFound(section_name.to_string())
-        })?;
+        let section = self
+            .sections
+            .get(section_name)
+            .ok_or_else(|| crate::error::TunesError::SectionNotFound(section_name.to_string()))?;
 
         let mut mixer = Mixer::new(self.tempo);
         for (track_name, track) in &section.tracks {
@@ -382,8 +386,14 @@ impl Composition {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_section_wav(&self, section_name: &str, path: &str, sample_rate: u32) -> anyhow::Result<()> {
-        let mut mixer = self.section_to_mixer(section_name)
+    pub fn export_section_wav(
+        &self,
+        section_name: &str,
+        path: &str,
+        sample_rate: u32,
+    ) -> anyhow::Result<()> {
+        let mut mixer = self
+            .section_to_mixer(section_name)
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         mixer.export_wav(path, sample_rate)
     }
@@ -457,7 +467,7 @@ impl Composition {
         let mut current_time = 0.0;
 
         for &section_name in section_names {
-            if let Some(section) = self.sections.get(&section_name.to_string()) {
+            if let Some(section) = self.sections.get(section_name) {
                 // Clone the section's tracks with time offset
                 let offset_tracks = section.clone_with_offset(current_time);
 
@@ -519,18 +529,18 @@ pub struct TrackBuilder<'a> {
     pub(crate) composition: &'a mut Composition,
     pub(crate) context: BuilderContext,
     pub(crate) track_name: String,
-    pub(crate) cursor: f32,          // Current time position in the track
-    pub(crate) pattern_start: f32,   // Start position of current pattern (for looping)
-    pub(crate) waveform: Waveform,   // Current waveform for notes
-    pub(crate) envelope: Envelope,   // Current envelope for notes
+    pub(crate) cursor: f32,        // Current time position in the track
+    pub(crate) pattern_start: f32, // Start position of current pattern (for looping)
+    pub(crate) waveform: Waveform, // Current waveform for notes
+    pub(crate) envelope: Envelope, // Current envelope for notes
     pub(crate) filter_envelope: FilterEnvelope, // Current filter envelope for notes
-    pub(crate) fm_params: FMParams,  // Current FM synthesis parameters
-    pub(crate) swing: f32,           // Swing ratio (0.5 = straight, 0.67 = triplet swing, 0.75 = heavy)
+    pub(crate) fm_params: FMParams, // Current FM synthesis parameters
+    pub(crate) swing: f32, // Swing ratio (0.5 = straight, 0.67 = triplet swing, 0.75 = heavy)
     pub(crate) swing_counter: usize, // Counter to track even/odd notes for swing
-    pub(crate) pitch_bend: f32,      // Pitch bend in semitones for subsequent notes (0.0 = no bend)
-    pub(crate) tempo: Tempo,         // Tempo for musical time calculations
+    pub(crate) pitch_bend: f32, // Pitch bend in semitones for subsequent notes (0.0 = no bend)
+    pub(crate) tempo: Tempo, // Tempo for musical time calculations
     pub(crate) custom_wavetable: Option<crate::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
-    pub(crate) velocity: f32,        // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
+    pub(crate) velocity: f32, // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
 }
 
 impl<'a> TrackBuilder<'a> {
@@ -539,16 +549,14 @@ impl<'a> TrackBuilder<'a> {
     /// This handles both direct composition tracks and section tracks
     pub(crate) fn get_track_mut(&mut self) -> &mut Track {
         match &self.context {
-            BuilderContext::Direct => {
-                self.composition
-                    .tracks
-                    .entry(self.track_name.clone())
-                    .or_default()
-            }
-            BuilderContext::Section(section_name) => {
-                self.composition
-                    .get_or_create_section_track(section_name, &self.track_name)
-            }
+            BuilderContext::Direct => self
+                .composition
+                .tracks
+                .entry(self.track_name.clone())
+                .or_default(),
+            BuilderContext::Section(section_name) => self
+                .composition
+                .get_or_create_section_track(section_name, &self.track_name),
         }
     }
 
@@ -611,12 +619,12 @@ impl<'a> TrackBuilder<'a> {
         let filter = track.filter;
         let delay = track.delay.clone();
         let reverb = track.reverb.clone();
-        let distortion = track.distortion.clone();
+        let distortion = track.distortion;
         let bitcrusher = track.bitcrusher.clone();
         let compressor = track.compressor.clone();
         let chorus = track.chorus.clone();
-        let eq = track.eq.clone();
-        let saturation = track.saturation.clone();
+        let eq = track.eq;
+        let saturation = track.saturation;
         let phaser = track.phaser.clone();
         let flanger = track.flanger.clone();
         let ring_mod = track.ring_mod.clone();
@@ -653,7 +661,9 @@ impl<'a> TrackBuilder<'a> {
             velocity: self.velocity,
         };
 
-        self.composition.templates.insert(template_name.to_string(), template);
+        self.composition
+            .templates
+            .insert(template_name.to_string(), template);
         self
     }
 
@@ -681,16 +691,14 @@ impl<'a> TrackBuilder<'a> {
 
         // Get the track reference directly from composition for lifetime 'a
         let track = match &self.context {
-            BuilderContext::Direct => {
-                self.composition
-                    .tracks
-                    .entry(self.track_name.clone())
-                    .or_default()
-            }
-            BuilderContext::Section(section_name) => {
-                self.composition
-                    .get_or_create_section_track(section_name, &self.track_name)
-            }
+            BuilderContext::Direct => self
+                .composition
+                .tracks
+                .entry(self.track_name.clone())
+                .or_default(),
+            BuilderContext::Section(section_name) => self
+                .composition
+                .get_or_create_section_track(section_name, &self.track_name),
         };
 
         DrumGrid::new(track, start_time, steps, step_duration)
@@ -723,7 +731,9 @@ impl<'a> TrackBuilder<'a> {
             BuilderContext::Direct => {
                 // In direct mode, .and() doesn't really make sense, but we'll support it
                 // by creating an implicit section
-                panic!("and() can only be used in section context. Use comp.section(\"name\").track(...).and()...")
+                panic!(
+                    "and() can only be used in section context. Use comp.section(\"name\").track(...).and()..."
+                )
             }
         };
 
@@ -748,8 +758,7 @@ mod tests {
             .note(&[C4], 0.5);
 
         // Use the template
-        comp.from_template("lead_sound", "lead2")
-            .note(&[E4], 0.5);
+        comp.from_template("lead_sound", "lead2").note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks.len(), 2);
@@ -776,8 +785,7 @@ mod tests {
             .note(&[C4], 0.5);
 
         // Use the template
-        comp.from_template("full_synth", "synth2")
-            .note(&[G4], 0.5);
+        comp.from_template("full_synth", "synth2").note(&[G4], 0.5);
 
         let mixer = comp.into_mixer();
 
@@ -807,8 +815,7 @@ mod tests {
             .note(&[C4], 0.5);
 
         // Use the template
-        comp.from_template("custom_osc", "osc2")
-            .note(&[E4], 0.5);
+        comp.from_template("custom_osc", "osc2").note(&[E4], 0.5);
 
         // Template should have captured the waveform and envelope
         // (Can't directly test builder state after into_mixer, but we can verify it doesn't panic)
@@ -827,11 +834,9 @@ mod tests {
             .note(&[C4], 1.0);
 
         // Reuse it multiple times
-        comp.from_template("pad_sound", "pad2")
-            .note(&[E4], 1.0);
+        comp.from_template("pad_sound", "pad2").note(&[E4], 1.0);
 
-        comp.from_template("pad_sound", "pad3")
-            .note(&[G4], 1.0);
+        comp.from_template("pad_sound", "pad3").note(&[G4], 1.0);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks.len(), 3);
@@ -855,16 +860,24 @@ mod tests {
 
         // Use template but override some settings
         comp.from_template("base_sound", "modified")
-            .volume(0.3)  // Override volume
-            .delay(Delay::new(0.375, 0.3, 0.5))  // Add new effect
+            .volume(0.3) // Override volume
+            .delay(Delay::new(0.375, 0.3, 0.5)) // Add new effect
             .note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
         assert_eq!(mixer.tracks.len(), 2);
 
         // Find tracks by name
-        let base_track = mixer.tracks.iter().find(|t| t.name.as_ref().unwrap() == "base").unwrap();
-        let modified_track = mixer.tracks.iter().find(|t| t.name.as_ref().unwrap() == "modified").unwrap();
+        let base_track = mixer
+            .tracks
+            .iter()
+            .find(|t| t.name.as_ref().unwrap() == "base")
+            .unwrap();
+        let modified_track = mixer
+            .tracks
+            .iter()
+            .find(|t| t.name.as_ref().unwrap() == "modified")
+            .unwrap();
 
         // Base track should have original settings (no delay)
         assert_eq!(base_track.volume, 0.7);
@@ -884,8 +897,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
 
         // Using a template that doesn't exist should use default settings (not panic)
-        comp.from_template("nonexistent", "track1")
-            .note(&[C4], 0.5);
+        comp.from_template("nonexistent", "track1").note(&[C4], 0.5);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];

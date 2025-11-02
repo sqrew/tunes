@@ -19,7 +19,6 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("fibonacci", &Instrument::pluck())
         .delay(Delay::new(0.375, 0.3, 0.5))
-        .volume(0.7)
         .at(0.0)
         .notes(&fib_freqs, 0.2);
 
@@ -33,7 +32,6 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("primes", &Instrument::synth_lead())
         .reverb(Reverb::new(0.5, 0.5, 0.3))
-        .volume(0.6)
         .at(3.5)
         .notes(&prime_freqs, 0.25);
 
@@ -47,7 +45,6 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("collatz", &Instrument::pluck())
         .chorus(Chorus::new(0.3, 2.5, 0.3))
-        .volume(0.6)
         .at(6.5)
         .notes(&collatz_freqs, 0.15);
 
@@ -61,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("harmonics", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .at(9.0)
-        .note(&harmonics[3..8], 2.0);  // Harmonics 4-8 as a cluster
+        .note(&harmonics[3..8], 2.0); // Harmonics 4-8 as a cluster
 
     // ===== PART 5: GOLDEN RATIO POWERS =====
     println!("Part 5: Golden Ratio (φ) Powers\n");
@@ -91,7 +88,7 @@ fn main() -> anyhow::Result<()> {
         .at(13.5)
         .drum_grid(32, 0.125)
         .kick(&phi_rhythm)
-        .hihat(&sequences::euclidean(16, 32));  // Compare with Euclidean
+        .hihat(&sequences::euclidean(16, 32)); // Compare with Euclidean
 
     // ===== PART 7: EUCLIDEAN RHYTHMS =====
     println!("Part 7: Euclidean Rhythms\n");
@@ -99,9 +96,9 @@ fn main() -> anyhow::Result<()> {
     println!("  Used in music traditions worldwide\n");
 
     // Classic patterns
-    let tresillo = sequences::euclidean(3, 8);     // Cuban tresillo
-    let cinquillo = sequences::euclidean(5, 8);    // Cuban cinquillo
-    let bossa = sequences::euclidean(5, 16);       // Bossa nova clave
+    let tresillo = sequences::euclidean(3, 8); // Cuban tresillo
+    let cinquillo = sequences::euclidean(5, 8); // Cuban cinquillo
+    let bossa = sequences::euclidean(5, 16); // Bossa nova clave
 
     comp.track("euclidean")
         .at(17.5)
@@ -132,7 +129,6 @@ fn main() -> anyhow::Result<()> {
     let power_freqs = sequences::normalize(&powers, 110.0, 880.0);
 
     comp.instrument("powers_of_two", &Instrument::pluck())
-        .volume(0.6)
         .at(22.0)
         .notes(&power_freqs, 0.3);
 
@@ -181,20 +177,18 @@ fn main() -> anyhow::Result<()> {
     let fib_rhythm = sequences::fibonacci(8);
     let fib_steps: Vec<usize> = fib_rhythm.iter().map(|&x| (x % 16) as usize).collect();
 
-    let harm_melody = harmonic_series(220.0, 6);  // Reduced from 8 to 6 - less harsh
+    let harm_melody = harmonic_series(220.0, 6); // Reduced from 8 to 6 - less harsh
 
     comp.instrument("combined", &Instrument::pluck())
         .reverb(Reverb::new(0.6, 0.5, 0.4))
-        .volume(0.7)
         .at(31.0)
         .drum_grid(16, 0.125)
         .hit(DrumType::Kick, &fib_steps);
 
     comp.instrument("combined_melody", &Instrument::synth_lead())
         .delay(Delay::new(0.375, 0.3, 0.6))
-        .volume(0.5)
         .at(31.0)
-        .notes(&harm_melody, 0.4);  // Slower to hear each harmonic
+        .notes(&harm_melody, 0.4); // Slower to hear each harmonic
 
     // ===== PART 14: SEQUENCE AS RHYTHM DENSITY =====
     println!("Part 14: Using Sequences to Control Rhythm Density\n");
@@ -203,9 +197,10 @@ fn main() -> anyhow::Result<()> {
     let densities = sequences::fibonacci(6);
 
     for (i, &density) in densities.iter().take(4).enumerate() {
-        let steps: Vec<usize> = (0..(density as usize).min(16)).map(|x| x * 16 / density as usize).collect();
+        let steps: Vec<usize> = (0..(density as usize).min(16))
+            .map(|x| x * 16 / density as usize)
+            .collect();
         comp.instrument(&format!("density_{}", i), &Instrument::pluck())
-            .volume(0.4)  // Quieter so multiple layers don't clash
             .at(33.0 + i as f32 * 2.0)
             .drum_grid(16, 0.125)
             .hihat(&steps);
@@ -220,64 +215,211 @@ fn main() -> anyhow::Result<()> {
     // Different harmonic clusters
     comp.instrument("spectral1", &Instrument::warm_pad())
         .reverb(Reverb::new(0.8, 0.7, 0.6))
-        .volume(0.5)
         .at(41.0)
-        .note(&[spectral_base[3], spectral_base[4], spectral_base[5]], 2.0)   // 4-5-6: major triad
-        .note(&[spectral_base[6], spectral_base[7], spectral_base[8]], 2.0)   // Mid cluster
-        .note(&[spectral_base[9], spectral_base[10], spectral_base[11]], 2.0); // Higher cluster
+        .note(&[spectral_base[3], spectral_base[4], spectral_base[5]], 2.0) // 4-5-6: major triad
+        .note(&[spectral_base[6], spectral_base[7], spectral_base[8]], 2.0) // Mid cluster
+        .note(
+            &[spectral_base[9], spectral_base[10], spectral_base[11]],
+            2.0,
+        ); // Higher cluster
 
-    // ===== PART 16: GENERATIVE COMPOSITION =====
-    println!("Part 16: Full Generative Piece\n");
+    // ===== PART 16: LOGISTIC MAP (CHAOS THEORY) =====
+    println!("Part 16: Logistic Map - Chaos Theory\n");
+    println!("  x(n+1) = r * x(n) * (1 - x(n))");
+    println!("  Smooth transition from stable to chaotic behavior\n");
+
+    // Stable behavior (r=2.5)
+    let stable_chaos = sequences::logistic_map(2.5, 0.5, 16);
+    let stable_freqs = sequences::normalize(
+        &stable_chaos
+            .iter()
+            .map(|&x| (x * 100.0) as u32)
+            .collect::<Vec<_>>(),
+        300.0,
+        600.0,
+    );
+
+    comp.instrument("chaos_stable", &Instrument::synth_lead())
+        .delay(Delay::new(0.375, 0.3, 0.5))
+        .at(47.0)
+        .notes(&stable_freqs, 0.3);
+
+    // Chaotic behavior (r=3.9)
+    let chaotic = sequences::logistic_map(3.9, 0.5, 32);
+    let chaotic_freqs = sequences::normalize(
+        &chaotic
+            .iter()
+            .map(|&x| (x * 100.0) as u32)
+            .collect::<Vec<_>>(),
+        200.0,
+        800.0,
+    );
+
+    comp.instrument("chaos_intense", &Instrument::pluck())
+        .chorus(Chorus::new(0.3, 2.5, 0.3))
+        .at(52.0)
+        .notes(&chaotic_freqs, 0.15);
+
+    // ===== PART 17: RANDOM WALK (BROWNIAN MOTION) =====
+    println!("Part 17: Random Walk (Brownian Motion)\n");
+    println!("  Smooth, organic wandering melodies");
+    println!("  Like a drunk person walking or particle diffusion\n");
+
+    // Unbounded walk
+    let walk = sequences::random_walk(440.0, 20.0, 20);
+
+    comp.instrument("random_walk", &Instrument::pluck())
+        .reverb(Reverb::new(0.6, 0.5, 0.4))
+        .at(57.0)
+        .notes(&walk, 0.25);
+
+    // Bounded walk (constrained to range)
+    let bounded = sequences::bounded_walk(440.0, 30.0, 220.0, 880.0, 32);
+
+    comp.instrument("bounded_walk", &Instrument::synth_lead())
+        .delay(Delay::new(0.375, 0.3, 0.6))
+        .at(62.0)
+        .notes(&bounded, 0.2);
+
+    // ===== PART 18: THUE-MORSE SEQUENCE =====
+    println!("Part 18: Thue-Morse Sequence (Fair Division)\n");
+    println!("  Self-similar binary sequence: 0,1,1,0,1,0,0,1...");
+    println!("  Non-repetitive rhythms that sound organic\n");
+
+    let thue_morse = sequences::thue_morse(32);
+    let tm_hits: Vec<usize> = thue_morse
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect();
+
+    comp.track("thue_morse_drums")
+        .at(68.5)
+        .drum_grid(32, 0.125)
+        .kick(&tm_hits)
+        .snare(&sequences::euclidean(5, 32)); // Compare with Euclidean
+
+    // Use Thue-Morse for timbral alternation
+    let tm_melody = sequences::thue_morse(16);
+    for (i, &val) in tm_melody.iter().enumerate() {
+        let freq = if val == 0 { 440.0 } else { 554.37 };
+        comp.instrument("tm_alternating", &Instrument::pluck())
+            .at(72.5 + i as f32 * 0.25)
+            .note(&[freq], 0.2);
+    }
+
+    // ===== PART 19: RECAMÁN'S SEQUENCE =====
+    println!("\nPart 19: Recamán's Sequence\n");
+    println!("  Back-and-forth spiraling pattern");
+    println!("  Beautiful melodic contours with memory\n");
+
+    let recaman_seq = sequences::recaman(24);
+    let recaman_freqs = sequences::normalize(&recaman_seq, 220.0, 880.0);
+
+    comp.instrument("recaman", &Instrument::pluck())
+        .delay(Delay::new(0.375, 0.3, 0.5))
+        .at(77.0)
+        .notes(&recaman_freqs, 0.2);
+
+    // ===== PART 20: VAN DER CORPUT (QUASI-RANDOM) =====
+    println!("Part 20: Van der Corput Sequence\n");
+    println!("  Quasi-random low-discrepancy sequence");
+    println!("  Better distribution than pure random\n");
+
+    // Use for note placement
+    let quasi_positions = sequences::van_der_corput(32, 2);
+    for (i, &pos) in quasi_positions.iter().enumerate() {
+        let freq = 300.0 + pos * 500.0;
+        comp.instrument("quasi", &Instrument::synth_lead())
+            .at(82.0 + i as f32 * 0.125)
+            .note(&[freq], 0.1);
+    }
+
+    // ===== PART 21: CELLULAR AUTOMATON =====
+    println!("Part 21: Cellular Automaton (Rule 30)\n");
+    println!("  Chaotic patterns from simple rules");
+    println!("  Used in Mathematica's random number generator!\n");
+
+    // Rule 30 - chaotic
+    let rule30 = sequences::cellular_automaton(30, 8, 16, None);
+    for (gen_idx, generation) in rule30.iter().take(4).enumerate() {
+        let rhythm: Vec<usize> = generation
+            .iter()
+            .enumerate()
+            .filter(|(_, &v)| v == 1)
+            .map(|(i, _)| i)
+            .collect();
+
+        comp.instrument(&format!("ca30_{}", gen_idx), &Instrument::pluck())
+            .at(90.5 + gen_idx as f32 * 2.0)
+            .drum_grid(16, 0.125)
+            .kick(&rhythm);
+    }
+
+    // Rule 90 - Sierpinski fractal
+    let rule90 = sequences::cellular_automaton(90, 4, 16, None);
+    let sierpinski_rhythm: Vec<usize> = rule90[3]
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect();
+
+    comp.track("ca90_fractal")
+        .at(98.5)
+        .drum_grid(16, 0.125)
+        .snare(&sierpinski_rhythm)
+        .hihat(&sequences::euclidean(13, 16));
+
+    // ===== PART 22: GENERATIVE COMPOSITION =====
+    println!("\nPart 22: Full Generative Piece\n");
     println!("  Combining all sequences into a complete composition\n");
 
-    // Bass: Collatz sequence (chaotic but resolving)
-    let bass_collatz = sequences::collatz(19, 16);
-    let bass_freqs = sequences::normalize(&bass_collatz, 55.0, 110.0);
+    // Bass: Recamán (interesting contour)
+    let bass_recaman = sequences::recaman(16);
+    let bass_freqs = sequences::normalize(&bass_recaman, 55.0, 110.0);
 
     comp.instrument("gen_bass", &Instrument::sub_bass())
-        .volume(0.7)
-        .at(47.0)
+        .at(102.0)
         .notes(&bass_freqs, 0.5);
 
-    // Melody: Golden ratio
-    let melody_phi = golden_ratio(12);
-    let melody_freqs = sequences::normalize(
-        &melody_phi.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-        440.0,
-        880.0,
-    );
+    // Melody: Random walk (organic variation)
+    let melody_walk = sequences::bounded_walk(550.0, 40.0, 440.0, 880.0, 16);
 
     comp.instrument("gen_melody", &Instrument::synth_lead())
         .delay(Delay::new(0.375, 0.3, 0.5))
-        .volume(0.5)
-        .at(47.0)
-        .notes(&melody_freqs, 0.4);
+        .at(102.0)
+        .notes(&melody_walk, 0.4);
 
     // Chords: Harmonic series
-    let chord_harmonics = harmonic_series(82.41, 12);  // E2
+    let chord_harmonics = harmonic_series(82.41, 12); // E2
 
     comp.instrument("gen_chords", &Instrument::warm_pad())
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .chorus(Chorus::new(0.3, 2.5, 0.3))
-        .volume(0.4)
-        .at(47.0)
+        .at(102.0)
         .note(&chord_harmonics[3..6], 4.0)
         .note(&chord_harmonics[4..7], 4.0);
 
-    // Rhythm: Euclidean + Golden ratio
-    let euclid_rhythm = sequences::euclidean(5, 16);
-    let phi_rhythm_long = golden_ratio_rhythm(16);
+    // Rhythm: Thue-Morse for non-repetitive patterns
+    let tm_rhythm = sequences::thue_morse(16);
+    let tm_rhythm_hits: Vec<usize> = tm_rhythm
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect();
 
     comp.instrument("gen_drums", &Instrument::pluck())
-        .volume(0.5)
-        .at(47.0)
+        .at(102.0)
         .drum_grid(16, 0.125)
-        .kick(&euclid_rhythm)
-        .snare(&phi_rhythm_long)
+        .kick(&sequences::euclidean(4, 16))
+        .snare(&tm_rhythm_hits)
         .hihat(&sequences::euclidean(13, 16));
 
     println!("\n▶️  Playing sequences showcase...\n");
-    println!("    Duration: ~55 seconds\n");
+    println!("    Duration: ~110 seconds\n");
     println!("    📊 Sequences Demonstrated:");
     println!("    1. Fibonacci (1, 1, 2, 3, 5, 8...)");
     println!("    2. Primes (2, 3, 5, 7, 11, 13...)");
@@ -294,7 +436,13 @@ fn main() -> anyhow::Result<()> {
     println!("    13. Combined sequences");
     println!("    14. Sequence-driven rhythm density");
     println!("    15. Spectral chords from harmonics");
-    println!("    16. Complete generative composition\n");
+    println!("    16. Logistic map (chaos theory)");
+    println!("    17. Random walk (Brownian motion)");
+    println!("    18. Thue-Morse sequence (fair division)");
+    println!("    19. Recamán's sequence (spiraling back-and-forth)");
+    println!("    20. Van der Corput (quasi-random low-discrepancy)");
+    println!("    21. Cellular Automaton (Rule 30 & 90)");
+    println!("    22. Complete generative composition\n");
     println!("    💡 Applications:");
     println!("    • Algorithmic composition");
     println!("    • Generative music systems");
@@ -325,6 +473,13 @@ fn main() -> anyhow::Result<()> {
     println!("   sequences::powers_of_two(n)");
     println!("   sequences::arithmetic(start, step, n)");
     println!("   sequences::geometric(start, ratio, n)");
+    println!("   sequences::logistic_map(r, initial, n)");
+    println!("   sequences::random_walk(start, step_size, steps)");
+    println!("   sequences::bounded_walk(start, step, min, max, steps)");
+    println!("   sequences::thue_morse(n)");
+    println!("   sequences::recaman(n)");
+    println!("   sequences::van_der_corput(n, base)");
+    println!("   sequences::cellular_automaton(rule, steps, width, initial_state)");
     println!("   sequences::normalize(seq, min, max)\n");
 
     Ok(())

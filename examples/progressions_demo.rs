@@ -12,7 +12,9 @@ fn main() -> anyhow::Result<()> {
     println!("Part 1: Comparing old vs new API\n");
 
     println!("OLD WAY (still works):");
-    println!("  let pop_prog = progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], ProgressionType::Triads);");
+    println!(
+        "  let pop_prog = progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], ProgressionType::Triads);"
+    );
     println!("  comp.track(\"chords\").chords_from(&pop_prog, 1.5);\n");
 
     println!("NEW WAY (much cleaner):");
@@ -101,7 +103,6 @@ fn main() -> anyhow::Result<()> {
     // Chords
     comp.instrument("backing", &Instrument::warm_pad())
         .reverb(Reverb::new(0.6, 0.5, 0.4))
-        .volume(0.5)
         .at(55.5)
         .progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], 2.0);
 
@@ -125,14 +126,12 @@ fn main() -> anyhow::Result<()> {
     // Medium (half notes)
     println!("  ♪ Medium rhythm (1.0s per chord)");
     comp.instrument("medium", &Instrument::warm_pad())
-        .volume(0.6)
         .at(67.5)
         .progression(G3, &ScalePattern::MAJOR, &[1, 5, 6, 4], 1.0);
 
     // Slow (whole notes)
     println!("  ♪ Slow rhythm (2.0s per chord)");
     comp.instrument("slow", &Instrument::warm_pad())
-        .volume(0.7)
         .reverb(Reverb::new(0.7, 0.6, 0.5))
         .at(71.5)
         .progression(G3, &ScalePattern::MAJOR, &[1, 5, 6, 4], 2.0);

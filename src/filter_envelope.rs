@@ -93,6 +93,7 @@ impl FilterEnvelope {
     ///
     /// # Returns
     /// The cutoff frequency in Hz at this point in time
+    #[inline]
     pub fn cutoff_at(&self, time: f32, note_duration: f32) -> f32 {
         if self.amount == 0.0 {
             return self.base_cutoff;

@@ -9,23 +9,23 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyRoot {
     C,
-    Cs,  // C#
+    Cs, // C#
     D,
-    Ds,  // D# / Eb
+    Ds, // D# / Eb
     E,
     F,
-    Fs,  // F#
+    Fs, // F#
     G,
-    Gs,  // G# / Ab
+    Gs, // G# / Ab
     A,
-    As,  // A# / Bb
+    As, // A# / Bb
     B,
     // Enharmonic equivalents (for proper notation context)
-    Df,  // Db (same as C#)
-    Ef,  // Eb (same as D#)
-    Gf,  // Gb (same as F#)
-    Af,  // Ab (same as G#)
-    Bf,  // Bb (same as A#)
+    Df, // Db (same as C#)
+    Ef, // Eb (same as D#)
+    Gf, // Gb (same as F#)
+    Af, // Ab (same as G#)
+    Bf, // Bb (same as A#)
 }
 
 /// Mode of a key signature
@@ -88,16 +88,16 @@ impl KeySignature {
             0 => C,
             1 => Cs,
             2 => D,
-            3 => Ef,  // Use flat for Eb
+            3 => Ef, // Use flat for Eb
             4 => E,
             5 => F,
             6 => Fs,
             7 => G,
-            8 => Af,  // Use flat for Ab
+            8 => Af, // Use flat for Ab
             9 => A,
             10 => Bf, // Use flat for Bb
             11 => B,
-            _ => C,   // Should never happen
+            _ => C, // Should never happen
         }
     }
 
@@ -110,9 +110,9 @@ impl KeySignature {
     ///
     /// For modes, the parent major scale's key signature is used.
     /// For example, D Dorian uses C Major's key signature (0 sharps/flats).
-    pub fn to_midi_sharps_flats(&self) -> i8 {
-        use KeyRoot::*;
+    pub fn to_midi_sharps_flats(self) -> i8 {
         use KeyMode::*;
+        use KeyRoot::*;
 
         // For modes, find the parent major scale and use its key signature
         // Dorian = 2nd mode (parent is 2 semitones below)
@@ -133,14 +133,14 @@ impl KeySignature {
 
         match (effective_root, effective_mode) {
             // Major keys
-            (C, Major) => 0,   // No sharps or flats
-            (G, Major) => 1,   // 1 sharp
-            (D, Major) => 2,   // 2 sharps
-            (A, Major) => 3,   // 3 sharps
-            (E, Major) => 4,   // 4 sharps
-            (B, Major) => 5,   // 5 sharps
-            (Fs, Major) | (Gf, Major) => 6,  // 6 sharps (or 6 flats enharmonic)
-            (Cs, Major) | (Df, Major) => 7,  // 7 sharps (or 5 flats enharmonic)
+            (C, Major) => 0,                // No sharps or flats
+            (G, Major) => 1,                // 1 sharp
+            (D, Major) => 2,                // 2 sharps
+            (A, Major) => 3,                // 3 sharps
+            (E, Major) => 4,                // 4 sharps
+            (B, Major) => 5,                // 5 sharps
+            (Fs, Major) | (Gf, Major) => 6, // 6 sharps (or 6 flats enharmonic)
+            (Cs, Major) | (Df, Major) => 7, // 7 sharps (or 5 flats enharmonic)
 
             (F, Major) => -1,  // 1 flat
             (Bf, Major) => -2, // 2 flats
@@ -151,19 +151,19 @@ impl KeySignature {
             // Cb Major would be 7 flats (not commonly used)
 
             // Minor keys (relative minor relationship)
-            (A, Minor) => 0,   // No sharps or flats (relative to C major)
-            (E, Minor) => 1,   // 1 sharp (relative to G major)
-            (B, Minor) => 2,   // 2 sharps (relative to D major)
-            (Fs, Minor) => 3,  // 3 sharps (relative to A major)
-            (Cs, Minor) => 4,  // 4 sharps (relative to E major)
-            (Gs, Minor) => 5,  // 5 sharps (relative to B major)
-            (Ds, Minor) | (Ef, Minor) => 6,  // 6 sharps (or enharmonic)
-            (As, Minor) | (Bf, Minor) => 7,  // 7 sharps (or enharmonic)
+            (A, Minor) => 0,  // No sharps or flats (relative to C major)
+            (E, Minor) => 1,  // 1 sharp (relative to G major)
+            (B, Minor) => 2,  // 2 sharps (relative to D major)
+            (Fs, Minor) => 3, // 3 sharps (relative to A major)
+            (Cs, Minor) => 4, // 4 sharps (relative to E major)
+            (Gs, Minor) => 5, // 5 sharps (relative to B major)
+            (Ds, Minor) | (Ef, Minor) => 6, // 6 sharps (or enharmonic)
+            (As, Minor) | (Bf, Minor) => 7, // 7 sharps (or enharmonic)
 
-            (D, Minor) => -1,  // 1 flat (relative to F major)
-            (G, Minor) => -2,  // 2 flats (relative to Bb major)
-            (C, Minor) => -3,  // 3 flats (relative to Eb major)
-            (F, Minor) => -4,  // 4 flats (relative to Ab major)
+            (D, Minor) => -1, // 1 flat (relative to F major)
+            (G, Minor) => -2, // 2 flats (relative to Bb major)
+            (C, Minor) => -3, // 3 flats (relative to Eb major)
+            (F, Minor) => -4, // 4 flats (relative to Ab major)
             // Bb minor = 5 flats
             // Eb minor = 6 flats
             // Ab minor = 7 flats
@@ -178,7 +178,11 @@ impl KeySignature {
     pub fn is_minor(&self) -> bool {
         matches!(
             self.mode,
-            KeyMode::Minor | KeyMode::Dorian | KeyMode::Phrygian | KeyMode::Aeolian | KeyMode::Locrian
+            KeyMode::Minor
+                | KeyMode::Dorian
+                | KeyMode::Phrygian
+                | KeyMode::Aeolian
+                | KeyMode::Locrian
         )
     }
 
@@ -221,67 +225,205 @@ impl KeySignature {
 
 // Common key signature constants for convenience
 impl KeySignature {
-    pub const C_MAJOR: Self = Self { root: KeyRoot::C, mode: KeyMode::Major };
-    pub const G_MAJOR: Self = Self { root: KeyRoot::G, mode: KeyMode::Major };
-    pub const D_MAJOR: Self = Self { root: KeyRoot::D, mode: KeyMode::Major };
-    pub const A_MAJOR: Self = Self { root: KeyRoot::A, mode: KeyMode::Major };
-    pub const E_MAJOR: Self = Self { root: KeyRoot::E, mode: KeyMode::Major };
-    pub const B_MAJOR: Self = Self { root: KeyRoot::B, mode: KeyMode::Major };
-    pub const F_SHARP_MAJOR: Self = Self { root: KeyRoot::Fs, mode: KeyMode::Major };
-    pub const C_SHARP_MAJOR: Self = Self { root: KeyRoot::Cs, mode: KeyMode::Major };
+    pub const C_MAJOR: Self = Self {
+        root: KeyRoot::C,
+        mode: KeyMode::Major,
+    };
+    pub const G_MAJOR: Self = Self {
+        root: KeyRoot::G,
+        mode: KeyMode::Major,
+    };
+    pub const D_MAJOR: Self = Self {
+        root: KeyRoot::D,
+        mode: KeyMode::Major,
+    };
+    pub const A_MAJOR: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Major,
+    };
+    pub const E_MAJOR: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Major,
+    };
+    pub const B_MAJOR: Self = Self {
+        root: KeyRoot::B,
+        mode: KeyMode::Major,
+    };
+    pub const F_SHARP_MAJOR: Self = Self {
+        root: KeyRoot::Fs,
+        mode: KeyMode::Major,
+    };
+    pub const C_SHARP_MAJOR: Self = Self {
+        root: KeyRoot::Cs,
+        mode: KeyMode::Major,
+    };
 
-    pub const F_MAJOR: Self = Self { root: KeyRoot::F, mode: KeyMode::Major };
-    pub const B_FLAT_MAJOR: Self = Self { root: KeyRoot::Bf, mode: KeyMode::Major };
-    pub const E_FLAT_MAJOR: Self = Self { root: KeyRoot::Ef, mode: KeyMode::Major };
-    pub const A_FLAT_MAJOR: Self = Self { root: KeyRoot::Af, mode: KeyMode::Major };
-    pub const D_FLAT_MAJOR: Self = Self { root: KeyRoot::Df, mode: KeyMode::Major };
-    pub const G_FLAT_MAJOR: Self = Self { root: KeyRoot::Gf, mode: KeyMode::Major };
+    pub const F_MAJOR: Self = Self {
+        root: KeyRoot::F,
+        mode: KeyMode::Major,
+    };
+    pub const B_FLAT_MAJOR: Self = Self {
+        root: KeyRoot::Bf,
+        mode: KeyMode::Major,
+    };
+    pub const E_FLAT_MAJOR: Self = Self {
+        root: KeyRoot::Ef,
+        mode: KeyMode::Major,
+    };
+    pub const A_FLAT_MAJOR: Self = Self {
+        root: KeyRoot::Af,
+        mode: KeyMode::Major,
+    };
+    pub const D_FLAT_MAJOR: Self = Self {
+        root: KeyRoot::Df,
+        mode: KeyMode::Major,
+    };
+    pub const G_FLAT_MAJOR: Self = Self {
+        root: KeyRoot::Gf,
+        mode: KeyMode::Major,
+    };
 
-    pub const A_MINOR: Self = Self { root: KeyRoot::A, mode: KeyMode::Minor };
-    pub const E_MINOR: Self = Self { root: KeyRoot::E, mode: KeyMode::Minor };
-    pub const B_MINOR: Self = Self { root: KeyRoot::B, mode: KeyMode::Minor };
-    pub const F_SHARP_MINOR: Self = Self { root: KeyRoot::Fs, mode: KeyMode::Minor };
-    pub const C_SHARP_MINOR: Self = Self { root: KeyRoot::Cs, mode: KeyMode::Minor };
-    pub const G_SHARP_MINOR: Self = Self { root: KeyRoot::Gs, mode: KeyMode::Minor };
-    pub const D_SHARP_MINOR: Self = Self { root: KeyRoot::Ds, mode: KeyMode::Minor };
+    pub const A_MINOR: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Minor,
+    };
+    pub const E_MINOR: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Minor,
+    };
+    pub const B_MINOR: Self = Self {
+        root: KeyRoot::B,
+        mode: KeyMode::Minor,
+    };
+    pub const F_SHARP_MINOR: Self = Self {
+        root: KeyRoot::Fs,
+        mode: KeyMode::Minor,
+    };
+    pub const C_SHARP_MINOR: Self = Self {
+        root: KeyRoot::Cs,
+        mode: KeyMode::Minor,
+    };
+    pub const G_SHARP_MINOR: Self = Self {
+        root: KeyRoot::Gs,
+        mode: KeyMode::Minor,
+    };
+    pub const D_SHARP_MINOR: Self = Self {
+        root: KeyRoot::Ds,
+        mode: KeyMode::Minor,
+    };
 
-    pub const D_MINOR: Self = Self { root: KeyRoot::D, mode: KeyMode::Minor };
-    pub const G_MINOR: Self = Self { root: KeyRoot::G, mode: KeyMode::Minor };
-    pub const C_MINOR: Self = Self { root: KeyRoot::C, mode: KeyMode::Minor };
-    pub const F_MINOR: Self = Self { root: KeyRoot::F, mode: KeyMode::Minor };
-    pub const B_FLAT_MINOR: Self = Self { root: KeyRoot::Bf, mode: KeyMode::Minor };
-    pub const E_FLAT_MINOR: Self = Self { root: KeyRoot::Ef, mode: KeyMode::Minor };
+    pub const D_MINOR: Self = Self {
+        root: KeyRoot::D,
+        mode: KeyMode::Minor,
+    };
+    pub const G_MINOR: Self = Self {
+        root: KeyRoot::G,
+        mode: KeyMode::Minor,
+    };
+    pub const C_MINOR: Self = Self {
+        root: KeyRoot::C,
+        mode: KeyMode::Minor,
+    };
+    pub const F_MINOR: Self = Self {
+        root: KeyRoot::F,
+        mode: KeyMode::Minor,
+    };
+    pub const B_FLAT_MINOR: Self = Self {
+        root: KeyRoot::Bf,
+        mode: KeyMode::Minor,
+    };
+    pub const E_FLAT_MINOR: Self = Self {
+        root: KeyRoot::Ef,
+        mode: KeyMode::Minor,
+    };
 
     // Common Dorian mode keys (jazz, funk, rock)
-    pub const D_DORIAN: Self = Self { root: KeyRoot::D, mode: KeyMode::Dorian };
-    pub const E_DORIAN: Self = Self { root: KeyRoot::E, mode: KeyMode::Dorian };
-    pub const A_DORIAN: Self = Self { root: KeyRoot::A, mode: KeyMode::Dorian };
-    pub const G_DORIAN: Self = Self { root: KeyRoot::G, mode: KeyMode::Dorian };
+    pub const D_DORIAN: Self = Self {
+        root: KeyRoot::D,
+        mode: KeyMode::Dorian,
+    };
+    pub const E_DORIAN: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Dorian,
+    };
+    pub const A_DORIAN: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Dorian,
+    };
+    pub const G_DORIAN: Self = Self {
+        root: KeyRoot::G,
+        mode: KeyMode::Dorian,
+    };
 
     // Common Phrygian mode keys (Spanish, metal, Middle Eastern)
-    pub const E_PHRYGIAN: Self = Self { root: KeyRoot::E, mode: KeyMode::Phrygian };
-    pub const A_PHRYGIAN: Self = Self { root: KeyRoot::A, mode: KeyMode::Phrygian };
-    pub const B_PHRYGIAN: Self = Self { root: KeyRoot::B, mode: KeyMode::Phrygian };
+    pub const E_PHRYGIAN: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Phrygian,
+    };
+    pub const A_PHRYGIAN: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Phrygian,
+    };
+    pub const B_PHRYGIAN: Self = Self {
+        root: KeyRoot::B,
+        mode: KeyMode::Phrygian,
+    };
 
     // Common Lydian mode keys (dreamy, bright)
-    pub const F_LYDIAN: Self = Self { root: KeyRoot::F, mode: KeyMode::Lydian };
-    pub const C_LYDIAN: Self = Self { root: KeyRoot::C, mode: KeyMode::Lydian };
-    pub const G_LYDIAN: Self = Self { root: KeyRoot::G, mode: KeyMode::Lydian };
+    pub const F_LYDIAN: Self = Self {
+        root: KeyRoot::F,
+        mode: KeyMode::Lydian,
+    };
+    pub const C_LYDIAN: Self = Self {
+        root: KeyRoot::C,
+        mode: KeyMode::Lydian,
+    };
+    pub const G_LYDIAN: Self = Self {
+        root: KeyRoot::G,
+        mode: KeyMode::Lydian,
+    };
 
     // Common Mixolydian mode keys (rock, blues, folk)
-    pub const G_MIXOLYDIAN: Self = Self { root: KeyRoot::G, mode: KeyMode::Mixolydian };
-    pub const D_MIXOLYDIAN: Self = Self { root: KeyRoot::D, mode: KeyMode::Mixolydian };
-    pub const A_MIXOLYDIAN: Self = Self { root: KeyRoot::A, mode: KeyMode::Mixolydian };
-    pub const C_MIXOLYDIAN: Self = Self { root: KeyRoot::C, mode: KeyMode::Mixolydian };
+    pub const G_MIXOLYDIAN: Self = Self {
+        root: KeyRoot::G,
+        mode: KeyMode::Mixolydian,
+    };
+    pub const D_MIXOLYDIAN: Self = Self {
+        root: KeyRoot::D,
+        mode: KeyMode::Mixolydian,
+    };
+    pub const A_MIXOLYDIAN: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Mixolydian,
+    };
+    pub const C_MIXOLYDIAN: Self = Self {
+        root: KeyRoot::C,
+        mode: KeyMode::Mixolydian,
+    };
 
     // Aeolian (natural minor - same as Minor mode)
-    pub const A_AEOLIAN: Self = Self { root: KeyRoot::A, mode: KeyMode::Aeolian };
-    pub const E_AEOLIAN: Self = Self { root: KeyRoot::E, mode: KeyMode::Aeolian };
-    pub const D_AEOLIAN: Self = Self { root: KeyRoot::D, mode: KeyMode::Aeolian };
+    pub const A_AEOLIAN: Self = Self {
+        root: KeyRoot::A,
+        mode: KeyMode::Aeolian,
+    };
+    pub const E_AEOLIAN: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Aeolian,
+    };
+    pub const D_AEOLIAN: Self = Self {
+        root: KeyRoot::D,
+        mode: KeyMode::Aeolian,
+    };
 
     // Locrian mode keys (rare, diminished, dark)
-    pub const B_LOCRIAN: Self = Self { root: KeyRoot::B, mode: KeyMode::Locrian };
-    pub const E_LOCRIAN: Self = Self { root: KeyRoot::E, mode: KeyMode::Locrian };
+    pub const B_LOCRIAN: Self = Self {
+        root: KeyRoot::B,
+        mode: KeyMode::Locrian,
+    };
+    pub const E_LOCRIAN: Self = Self {
+        root: KeyRoot::E,
+        mode: KeyMode::Locrian,
+    };
 }
 
 #[cfg(test)]
@@ -305,8 +447,8 @@ mod tests {
         assert_eq!(KeySignature::B_FLAT_MAJOR.to_midi_sharps_flats(), -2);
         assert_eq!(KeySignature::E_FLAT_MAJOR.to_midi_sharps_flats(), -3);
         assert_eq!(KeySignature::A_FLAT_MAJOR.to_midi_sharps_flats(), -4);
-        assert_eq!(KeySignature::D_FLAT_MAJOR.to_midi_sharps_flats(), 7);  // Enharmonic
-        assert_eq!(KeySignature::G_FLAT_MAJOR.to_midi_sharps_flats(), 6);  // Enharmonic
+        assert_eq!(KeySignature::D_FLAT_MAJOR.to_midi_sharps_flats(), 7); // Enharmonic
+        assert_eq!(KeySignature::G_FLAT_MAJOR.to_midi_sharps_flats(), 6); // Enharmonic
     }
 
     #[test]
@@ -441,12 +583,33 @@ mod tests {
     #[test]
     fn test_all_modes_of_c() {
         // All modes derived from the C major scale
-        assert_eq!(KeySignature::new(KeyRoot::C, KeyMode::Major).to_midi_sharps_flats(), 0);      // C Ionian
-        assert_eq!(KeySignature::new(KeyRoot::D, KeyMode::Dorian).to_midi_sharps_flats(), 0);     // D Dorian
-        assert_eq!(KeySignature::new(KeyRoot::E, KeyMode::Phrygian).to_midi_sharps_flats(), 0);   // E Phrygian
-        assert_eq!(KeySignature::new(KeyRoot::F, KeyMode::Lydian).to_midi_sharps_flats(), 0);     // F Lydian
-        assert_eq!(KeySignature::new(KeyRoot::G, KeyMode::Mixolydian).to_midi_sharps_flats(), 0); // G Mixolydian
-        assert_eq!(KeySignature::new(KeyRoot::A, KeyMode::Aeolian).to_midi_sharps_flats(), 0);    // A Aeolian
-        assert_eq!(KeySignature::new(KeyRoot::B, KeyMode::Locrian).to_midi_sharps_flats(), 0);    // B Locrian
+        assert_eq!(
+            KeySignature::new(KeyRoot::C, KeyMode::Major).to_midi_sharps_flats(),
+            0
+        ); // C Ionian
+        assert_eq!(
+            KeySignature::new(KeyRoot::D, KeyMode::Dorian).to_midi_sharps_flats(),
+            0
+        ); // D Dorian
+        assert_eq!(
+            KeySignature::new(KeyRoot::E, KeyMode::Phrygian).to_midi_sharps_flats(),
+            0
+        ); // E Phrygian
+        assert_eq!(
+            KeySignature::new(KeyRoot::F, KeyMode::Lydian).to_midi_sharps_flats(),
+            0
+        ); // F Lydian
+        assert_eq!(
+            KeySignature::new(KeyRoot::G, KeyMode::Mixolydian).to_midi_sharps_flats(),
+            0
+        ); // G Mixolydian
+        assert_eq!(
+            KeySignature::new(KeyRoot::A, KeyMode::Aeolian).to_midi_sharps_flats(),
+            0
+        ); // A Aeolian
+        assert_eq!(
+            KeySignature::new(KeyRoot::B, KeyMode::Locrian).to_midi_sharps_flats(),
+            0
+        ); // B Locrian
     }
 }

@@ -196,7 +196,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 - `src/sample.rs` - WAV file loading and sample playback
 - `src/theory.rs` - Music theory (scales, chords, progressions)
 - `src/engine.rs` - Audio playback engine
-- `examples/` - 49 complete examples demonstrating features
+- `examples/` - 50 complete examples demonstrating features (check out sequences_showcase!)
 
 ## Testing
 
@@ -204,11 +204,11 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-The library includes **503 comprehensive tests and 130 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **534 comprehensive tests and 144 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
-Run the included **49 examples** to hear the library in action:
+Run the included **50 examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)

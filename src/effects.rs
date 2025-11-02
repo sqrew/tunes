@@ -31,7 +31,7 @@ impl Delay {
 
     /// Process a single sample
     pub fn process(&mut self, input: f32) -> f32 {
-        if self.buffer.is_empty() {
+        if self.buffer.is_empty() || self.mix < 0.0001 {
             return input;
         }
 
@@ -98,6 +98,10 @@ impl Reverb {
 
     /// Process a single sample
     pub fn process(&mut self, input: f32) -> f32 {
+        if self.mix < 0.0001 {
+            return input;
+        }
+
         let mut output = 0.0;
         let feedback = 0.5 + self.room_size * 0.48;
 
@@ -155,6 +159,10 @@ impl Distortion {
 
     /// Process a single sample using soft clipping
     pub fn process(&self, input: f32) -> f32 {
+        if self.mix < 0.0001 {
+            return input;
+        }
+
         let amplified = input * self.drive;
 
         // Soft clipping using tanh
@@ -328,6 +336,10 @@ impl Chorus {
 
     /// Process a single sample at given sample rate
     pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
+        if self.mix < 0.0001 {
+            return input;
+        }
+
         // Write input to buffer
         self.buffer[self.write_pos] = input;
 
@@ -399,6 +411,13 @@ impl EQ {
 
     /// Process a single sample at given sample rate
     pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
+        // Early exit if all gains are unity (no EQ needed)
+        if (self.low_gain - 1.0).abs() < 0.01
+            && (self.mid_gain - 1.0).abs() < 0.01
+            && (self.high_gain - 1.0).abs() < 0.01 {
+            return input;
+        }
+
         // Simple biquad filter approximations
         let low_coeff = (2.0 * std::f32::consts::PI * self.low_freq / sample_rate).min(0.9);
         let high_coeff = (2.0 * std::f32::consts::PI * self.high_freq / sample_rate).min(0.9);
@@ -450,6 +469,10 @@ impl Saturation {
 
     /// Process a single sample
     pub fn process(&self, input: f32) -> f32 {
+        if self.mix < 0.0001 {
+            return input;
+        }
+
         let amplified = input * self.drive;
 
         // Blend between soft (tanh) and hard (cubic) saturation
@@ -535,6 +558,10 @@ impl Phaser {
 
     /// Process a single sample
     pub fn process(&mut self, input: f32) -> f32 {
+        if self.mix < 0.0001 || self.depth < 0.0001 {
+            return input;
+        }
+
         // Generate LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
 
@@ -616,7 +643,7 @@ impl Flanger {
     /// Process a single sample
     pub fn process(&mut self, input: f32) -> f32 {
         // Safety check: if buffer is empty, just pass through
-        if self.buffer.is_empty() {
+        if self.buffer.is_empty() || self.mix < 0.0001 {
             return input;
         }
 
@@ -688,8 +715,12 @@ impl RingModulator {
 
     /// Process a single sample
     pub fn process(&mut self, input: f32) -> f32 {
-        // Generate carrier sine wave
-        let carrier = (self.phase * 2.0 * std::f32::consts::PI).sin();
+        if self.mix < 0.0001 {
+            return input;
+        }
+
+        // Generate carrier sine wave using fast wavetable lookup
+        let carrier = crate::wavetable::WAVETABLE.sample(self.phase);
 
         // Ring modulation = multiplication
         let modulated = input * carrier;

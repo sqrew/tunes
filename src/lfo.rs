@@ -117,6 +117,10 @@ impl ModRoute {
 
     /// Apply modulation to a base value at a given time
     pub fn apply(&self, time: f32, base_value: f32) -> f32 {
+        if self.amount < 0.0001 || self.lfo.depth < 0.0001 {
+            return base_value;
+        }
+
         match self.target {
             ModTarget::FilterCutoff => {
                 // Filter cutoff modulation (logarithmic scaling)

@@ -1156,6 +1156,40 @@ impl Mixer {
         }
     }
 
+    /// Render the mixer to an in-memory stereo buffer
+    ///
+    /// Pre-renders the entire composition to a Vec of interleaved stereo samples (left, right, left, right...).
+    /// This is used for efficient playback without real-time synthesis overhead.
+    ///
+    /// # Arguments
+    /// * `sample_rate` - Sample rate in Hz
+    ///
+    /// # Returns
+    /// A Vec of f32 samples in interleaved stereo format (left, right, left, right...)
+    pub fn render_to_buffer(&mut self, sample_rate: f32) -> Vec<f32> {
+        let duration = self.total_duration();
+        let total_samples = (duration * sample_rate).ceil() as usize;
+
+        // Pre-allocate buffer for interleaved stereo (2 channels)
+        let mut buffer = Vec::with_capacity(total_samples * 2);
+
+        let mut sample_clock = 0.0;
+
+        // Render all samples
+        for i in 0..total_samples {
+            let time = i as f32 / sample_rate;
+            let (left, right) = self.sample_at(time, sample_rate, sample_clock);
+
+            // Clamp to valid range and add to buffer
+            buffer.push(left.clamp(-1.0, 1.0));
+            buffer.push(right.clamp(-1.0, 1.0));
+
+            sample_clock = (sample_clock + 1.0) % sample_rate;
+        }
+
+        buffer
+    }
+
     /// Export the mixed audio to a WAV file
     ///
     /// Renders the entire composition to a stereo WAV file with the specified sample rate.

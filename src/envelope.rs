@@ -44,6 +44,7 @@ impl Envelope {
     /// * `time` - Time since note started (seconds)
     /// * `note_duration` - Total duration of the note (seconds)
     /// * `released` - Whether the note has been released (for calculating release phase)
+    #[inline(always)]
     pub fn amplitude_at(&self, time: f32, note_duration: f32) -> f32 {
         if time < 0.0 {
             return 0.0;

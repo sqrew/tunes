@@ -1,14 +1,12 @@
 /// MIDI export functionality
-///
 /// Converts compositions to Standard MIDI Files (SMF).
 /// Supports notes, drums, tempo, but not samples or effects (MIDI limitations).
-
 use crate::drums::DrumType;
 use crate::error::{Result, TunesError};
 use crate::track::{AudioEvent, Mixer};
 use midly::{
-    num::{u14, u15, u24, u28, u4, u7},
     Header, MetaMessage, MidiMessage, PitchBend, Smf, Timing, TrackEvent, TrackEventKind,
+    num::{u4, u7, u14, u15, u24, u28},
 };
 use std::fs::File;
 use std::io::Write;
@@ -61,46 +59,46 @@ fn seconds_to_ticks(time: f32, tempo: f32, ppq: u16) -> u32 {
 pub fn drum_type_to_midi_note(drum_type: DrumType) -> u8 {
     match drum_type {
         // Kick drums
-        DrumType::Kick => 36,        // Bass Drum 1
-        DrumType::Kick808 => 35,     // Acoustic Bass Drum
-        DrumType::SubKick => 35,     // Acoustic Bass Drum
+        DrumType::Kick => 36,    // Bass Drum 1
+        DrumType::Kick808 => 35, // Acoustic Bass Drum
+        DrumType::SubKick => 35, // Acoustic Bass Drum
 
         // Snare drums
-        DrumType::Snare => 38,       // Acoustic Snare
-        DrumType::Snare808 => 40,    // Electric Snare
+        DrumType::Snare => 38,    // Acoustic Snare
+        DrumType::Snare808 => 40, // Electric Snare
 
         // Hi-hats
-        DrumType::HiHatClosed => 42,      // Closed Hi-Hat
-        DrumType::HiHat808Closed => 42,   // Closed Hi-Hat
-        DrumType::HiHatOpen => 46,        // Open Hi-Hat
-        DrumType::HiHat808Open => 46,     // Open Hi-Hat
+        DrumType::HiHatClosed => 42,    // Closed Hi-Hat
+        DrumType::HiHat808Closed => 42, // Closed Hi-Hat
+        DrumType::HiHatOpen => 46,      // Open Hi-Hat
+        DrumType::HiHat808Open => 46,   // Open Hi-Hat
 
         // Claps
-        DrumType::Clap => 39,        // Hand Clap
-        DrumType::Clap808 => 39,     // Hand Clap
+        DrumType::Clap => 39,    // Hand Clap
+        DrumType::Clap808 => 39, // Hand Clap
 
         // Toms
-        DrumType::Tom => 47,         // Low-Mid Tom
-        DrumType::TomHigh => 50,     // High Tom
-        DrumType::TomLow => 45,      // Low Tom
+        DrumType::Tom => 47,     // Low-Mid Tom
+        DrumType::TomHigh => 50, // High Tom
+        DrumType::TomLow => 45,  // Low Tom
 
         // Percussion
-        DrumType::Rimshot => 37,     // Side Stick
-        DrumType::Cowbell => 56,     // Cowbell
+        DrumType::Rimshot => 37, // Side Stick
+        DrumType::Cowbell => 56, // Cowbell
 
         // Cymbals
-        DrumType::Crash => 49,       // Crash Cymbal 1
-        DrumType::Ride => 51,        // Ride Cymbal 1
-        DrumType::China => 52,       // Chinese Cymbal
-        DrumType::Splash => 55,      // Splash Cymbal
+        DrumType::Crash => 49,  // Crash Cymbal 1
+        DrumType::Ride => 51,   // Ride Cymbal 1
+        DrumType::China => 52,  // Chinese Cymbal
+        DrumType::Splash => 55, // Splash Cymbal
 
         // Shakers/Percussion
-        DrumType::Tambourine => 54,  // Tambourine
-        DrumType::Shaker => 70,      // Maracas
+        DrumType::Tambourine => 54, // Tambourine
+        DrumType::Shaker => 70,     // Maracas
 
         // Special effects (map to toms as fallback)
-        DrumType::BassDrop => 35,    // Acoustic Bass Drum
-        DrumType::Boom => 35,        // Acoustic Bass Drum
+        DrumType::BassDrop => 35, // Acoustic Bass Drum
+        DrumType::Boom => 35,     // Acoustic Bass Drum
     }
 }
 
@@ -224,7 +222,7 @@ impl Mixer {
         // We'll use an enum to distinguish between the two types
         #[derive(Debug, Clone, Copy)]
         enum MetaChange {
-            Tempo(f32, f32),      // (time, bpm)
+            Tempo(f32, f32),            // (time, bpm)
             TimeSignature(f32, u8, u8), // (time, numerator, denominator)
         }
 
@@ -250,7 +248,9 @@ impl Mixer {
                 MetaChange::Tempo(t, _) => *t,
                 MetaChange::TimeSignature(t, _, _) => *t,
             };
-            time_a.partial_cmp(&time_b).unwrap_or(std::cmp::Ordering::Equal)
+            time_a
+                .partial_cmp(&time_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Convert to MIDI events with delta times
@@ -265,7 +265,9 @@ impl Mixer {
                     let us_per_quarter_note = (60_000_000.0 / tempo_bpm) as u32;
                     tempo_track.push(TrackEvent {
                         delta: u28::new(delta),
-                        kind: TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us_per_quarter_note))),
+                        kind: TrackEventKind::Meta(MetaMessage::Tempo(u24::new(
+                            us_per_quarter_note,
+                        ))),
                     });
                 }
                 MetaChange::TimeSignature(time, numerator, denominator) => {
@@ -306,7 +308,7 @@ impl Mixer {
         tracks.push(tempo_track);
 
         // Convert each audio track to a MIDI track
-        for (_track_idx, track) in self.tracks.iter().enumerate() {
+        for track in self.tracks.iter() {
             let mut midi_track = Vec::new();
             let mut events = Vec::new();
 
@@ -345,7 +347,7 @@ impl Mixer {
                     kind: TrackEventKind::Midi {
                         channel,
                         message: MidiMessage::Controller {
-                            controller: u7::new(7),  // Volume CC
+                            controller: u7::new(7), // Volume CC
                             value: u7::new(volume_cc),
                         },
                     },
@@ -361,7 +363,7 @@ impl Mixer {
                     kind: TrackEventKind::Midi {
                         channel,
                         message: MidiMessage::Controller {
-                            controller: u7::new(10),  // Pan CC
+                            controller: u7::new(10), // Pan CC
                             value: u7::new(pan_midi),
                         },
                     },
@@ -389,8 +391,14 @@ impl Mixer {
 
                         // Add pitch bend event if needed (before the notes)
                         if note.pitch_bend_semitones != 0.0 {
-                            let pitch_bend_value = semitones_to_pitch_bend(note.pitch_bend_semitones, 2.0);
-                            events.push((start_tick, MidiEventType::PitchBend { value: pitch_bend_value }));
+                            let pitch_bend_value =
+                                semitones_to_pitch_bend(note.pitch_bend_semitones, 2.0);
+                            events.push((
+                                start_tick,
+                                MidiEventType::PitchBend {
+                                    value: pitch_bend_value,
+                                },
+                            ));
                         }
 
                         // Add a note on/off event for each frequency in the chord
@@ -398,7 +406,13 @@ impl Mixer {
                             let freq = note.frequencies[i];
                             let midi_note = frequency_to_midi_note(freq);
 
-                            events.push((start_tick, MidiEventType::NoteOn { note: midi_note, velocity }));
+                            events.push((
+                                start_tick,
+                                MidiEventType::NoteOn {
+                                    note: midi_note,
+                                    velocity,
+                                },
+                            ));
                             events.push((end_tick, MidiEventType::NoteOff { note: midi_note }));
                         }
 
@@ -413,7 +427,13 @@ impl Mixer {
                         let velocity = DEFAULT_VELOCITY;
 
                         // Drum note on (channel 10 = percussion)
-                        events.push((tick, MidiEventType::NoteOn { note: midi_note, velocity }));
+                        events.push((
+                            tick,
+                            MidiEventType::NoteOn {
+                                note: midi_note,
+                                velocity,
+                            },
+                        ));
                         // Drum note off shortly after (10 ticks = ~20ms at 480 PPQ, 120 BPM)
                         events.push((tick + 10, MidiEventType::NoteOff { note: midi_note }));
                     }
@@ -454,9 +474,9 @@ impl Mixer {
                     for mod_route in &track.modulation {
                         // Only export modulation that maps to standard MIDI CCs
                         let (cc_number, bipolar) = match mod_route.target {
-                            crate::lfo::ModTarget::Pitch => (1, true),   // CC1: Modulation Wheel
+                            crate::lfo::ModTarget::Pitch => (1, true), // CC1: Modulation Wheel
                             crate::lfo::ModTarget::Volume => (11, false), // CC11: Expression
-                            crate::lfo::ModTarget::Pan => (10, true),    // CC10: Pan
+                            crate::lfo::ModTarget::Pan => (10, true),  // CC10: Pan
                             _ => continue, // Skip filter parameters (synthesis-specific)
                         };
 
@@ -476,10 +496,13 @@ impl Mixer {
                             let cc_value = mod_value_to_cc(lfo_value, bipolar);
 
                             // Add CC event
-                            events.push((tick, MidiEventType::ControlChange {
-                                controller: cc_number,
-                                value: cc_value,
-                            }));
+                            events.push((
+                                tick,
+                                MidiEventType::ControlChange {
+                                    controller: cc_number,
+                                    value: cc_value,
+                                },
+                            ));
                         }
                     }
                 }
@@ -495,29 +518,21 @@ impl Mixer {
                 last_tick = tick;
 
                 let message = match event_type {
-                    MidiEventType::NoteOn { note, velocity } => {
-                        MidiMessage::NoteOn {
-                            key: u7::new(note),
-                            vel: u7::new(velocity),
-                        }
-                    }
-                    MidiEventType::NoteOff { note } => {
-                        MidiMessage::NoteOff {
-                            key: u7::new(note),
-                            vel: u7::new(0),
-                        }
-                    }
-                    MidiEventType::PitchBend { value } => {
-                        MidiMessage::PitchBend {
-                            bend: PitchBend(u14::new(value)),
-                        }
-                    }
-                    MidiEventType::ControlChange { controller, value } => {
-                        MidiMessage::Controller {
-                            controller: u7::new(controller),
-                            value: u7::new(value),
-                        }
-                    }
+                    MidiEventType::NoteOn { note, velocity } => MidiMessage::NoteOn {
+                        key: u7::new(note),
+                        vel: u7::new(velocity),
+                    },
+                    MidiEventType::NoteOff { note } => MidiMessage::NoteOff {
+                        key: u7::new(note),
+                        vel: u7::new(0),
+                    },
+                    MidiEventType::PitchBend { value } => MidiMessage::PitchBend {
+                        bend: PitchBend(u14::new(value)),
+                    },
+                    MidiEventType::ControlChange { controller, value } => MidiMessage::Controller {
+                        controller: u7::new(controller),
+                        value: u7::new(value),
+                    },
                 };
 
                 midi_track.push(TrackEvent {
@@ -541,20 +556,20 @@ impl Mixer {
             timing: Timing::Metrical(u15::new(PPQ)),
         };
 
-        let smf = Smf {
-            header,
-            tracks,
-        };
+        let smf = Smf { header, tracks };
 
         // Write to file
-        let mut file = File::create(path)
-            .map_err(|e| TunesError::MidiError(format!("Failed to create MIDI file {}: {}", path, e)))?;
+        let mut file = File::create(path).map_err(|e| {
+            TunesError::MidiError(format!("Failed to create MIDI file {}: {}", path, e))
+        })?;
 
-        smf.write_std(&mut file)
-            .map_err(|e| TunesError::MidiError(format!("Failed to write MIDI data to {}: {}", path, e)))?;
+        smf.write_std(&mut file).map_err(|e| {
+            TunesError::MidiError(format!("Failed to write MIDI data to {}: {}", path, e))
+        })?;
 
-        file.flush()
-            .map_err(|e| TunesError::MidiError(format!("Failed to flush MIDI file {}: {}", path, e)))?;
+        file.flush().map_err(|e| {
+            TunesError::MidiError(format!("Failed to flush MIDI file {}: {}", path, e))
+        })?;
 
         Ok(())
     }
@@ -628,7 +643,7 @@ mod tests {
 
         // Test clamping - values beyond range should clamp
         assert_eq!(semitones_to_pitch_bend(10.0, 2.0), 16383); // Clamps to max
-        assert_eq!(semitones_to_pitch_bend(-10.0, 2.0), 0);    // Clamps to min
+        assert_eq!(semitones_to_pitch_bend(-10.0, 2.0), 0); // Clamps to min
     }
 
     #[test]
