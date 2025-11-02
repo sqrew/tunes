@@ -160,7 +160,7 @@ fn main() -> anyhow::Result<()> {
 
     // ===== MIDI EXPORT =====
     println!("\nExporting to MIDI with key signature metadata...");
-    mixer.export_midi("key_signatures_demo.mid", Tempo::new(120.0))?;
+    mixer.export_midi("key_signatures_demo.mid")?;
     println!("✅ Exported to key_signatures_demo.mid");
     println!("   Open in your DAW to see key signatures for each section!");
 

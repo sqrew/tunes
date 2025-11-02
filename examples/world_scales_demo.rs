@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("\n🌍  World Scales Showcase\n");
     println!("Demonstrating 55 scale patterns from around the world!\n");
 

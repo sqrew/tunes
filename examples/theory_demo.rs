@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("🎵 Music Theory Helpers Demo\n");
     println!("This demo shows how to use programmatic scale and chord generation");
     println!("instead of relying on hardcoded constants.\n");

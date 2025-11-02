@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("🎵 Instrument Showcase - New Voices and Percussion\n");
 
     let mut comp = Composition::new(Tempo::new(110.0));

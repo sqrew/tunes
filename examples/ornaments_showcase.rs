@@ -1,8 +1,8 @@
 use tunes::prelude::*;
-use std::error::Error;
+
 
 /// Comprehensive showcase of all ornamental and expressive techniques
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> anyhow::Result<()> {
     println!("🎵 Ornaments and Expression Showcase\n");
     println!("Demonstrating all classical ornaments and expressive techniques.\n");
 

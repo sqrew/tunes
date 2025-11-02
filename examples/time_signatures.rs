@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C4, E4, G4, C5], 0.5); // Back to 4/4
 
     let mixer1 = comp1.into_mixer();
-    mixer1.export_midi("time_sig_simple.mid", Tempo::new(120.0))?;
+    mixer1.export_midi("time_sig_simple.mid")?;
     println!("✓ Created time_sig_simple.mid - demonstrates 4/4 → 3/4 → 4/4");
 
     // Example 2: Waltz (3/4 throughout)
@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C3, C3, C3], 0.5);
 
     let mixer2 = comp2.into_mixer();
-    mixer2.export_midi("time_sig_waltz.mid", Tempo::new(180.0))?;
+    mixer2.export_midi("time_sig_waltz.mid")?;
     println!("✓ Created time_sig_waltz.mid - waltz in 3/4 time");
 
     // Example 3: Complex time signatures (5/4, 7/8)
@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C4, E4, G4, C5], 0.5);
 
     let mixer3 = comp3.into_mixer();
-    mixer3.export_midi("time_sig_complex.mid", Tempo::new(140.0))?;
+    mixer3.export_midi("time_sig_complex.mid")?;
     println!("✓ Created time_sig_complex.mid - demonstrates 5/4, 7/8, and 4/4");
 
     // Example 4: Progressive time signature changes
@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C5, E5, G5, C6], 0.5);
 
     let mixer4 = comp4.into_mixer();
-    mixer4.export_midi("time_sig_progressive.mid", Tempo::new(120.0))?;
+    mixer4.export_midi("time_sig_progressive.mid")?;
     println!("✓ Created time_sig_progressive.mid - 4/4 → 3/4 → 5/4 → 6/8 → 4/4");
 
     // Example 5: Combining tempo and time signature changes
@@ -86,7 +86,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C4, E4, G4, C5], 0.25);
 
     let mixer5 = comp5.into_mixer();
-    mixer5.export_midi("time_sig_with_tempo.mid", Tempo::new(120.0))?;
+    mixer5.export_midi("time_sig_with_tempo.mid")?;
     println!("✓ Created time_sig_with_tempo.mid - combines tempo and time signature changes");
 
     // Example 6: Multi-track with different time signature changes
@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
         .drum(DrumType::Snare);
 
     let mixer6 = comp6.into_mixer();
-    mixer6.export_midi("time_sig_multitrack.mid", Tempo::new(120.0))?;
+    mixer6.export_midi("time_sig_multitrack.mid")?;
     println!("✓ Created time_sig_multitrack.mid - multiple instruments with time signature changes");
 
     // Example 7: 6/8 time (compound meter)
@@ -141,7 +141,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C5, E5, G5, C5, E5, G5], 0.33);
 
     let mixer7 = comp7.into_mixer();
-    mixer7.export_midi("time_sig_6_8.mid", Tempo::new(80.0))?;
+    mixer7.export_midi("time_sig_6_8.mid")?;
     println!("✓ Created time_sig_6_8.mid - compound meter (6/8 time)");
 
     // Example 8: Odd time signatures (7/4, 11/8)
@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C4, D4, E4, F4, G4, A4, B4, C5, B4, A4, G4], 0.25);
 
     let mixer8 = comp8.into_mixer();
-    mixer8.export_midi("time_sig_odd.mid", Tempo::new(100.0))?;
+    mixer8.export_midi("time_sig_odd.mid")?;
     println!("✓ Created time_sig_odd.mid - odd time signatures (7/4 and 11/8)");
 
     println!("\n✓ All time signature examples generated successfully!");

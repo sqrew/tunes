@@ -135,7 +135,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     // Export to MIDI file
     let mixer = comp.into_mixer();
-    mixer.export_midi("song.mid", Tempo::new(120.0))?;
+    mixer.export_midi("song.mid")?;
     Ok(())
 }
 ```

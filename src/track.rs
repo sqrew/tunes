@@ -6,6 +6,7 @@ use crate::filter_envelope::FilterEnvelope;
 use crate::fm_synthesis::FMParams;
 use crate::key_signature::KeySignature;
 use crate::lfo::ModRoute;
+use crate::rhythm::Tempo;
 use crate::sample::Sample;
 use crate::waveform::Waveform;
 
@@ -555,11 +556,15 @@ impl Default for Track {
 #[derive(Debug, Clone)]
 pub struct Mixer {
     pub tracks: Vec<Track>,
+    pub tempo: Tempo,
 }
 
 impl Mixer {
-    pub fn new() -> Self {
-        Self { tracks: Vec::new() }
+    pub fn new(tempo: Tempo) -> Self {
+        Self {
+            tracks: Vec::new(),
+            tempo,
+        }
     }
 
     pub fn add_track(&mut self, track: Track) {
@@ -983,7 +988,7 @@ impl Mixer {
 
 impl Default for Mixer {
     fn default() -> Self {
-        Self::new()
+        Self::new(Tempo::new(120.0))
     }
 }
 
@@ -1134,13 +1139,13 @@ mod tests {
 
     #[test]
     fn test_mixer_creation() {
-        let mixer = Mixer::new();
+        let mixer = Mixer::new(Tempo::new(120.0));
         assert_eq!(mixer.tracks.len(), 0);
     }
 
     #[test]
     fn test_mixer_add_track() {
-        let mut mixer = Mixer::new();
+        let mut mixer = Mixer::new(Tempo::new(120.0));
         let mut track1 = Track::new();
         track1.add_note(&[440.0], 0.0, 1.0);
 
@@ -1155,7 +1160,7 @@ mod tests {
 
     #[test]
     fn test_mixer_total_duration() {
-        let mut mixer = Mixer::new();
+        let mut mixer = Mixer::new(Tempo::new(120.0));
 
         let mut track1 = Track::new();
         track1.add_note(&[440.0], 0.0, 2.0); // Ends at 2.0
@@ -1171,13 +1176,13 @@ mod tests {
 
     #[test]
     fn test_mixer_total_duration_empty() {
-        let mixer = Mixer::new();
+        let mixer = Mixer::new(Tempo::new(120.0));
         assert_eq!(mixer.total_duration(), 0.0);
     }
 
     #[test]
     fn test_mixer_repeat() {
-        let mut mixer = Mixer::new();
+        let mut mixer = Mixer::new(Tempo::new(120.0));
         let mut track = Track::new();
         track.add_note(&[440.0], 0.0, 1.0); // Ends at 1.0
         mixer.add_track(track);
@@ -1204,7 +1209,7 @@ mod tests {
 
     #[test]
     fn test_mixer_repeat_zero_times() {
-        let mut mixer = Mixer::new();
+        let mut mixer = Mixer::new(Tempo::new(120.0));
         let mut track = Track::new();
         track.add_note(&[440.0], 0.0, 1.0);
         mixer.add_track(track);

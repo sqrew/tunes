@@ -274,7 +274,7 @@ impl Composition {
 
     /// Convert this composition into a Mixer for playback
     pub fn into_mixer(self) -> Mixer {
-        let mut mixer = Mixer::new();
+        let mut mixer = Mixer::new(self.tempo);
         for (name, mut track) in self.tracks {
             track.name = Some(name);
             mixer.add_track(track);

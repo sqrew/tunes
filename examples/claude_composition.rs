@@ -1,9 +1,9 @@
 use tunes::prelude::*;
-use std::error::Error;
+
 
 // I let Claude Code compose a piece! It came out pretty interesting.
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> anyhow::Result<()> {
     println!("🎵 'Digital Reverie' - A composition by Claude");
     println!("   v8.0 FINAL - Maximum Impact\n");
 

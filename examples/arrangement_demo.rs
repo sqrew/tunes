@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("\n🎼  Arrangement System Demo\n");
     println!("Demonstrating section-based composition and arrangement\n");
 

@@ -1,6 +1,9 @@
-use crate::wavetable::WAVETABLE;
+use crate::wavetable::{WAVETABLE, SAWTOOTH_WAVETABLE, SQUARE_WAVETABLE, TRIANGLE_WAVETABLE};
 
 /// Different waveform types for synthesis
+///
+/// All waveforms use band-limited wavetables to prevent aliasing at high frequencies.
+/// This ensures clean audio quality across the entire frequency spectrum.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Waveform {
     Sine,
@@ -11,6 +14,10 @@ pub enum Waveform {
 
 impl Waveform {
     /// Generate a sample for this waveform at a given phase (0.0 to 1.0)
+    ///
+    /// All waveforms use pre-computed band-limited wavetables for high-quality,
+    /// alias-free synthesis. This is much faster than computing waveforms
+    /// mathematically and produces better audio quality.
     pub fn sample(&self, phase: f32) -> f32 {
         match self {
             Waveform::Sine => Self::sine(phase),
@@ -20,32 +27,39 @@ impl Waveform {
         }
     }
 
-    /// Sine wave: smooth, pure tone (using fast wavetable lookup)
+    /// Sine wave: smooth, pure tone (band-limited wavetable)
+    ///
+    /// Sine waves are already band-limited (single harmonic), so no aliasing occurs.
+    #[inline]
     fn sine(phase: f32) -> f32 {
         WAVETABLE.sample(phase)
     }
 
-    /// Square wave: rich in odd harmonics, hollow sound
+    /// Square wave: rich in odd harmonics, hollow sound (band-limited wavetable)
+    ///
+    /// Uses additive synthesis with band-limited harmonics to prevent aliasing.
+    /// Sounds identical to a perfect square wave but without the harsh digital artifacts.
+    #[inline]
     fn square(phase: f32) -> f32 {
-        if phase < 0.5 {
-            1.0
-        } else {
-            -1.0
-        }
+        SQUARE_WAVETABLE.sample(phase)
     }
 
-    /// Sawtooth wave: rich in harmonics, buzzy/bright sound
+    /// Sawtooth wave: rich in all harmonics, buzzy/bright sound (band-limited wavetable)
+    ///
+    /// Uses additive synthesis with band-limited harmonics to prevent aliasing.
+    /// Produces a clean, bright sound suitable for leads and basses.
+    #[inline]
     fn sawtooth(phase: f32) -> f32 {
-        2.0 * phase - 1.0
+        SAWTOOTH_WAVETABLE.sample(phase)
     }
 
-    /// Triangle wave: smoother than square, fewer harmonics
+    /// Triangle wave: smooth, few harmonics (band-limited wavetable)
+    ///
+    /// Uses additive synthesis with band-limited odd harmonics at 1/n² amplitude.
+    /// Produces a rounder, softer sound than square waves.
+    #[inline]
     fn triangle(phase: f32) -> f32 {
-        if phase < 0.5 {
-            4.0 * phase - 1.0
-        } else {
-            -4.0 * phase + 3.0
-        }
+        TRIANGLE_WAVETABLE.sample(phase)
     }
 
     /// Generate a sample for a frequency at a given sample clock and sample rate

@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("\n🎛️  Pattern Modifiers Demo\n");
     println!("Demonstrating .speed() and .probability() pattern transformations\n");
 

@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("\n🎵 Microtonal Music Demonstration\n");
     println!("Exploring alternative tuning systems beyond 12-tone equal temperament.\n");
 

@@ -5,7 +5,6 @@
 
 use crate::drums::DrumType;
 use crate::error::{Result, TunesError};
-use crate::rhythm::Tempo;
 use crate::track::{AudioEvent, Mixer};
 use midly::{
     num::{u14, u15, u24, u28, u4, u7},
@@ -145,9 +144,10 @@ fn mod_value_to_cc(value: f32, bipolar: bool) -> u8 {
 impl Mixer {
     /// Export the mixer to a MIDI file
     ///
+    /// Uses the tempo from the composition automatically.
+    ///
     /// # Arguments
     /// * `path` - Output file path (e.g., "song.mid")
-    /// * `tempo` - Tempo in BPM
     ///
     /// # Limitations
     /// MIDI export has inherent limitations compared to audio rendering:
@@ -165,15 +165,15 @@ impl Mixer {
     /// comp.track("melody").notes(&[C4, E4, G4], 0.5);
     ///
     /// let mixer = comp.into_mixer();
-    /// mixer.export_midi("song.mid", Tempo::new(120.0))?;
+    /// mixer.export_midi("song.mid")?;  // Uses composition's tempo automatically
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_midi(&self, path: &str, tempo: Tempo) -> Result<()> {
+    pub fn export_midi(&self, path: &str) -> Result<()> {
         let mut tracks = Vec::new();
 
         // Keep initial BPM for time-to-tick conversions
-        let bpm = tempo.bpm;
+        let bpm = self.tempo.bpm;
 
         // Track 0: Tempo track (meta information)
         let mut tempo_track = Vec::new();

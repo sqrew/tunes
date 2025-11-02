@@ -150,7 +150,26 @@ impl Wavetable {
         Self::from_harmonics(DEFAULT_TABLE_SIZE, &harmonics)
     }
 
-    /// Create a triangle wave wavetable
+    /// Create a band-limited triangle wave (reduces aliasing)
+    ///
+    /// Uses additive synthesis with odd harmonics at 1/n² amplitude.
+    /// Triangle waves contain odd harmonics like square waves, but
+    /// they decay much faster (1/n² vs 1/n), giving a rounder sound.
+    pub fn triangle_bandlimited() -> Self {
+        // Triangle = odd harmonics with 1/n² amplitude
+        let harmonics: Vec<(usize, f32)> = (0..16)
+            .map(|i| {
+                let n = 2 * i + 1; // Odd numbers: 1, 3, 5, 7...
+                let sign = if i % 2 == 0 { 1.0 } else { -1.0 }; // Alternating signs
+                (n, sign / (n * n) as f32)
+            })
+            .collect();
+        Self::from_harmonics(DEFAULT_TABLE_SIZE, &harmonics)
+    }
+
+    /// Create a naive triangle wave (aliasing, for compatibility)
+    ///
+    /// Note: This will alias at high frequencies. Use `triangle_bandlimited()` instead.
     pub fn triangle() -> Self {
         Self::from_fn(DEFAULT_TABLE_SIZE, |phase| {
             if phase < 0.5 {
@@ -220,10 +239,20 @@ impl Default for Wavetable {
     }
 }
 
-// Global sine wavetable instance (initialized once, used everywhere)
-// This is thread-safe because Wavetable is read-only after creation
+// Global wavetable instances (initialized once, used everywhere)
+// These are thread-safe because Wavetable is read-only after creation
 lazy_static::lazy_static! {
+    /// Global sine wavetable (used for Waveform::Sine)
     pub static ref WAVETABLE: Wavetable = Wavetable::sine();
+
+    /// Global band-limited sawtooth wavetable (used for Waveform::Sawtooth)
+    pub static ref SAWTOOTH_WAVETABLE: Wavetable = Wavetable::saw_bandlimited();
+
+    /// Global band-limited square wavetable (used for Waveform::Square)
+    pub static ref SQUARE_WAVETABLE: Wavetable = Wavetable::square_bandlimited();
+
+    /// Global band-limited triangle wavetable (used for Waveform::Triangle)
+    pub static ref TRIANGLE_WAVETABLE: Wavetable = Wavetable::triangle_bandlimited();
 }
 
 #[cfg(test)]

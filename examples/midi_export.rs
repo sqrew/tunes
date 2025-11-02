@@ -44,7 +44,7 @@ fn main() -> anyhow::Result<()> {
 
     // Export to MIDI file
     println!("Exporting to 'output.mid'...");
-    mixer.export_midi("output.mid", Tempo::new(120.0))?;
+    mixer.export_midi("output.mid")?;
 
     println!("✅ MIDI file created successfully!\n");
 

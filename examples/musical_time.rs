@@ -1,8 +1,8 @@
 use tunes::prelude::*;
-use std::error::Error;
+
 
 /// Demonstrate musical time notation (bars, beats, quarters, eighths, etc.)
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> anyhow::Result<()> {
     println!("🎵 Musical Time Notation Demo\n");
     println!("Using tempo-aware musical notation instead of raw seconds.\n");
 

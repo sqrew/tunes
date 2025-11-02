@@ -1,7 +1,7 @@
 use tunes::prelude::*;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> anyhow::Result<()> {
     println!("🎹 Classical Compositional Techniques Demo\n");
     println!("Demonstrating:");
     println!("1. Alberti Bass - The quintessential Classical accompaniment (Mozart, Haydn)");

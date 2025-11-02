@@ -1,8 +1,8 @@
 use tunes::prelude::*;
-use std::error::Error;
+
 
 /// Comprehensive showcase of all audio effects
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> anyhow::Result<()> {
     println!("🎛️  Audio Effects Showcase\n");
     println!("Demonstrating all available audio effects and combinations.\n");
 
