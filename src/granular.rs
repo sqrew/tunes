@@ -21,7 +21,7 @@
 //! ```
 
 use crate::sample::Sample;
-use crate::track::{AudioEvent, SampleEvent};
+use crate::track::SampleEvent;
 use rand::Rng;
 
 /// Parameters for granular synthesis
@@ -328,10 +328,16 @@ mod tests {
         assert!(texture.density > 0.5, "Texture should have high density");
 
         let freeze = GranularParams::freeze();
-        assert!(freeze.position_spread < 0.1, "Freeze should have low spread");
+        assert!(
+            freeze.position_spread < 0.1,
+            "Freeze should have low spread"
+        );
 
         let glitch = GranularParams::glitch();
-        assert!(glitch.grain_size_ms < 30.0, "Glitch should have small grains");
+        assert!(
+            glitch.grain_size_ms < 30.0,
+            "Glitch should have small grains"
+        );
     }
 
     #[test]
@@ -439,7 +445,9 @@ mod tests {
 
         // Check that not all playback rates are identical (with high variation)
         let first_rate = playback_rates[0];
-        let has_variation = playback_rates.iter().any(|&rate| (rate - first_rate).abs() > 0.05);
+        let has_variation = playback_rates
+            .iter()
+            .any(|&rate| (rate - first_rate).abs() > 0.05);
 
         if params.pitch_variation > 0.1 {
             assert!(

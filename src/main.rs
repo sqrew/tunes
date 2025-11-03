@@ -13,6 +13,7 @@ mod error;
 mod filter;
 mod filter_envelope;
 mod fm_synthesis;
+mod granular;
 mod instruments;
 mod key_signature;
 mod lfo;

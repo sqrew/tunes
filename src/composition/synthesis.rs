@@ -1,5 +1,5 @@
 use crate::composition::TrackBuilder;
-use crate::granular::{create_granular_events, GranularParams};
+use crate::granular::{GranularParams, create_granular_events};
 use crate::noise::NoiseType;
 use crate::prelude::{FMParams, FilterEnvelope};
 use crate::sample::Sample;
@@ -197,12 +197,7 @@ impl<'a> TrackBuilder<'a> {
     /// comp.track("glitch")
     ///     .granular("drums.wav", GranularParams::glitch(), 2.0);
     /// ```
-    pub fn granular(
-        mut self,
-        sample_path: &str,
-        params: GranularParams,
-        duration: f32,
-    ) -> Self {
+    pub fn granular(mut self, sample_path: &str, params: GranularParams, duration: f32) -> Self {
         // Load the sample
         let source_sample = match Sample::from_wav(sample_path) {
             Ok(sample) => sample,
