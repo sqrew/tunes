@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Granular Synthesis
+- **Granular synthesis engine** - Break audio into tiny grains for texture creation and time manipulation
+- **6 granular presets**: `texture()`, `time_stretch()`, `freeze()`, `glitch()`, `cloud()`, `default()`
+- **`.granular()` method** on TrackBuilder for applying granular effects to samples
+- **Hann window envelope** - Smooth grain edges to prevent clicks
+- Time-stretching, spectral freezing, and glitch effects support
+
+#### Noise Generators
+- **White noise generator** - Equal energy at all frequencies for hi-hats, percussion, textures
+- **Brown noise generator** - Low-frequency bias using random walk for bass rumbles and drones
+- **`.noise()` method** on TrackBuilder - Add noise directly to compositions
+- **NoiseGenerator trait** - Extensible system for custom noise implementations
+- Seeded generators for deterministic noise patterns
+
+#### Algorithmic Sequences
+- **L-Systems (Lindenmayer Systems)** - Fractal pattern generation for organic melodies
+- **Markov Chains** - Probabilistic sequence generation with weighted state transitions
+- **Cantor Set** - Fractal rhythmic patterns through recursive subdivision
+- **Scale Mapping** - Quantize sequences to musical scales with 12 scale types:
+  - Major/Minor Pentatonic, Major, Minor, Harmonic Minor
+  - Blues, Chromatic, Whole Tone
+  - Dorian, Phrygian, Lydian, Mixolydian modes
+- **Shepard Tone** - Circular pitch patterns for infinite rise/fall illusions
+
+#### Sample Manipulation
+- **`.slice(start, end)`** - Extract portions of audio samples
+- **`.normalize()`** - Normalize sample amplitude to maximum level
+- **`.reverse()`** - Reverse sample playback
+- **`.fade_in(duration)` and `.fade_out(duration)`** - Smooth fade transitions
+- **`.with_gain(gain)`** - Apply volume adjustment
+- **`.from_mono()`** - Constructor for creating mono samples from raw data
+- **Loop support** - `.with_loop(start, end)` for seamless sample looping
+
+#### Filters
+- **Moog ladder filter** - Classic analog filter with resonance and self-oscillation
+- Four-pole cascade design with authentic Moog character
+- Adjustable cutoff frequency and resonance
+
+### Changed
+
+#### Performance Optimizations
+- **Effects optimization** - Improved Gate and Limiter implementations
+- **Filter optimization** - Enhanced DSP efficiency across all filter types
+- **Waveform generation** - Removed unnecessary modulo operations
+- **Wavetable synthesis** - Pre-computed reciprocals in harmonic generation
+
+### Fixed
+- Noise duration bug - Duration parameter now correctly uses seconds (not beats)
+- Cantor Set algorithm - Fixed incorrect subdivision logic
+- Shepard Tone - Fixed out-of-range values in descending patterns
+- Brown noise test - Made deterministic with seeded generator for reliability
+
 ## [0.1.0] - 2025-10-30
 
 ### Added
@@ -105,9 +159,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom waveform support
 
 #### Testing & Quality
-- 331 unit tests covering all modules
-- 76 documentation tests with examples
-- Comprehensive test coverage for composition, drums, effects, and theory
+- 607 unit tests covering all modules
+- 178 documentation tests with examples
+- Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples
 - 20+ complete working examples
