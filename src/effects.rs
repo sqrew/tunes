@@ -243,7 +243,8 @@ impl Reverb {
             let delayed = buffer[pos];
 
             // Apply damping filter (simple lowpass) using FMA
-            self.filter_state[i] = delayed.mul_add(inv_damping, self.filter_state[i] * self.damping);
+            self.filter_state[i] =
+                delayed.mul_add(inv_damping, self.filter_state[i] * self.damping);
 
             // Write to buffer with feedback using FMA
             buffer[pos] = self.filter_state[i].mul_add(feedback, input);
@@ -573,7 +574,11 @@ impl Compressor {
         let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
 
         // Use FMA for envelope calculation
-        let coeff = if input_level > self.envelope { attack_coeff } else { release_coeff };
+        let coeff = if input_level > self.envelope {
+            attack_coeff
+        } else {
+            release_coeff
+        };
         self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
 
         // Clamp envelope to prevent runaway values
@@ -1614,7 +1619,7 @@ pub struct Gate {
     pub release: f32,   // Release time in seconds
     pub priority: u8,   // Processing priority
     envelope: f32,      // Current envelope value (0.0 to 1.0)
-    sample_rate: f32,
+    _sample_rate: f32,
 
     // Automation (optional)
     threshold_automation: Option<Automation>,
@@ -1644,7 +1649,7 @@ impl Gate {
             release: release.max(0.001),
             priority: PRIORITY_EARLY, // Gates typically go early in the chain
             envelope: 0.0,
-            sample_rate,
+            _sample_rate: sample_rate,
             threshold_automation: None,
             ratio_automation: None,
         }
@@ -1740,7 +1745,7 @@ pub struct Limiter {
     pub release: f32,    // Release time in seconds
     pub priority: u8,    // Processing priority
     gain_reduction: f32, // Current gain reduction (0.0 to 1.0)
-    sample_rate: f32,
+    _sample_rate: f32,
 
     // Automation (optional)
     threshold_automation: Option<Automation>,
@@ -1759,7 +1764,7 @@ impl Limiter {
             release: release.max(0.001),
             priority: PRIORITY_LAST, // Limiters go last to catch peaks
             gain_reduction: 1.0,
-            sample_rate,
+            _sample_rate: sample_rate,
             threshold_automation: None,
         }
     }

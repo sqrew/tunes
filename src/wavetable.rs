@@ -49,8 +49,9 @@ impl Wavetable {
         F: Fn(f32) -> f32,
     {
         let mut table = Vec::with_capacity(size);
+        let size_recip = 1.0 / (size as f32);
         for i in 0..size {
-            let phase = (i as f32) / (size as f32);
+            let phase = (i as f32) * size_recip;
             table.push(f(phase));
         }
         Self {
@@ -94,11 +95,14 @@ impl Wavetable {
     /// ```
     pub fn from_harmonics(size: usize, harmonics: &[(usize, f32)]) -> Self {
         let mut table = vec![0.0; size];
+        const TWO_PI: f32 = 2.0 * PI;
 
+        let size_recip = 1.0 / (size as f32);
         for &(harmonic, amplitude) in harmonics {
+            let harmonic_f32 = harmonic as f32;
             for i in 0..size {
-                let phase = (i as f32) / (size as f32);
-                table[i] += amplitude * (phase * harmonic as f32 * 2.0 * PI).sin();
+                let phase = (i as f32) * size_recip;
+                table[i] += amplitude * (phase * harmonic_f32 * TWO_PI).sin();
             }
         }
 

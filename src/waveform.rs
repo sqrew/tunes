@@ -64,8 +64,9 @@ impl Waveform {
     }
 
     /// Generate a sample for a frequency at a given sample clock and sample rate
+    #[inline(always)]
     pub fn sample_at(&self, frequency: f32, sample_clock: f32, sample_rate: f32) -> f32 {
-        let phase = (sample_clock * frequency / sample_rate) % 1.0;
+        let phase = sample_clock * frequency / sample_rate;
         self.sample(phase)
     }
 }

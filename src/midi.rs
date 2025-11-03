@@ -481,15 +481,18 @@ impl Mixer {
                         };
 
                         // Sample the LFO at regular intervals
+                        // Make a mutable copy to tick through
+                        let mut lfo_copy = mod_route.lfo;
                         for i in 0..num_samples {
                             let time = i as f32 * sample_interval;
                             let tick = seconds_to_ticks(time, bpm, PPQ);
 
-                            // Get LFO value
+                            // Tick the LFO and get value
+                            lfo_copy.tick();
                             let lfo_value = if bipolar {
-                                mod_route.lfo.bipolar_value_at(time) * mod_route.amount
+                                lfo_copy.bipolar_value() * mod_route.amount
                             } else {
-                                mod_route.lfo.value_at(time)
+                                lfo_copy.value()
                             };
 
                             // Convert to CC value

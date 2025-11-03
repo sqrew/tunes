@@ -1025,7 +1025,6 @@ impl Mixer {
                                 sample_event.sample.sample_at_interpolated(
                                     time_in_sample,
                                     sample_event.playback_rate,
-                                    sample_rate,
                                 );
                             track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
                         }
@@ -1138,16 +1137,19 @@ impl Mixer {
             let mut modulated_cutoff = filter_env_cutoff;
             let mut modulated_resonance = track.filter.resonance;
 
-            for mod_route in &track.modulation {
+            for mod_route in &mut track.modulation {
+                // Tick the LFO to advance its phase
+                mod_route.lfo.tick();
+
                 match mod_route.target {
                     crate::lfo::ModTarget::Volume => {
-                        modulated_volume = mod_route.apply(time, modulated_volume);
+                        modulated_volume = mod_route.apply(modulated_volume);
                     }
                     crate::lfo::ModTarget::FilterCutoff => {
-                        modulated_cutoff = mod_route.apply(time, modulated_cutoff);
+                        modulated_cutoff = mod_route.apply(modulated_cutoff);
                     }
                     crate::lfo::ModTarget::FilterResonance => {
-                        modulated_resonance = mod_route.apply(time, modulated_resonance);
+                        modulated_resonance = mod_route.apply(modulated_resonance);
                     }
                     _ => {} // Other modulation targets handled elsewhere
                 }
