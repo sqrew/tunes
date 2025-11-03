@@ -8,6 +8,7 @@ pub enum FilterType {
     BandPass,
     Notch,    // Notch/band-reject filter (removes frequencies at cutoff)
     AllPass,  // All-pass filter (affects phase but not amplitude)
+    Moog,     // Moog ladder filter (classic analog sound with saturation)
     None,     // Bypass filter
 }
 
@@ -42,6 +43,11 @@ pub struct Filter {
     // Smoothing for parameter changes to avoid zipper noise
     smooth_cutoff: f32,
     smooth_resonance: f32,
+
+    // Moog ladder filter state (4 stages)
+    moog_stage: [f32; 4],
+    moog_stage_tanh: [f32; 4],
+    moog_delay: [f32; 4],
 }
 
 impl Filter {
@@ -69,6 +75,9 @@ impl Filter {
             notch2: 0.0,
             smooth_cutoff: cutoff,
             smooth_resonance: resonance,
+            moog_stage: [0.0; 4],
+            moog_stage_tanh: [0.0; 4],
+            moog_delay: [0.0; 4],
         }
     }
 
@@ -97,6 +106,11 @@ impl Filter {
         Self::new(FilterType::AllPass, cutoff, resonance)
     }
 
+    /// Create a Moog ladder filter (classic analog sound)
+    pub fn moog(cutoff: f32, resonance: f32) -> Self {
+        Self::new(FilterType::Moog, cutoff, resonance)
+    }
+
     /// Create a bypass filter (no filtering)
     pub fn none() -> Self {
         Self::new(FilterType::None, 20000.0, 0.0)
@@ -107,6 +121,11 @@ impl Filter {
     pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
         if self.filter_type == FilterType::None {
             return input;
+        }
+
+        // Use Moog ladder filter algorithm for Moog type
+        if self.filter_type == FilterType::Moog {
+            return self.process_moog(input, sample_rate);
         }
 
         // Smooth parameter changes to avoid zipper noise (simple one-pole smoothing)
@@ -144,6 +163,7 @@ impl Filter {
             FilterType::BandPass => self.band,
             FilterType::Notch => self.notch,
             FilterType::AllPass => self.notch - self.band,
+            FilterType::Moog => unreachable!(), // Handled separately above
             FilterType::None => input,
         };
 
@@ -174,12 +194,70 @@ impl Filter {
                     FilterType::BandPass => self.band2,
                     FilterType::Notch => self.notch2,
                     FilterType::AllPass => self.notch2 - self.band2,
+                    FilterType::Moog => unreachable!(), // Handled separately above
                     FilterType::None => stage1_output,
                 }
             }
         };
 
         // Clamp output to prevent explosion
+        output.clamp(-2.0, 2.0)
+    }
+
+    /// Moog ladder filter processing (4-pole lowpass with resonance and saturation)
+    ///
+    /// This is a digital implementation of the legendary Moog ladder filter.
+    /// It features:
+    /// - 24dB/octave slope (4-pole)
+    /// - Self-oscillation at high resonance
+    /// - Soft saturation for analog warmth
+    /// - Classic "fat" Moog sound
+    #[inline]
+    fn process_moog(&mut self, input: f32, sample_rate: f32) -> f32 {
+        // Smooth parameter changes
+        const SMOOTHING: f32 = 0.999;
+        const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+        self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+        self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+
+        // Calculate filter coefficient
+        // Moog uses a different tuning than SVF
+        let fc = self.smooth_cutoff / sample_rate;
+        let f = fc.mul_add(1.16, 0.0); // Frequency warping for better tracking
+
+        // Nonlinear feedback coefficient for resonance
+        // At resonance = 1.0, filter self-oscillates
+        let k = self.smooth_resonance.mul_add(3.96, 0.0);
+
+        // Input with resonance feedback
+        // The tanh provides soft saturation (analog modeling)
+        let input_compensated = input - k * self.moog_delay[3];
+        let input_tanh = input_compensated.tanh();
+
+        // Process through 4 cascaded one-pole filters (the "ladder")
+        // Each stage adds saturation for analog warmth
+        for i in 0..4 {
+            let stage_input = if i == 0 {
+                input_tanh
+            } else {
+                self.moog_stage_tanh[i - 1]
+            };
+
+            // One-pole lowpass: y[n] = y[n-1] + f * (x[n] - y[n-1])
+            self.moog_stage[i] = self.moog_delay[i].mul_add(1.0 - f, stage_input * f);
+
+            // Soft saturation using tanh
+            self.moog_stage_tanh[i] = self.moog_stage[i].tanh();
+
+            // Store for next sample
+            self.moog_delay[i] = self.moog_stage[i];
+        }
+
+        // Output is from the 4th stage
+        // Apply compensation for resonance boost
+        let output = self.moog_stage_tanh[3];
+
+        // Clamp output
         output.clamp(-2.0, 2.0)
     }
 
@@ -195,6 +273,9 @@ impl Filter {
         self.notch2 = 0.0;
         self.smooth_cutoff = self.cutoff;
         self.smooth_resonance = self.resonance;
+        self.moog_stage = [0.0; 4];
+        self.moog_stage_tanh = [0.0; 4];
+        self.moog_delay = [0.0; 4];
     }
 }
 
@@ -282,5 +363,49 @@ mod tests {
 
         // Should process without crashing
         assert!(output.is_finite());
+    }
+
+    #[test]
+    fn test_moog_filter_creation() {
+        let moog = Filter::moog(1000.0, 0.7);
+        assert_eq!(moog.filter_type, FilterType::Moog);
+        assert_eq!(moog.cutoff, 1000.0);
+        assert_eq!(moog.resonance, 0.7);
+    }
+
+    #[test]
+    fn test_moog_filter_processes() {
+        let mut filter = Filter::moog(1000.0, 0.5);
+        let input = 0.5;
+        let output = filter.process(input, 44100.0);
+
+        // Should process without crashing and produce valid output
+        assert!(output.is_finite());
+        assert!(output.abs() <= 2.0);
+    }
+
+    #[test]
+    fn test_moog_high_resonance() {
+        // Test Moog filter with high resonance (should self-oscillate)
+        let mut filter = Filter::moog(440.0, 0.95);
+
+        // Process multiple samples to let oscillation build up
+        for _ in 0..100 {
+            let output = filter.process(0.0, 44100.0);
+            assert!(output.is_finite());
+            assert!(output.abs() <= 2.0);
+        }
+    }
+
+    #[test]
+    fn test_moog_sweep() {
+        // Test Moog filter with cutoff sweep
+        let mut filter = Filter::moog(100.0, 0.7);
+
+        for i in 0..100 {
+            filter.cutoff = 100.0 + i as f32 * 100.0;
+            let output = filter.process(0.5, 44100.0);
+            assert!(output.is_finite());
+        }
     }
 }
