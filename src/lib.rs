@@ -34,6 +34,7 @@ pub mod error;
 pub mod filter;
 pub mod filter_envelope;
 pub mod fm_synthesis;
+pub mod granular;
 pub mod instruments;
 pub mod key_signature;
 pub mod lfo;
@@ -94,6 +95,9 @@ pub mod prelude {
 
     // Noise
     pub use crate::noise::NoiseType;
+
+    // Granular synthesis
+    pub use crate::granular::GranularParams;
 
     // Sequences
     pub use crate::sequences::{

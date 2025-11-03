@@ -1,4 +1,5 @@
 use crate::composition::TrackBuilder;
+use crate::granular::{create_granular_events, GranularParams};
 use crate::noise::NoiseType;
 use crate::prelude::{FMParams, FilterEnvelope};
 use crate::sample::Sample;
@@ -164,6 +165,66 @@ impl<'a> TrackBuilder<'a> {
         track.events.push(AudioEvent::Sample(sample_event));
 
         // Advance cursor (duration is in seconds)
+        self.cursor += duration;
+
+        self
+    }
+
+    /// Apply granular synthesis to a sample file
+    ///
+    /// Granular synthesis breaks audio into tiny "grains" (5-100ms) and rearranges/overlaps them
+    /// to create rich textures, time-stretching effects, or surreal sonic transformations.
+    ///
+    /// # Arguments
+    /// * `sample_path` - Path to the audio file to granulate
+    /// * `params` - Granular synthesis parameters (use presets or create custom)
+    /// * `duration` - Output duration in seconds
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # use tunes::granular::GranularParams;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Create lush texture from a vocal sample
+    /// comp.track("texture")
+    ///     .granular("voice.wav", GranularParams::texture(), 5.0);
+    ///
+    /// // Freeze a moment in time
+    /// comp.track("frozen")
+    ///     .granular("guitar.wav", GranularParams::freeze(), 3.0);
+    ///
+    /// // Glitchy stutters
+    /// comp.track("glitch")
+    ///     .granular("drums.wav", GranularParams::glitch(), 2.0);
+    /// ```
+    pub fn granular(
+        mut self,
+        sample_path: &str,
+        params: GranularParams,
+        duration: f32,
+    ) -> Self {
+        // Load the sample
+        let source_sample = match Sample::from_wav(sample_path) {
+            Ok(sample) => sample,
+            Err(e) => {
+                eprintln!("Error loading sample '{}': {}", sample_path, e);
+                return self;
+            }
+        };
+
+        // Capture cursor before mutable borrow
+        let start_time = self.cursor;
+
+        // Generate all the grain events
+        let grain_events = create_granular_events(&source_sample, &params, duration, start_time);
+
+        // Add all events to the track
+        let track = self.get_track_mut();
+        for event in grain_events {
+            track.events.push(AudioEvent::Sample(event));
+        }
+
+        // Advance cursor
         self.cursor += duration;
 
         self
