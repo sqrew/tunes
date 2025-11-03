@@ -1359,6 +1359,607 @@ pub fn cellular_automaton(
     history
 }
 
+/// L-System (Lindenmayer System) - Fractal growth patterns
+///
+/// L-Systems are parallel rewriting systems that produce complex patterns from simple rules.
+/// Originally developed by biologist Aristid Lindenmayer to model plant growth, they're now
+/// used extensively in computer graphics, music, and generative art.
+///
+/// An L-System consists of:
+/// - **Axiom**: Starting string/pattern
+/// - **Rules**: How each symbol transforms in parallel
+/// - **Iterations**: How many times to apply the rules
+///
+/// Example: Algae growth
+/// - Axiom: "A"
+/// - Rules: A → AB, B → A
+/// - Evolution: A → AB → ABA → ABAAB → ABAABABA...
+///
+/// This creates the Fibonacci sequence in string length!
+///
+/// # Arguments
+/// * `axiom` - Starting pattern (string of characters)
+/// * `rules` - HashMap of transformation rules (char → String)
+/// * `iterations` - Number of generations to evolve
+///
+/// # Returns
+/// String representing the evolved pattern after n iterations
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+/// use std::collections::HashMap;
+///
+/// // Fibonacci pattern (algae growth)
+/// let mut rules = HashMap::new();
+/// rules.insert('A', "AB".to_string());
+/// rules.insert('B', "A".to_string());
+/// let pattern = sequences::lsystem("A", &rules, 4);
+/// // "A" → "AB" → "ABA" → "ABAAB" → "ABAABABA"
+/// assert_eq!(pattern, "ABAABABA");
+///
+/// // Convert to numeric sequence for music
+/// let values: Vec<u32> = pattern.chars()
+///     .map(|c| if c == 'A' { 1 } else { 2 })
+///     .collect();
+/// // Use for melody, rhythm, or structure!
+/// ```
+///
+/// # Musical Applications
+/// - **Melodic contours**: Map symbols to pitches (A=C, B=D, C=E, etc.)
+/// - **Rhythmic patterns**: Map symbols to note durations
+/// - **Formal structure**: Use pattern length to determine section lengths
+/// - **Fractal melodies**: Self-similar patterns at different scales
+/// - **Branching harmonies**: Create chord progressions that branch and grow
+/// - **Texture evolution**: Map symbols to instrument layers appearing/disappearing
+///
+/// # Famous L-Systems
+///
+/// **Fibonacci (Algae):**
+/// - Rules: A→AB, B→A
+/// - Creates Fibonacci sequence lengths: 1,2,3,5,8,13,21...
+///
+/// **Cantor Set (Fractal):**
+/// - Rules: A→ABA, B→BBB
+/// - Creates Cantor set (removing middle thirds)
+///
+/// **Dragon Curve:**
+/// - Rules: X→X+YF+, Y→-FX-Y
+/// - Creates famous dragon fractal
+///
+/// **Thue-Morse:**
+/// - Rules: A→AB, B→BA
+/// - Same as Thue-Morse sequence!
+///
+/// **Binary Tree:**
+/// - Rules: 0→1[0]0, 1→11
+/// - Creates branching tree structure
+///
+/// # Example: Musical Phrase Generator
+/// ```
+/// # use tunes::sequences;
+/// # use std::collections::HashMap;
+/// // Create a melodic pattern that grows organically
+/// let mut rules = HashMap::new();
+/// rules.insert('C', "CD".to_string());   // Root expands up
+/// rules.insert('D', "CE".to_string());   // Second up to third
+/// rules.insert('E', "CG".to_string());   // Third jumps to fifth
+/// rules.insert('G', "C".to_string());    // Fifth returns home
+///
+/// let melody = sequences::lsystem("C", &rules, 4);
+/// // Evolution: C → CD → CDCE → CDCECG → CDCECGCE...
+///
+/// // Map to frequencies
+/// let pitch_map: HashMap<char, f32> = [
+///     ('C', 261.63),
+///     ('D', 293.66),
+///     ('E', 329.63),
+///     ('G', 392.00),
+/// ].iter().cloned().collect();
+///
+/// let frequencies: Vec<f32> = melody.chars()
+///     .filter_map(|c| pitch_map.get(&c))
+///     .copied()
+///     .collect();
+/// ```
+pub fn lsystem(axiom: &str, rules: &std::collections::HashMap<char, String>, iterations: usize) -> String {
+    let mut current = axiom.to_string();
+
+    for _ in 0..iterations {
+        let mut next = String::new();
+
+        for ch in current.chars() {
+            if let Some(replacement) = rules.get(&ch) {
+                next.push_str(replacement);
+            } else {
+                // If no rule exists, keep the character unchanged
+                next.push(ch);
+            }
+        }
+
+        current = next;
+    }
+
+    current
+}
+
+/// Convert L-System string to numeric sequence
+///
+/// Maps each unique character to a number (A=0, B=1, C=2, etc.)
+/// Useful for converting L-System patterns into musical parameters.
+///
+/// # Arguments
+/// * `pattern` - L-System generated string
+///
+/// # Returns
+/// Vector of u32 values representing the pattern
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+/// use std::collections::HashMap;
+///
+/// let mut rules = HashMap::new();
+/// rules.insert('A', "AB".to_string());
+/// rules.insert('B', "A".to_string());
+/// let pattern = sequences::lsystem("A", &rules, 4);
+/// let values = sequences::lsystem_to_sequence(&pattern);
+/// // Maps: A=0, B=1 → [0,1,0,0,1]
+/// ```
+pub fn lsystem_to_sequence(pattern: &str) -> Vec<u32> {
+    use std::collections::HashMap;
+
+    let mut char_map: HashMap<char, u32> = HashMap::new();
+    let mut next_id = 0u32;
+
+    pattern
+        .chars()
+        .map(|ch| {
+            *char_map.entry(ch).or_insert_with(|| {
+                let id = next_id;
+                next_id += 1;
+                id
+            })
+        })
+        .collect()
+}
+
+/// Markov Chain - Probabilistic sequence generation
+///
+/// A Markov chain generates sequences based on learned transition probabilities.
+/// It looks at the current state and chooses the next state based on observed patterns.
+///
+/// This is perfect for:
+/// - Learning from existing music and generating similar patterns
+/// - Creating variations that "sound like" a source material
+/// - Building melodic or rhythmic patterns with statistical coherence
+///
+/// # Order
+/// - **Order 1**: Next state depends only on current state (most common)
+/// - **Order 2**: Next state depends on last 2 states (more context)
+/// - **Order N**: Next state depends on last N states (even more memory)
+///
+/// Higher orders capture more complex patterns but need more training data.
+///
+/// # Arguments
+/// * `transitions` - HashMap mapping states to possible next states with weights
+/// * `start_state` - Initial state to begin generation
+/// * `length` - Number of steps to generate
+///
+/// # Returns
+/// Vector of states forming a Markov-generated sequence
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+/// use std::collections::HashMap;
+///
+/// // Simple melody generator (C major scale transitions)
+/// let mut transitions: HashMap<u32, Vec<(u32, f32)>> = HashMap::new();
+///
+/// // From C (0): likely to go to D (1) or stay on C
+/// transitions.insert(0, vec![(0, 0.2), (1, 0.5), (2, 0.3)]);
+///
+/// // From D (1): likely to go to E (2) or back to C (0)
+/// transitions.insert(1, vec![(0, 0.3), (2, 0.6), (3, 0.1)]);
+///
+/// // From E (2): likely to go to G (4) or back to D (1)
+/// transitions.insert(2, vec![(1, 0.3), (4, 0.5), (0, 0.2)]);
+///
+/// // From G (4): likely to resolve back down
+/// transitions.insert(4, vec![(2, 0.4), (0, 0.6)]);
+///
+/// let melody = sequences::markov_chain(&transitions, 0, 16);
+/// // Generates a 16-note melody following the transition probabilities
+/// ```
+///
+/// # Musical Applications
+/// - **Melody generation**: Learn from existing melodies, generate similar ones
+/// - **Chord progressions**: Model harmonic movement (I→IV, IV→V, V→I, etc.)
+/// - **Rhythm patterns**: Generate drum patterns based on observed transitions
+/// - **Bass lines**: Create walking bass that follows learned patterns
+/// - **Dynamics**: Model volume/intensity changes over time
+/// - **Form**: Generate large-scale structural decisions (verse→chorus, etc.)
+///
+/// # Building Transition Tables
+///
+/// You can build transition tables from existing sequences:
+/// ```
+/// # use tunes::sequences;
+/// # use std::collections::HashMap;
+/// // Learn from a sequence
+/// let training_data = vec![0, 1, 2, 1, 0, 1, 2, 4, 2, 0];
+/// let transitions = sequences::build_markov_transitions(&training_data, 1);
+///
+/// // Now generate new sequences with similar patterns
+/// let generated = sequences::markov_chain(&transitions, 0, 20);
+/// ```
+///
+/// # Why Markov Chains Work for Music
+/// Music has statistical structure - certain notes, chords, or rhythms are more
+/// likely to follow others. Markov chains capture this without needing to understand
+/// music theory. They create sequences that "feel" similar to the training data
+/// while introducing variation and surprise.
+pub fn markov_chain(
+    transitions: &std::collections::HashMap<u32, Vec<(u32, f32)>>,
+    start_state: u32,
+    length: usize,
+) -> Vec<u32> {
+    use rand::Rng;
+    let mut rng = rand::rng();
+    let mut sequence = vec![start_state];
+    let mut current_state = start_state;
+
+    for _ in 1..length {
+        if let Some(options) = transitions.get(&current_state) {
+            if options.is_empty() {
+                break; // No transitions available, stop
+            }
+
+            // Calculate total weight
+            let total_weight: f32 = options.iter().map(|(_, weight)| weight).sum();
+
+            if total_weight <= 0.0 {
+                break; // Invalid weights, stop
+            }
+
+            // Choose next state based on weighted probabilities
+            let mut random_value = rng.random_range(0.0..total_weight);
+
+            for (state, weight) in options {
+                random_value -= weight;
+                if random_value <= 0.0 {
+                    current_state = *state;
+                    break;
+                }
+            }
+        } else {
+            // No transitions defined for current state, stop
+            break;
+        }
+
+        sequence.push(current_state);
+    }
+
+    sequence
+}
+
+/// Build Markov chain transition table from training data
+///
+/// Analyzes a sequence and builds a transition probability table showing
+/// how often each state follows another. This can then be used with `markov_chain()`
+/// to generate new sequences with similar statistical properties.
+///
+/// # Arguments
+/// * `data` - Training sequence to learn from
+/// * `order` - Markov order (1 = first-order, looks at previous 1 state)
+///
+/// # Returns
+/// HashMap mapping states to lists of (next_state, weight) tuples
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// // Learn from a simple melody pattern
+/// let melody = vec![0, 2, 4, 2, 0, 2, 4, 5, 4, 2, 0];
+/// let transitions = sequences::build_markov_transitions(&melody, 1);
+///
+/// // Now generate variations
+/// let new_melody = sequences::markov_chain(&transitions, 0, 16);
+/// // Will create melodies with similar step patterns
+/// ```
+///
+/// # Note on Order
+/// This currently implements first-order Markov chains (order=1).
+/// Higher orders would require more complex state representation.
+pub fn build_markov_transitions(
+    data: &[u32],
+    _order: usize, // Currently only order 1 is implemented
+) -> std::collections::HashMap<u32, Vec<(u32, f32)>> {
+    use std::collections::HashMap;
+
+    let mut transition_counts: HashMap<u32, HashMap<u32, u32>> = HashMap::new();
+
+    // Count transitions
+    for i in 0..data.len().saturating_sub(1) {
+        let current = data[i];
+        let next = data[i + 1];
+
+        transition_counts
+            .entry(current)
+            .or_insert_with(HashMap::new)
+            .entry(next)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
+
+    // Convert counts to probabilities (weights)
+    let mut transitions: HashMap<u32, Vec<(u32, f32)>> = HashMap::new();
+
+    for (state, next_states) in transition_counts {
+        let total: u32 = next_states.values().sum();
+        let total_f32 = total as f32;
+
+        let weighted_options: Vec<(u32, f32)> = next_states
+            .into_iter()
+            .map(|(next_state, count)| (next_state, count as f32 / total_f32))
+            .collect();
+
+        transitions.insert(state, weighted_options);
+    }
+
+    transitions
+}
+
+/// Cantor Set - Fractal pattern generator for rhythmic structures
+///
+/// The Cantor set is created by recursively removing the middle third of line segments.
+/// This creates a self-similar fractal pattern that's excellent for generating
+/// interesting rhythmic subdivisions.
+///
+/// # Musical Applications
+/// - **Rhythmic patterns**: Use the kept segments as hit positions
+/// - **Time-based effects**: Apply effects only during "kept" time regions
+/// - **Polyrhythmic structures**: Combine different iteration depths
+///
+/// # Arguments
+/// * `iterations` - How many times to subdivide (0 = full line, 1 = remove middle third, etc.)
+/// * `resolution` - How many time points to check (higher = more precise)
+///
+/// # Returns
+/// A vector of 0s and 1s where 1 indicates the point is in the Cantor set
+///
+/// # Example
+/// ```
+/// use tunes::sequences::cantor_set;
+///
+/// // Create a Cantor set rhythm pattern
+/// let pattern = cantor_set(2, 27); // 27 = 3^3 for clean divisions
+/// // iteration 0: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+/// // iteration 1: [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1]
+/// // iteration 2: [1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,1,1]
+///
+/// // Convert to rhythm hit positions
+/// let hits: Vec<usize> = pattern.iter()
+///     .enumerate()
+///     .filter(|(_, &v)| v == 1)
+///     .map(|(i, _)| i)
+///     .collect();
+/// ```
+pub fn cantor_set(iterations: usize, resolution: usize) -> Vec<u32> {
+    if resolution == 0 {
+        return vec![];
+    }
+
+    // Start with all points in the set
+    let mut set = vec![1u32; resolution];
+
+    if iterations == 0 {
+        return set;
+    }
+
+    // Track which segments are active (not yet removed)
+    let mut segments = vec![(0, resolution)]; // (start, end)
+
+    // For each iteration, split each segment and remove middle thirds
+    for _ in 0..iterations {
+        let mut new_segments = Vec::new();
+
+        for (start, end) in segments {
+            let len = end - start;
+            if len < 3 {
+                // Can't subdivide further, keep as is
+                new_segments.push((start, end));
+                continue;
+            }
+
+            let third = len / 3;
+
+            // Keep first third
+            new_segments.push((start, start + third));
+
+            // Remove middle third
+            for i in (start + third)..(start + third * 2) {
+                set[i] = 0;
+            }
+
+            // Keep last third
+            new_segments.push((start + third * 2, end));
+        }
+
+        segments = new_segments;
+    }
+
+    set
+}
+
+/// Map a sequence of values to a musical scale
+///
+/// Takes arbitrary numeric values and quantizes them to notes in a musical scale.
+/// This is useful for converting mathematical sequences into melodically pleasing patterns.
+///
+/// # Arguments
+/// * `values` - The input sequence to map
+/// * `scale` - The scale to map to (list of semitone offsets from root)
+/// * `root` - The root note (MIDI note number)
+/// * `octave_range` - How many octaves to span
+///
+/// # Returns
+/// A vector of MIDI note numbers quantized to the scale
+///
+/// # Example
+/// ```
+/// use tunes::sequences::{fibonacci, map_to_scale, Scale};
+///
+/// // Map Fibonacci to C major pentatonic
+/// let fib = fibonacci(16);
+/// let melody = map_to_scale(&fib, &Scale::major_pentatonic(), 60, 2);
+/// // Result: MIDI notes that follow Fibonacci pattern but stay in C major pentatonic
+/// ```
+pub fn map_to_scale(values: &[u32], scale: &[u32], root: u32, octave_range: u32) -> Vec<u32> {
+    if values.is_empty() || scale.is_empty() {
+        return vec![];
+    }
+
+    let scale_len = scale.len();
+    let total_notes = scale_len * octave_range as usize;
+
+    values
+        .iter()
+        .map(|&val| {
+            let idx = (val as usize) % total_notes;
+            let octave = idx / scale_len;
+            let scale_degree = idx % scale_len;
+
+            root + (octave as u32 * 12) + scale[scale_degree]
+        })
+        .collect()
+}
+
+/// Common musical scales as semitone intervals
+pub struct Scale;
+
+impl Scale {
+    /// Major pentatonic scale: C D E G A (no half-steps)
+    pub fn major_pentatonic() -> Vec<u32> {
+        vec![0, 2, 4, 7, 9]
+    }
+
+    /// Minor pentatonic scale: C Eb F G Bb (blues scale minus one note)
+    pub fn minor_pentatonic() -> Vec<u32> {
+        vec![0, 3, 5, 7, 10]
+    }
+
+    /// Major (Ionian) scale: C D E F G A B
+    pub fn major() -> Vec<u32> {
+        vec![0, 2, 4, 5, 7, 9, 11]
+    }
+
+    /// Natural minor (Aeolian) scale: C D Eb F G Ab Bb
+    pub fn minor() -> Vec<u32> {
+        vec![0, 2, 3, 5, 7, 8, 10]
+    }
+
+    /// Harmonic minor scale: C D Eb F G Ab B (raised 7th)
+    pub fn harmonic_minor() -> Vec<u32> {
+        vec![0, 2, 3, 5, 7, 8, 11]
+    }
+
+    /// Blues scale: C Eb F F# G Bb (pentatonic + blue note)
+    pub fn blues() -> Vec<u32> {
+        vec![0, 3, 5, 6, 7, 10]
+    }
+
+    /// Chromatic scale: all 12 semitones
+    pub fn chromatic() -> Vec<u32> {
+        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    }
+
+    /// Whole tone scale: C D E F# G# A# (all whole steps)
+    pub fn whole_tone() -> Vec<u32> {
+        vec![0, 2, 4, 6, 8, 10]
+    }
+
+    /// Dorian mode: C D Eb F G A Bb (minor with raised 6th)
+    pub fn dorian() -> Vec<u32> {
+        vec![0, 2, 3, 5, 7, 9, 10]
+    }
+
+    /// Phrygian mode: C Db Eb F G Ab Bb (minor with lowered 2nd)
+    pub fn phrygian() -> Vec<u32> {
+        vec![0, 1, 3, 5, 7, 8, 10]
+    }
+
+    /// Lydian mode: C D E F# G A B (major with raised 4th)
+    pub fn lydian() -> Vec<u32> {
+        vec![0, 2, 4, 6, 7, 9, 11]
+    }
+
+    /// Mixolydian mode: C D E F G A Bb (major with lowered 7th)
+    pub fn mixolydian() -> Vec<u32> {
+        vec![0, 2, 4, 5, 7, 9, 10]
+    }
+}
+
+/// Shepard Tone Sequence - Creates illusion of infinitely rising/falling pitch
+///
+/// A Shepard tone is an auditory illusion of a tone that seems to continually
+/// rise or fall in pitch, yet never actually gets higher or lower. This function
+/// generates the note pattern for creating this effect.
+///
+/// The sequence cycles through pitch classes while maintaining the illusion
+/// of continuous movement.
+///
+/// # Musical Applications
+/// - **Tension building**: Create sense of rising tension that never resolves
+/// - **Ambient textures**: Hypnotic, meditation-inducing soundscapes
+/// - **Film scores**: Famous in films like Dunkirk for building suspense
+///
+/// # Arguments
+/// * `length` - Number of steps in the sequence
+/// * `steps_per_octave` - How many steps before pattern repeats (typically 12 for semitones)
+/// * `direction` - true for ascending, false for descending
+///
+/// # Returns
+/// A vector of pitch class indices (0 to steps_per_octave-1)
+///
+/// # Example
+/// ```
+/// use tunes::sequences::shepard_tone;
+///
+/// // Create ascending Shepard tone sequence
+/// let rising = shepard_tone(24, 12, true);
+/// // Result: [0,1,2,3,4,5,6,7,8,9,10,11,0,1,2,3,4,5,6,7,8,9,10,11]
+///
+/// // Create descending sequence
+/// let falling = shepard_tone(16, 12, false);
+/// // Result: [0,11,10,9,8,7,6,5,4,3,2,1,0,11,10,9]
+/// ```
+pub fn shepard_tone(length: usize, steps_per_octave: u32, direction: bool) -> Vec<u32> {
+    if length == 0 || steps_per_octave == 0 {
+        return vec![];
+    }
+
+    (0..length)
+        .map(|i| {
+            if direction {
+                // Ascending: 0, 1, 2, 3, ... steps_per_octave-1, 0, 1, ...
+                (i as u32) % steps_per_octave
+            } else {
+                // Descending: 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 11, ...
+                // Formula: (steps_per_octave - (i % steps_per_octave)) % steps_per_octave
+                let offset = (i as u32) % steps_per_octave;
+                if offset == 0 {
+                    0
+                } else {
+                    steps_per_octave - offset
+                }
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2047,4 +2648,323 @@ mod tests {
         assert!(!rhythm.is_empty());
         assert!(rhythm.len() < 16);
     }
+
+    #[test]
+    fn test_lsystem_fibonacci() {
+        use std::collections::HashMap;
+
+        // Algae growth - creates Fibonacci sequence lengths
+        let mut rules = HashMap::new();
+        rules.insert('A', "AB".to_string());
+        rules.insert('B', "A".to_string());
+
+        let gen0 = lsystem("A", &rules, 0);
+        assert_eq!(gen0, "A");
+        assert_eq!(gen0.len(), 1);
+
+        let gen1 = lsystem("A", &rules, 1);
+        assert_eq!(gen1, "AB");
+        assert_eq!(gen1.len(), 2);
+
+        let gen2 = lsystem("A", &rules, 2);
+        assert_eq!(gen2, "ABA");
+        assert_eq!(gen2.len(), 3);
+
+        let gen3 = lsystem("A", &rules, 3);
+        assert_eq!(gen3, "ABAAB");
+        assert_eq!(gen3.len(), 5);
+
+        let gen4 = lsystem("A", &rules, 4);
+        assert_eq!(gen4, "ABAABABA");
+        assert_eq!(gen4.len(), 8);
+    }
+
+    #[test]
+    fn test_lsystem_to_sequence_basic() {
+        let pattern = "ABAAB";
+        let seq = lsystem_to_sequence(pattern);
+        assert_eq!(seq, vec![0, 1, 0, 0, 1]);
+    }
+
+    #[test]
+    fn test_markov_chain_basic() {
+        use std::collections::HashMap;
+
+        let mut transitions = HashMap::new();
+        transitions.insert(0, vec![(1, 1.0)]);
+        transitions.insert(1, vec![(2, 1.0)]);
+        transitions.insert(2, vec![(0, 1.0)]);
+
+        let seq = markov_chain(&transitions, 0, 7);
+        assert_eq!(seq, vec![0, 1, 2, 0, 1, 2, 0]);
+    }
+
+    #[test]
+    fn test_build_markov_transitions_simple() {
+        let data = vec![0, 1, 0, 1, 0, 1];
+        let transitions = build_markov_transitions(&data, 1);
+
+        assert!(transitions.contains_key(&0));
+        let from_0 = &transitions[&0];
+        assert_eq!(from_0.len(), 1);
+        assert_eq!(from_0[0].0, 1);
+    }
+
+    #[test]
+    fn test_cantor_set_basic() {
+        // Test iteration 0 (full set)
+        let set0 = cantor_set(0, 9);
+        assert_eq!(set0, vec![1, 1, 1, 1, 1, 1, 1, 1, 1]);
+
+        // Test iteration 1 (remove middle third)
+        let set1 = cantor_set(1, 9);
+        assert_eq!(set1, vec![1, 1, 1, 0, 0, 0, 1, 1, 1]);
+    }
+
+    #[test]
+    fn test_cantor_set_iteration_2() {
+        // With 27 points (3^3), we can cleanly divide
+        let set = cantor_set(2, 27);
+
+        // First third (0-8): keep first and last thirds, remove middle
+        assert_eq!(set[0], 1); // First point kept
+        assert_eq!(set[1], 1);
+        assert_eq!(set[2], 1);
+        assert_eq!(set[3], 0); // Middle third removed
+        assert_eq!(set[4], 0);
+        assert_eq!(set[5], 0);
+        assert_eq!(set[6], 1); // Last third kept
+        assert_eq!(set[7], 1);
+        assert_eq!(set[8], 1);
+
+        // Middle third (9-17): all removed
+        for i in 9..18 {
+            assert_eq!(set[i], 0, "Middle third should be removed at position {}", i);
+        }
+
+        // Last third (18-26): keep first and last thirds, remove middle
+        assert_eq!(set[18], 1);
+        assert_eq!(set[19], 1);
+        assert_eq!(set[20], 1);
+        assert_eq!(set[21], 0);
+        assert_eq!(set[22], 0);
+        assert_eq!(set[23], 0);
+        assert_eq!(set[24], 1);
+        assert_eq!(set[25], 1);
+        assert_eq!(set[26], 1);
+    }
+
+    #[test]
+    fn test_cantor_set_properties() {
+        // As iterations increase, fewer points remain
+        let set1 = cantor_set(1, 27);
+        let set2 = cantor_set(2, 27);
+        let set3 = cantor_set(3, 27);
+
+        let count1: u32 = set1.iter().sum();
+        let count2: u32 = set2.iter().sum();
+        let count3: u32 = set3.iter().sum();
+
+        // Each iteration should have fewer or equal points
+        assert!(count2 <= count1);
+        assert!(count3 <= count2);
+
+        // Mathematically, Cantor set has 2^n/3^n density
+        // After 2 iterations: (2/3)^2 = 4/9 of points remain
+        let expected_2 = (27.0 * (2.0_f32 / 3.0_f32).powi(2)) as u32;
+        assert!(
+            (count2 as i32 - expected_2 as i32).abs() <= 2,
+            "Expected ~{}, got {}",
+            expected_2,
+            count2
+        );
+    }
+
+    #[test]
+    fn test_cantor_set_edge_cases() {
+        // Empty resolution
+        let empty = cantor_set(3, 0);
+        assert_eq!(empty, Vec::<u32>::new());
+
+        // Single point
+        let single = cantor_set(2, 1);
+        assert_eq!(single, vec![1]);
+
+        // Two points
+        let two = cantor_set(1, 2);
+        assert_eq!(two.len(), 2);
+    }
+
+    #[test]
+    fn test_map_to_scale_basic() {
+        // Map simple sequence to C major pentatonic
+        let seq = vec![0, 1, 2, 3, 4];
+        let scale = Scale::major_pentatonic(); // [0, 2, 4, 7, 9]
+        let mapped = map_to_scale(&seq, &scale, 60, 1);
+
+        // Should map to: C(60), D(62), E(64), G(67), A(69)
+        assert_eq!(mapped, vec![60, 62, 64, 67, 69]);
+    }
+
+    #[test]
+    fn test_map_to_scale_wrapping() {
+        // Test that values wrap correctly across octaves
+        let seq = vec![0, 5, 10]; // Indices that span multiple octaves
+        let scale = Scale::major_pentatonic(); // 5 notes per octave
+        let mapped = map_to_scale(&seq, &scale, 60, 2);
+
+        // 0 -> C4 (60)
+        // 5 -> C5 (60 + 12) = 72 (wraps to next octave)
+        // 10 -> C6 + 0 (wraps again)
+        assert_eq!(mapped[0], 60); // First note of first octave
+        assert_eq!(mapped[1], 72); // First note of second octave
+    }
+
+    #[test]
+    fn test_map_to_scale_with_fibonacci() {
+        // Practical example: map Fibonacci to scale
+        let fib = fibonacci(10);
+        let scale = Scale::minor_pentatonic();
+        let melody = map_to_scale(&fib, &scale, 48, 3); // E3 root, 3 octaves
+
+        assert_eq!(melody.len(), 10);
+        // All notes should be >= root note
+        for &note in &melody {
+            assert!(note >= 48);
+        }
+        // All notes should be within 3 octaves
+        for &note in &melody {
+            assert!(note < 48 + 36); // 3 octaves = 36 semitones
+        }
+    }
+
+    #[test]
+    fn test_map_to_scale_edge_cases() {
+        // Empty input
+        let empty = map_to_scale(&[], &Scale::major(), 60, 2);
+        assert_eq!(empty, Vec::<u32>::new());
+
+        // Empty scale
+        let empty_scale = map_to_scale(&vec![1, 2, 3], &[], 60, 2);
+        assert_eq!(empty_scale, Vec::<u32>::new());
+    }
+
+    #[test]
+    fn test_scale_definitions() {
+        // Test that all scales are correctly defined
+        assert_eq!(Scale::major_pentatonic().len(), 5);
+        assert_eq!(Scale::minor_pentatonic().len(), 5);
+        assert_eq!(Scale::major().len(), 7);
+        assert_eq!(Scale::minor().len(), 7);
+        assert_eq!(Scale::chromatic().len(), 12);
+        assert_eq!(Scale::whole_tone().len(), 6);
+
+        // Test that scales start with 0 (root note)
+        assert_eq!(Scale::major()[0], 0);
+        assert_eq!(Scale::minor()[0], 0);
+        assert_eq!(Scale::blues()[0], 0);
+
+        // Test that major third is in major scale
+        assert!(Scale::major().contains(&4)); // Major third
+
+        // Test that minor third is in minor scale
+        assert!(Scale::minor().contains(&3)); // Minor third
+    }
+
+    #[test]
+    fn test_shepard_tone_ascending() {
+        let tone = shepard_tone(24, 12, true);
+
+        assert_eq!(tone.len(), 24);
+
+        // Should cycle through 0-11 twice
+        assert_eq!(tone[0], 0);
+        assert_eq!(tone[1], 1);
+        assert_eq!(tone[11], 11);
+        assert_eq!(tone[12], 0); // Wraps back
+        assert_eq!(tone[23], 11);
+    }
+
+    #[test]
+    fn test_shepard_tone_descending() {
+        let tone = shepard_tone(13, 12, false);
+
+        assert_eq!(tone.len(), 13);
+
+        // Should go: 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+        assert_eq!(tone[0], 0);
+        assert_eq!(tone[1], 11);
+        assert_eq!(tone[2], 10);
+        assert_eq!(tone[11], 1);
+        assert_eq!(tone[12], 0); // Wraps back
+    }
+
+    #[test]
+    fn test_shepard_tone_properties() {
+        let ascending = shepard_tone(100, 12, true);
+        let descending = shepard_tone(100, 12, false);
+
+        // All values should be within range
+        for &val in &ascending {
+            assert!(val < 12);
+        }
+        for &val in &descending {
+            assert!(val < 12);
+        }
+
+        // Should contain all pitch classes if length >= steps_per_octave
+        let mut seen = vec![false; 12];
+        for &val in ascending.iter().take(12) {
+            seen[val as usize] = true;
+        }
+        assert!(seen.iter().all(|&x| x), "Should contain all 12 pitch classes");
+    }
+
+    #[test]
+    fn test_shepard_tone_edge_cases() {
+        // Empty sequence
+        let empty = shepard_tone(0, 12, true);
+        assert_eq!(empty, Vec::<u32>::new());
+
+        // Zero steps per octave
+        let zero_steps = shepard_tone(10, 0, true);
+        assert_eq!(zero_steps, Vec::<u32>::new());
+
+        // Single step
+        let single = shepard_tone(1, 12, true);
+        assert_eq!(single, vec![0]);
+
+        // Different divisions (quarter tones)
+        let quarter = shepard_tone(24, 24, true);
+        assert_eq!(quarter.len(), 24);
+        assert_eq!(quarter[23], 23);
+    }
+
+    #[test]
+    fn test_shepard_tone_continuous_ascending() {
+        // Verify ascending pattern is monotonic within each cycle
+        let tone = shepard_tone(12, 12, true);
+
+        for i in 0..11 {
+            assert_eq!(tone[i] + 1, tone[i + 1], "Ascending should increment by 1");
+        }
+    }
+
+    #[test]
+    fn test_shepard_tone_continuous_descending() {
+        // Verify descending pattern decrements within each cycle
+        let tone = shepard_tone(13, 12, false);
+
+        // Skip first element (0), check that each decrements
+        for i in 1..12 {
+            assert_eq!(
+                tone[i],
+                12 - i as u32,
+                "Descending should decrement: tone[{}] = {}",
+                i,
+                tone[i]
+            );
+        }
+    }
 }
+
