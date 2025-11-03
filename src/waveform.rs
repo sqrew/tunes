@@ -31,7 +31,7 @@ impl Waveform {
     /// Sine wave: smooth, pure tone (band-limited wavetable)
     ///
     /// Sine waves are already band-limited (single harmonic), so no aliasing occurs.
-    #[inline]
+    #[inline(always)]
     fn sine(phase: f32) -> f32 {
         WAVETABLE.sample(phase)
     }
@@ -40,7 +40,7 @@ impl Waveform {
     ///
     /// Uses additive synthesis with band-limited harmonics to prevent aliasing.
     /// Sounds identical to a perfect square wave but without the harsh digital artifacts.
-    #[inline]
+    #[inline(always)]
     fn square(phase: f32) -> f32 {
         SQUARE_WAVETABLE.sample(phase)
     }
@@ -49,7 +49,7 @@ impl Waveform {
     ///
     /// Uses additive synthesis with band-limited harmonics to prevent aliasing.
     /// Produces a clean, bright sound suitable for leads and basses.
-    #[inline]
+    #[inline(always)]
     fn sawtooth(phase: f32) -> f32 {
         SAWTOOTH_WAVETABLE.sample(phase)
     }
@@ -58,7 +58,7 @@ impl Waveform {
     ///
     /// Uses additive synthesis with band-limited odd harmonics at 1/n² amplitude.
     /// Produces a rounder, softer sound than square waves.
-    #[inline]
+    #[inline(always)]
     fn triangle(phase: f32) -> f32 {
         TRIANGLE_WAVETABLE.sample(phase)
     }

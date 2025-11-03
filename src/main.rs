@@ -48,11 +48,13 @@ use sequences::euclidean;
 use waveform::Waveform;
 
 fn main() -> Result<(), anyhow::Error> {
+    let mut comp = Composition::new(Tempo::new(140.0));
+
+    comp.instrument("lead", &Instrument::electric_piano())
+        .chords(&[C4_MAJOR], 1.0)
+        .scale_updown(C4_MAJOR_SCALE, 0.2);
+
     let engine = AudioEngine::new()?;
-    let mut comp = Composition::new(Tempo::new(120.0));
-
-
-
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
 }

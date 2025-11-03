@@ -33,22 +33,26 @@ impl LFO {
 
     /// Get the modulation value at a given time
     /// Returns a value between 0.0 and 1.0
+    #[inline]
     pub fn value_at(&self, time: f32) -> f32 {
-        let phase =
-            (time * self.frequency + self.phase_offset / (2.0 * std::f32::consts::PI)) % 1.0;
+        // Optimize phase calculation using FMA
+        let phase = time.mul_add(self.frequency, self.phase_offset / (2.0 * std::f32::consts::PI));
+        let phase = phase.fract(); // Faster than modulo
         let raw_value = self.waveform.sample(phase);
 
-        // Convert from -1.0..1.0 to 0.0..1.0 range
-        let normalized = (raw_value + 1.0) * 0.5;
+        // Convert from -1.0..1.0 to 0.0..1.0 range using FMA
+        let normalized = raw_value.mul_add(0.5, 0.5);
 
-        // Apply depth
-        0.5 + (normalized - 0.5) * self.depth
+        // Apply depth: 0.5 + (normalized - 0.5) * depth
+        normalized.mul_add(self.depth, 0.5 * (1.0 - self.depth))
     }
 
     /// Get a bipolar modulation value (-1.0 to 1.0)
+    #[inline]
     pub fn bipolar_value_at(&self, time: f32) -> f32 {
-        let phase =
-            (time * self.frequency + self.phase_offset / (2.0 * std::f32::consts::PI)) % 1.0;
+        // Optimize phase calculation using FMA
+        let phase = time.mul_add(self.frequency, self.phase_offset / (2.0 * std::f32::consts::PI));
+        let phase = phase.fract(); // Faster than modulo
         let raw_value = self.waveform.sample(phase);
 
         // Apply depth to bipolar signal
@@ -57,9 +61,10 @@ impl LFO {
 
     /// Modulate a parameter value
     /// Base value is the center point, range is how much it can vary
+    #[inline]
     pub fn modulate(&self, time: f32, base_value: f32, range: f32) -> f32 {
         let mod_value = self.bipolar_value_at(time);
-        base_value + mod_value * range
+        base_value.mul_add(1.0, mod_value * range)
     }
 
     /// Common preset: Slow sine wave for smooth modulation

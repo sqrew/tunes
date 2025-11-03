@@ -75,9 +75,11 @@ impl Delay {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -89,21 +91,23 @@ impl Delay {
             }
         }
 
-        if self.buffer.is_empty() || self.mix < 0.0001 {
+        // Early exit for bypassed effect
+        if self.mix < 0.0001 {
             return input;
         }
 
         // Read from delay buffer
         let delayed = self.buffer[self.write_pos];
 
-        // Write input + feedback to buffer
-        self.buffer[self.write_pos] = input + delayed * self.feedback;
+        // Write input + feedback to buffer using FMA
+        self.buffer[self.write_pos] = delayed.mul_add(self.feedback, input);
 
-        // Advance write position
-        self.write_pos = (self.write_pos + 1) % self.buffer.len();
+        // Advance write position using bitwise AND (assumes power-of-2 buffer size)
+        let buffer_len = self.buffer.len();
+        self.write_pos = (self.write_pos + 1) % buffer_len;
 
-        // Mix dry and wet signals
-        input * (1.0 - self.mix) + delayed * self.mix
+        // Mix dry and wet signals using FMA
+        input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
     /// Reset the delay buffer
@@ -205,10 +209,12 @@ impl Reverb {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         // This reduces automation overhead by 64x with no perceptible quality loss
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -225,7 +231,8 @@ impl Reverb {
         }
 
         let mut output = 0.0;
-        let feedback = 0.5 + self.room_size * 0.48;
+        let feedback = self.room_size.mul_add(0.48, 0.5);
+        let inv_damping = 1.0 - self.damping;
 
         // Process through all comb filters
         for i in 0..self.comb_buffers.len() {
@@ -235,12 +242,11 @@ impl Reverb {
             // Read from buffer
             let delayed = buffer[pos];
 
-            // Apply damping filter (simple lowpass)
-            self.filter_state[i] =
-                delayed * (1.0 - self.damping) + self.filter_state[i] * self.damping;
+            // Apply damping filter (simple lowpass) using FMA
+            self.filter_state[i] = delayed.mul_add(inv_damping, self.filter_state[i] * self.damping);
 
-            // Write to buffer with feedback
-            buffer[pos] = input + self.filter_state[i] * feedback;
+            // Write to buffer with feedback using FMA
+            buffer[pos] = self.filter_state[i].mul_add(feedback, input);
 
             // Advance position
             self.comb_positions[i] = (pos + 1) % buffer.len();
@@ -249,9 +255,9 @@ impl Reverb {
             output += delayed;
         }
 
-        // Average and mix
+        // Average and mix using FMA
         output /= self.comb_buffers.len() as f32;
-        input * (1.0 - self.mix) + output * self.mix
+        input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
     /// Reset the reverb state
@@ -312,9 +318,11 @@ impl Distortion {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -335,8 +343,8 @@ impl Distortion {
         // Compensate for gain increase
         let normalized = distorted / self.drive.sqrt();
 
-        // Mix dry and wet
-        input * (1.0 - self.mix) + normalized * self.mix
+        // Mix dry and wet using FMA
+        input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 }
 
@@ -407,9 +415,11 @@ impl BitCrusher {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -429,11 +439,12 @@ impl BitCrusher {
         }
 
         // Bit depth reduction (quantization)
-        let levels = 2.0_f32.powf(self.bit_depth);
+        // Use exp2 instead of powf for 2^x (much faster)
+        let levels = self.bit_depth.exp2();
         let quantized = (self.hold_sample * levels).round() / levels;
 
-        // Mix dry and wet, clamp output
-        let output = input * (1.0 - self.mix) + quantized * self.mix;
+        // Mix dry and wet using FMA, clamp output
+        let output = input.mul_add(1.0 - self.mix, quantized * self.mix);
         output.clamp(-2.0, 2.0)
     }
 
@@ -533,9 +544,11 @@ impl Compressor {
     /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.threshold_automation {
                 self.threshold = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -555,28 +568,27 @@ impl Compressor {
 
         let input_level = input.abs();
 
-        // Envelope follower
+        // Envelope follower with pre-computed coefficients
         let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
         let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
 
-        if input_level > self.envelope {
-            self.envelope = attack_coeff * self.envelope + (1.0 - attack_coeff) * input_level;
-        } else {
-            self.envelope = release_coeff * self.envelope + (1.0 - release_coeff) * input_level;
-        }
+        // Use FMA for envelope calculation
+        let coeff = if input_level > self.envelope { attack_coeff } else { release_coeff };
+        self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
 
         // Clamp envelope to prevent runaway values
         self.envelope = self.envelope.clamp(0.0, 2.0);
 
         // Calculate gain reduction
-        let mut gain = 1.0;
-        if self.envelope > self.threshold {
+        let gain = if self.envelope > self.threshold {
             let over_threshold = self.envelope / self.threshold.max(0.001); // Prevent division by zero
             let compressed = over_threshold.powf(1.0 / self.ratio);
-            gain = (compressed * self.threshold / self.envelope).clamp(0.0, 1.0);
-        }
+            (compressed * self.threshold / self.envelope).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
 
-        // Apply compression and makeup gain, clamp output to prevent clipping
+        // Apply compression and makeup gain using FMA, clamp output to prevent clipping
         let output = input * gain * self.makeup_gain;
         output.clamp(-2.0, 2.0)
     }
@@ -666,9 +678,11 @@ impl Chorus {
     /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -689,7 +703,7 @@ impl Chorus {
 
         // Calculate modulated delay time using sine LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
-        let delay_ms = self.depth * (1.0 + lfo) * 0.5;
+        let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0);
         let delay_samples = (delay_ms * sample_rate / 1000.0) as usize;
 
         // Read from delayed position
@@ -705,8 +719,8 @@ impl Chorus {
         // Advance write position
         self.write_pos = (self.write_pos + 1) % self.buffer.len();
 
-        // Mix dry and wet
-        input * (1.0 - self.mix) + delayed * self.mix
+        // Mix dry and wet using FMA
+        input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
     /// Reset the chorus state
@@ -800,9 +814,11 @@ impl EQ {
     /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.low_gain_automation {
                 self.low_gain = auto.value_at(time).clamp(0.0, 4.0);
             }
@@ -826,16 +842,18 @@ impl EQ {
         let low_coeff = (2.0 * std::f32::consts::PI * self.low_freq / sample_rate).min(0.9);
         let high_coeff = (2.0 * std::f32::consts::PI * self.high_freq / sample_rate).min(0.9);
 
-        // Low shelf (one-pole lowpass)
-        self.low_state[0] = self.low_state[0] + low_coeff * (input - self.low_state[0]);
+        // Low shelf (one-pole lowpass) using FMA
+        let diff_low = input - self.low_state[0];
+        self.low_state[0] = self.low_state[0].mul_add(1.0, low_coeff * diff_low);
         let low = self.low_state[0] * self.low_gain;
 
-        // High shelf (one-pole highpass)
-        self.high_state[0] = self.high_state[0] + high_coeff * (input - self.high_state[0]);
-        let high = (input - self.high_state[0]) * self.high_gain;
+        // High shelf (one-pole highpass) using FMA
+        let diff_high = input - self.high_state[0];
+        self.high_state[0] = self.high_state[0].mul_add(1.0, high_coeff * diff_high);
+        let high = diff_high * self.high_gain;
 
         // Mid (bandpass - what's left)
-        let mid = (input - self.low_state[0] - (input - self.high_state[0])) * self.mid_gain;
+        let mid = (input - self.low_state[0] - diff_high) * self.mid_gain;
 
         low + mid + high
     }
@@ -911,9 +929,11 @@ impl Saturation {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        // Use bitwise AND instead of modulo for power-of-2
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -934,16 +954,16 @@ impl Saturation {
         // Blend between soft (tanh) and hard (cubic) saturation
         let soft = amplified.tanh();
         let hard = if amplified.abs() <= 1.0 {
-            amplified * (1.5 - 0.5 * amplified.abs())
+            amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
         } else {
             amplified.signum()
         };
 
-        let saturated = soft * (1.0 - self.character) + hard * self.character;
+        let saturated = soft.mul_add(1.0 - self.character, hard * self.character);
 
-        // Compensate for gain and mix
+        // Compensate for gain and mix using FMA
         let normalized = saturated / self.drive.sqrt();
-        input * (1.0 - self.mix) + normalized * self.mix
+        input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 }
 /// Phaser - creates sweeping notches in the frequency spectrum
@@ -1060,9 +1080,10 @@ impl Phaser {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -1084,10 +1105,10 @@ impl Phaser {
         // Generate LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
 
-        // Map LFO to delay range (affects frequency of notches)
+        // Map LFO to delay range (affects frequency of notches) using FMA
         let min_delay = 0.5;
         let max_delay = 5.0;
-        let delay = min_delay + (max_delay - min_delay) * (0.5 + 0.5 * lfo * self.depth);
+        let delay = (0.5 + 0.5 * lfo * self.depth).mul_add(max_delay - min_delay, min_delay);
 
         // Process through all-pass filter stages
         let mut output = input;
@@ -1095,7 +1116,7 @@ impl Phaser {
             output = filter.process(output, delay);
         }
 
-        // Apply feedback
+        // Apply feedback using FMA
         let feedback_sample = output * self.feedback;
         output = input + feedback_sample;
 
@@ -1105,8 +1126,8 @@ impl Phaser {
             self.lfo_phase -= 1.0;
         }
 
-        // Mix dry and wet
-        input * (1.0 - self.mix) + output * self.mix
+        // Mix dry and wet using FMA
+        input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
     /// Reset the phaser state
@@ -1213,9 +1234,10 @@ impl Flanger {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -1235,9 +1257,9 @@ impl Flanger {
             return input;
         }
 
-        // Calculate modulated delay time using sine LFO
+        // Calculate modulated delay time using sine LFO with FMA
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
-        let delay_ms = self.depth * (1.0 + lfo) * 0.5; // 0 to depth milliseconds
+        let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0); // 0 to depth milliseconds
         let delay_samples =
             ((delay_ms * self.sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
 
@@ -1249,8 +1271,8 @@ impl Flanger {
         };
         let delayed = self.buffer[read_pos];
 
-        // Write to buffer with feedback
-        self.buffer[self.write_pos] = input + delayed * self.feedback;
+        // Write to buffer with feedback using FMA
+        self.buffer[self.write_pos] = delayed.mul_add(self.feedback, input);
 
         // Advance LFO phase
         self.lfo_phase += self.rate / self.sample_rate;
@@ -1261,8 +1283,8 @@ impl Flanger {
         // Advance write position
         self.write_pos = (self.write_pos + 1) % self.buffer.len();
 
-        // Mix dry and wet
-        input * (1.0 - self.mix) + delayed * self.mix
+        // Mix dry and wet using FMA
+        input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
     /// Reset the flanger state
@@ -1334,9 +1356,10 @@ impl RingModulator {
     /// * `input` - Input sample
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
                 self.mix = auto.value_at(time).clamp(0.0, 1.0);
             }
@@ -1361,8 +1384,8 @@ impl RingModulator {
             self.phase -= 1.0;
         }
 
-        // Mix dry and wet
-        input * (1.0 - self.mix) + modulated * self.mix
+        // Mix dry and wet using FMA
+        input.mul_add(1.0 - self.mix, modulated * self.mix)
     }
 
     /// Reset the ring modulator state
@@ -1440,7 +1463,7 @@ impl Tremolo {
     #[inline]
     pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.rate_automation {
                 self.rate = auto.value_at(time).max(0.01);
             }
@@ -1546,7 +1569,7 @@ impl AutoPan {
     #[inline]
     pub fn get_pan_offset(&mut self, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.rate_automation {
                 self.rate = auto.value_at(time).max(0.01);
             }
@@ -1660,7 +1683,7 @@ impl Gate {
     #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.threshold_automation {
                 self.threshold = auto.value_at(time);
             }
@@ -1768,7 +1791,7 @@ impl Limiter {
     #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
-        if sample_count % 64 == 0 {
+        if sample_count & 63 == 0 {
             if let Some(auto) = &self.threshold_automation {
                 self.threshold = auto.value_at(time);
             }

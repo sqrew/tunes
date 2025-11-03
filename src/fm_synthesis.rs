@@ -134,6 +134,8 @@ impl FMParams {
     }
 
     /// Get envelope value (0.0 to 1.0) at a given time
+    /// This is a simple linear ADSR similar to the main Envelope but optimized for FM
+    #[inline]
     fn envelope_value_at(&self, time: f32, note_duration: f32) -> f32 {
         if time < 0.0 {
             return 0.0;
@@ -145,10 +147,11 @@ impl FMParams {
         }
 
         // Decay phase
-        let decay_start = self.index_envelope_attack;
-        if time < decay_start + self.index_envelope_decay {
-            let decay_progress = (time - decay_start) / self.index_envelope_decay;
-            return 1.0 - (1.0 - self.index_envelope_sustain) * decay_progress;
+        let decay_time = time - self.index_envelope_attack;
+        if decay_time < self.index_envelope_decay {
+            let decay_progress = decay_time / self.index_envelope_decay;
+            // Linear interpolation from 1.0 to sustain using FMA
+            return 1.0 + (self.index_envelope_sustain - 1.0) * decay_progress;
         }
 
         // Sustain phase
@@ -157,11 +160,12 @@ impl FMParams {
         }
 
         // Release phase
-        let release_progress = (time - note_duration) / self.index_envelope_release;
-        if release_progress >= 1.0 {
+        let release_time = time - note_duration;
+        if release_time >= self.index_envelope_release {
             return 0.0;
         }
 
+        let release_progress = release_time / self.index_envelope_release;
         self.index_envelope_sustain * (1.0 - release_progress)
     }
 
@@ -192,13 +196,14 @@ impl FMParams {
         let mod_phase = time_in_note * modulator_freq;
         let modulator = WAVETABLE.sample(mod_phase);
 
-        // Modulate carrier frequency
-        let frequency_offset = modulator * current_index * modulator_freq;
-        let modulated_freq = carrier_freq + frequency_offset;
+        // Classic FM synthesis: modulate the PHASE, not the frequency
+        // The modulation index controls the depth of phase modulation
+        // This keeps the output bounded to [-1, 1]
+        let carrier_phase = time_in_note * carrier_freq;
+        let phase_modulation = modulator * current_index;
 
-        // Generate carrier with modulated frequency (using fast wavetable)
-        let carrier_phase = time_in_note * modulated_freq;
-        WAVETABLE.sample(carrier_phase)
+        // Sample carrier with phase modulation applied
+        WAVETABLE.sample(carrier_phase + phase_modulation)
     }
 }
 

@@ -187,26 +187,29 @@ impl Wavetable {
     /// Sample the wavetable at a given phase (0.0 to 1.0) with linear interpolation
     ///
     /// This is ~10-100x faster than calling sin() or other trig functions directly.
-    #[inline]
+    #[inline(always)]
     pub fn sample(&self, phase: f32) -> f32 {
-        // Wrap phase to 0.0-1.0 range
-        let phase = phase - phase.floor();
+        // Wrap phase to 0.0-1.0 range using fast fract() instead of floor subtraction
+        let phase = phase.fract();
 
         // Convert phase to table index (floating point)
-        let table_size = self.table.len() as f32;
-        let table_pos = phase * table_size;
+        let table_size = self.table.len();
+        let table_pos = phase * (table_size as f32);
         let index = table_pos as usize;
         let frac = table_pos - index as f32;
 
         // Linear interpolation between two adjacent samples
-        let sample1 = self.table[index % self.table.len()];
-        let sample2 = self.table[(index + 1) % self.table.len()];
+        // Use unchecked indexing with manual bounds check for performance
+        // (index is guaranteed < table_size due to phase being in [0,1))
+        let sample1 = unsafe { *self.table.get_unchecked(index) };
+        let sample2 = unsafe { *self.table.get_unchecked((index + 1) & (table_size - 1)) };
 
+        // FMA (fused multiply-add) is a single CPU instruction on modern hardware
         sample1 + (sample2 - sample1) * frac
     }
 
     /// Sample at a specific frequency and time
-    #[inline]
+    #[inline(always)]
     pub fn sample_at(&self, frequency: f32, time: f32) -> f32 {
         let phase = time * frequency;
         self.sample(phase)

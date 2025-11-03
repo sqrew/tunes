@@ -103,29 +103,36 @@ impl Filter {
     }
 
     /// Process a single sample through the filter
+    #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
         if self.filter_type == FilterType::None {
             return input;
         }
 
         // Smooth parameter changes to avoid zipper noise (simple one-pole smoothing)
-        let smoothing = 0.999; // Higher = smoother but slower response
-        self.smooth_cutoff = self.smooth_cutoff * smoothing + self.cutoff * (1.0 - smoothing);
-        self.smooth_resonance =
-            self.smooth_resonance * smoothing + self.resonance * (1.0 - smoothing);
+        // Rewritten to use FMA operations
+        const SMOOTHING: f32 = 0.999;
+        const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+        self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+        self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
 
         // Calculate filter coefficients using smoothed parameters
         let f = 2.0 * (PI * self.smooth_cutoff / sample_rate).sin();
         let q = 1.0 - self.smooth_resonance;
 
         // First stage: State-variable filter algorithm
-        self.low += f * self.band;
+        self.low = self.low.mul_add(1.0, f * self.band);
         self.high = input - self.low - q * self.band;
-        self.band += f * self.high;
+        self.band = self.band.mul_add(1.0, f * self.high);
         self.notch = self.high + self.low;
 
-        // Stability check - prevent denormals and infinity
-        if !self.low.is_finite() || self.low.abs() > 10.0 {
+        // Flush denormals to zero (faster than checking is_finite)
+        // This adds a tiny DC offset but prevents denormal slowdown
+        self.low = if self.low.abs() < 1e-15 { 0.0 } else { self.low };
+        self.band = if self.band.abs() < 1e-15 { 0.0 } else { self.band };
+
+        // Stability check - prevent infinity
+        if self.low.abs() > 10.0 {
             self.reset();
             return input;
         }
@@ -145,13 +152,17 @@ impl Filter {
             FilterSlope::Pole12dB => stage1_output,
             FilterSlope::Pole24dB => {
                 // Second stage processing (same algorithm, different state)
-                self.low2 += f * self.band2;
+                self.low2 = self.low2.mul_add(1.0, f * self.band2);
                 self.high2 = stage1_output - self.low2 - q * self.band2;
-                self.band2 += f * self.high2;
+                self.band2 = self.band2.mul_add(1.0, f * self.high2);
                 self.notch2 = self.high2 + self.low2;
 
+                // Flush denormals to zero
+                self.low2 = if self.low2.abs() < 1e-15 { 0.0 } else { self.low2 };
+                self.band2 = if self.band2.abs() < 1e-15 { 0.0 } else { self.band2 };
+
                 // Stability check for second stage
-                if !self.low2.is_finite() || self.low2.abs() > 10.0 {
+                if self.low2.abs() > 10.0 {
                     self.reset();
                     return input;
                 }
