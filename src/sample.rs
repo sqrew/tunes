@@ -105,6 +105,35 @@ impl Sample {
         })
     }
 
+    /// Create a sample from raw mono audio data
+    ///
+    /// # Arguments
+    /// * `samples` - Vector of audio samples in the range [-1.0, 1.0]
+    /// * `sample_rate` - Sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// use tunes::sample::Sample;
+    ///
+    /// // Create 1 second of silence at 44.1kHz
+    /// let silence = vec![0.0; 44100];
+    /// let sample = Sample::from_mono(silence, 44100);
+    /// ```
+    pub fn from_mono(samples: Vec<f32>, sample_rate: u32) -> Self {
+        let num_frames = samples.len();
+        let duration = num_frames as f32 / sample_rate as f32;
+
+        Self {
+            data: Arc::new(samples),
+            channels: 1,
+            sample_rate,
+            duration,
+            num_frames,
+            loop_start: None,
+            loop_end: None,
+        }
+    }
+
     /// Get a sample at a specific time position
     ///
     /// Returns (left, right) channels. For mono samples, both channels are the same.

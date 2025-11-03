@@ -1,5 +1,8 @@
 use crate::composition::TrackBuilder;
+use crate::noise::NoiseType;
 use crate::prelude::{FMParams, FilterEnvelope};
+use crate::sample::Sample;
+use crate::track::{AudioEvent, SampleEvent};
 
 /// Synthesis methods for TrackBuilder
 ///
@@ -102,6 +105,67 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn custom_waveform(mut self, wavetable: crate::wavetable::Wavetable) -> Self {
         self.custom_wavetable = Some(wavetable);
+        self
+    }
+
+    /// Add noise to the track
+    ///
+    /// Generates noise of the specified type and adds it as a sample at the current cursor position.
+    ///
+    /// # Arguments
+    /// * `noise_type` - Type of noise to generate (White or Brown)
+    /// * `duration` - Duration in seconds
+    /// * `amplitude` - Volume/amplitude (0.0 to 1.0)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::noise::NoiseType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Add white noise hi-hat
+    /// comp.track("drums")
+    ///     .noise(NoiseType::White, 0.1, 0.3);
+    ///
+    /// // Add brown noise bass rumble
+    /// comp.track("fx")
+    ///     .noise(NoiseType::Brown, 2.0, 0.5)
+    ///     .filter(Filter::new(FilterType::LowPass, 500.0, 0.8));  // Low-pass for bass
+    /// ```
+    pub fn noise(mut self, noise_type: NoiseType, duration: f32, amplitude: f32) -> Self {
+        // Calculate sample rate and duration in samples
+        let sample_rate = 44100; // TODO: Could make this configurable
+        // duration is already in seconds (consistent with .note() and other methods)
+        let sample_count = (duration * sample_rate as f32) as usize;
+
+        // Capture cursor position before mutable borrow
+        let start_time = self.cursor;
+
+        // Generate noise samples
+        let mut noise_samples = noise_type.generate(sample_count);
+
+        // Apply amplitude
+        for sample in &mut noise_samples {
+            *sample *= amplitude;
+        }
+
+        // Create a Sample from the noise
+        let noise_sample = Sample::from_mono(noise_samples, sample_rate);
+
+        // Create a SampleEvent
+        let sample_event = SampleEvent {
+            sample: noise_sample,
+            start_time,
+            playback_rate: 1.0,
+            volume: 1.0, // Already applied amplitude above
+        };
+
+        // Get the track and add the event
+        let track = self.get_track_mut();
+        track.events.push(AudioEvent::Sample(sample_event));
+
+        // Advance cursor (duration is in seconds)
+        self.cursor += duration;
+
         self
     }
 }

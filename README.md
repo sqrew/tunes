@@ -15,6 +15,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Instruments**: Pre-configured synthesizers, bass, pads, leads, and more
 - **Effects, Automation and Filters**: Delay, reverb, distortion, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
+- **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output via cpal
@@ -193,7 +194,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **584 comprehensive tests and 168 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **595 comprehensive tests and 176 doc tests** ensuring reliability and correctness.
 
 ## Examples
 

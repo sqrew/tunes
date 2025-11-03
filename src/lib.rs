@@ -39,6 +39,7 @@ pub mod key_signature;
 pub mod lfo;
 pub mod microtonal;
 pub mod midi;
+pub mod noise;
 pub mod notes;
 pub mod rhythm;
 pub mod sample;
@@ -90,6 +91,9 @@ pub mod prelude {
     pub use crate::filter_envelope::FilterEnvelope;
     pub use crate::fm_synthesis::FMParams;
     pub use crate::waveform::Waveform;
+
+    // Noise
+    pub use crate::noise::NoiseType;
 
     // Sequences
     pub use crate::sequences::{
