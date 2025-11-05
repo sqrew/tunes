@@ -1,6 +1,6 @@
-use crate::drums::DrumType;
+use crate::composition::drums::DrumType;
 use crate::error::{Result, TunesError};
-use crate::rhythm::{NoteDuration, Tempo};
+use crate::composition::rhythm::{NoteDuration, Tempo};
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::f32::consts::PI;
@@ -519,7 +519,7 @@ impl AudioEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::notes::*;
+    use crate::consts::notes::*;
 
     // Note: Most engine tests require actual audio device access and are integration tests.
     // These tests focus on the logic we can test without device interaction.

@@ -22,82 +22,48 @@
 //! }
 //! ```
 
-pub mod automation;
-pub mod chords;
 pub mod composition;
-pub mod drum_grid;
-pub mod drums;
-pub mod effects;
+pub mod consts;
 pub mod engine;
-pub mod envelope;
 pub mod error;
-pub mod filter;
-pub mod filter_envelope;
-pub mod fm_synthesis;
-pub mod granular;
 pub mod instruments;
-pub mod key_signature;
-pub mod lfo;
-pub mod microtonal;
 pub mod midi;
-pub mod noise;
-pub mod notes;
-pub mod rhythm;
-pub mod sample;
-pub mod scales;
 pub mod sequences;
+pub mod synthesis;
 pub mod theory;
 pub mod track;
-pub mod waveform;
-pub mod wavetable;
 
 /// Prelude module for convenient imports
 pub mod prelude {
     // Core composition
-    pub use crate::composition::Composition;
+    pub use crate::composition::{Composition, DrumGrid, DrumType, Tempo};
     pub use crate::engine::AudioEngine;
-    pub use crate::rhythm::Tempo;
     pub use crate::track::Mixer;
 
     // Error handling
     pub use crate::error::{Result, TunesError};
 
-    // Notes
-    pub use crate::notes::*;
-
-    // Scales and Chords
-    pub use crate::chords::*;
-    pub use crate::scales::*;
+    // Notes, Scales, and Chords
+    pub use crate::consts::*;
 
     // Theory
-    pub use crate::key_signature::{KeyMode, KeyRoot, KeySignature};
     pub use crate::theory::{
         ChordPattern, ProgressionType, ScalePattern, chord, progression, scale, transpose,
-        transpose_sequence,
+        transpose_sequence, KeyMode, KeyRoot, KeySignature,
     };
 
     // Instruments
     pub use crate::instruments::Instrument;
 
-    // Effects
-    pub use crate::effects::*;
-    pub use crate::filter::{Filter, FilterType};
+    // Effects and filters
+    pub use crate::synthesis::{Filter, FilterType};
+    pub use crate::synthesis::effects::*;
 
-    // Drums
-    pub use crate::drum_grid::DrumGrid;
-    pub use crate::drums::DrumType;
+    // Advanced synthesis
+    pub use crate::synthesis::{Envelope, FMParams, FilterEnvelope, GranularParams, NoiseType, Waveform, Wavetable};
 
-    // Envelopes and waveforms
-    pub use crate::envelope::Envelope;
-    pub use crate::filter_envelope::FilterEnvelope;
-    pub use crate::fm_synthesis::FMParams;
-    pub use crate::waveform::Waveform;
-
-    // Noise
-    pub use crate::noise::NoiseType;
-
-    // Granular synthesis
-    pub use crate::granular::GranularParams;
+    // LFO
+    pub use crate::synthesis::{LFO, ModRoute, ModTarget};
 
     // Sequences
     pub use crate::sequences::{
@@ -105,14 +71,11 @@ pub mod prelude {
         harmonic_series,
     };
 
-    // LFO
-    pub use crate::lfo::{LFO, ModRoute, ModTarget};
-
     // Automation
-    pub use crate::automation::{Automation, Interpolation};
+    pub use crate::synthesis::{Automation, Interpolation};
 
     // Microtonal
-    pub use crate::microtonal::{
+    pub use crate::theory::{
         EDO12, EDO19, EDO24, EDO31, EDO53, Edo, cents_to_ratio, freq_from_cents, half_flat,
         half_sharp, just_major_scale, just_minor_scale, just_ratio, just_scale, pythagorean_scale,
         quarter_flat, quarter_sharp, ratio_to_cents,

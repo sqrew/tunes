@@ -1,8 +1,8 @@
 use crate::composition::TrackBuilder;
-use crate::granular::{GranularParams, create_granular_events};
-use crate::noise::NoiseType;
+use crate::synthesis::granular::{GranularParams, create_granular_events};
+use crate::synthesis::noise::NoiseType;
 use crate::prelude::{FMParams, FilterEnvelope};
-use crate::sample::Sample;
+use crate::synthesis::sample::Sample;
 use crate::track::{AudioEvent, SampleEvent};
 
 /// Synthesis methods for TrackBuilder
@@ -92,7 +92,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::prelude::*;
-    /// # use tunes::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+    /// # use tunes::synthesis::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Create a custom wavetable with odd harmonics
     /// let organ_wt = Wavetable::from_harmonics(
@@ -104,7 +104,7 @@ impl<'a> TrackBuilder<'a> {
     ///     .custom_waveform(organ_wt)
     ///     .notes(&[C3, E3, G3], 0.5);
     /// ```
-    pub fn custom_waveform(mut self, wavetable: crate::wavetable::Wavetable) -> Self {
+    pub fn custom_waveform(mut self, wavetable: crate::synthesis::wavetable::Wavetable) -> Self {
         self.custom_wavetable = Some(wavetable);
         self
     }
@@ -121,7 +121,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::prelude::*;
-    /// # use tunes::noise::NoiseType;
+    /// # use tunes::synthesis::noise::NoiseType;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Add white noise hi-hat
     /// comp.track("drums")
@@ -183,7 +183,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # use tunes::granular::GranularParams;
+    /// # use tunes::synthesis::granular::GranularParams;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Create lush texture from a vocal sample
     /// comp.track("texture")
@@ -229,10 +229,10 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
-    use crate::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
+    use crate::synthesis::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
     #[test]
     fn test_custom_waveform_stored_in_note() {
@@ -292,7 +292,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
 
         let custom_wt = Wavetable::pwm(0.25);
-        let env = crate::envelope::Envelope::new(0.1, 0.2, 0.7, 0.3);
+        let env = crate::synthesis::envelope::Envelope::new(0.1, 0.2, 0.7, 0.3);
 
         // Use custom waveform with envelope
         comp.track("test")

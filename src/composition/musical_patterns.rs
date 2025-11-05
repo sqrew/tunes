@@ -40,10 +40,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::theory::ScalePattern;
+    /// use tunes::theory::core::ScalePattern;
     ///
     /// // Play a classic pop progression: I-V-vi-IV in C major
     /// comp.instrument("chords", &Instrument::warm_pad())
@@ -52,15 +52,15 @@ impl<'a> TrackBuilder<'a> {
     pub fn progression(
         self,
         root: f32,
-        scale_pattern: &crate::theory::ScalePattern,
+        scale_pattern: &crate::theory::core::ScalePattern,
         degrees: &[usize],
         chord_duration: f32,
     ) -> Self {
-        let prog = crate::theory::progression(
+        let prog = crate::theory::core::progression(
             root,
             scale_pattern,
             degrees,
-            crate::theory::ProgressionType::Triads,
+            crate::theory::core::ProgressionType::Triads,
         );
         self.chords_from(&prog, chord_duration)
     }
@@ -79,10 +79,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::theory::ScalePattern;
+    /// use tunes::theory::core::ScalePattern;
     ///
     /// // Play a jazz progression: ii7-V7-Imaj7 in C major
     /// comp.instrument("jazz", &Instrument::electric_piano())
@@ -91,15 +91,15 @@ impl<'a> TrackBuilder<'a> {
     pub fn progression_7th(
         self,
         root: f32,
-        scale_pattern: &crate::theory::ScalePattern,
+        scale_pattern: &crate::theory::core::ScalePattern,
         degrees: &[usize],
         chord_duration: f32,
     ) -> Self {
-        let prog = crate::theory::progression(
+        let prog = crate::theory::core::progression(
             root,
             scale_pattern,
             degrees,
-            crate::theory::ProgressionType::Sevenths,
+            crate::theory::core::ProgressionType::Sevenths,
         );
         self.chords_from(&prog, chord_duration)
     }
@@ -113,11 +113,11 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::theory::{progression, ScalePattern, ProgressionType};
-    /// use tunes::notes::C4;
+    /// use tunes::theory::core::{progression, ScalePattern, ProgressionType};
+    /// use tunes::consts::notes::C4;
     ///
     /// let pop_prog = progression(C4, &ScalePattern::MAJOR, &[1, 5, 6, 4], ProgressionType::Triads);
     /// comp.instrument("chords", &Instrument::warm_pad())
@@ -151,9 +151,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::composition::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::scales::C4_MAJOR_SCALE;
+    /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale(&C4_MAJOR_SCALE, 0.1);  // Plays C4, D4, E4, F4, G4, A4, B4, C5
     /// ```
@@ -167,9 +167,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::composition::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::scales::C4_MAJOR_SCALE;
+    /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_reverse(&C4_MAJOR_SCALE, 0.1);  // Plays C5, B4, A4, G4, F4, E4, D4, C4
     /// ```
@@ -206,9 +206,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::composition::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::scales::C4_MAJOR_SCALE;
+    /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_updown(&C4_MAJOR_SCALE, 0.1);  // Plays C4, D4, E4, F4, G4, F4, E4, D4, C4
     /// ```
@@ -266,9 +266,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::composition::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::scales::C4_MAJOR_SCALE;
+    /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
     ///     .scale_downup(&C4_MAJOR_SCALE, 0.1);  // Plays G4, F4, E4, D4, C4, D4, E4, F4, G4
     /// ```
@@ -322,10 +322,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate(C4_MAJOR, 0.125);  // Plays C4, E4, G4 sequentially
     /// ```
@@ -339,10 +339,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_reverse(C4_MAJOR, 0.125);  // Plays G4, E4, C4 sequentially
     /// ```
@@ -378,10 +378,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_updown(C4_MAJOR, 0.125);  // Plays C4, E4, G4, E4, C4 (no double G4)
     /// ```
@@ -438,10 +438,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("arp", &Instrument::pluck())
     ///     .arpeggiate_downup(C4_MAJOR, 0.125);  // Plays G4, E4, C4, E4, G4 (no double C4)
     /// ```
@@ -498,8 +498,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("thicc", &Instrument::saw_lead())
     ///     .octaves(&[C4, D4, E4], -1, 0.25);  // Each note plays with octave below
@@ -537,8 +537,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("harmony", &Instrument::pluck())
     ///     .harmonize(&[C4, D4, E4], 7, 0.25);  // Add perfect fifth (7 semitones) above
@@ -581,8 +581,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("organ", &Instrument::warm_pad())
     ///     .pedal(C2, &[E4, F4, G4, A4], 0.5);  // C pedal with melody above
@@ -638,10 +638,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
+    /// # use tunes::composition::rhythm::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::sequences;
-    /// use tunes::scales::C4_MAJOR_SCALE;
+    /// use tunes::consts::scales::C4_MAJOR_SCALE;
     ///
     /// let fib = sequences::fibonacci(16);
     /// comp.instrument("fib", &Instrument::pluck())
@@ -679,8 +679,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]
@@ -1059,7 +1059,7 @@ mod tests {
     fn test_progression_creates_triads() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("prog")
-            .progression(C4, &crate::theory::ScalePattern::MAJOR, &[1, 4, 5, 1], 1.0);
+            .progression(C4, &crate::theory::core::ScalePattern::MAJOR, &[1, 4, 5, 1], 1.0);
 
         let track = &comp.into_mixer().tracks[0];
         // Should have 4 chords (I-IV-V-I)
@@ -1078,7 +1078,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("jazz").progression_7th(
             C4,
-            &crate::theory::ScalePattern::MAJOR,
+            &crate::theory::core::ScalePattern::MAJOR,
             &[2, 5, 1],
             2.0,
         );
@@ -1100,7 +1100,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         let builder = comp.track("prog").progression(
             C4,
-            &crate::theory::ScalePattern::MAJOR,
+            &crate::theory::core::ScalePattern::MAJOR,
             &[1, 5, 6, 4],
             1.5,
         );
@@ -1113,7 +1113,7 @@ mod tests {
     fn test_progression_with_different_scales() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("minor")
-            .progression(A3, &crate::theory::ScalePattern::MINOR, &[1, 4, 5], 1.0);
+            .progression(A3, &crate::theory::core::ScalePattern::MINOR, &[1, 4, 5], 1.0);
 
         let track = &comp.into_mixer().tracks[0];
         assert_eq!(track.events.len(), 3);
@@ -1124,7 +1124,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("combo")
             .note(&[C4], 0.5)
-            .progression(C4, &crate::theory::ScalePattern::MAJOR, &[1, 5], 1.0)
+            .progression(C4, &crate::theory::core::ScalePattern::MAJOR, &[1, 5], 1.0)
             .note(&[G4], 0.5);
 
         let track = &comp.into_mixer().tracks[0];

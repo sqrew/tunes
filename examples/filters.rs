@@ -1,5 +1,5 @@
 use tunes::prelude::*;
-use tunes::filter::FilterSlope;
+use tunes::synthesis::filter::FilterSlope;
 
 /// Demonstrate filter types and parameters
 fn main() -> anyhow::Result<()> {

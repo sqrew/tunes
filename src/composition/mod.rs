@@ -1,24 +1,25 @@
-use crate::drum_grid::DrumGrid;
-use crate::envelope::Envelope;
+use crate::synthesis::envelope::Envelope;
 use crate::instruments::Instrument;
-use crate::rhythm::Tempo;
-use crate::sample::Sample;
+use crate::synthesis::sample::Sample;
 use crate::track::{Mixer, Track};
-use crate::waveform::Waveform;
+use crate::synthesis::waveform::Waveform;
 use std::collections::HashMap;
 
 // Import synthesis types - use prelude which re-exports them
 use crate::prelude::{FMParams, FilterEnvelope};
 
 // Import effect types and filter
-use crate::effects::{
+use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
     Reverb, RingModulator, Saturation, Tremolo,
 };
-use crate::filter::Filter;
-use crate::lfo::ModRoute;
+use crate::synthesis::filter::Filter;
+use crate::synthesis::lfo::ModRoute;
 
 // Module declarations
+pub mod drums;
+pub mod drum_grid;
+pub mod rhythm;
 mod classical_patterns;
 mod effects;
 mod expression;
@@ -34,7 +35,10 @@ mod synthesis;
 mod timing;
 mod tuplets;
 
-// Re-export Section types for public API
+// Re-export main types for public API
+pub use drums::DrumType;
+pub use drum_grid::DrumGrid;
+pub use rhythm::Tempo;
 pub use sections::{Section, SectionBuilder};
 
 /// Template for reusing track settings across multiple tracks
@@ -69,7 +73,7 @@ pub struct TrackTemplate {
     pub fm_params: FMParams,
     pub swing: f32,
     pub pitch_bend: f32,
-    pub custom_wavetable: Option<crate::wavetable::Wavetable>,
+    pub custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>,
     pub velocity: f32,
 }
 
@@ -423,10 +427,10 @@ impl Composition {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::drums::DrumType;
+    /// # use tunes::composition::drums::DrumType;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// // Define a verse section
@@ -466,8 +470,8 @@ impl Composition {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// # comp.section("intro").track("drums").note(&[100.0], 1.0);
     /// # comp.section("verse").track("drums").note(&[100.0], 2.0);
@@ -551,7 +555,7 @@ pub struct TrackBuilder<'a> {
     pub(crate) swing_counter: usize, // Counter to track even/odd notes for swing
     pub(crate) pitch_bend: f32, // Pitch bend in semitones for subsequent notes (0.0 = no bend)
     pub(crate) tempo: Tempo, // Tempo for musical time calculations
-    pub(crate) custom_wavetable: Option<crate::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
+    pub(crate) custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
     pub(crate) velocity: f32, // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
 }
 
@@ -697,8 +701,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)
@@ -732,8 +736,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.section("verse")
     ///     .track("melody")
@@ -764,7 +768,7 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::notes::{C4, E4, G4};
+    use crate::consts::notes::{C4, E4, G4};
 
     #[test]
     fn test_save_and_use_template() {

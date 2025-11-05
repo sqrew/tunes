@@ -5,9 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+#### Project Structure Refactoring
+- **Reorganized codebase** into logical module hierarchy for improved discoverability and maintainability
+- **`src/consts/`** - Musical constants (notes, scales, chords) now grouped together
+- **`src/instruments/`** - Instrument presets organized by category (bass, leads, pads, keys, orchestral, fx, synths)
+- **`src/synthesis/`** - All synthesis modules unified (waveform, envelope, lfo, filter, noise, automation, sample, effects, fm_synthesis, granular, wavetable, filter_envelope)
+- **`src/theory/`** - Music theory modules grouped (core theory, microtonal systems, key signatures)
+- **`src/composition/`** - Composition tools consolidated (drums, drum_grid, rhythm, patterns, sections)
+- **`src/track/`** - Track system modularized (events, track, mixer, export)
+- **`src/sequences/`** - Sequences showcased in organized categories:
+  - `mathematical/` - Number theory sequences (fibonacci, primes, arithmetic, geometric, triangular, powers_of_two, collatz)
+  - `rhythmic/` - Rhythmic patterns (euclidean, golden_ratio_rhythm, shepard_tone)
+  - `generative/` - Algorithmic generation (random_walk, logistic_map, cellular_automaton, lsystem, markov, cantor_set, and more)
+  - `musical/` - Musical transformations (harmonic_series, golden_ratio, normalize, map_to_scale)
+- All public APIs remain unchanged - fully backward compatible
+
 ## [0.2.0] - 2025-10-31
 
 ### Added
+
+#### Stem Export
+- **`.export_stems()`** - Export individual tracks as separate WAV files for external mixing
+- **`.export_stems_with_master()`** - Export stems plus master mix in one operation
+- Automatic directory creation and filename sanitization
+- Each stem preserves all track effects, filters, panning, and processing chain
+- Perfect for professional production workflows, remixing, and collaboration
 
 #### Granular Synthesis
 - **Granular synthesis engine** - Break audio into tiny grains for texture creation and time manipulation

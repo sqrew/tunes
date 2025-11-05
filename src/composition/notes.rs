@@ -1,5 +1,5 @@
 use super::TrackBuilder;
-use crate::drums::DrumType;
+use crate::composition::drums::DrumType;
 
 impl<'a> TrackBuilder<'a> {
     /// Add a note or chord at the current cursor position
@@ -227,8 +227,8 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use super::*;
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

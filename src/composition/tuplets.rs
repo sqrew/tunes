@@ -15,8 +15,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Play 5 notes evenly across 1 beat (quintuplet)
     /// comp.instrument("piano", &Instrument::acoustic_piano())
@@ -64,8 +64,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Triplet over one beat
     /// comp.instrument("piano", &Instrument::acoustic_piano())
@@ -88,8 +88,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("drums", &Instrument::pluck())
     ///     .quintuplet(&[C4, D4, E4, F4, G4], 1.0);
@@ -111,8 +111,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("lead", &Instrument::synth_lead())
     ///     .sextuplet(&[C4, D4, E4, F4, G4, A4], 1.0);
@@ -134,8 +134,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("shred", &Instrument::synth_lead())
     ///     .septuplet(&[C4, D4, E4, F4, G4, A4, B4], 1.0);
@@ -148,8 +148,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

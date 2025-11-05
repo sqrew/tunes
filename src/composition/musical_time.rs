@@ -11,8 +11,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// let qtr = comp.tempo().quarter_note();
     /// comp.instrument("piano", &Instrument::acoustic_piano())
@@ -67,8 +67,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("piano", &Instrument::acoustic_piano())
     ///     .at_bar(5)  // Start at bar 5
@@ -89,8 +89,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("snare", &Instrument::acoustic_piano())
     ///     .at_beat(9)  // Beat 9 (bar 3, beat 1 in 4/4)
@@ -110,8 +110,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("melody", &Instrument::synth_lead())
     ///     .note(&[C4], 0.5)
@@ -132,8 +132,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .note(&[C4, E4, G4], 2.0)
@@ -155,8 +155,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .wholes(&[C4, E4, G4]);  // Each note lasts a whole note
@@ -189,8 +189,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("bass", &Instrument::sub_bass())
     ///     .halves(&[C2, G2]);  // Each note lasts a half note
@@ -223,8 +223,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("melody", &Instrument::acoustic_piano())
     ///     .quarters(&[C4, D4, E4, F4]);  // Four quarter notes
@@ -257,8 +257,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("hihat", &Instrument::pluck())
     ///     .eighths(&[C4, C4, C4, C4, C4, C4, C4, C4]);  // Eight eighth notes
@@ -291,8 +291,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("fast_run", &Instrument::synth_lead())
     ///     .sixteenths(&[C4, D4, E4, F4, G4, A4, B4, C5]);  // Fast 16th note run
@@ -325,8 +325,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("melody", &Instrument::acoustic_piano())
     ///     .dotted_quarters(&[C4, E4, G4]);  // Three dotted quarter notes
@@ -359,8 +359,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("rhythm", &Instrument::pluck())
     ///     .dotted_eighths(&[C4, E4, G4, E4]);
@@ -395,8 +395,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("chord", &Instrument::warm_pad())
     ///     .quarter(&[C4, E4, G4]);  // One quarter note chord
@@ -422,8 +422,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("bass", &Instrument::sub_bass())
     ///     .half(&[C2]);  // One half note
@@ -449,8 +449,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .whole(&[C4, E4, G4, C5]);  // One whole note chord
@@ -476,8 +476,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("stab", &Instrument::stab())
     ///     .eighth(&[C4, E4, G4]);  // One eighth note stab
@@ -503,8 +503,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("perc", &Instrument::pluck())
     ///     .sixteenth(&[C4]);  // One sixteenth note
@@ -528,8 +528,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     // ===== TEMPO DURATION HELPERS =====

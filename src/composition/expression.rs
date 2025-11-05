@@ -1,6 +1,6 @@
 use super::TrackBuilder;
-use crate::envelope::Envelope;
-use crate::waveform::Waveform;
+use crate::synthesis::envelope::Envelope;
+use crate::synthesis::waveform::Waveform;
 
 impl<'a> TrackBuilder<'a> {
     /// Set the volume for this track (0.0 to 2.0)
@@ -22,8 +22,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano")
     ///     .program(0)  // Acoustic Grand Piano
@@ -53,8 +53,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("melody")
     ///     .velocity(0.9)  // Strong accent
@@ -89,15 +89,15 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("violin", &Instrument::synth_lead())
     ///     .vibrato(5.5, 0.3)  // Moderate vibrato at 5.5 Hz
     ///     .note(&[A4], 2.0);
     /// ```
     pub fn vibrato(mut self, rate: f32, depth: f32) -> Self {
-        use crate::lfo::{LFO, ModRoute, ModTarget};
+        use crate::synthesis::lfo::{LFO, ModRoute, ModTarget};
         let vibrato_lfo = LFO::new(Waveform::Sine, rate, depth);
         let mod_route = ModRoute::new(vibrato_lfo, ModTarget::Pitch, 1.0);
         self.get_track_mut().modulation.push(mod_route);
@@ -121,8 +121,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .volume(1.0)        // Start at full volume
@@ -158,8 +158,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
     ///     .pan(-1.0)          // Start hard left
@@ -195,9 +195,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
-    /// # use tunes::filter::Filter;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::synthesis::filter::Filter;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("bass", &Instrument::pluck())
     ///     .filter(Filter::low_pass(200.0, 0.7))
@@ -218,10 +218,10 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::envelope::Envelope;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
-    use crate::waveform::Waveform;
+    use crate::synthesis::envelope::Envelope;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
+    use crate::synthesis::waveform::Waveform;
 
     #[test]
     fn test_volume_sets_track_volume() {

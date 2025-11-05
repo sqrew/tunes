@@ -7,8 +7,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("trill", &Instrument::pluck())
     ///     .trill(C4, D4, 16, 0.05);  // Alternates C4-D4-C4-D4... 16 times total
@@ -50,10 +50,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("cascade", &Instrument::warm_pad())
     ///     .cascade(C4_MAJOR, 2.0, 0.1);  // Notes start 0.1s apart but sustain 2s each
     /// ```
@@ -88,8 +88,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("strings", &Instrument::pluck())
     ///     .tremolo_note(C4, 16, 0.05);  // Rapid C4-C4-C4-C4... (16 times)
@@ -132,10 +132,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// use tunes::chords::C4_MAJOR;
+    /// use tunes::consts::chords::C4_MAJOR;
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .strum(&C4_MAJOR, 0.5, 0.02);  // Quick upstroke (20ms between strings)
     /// ```
@@ -153,8 +153,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("ornament", &Instrument::pluck())
     ///     .grace(C4, B3, 0.05, 0.5);  // Quick B3 grace note before sustained C4
@@ -212,8 +212,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("harpsichord", &Instrument::harpsichord())
     ///     .mordent(C4, 0.15);  // Quick C4→D4→C4 ornament
@@ -282,8 +282,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("harpsichord", &Instrument::harpsichord())
     ///     .inverted_mordent(C4, 0.15);  // Quick C4→B3→C4 ornament
@@ -352,8 +352,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("flute", &Instrument::synth_lead())
     ///     .turn(E4, 0.2);  // F4→E4→D4→E4 ornament
@@ -403,8 +403,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("flute", &Instrument::synth_lead())
     ///     .inverted_turn(E4, 0.2);  // D4→E4→F4→E4 ornament
@@ -445,8 +445,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

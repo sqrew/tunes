@@ -20,7 +20,7 @@ use rand::Rng;
 /// # Example
 /// ```
 /// # use tunes::composition::generative::random_walk_sequence;
-/// # use tunes::scales::C4_MAJOR_SCALE;
+/// # use tunes::consts::scales::C4_MAJOR_SCALE;
 /// let walk = random_walk_sequence(3, 32, 0, 7);  // Walk through scale indices
 /// // Use with: comp.track("melody").sequence_from(&walk, &C4_MAJOR_SCALE, 0.25);
 /// ```
@@ -111,8 +111,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::scales::C4_MAJOR_SCALE;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::scales::C4_MAJOR_SCALE;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("wanderer")
     ///     .random_walk(C4_MAJOR_SCALE[0], 16, 0.25, &C4_MAJOR_SCALE);
@@ -184,8 +184,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("melody")
     ///     .pattern_start()
@@ -283,8 +283,8 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("melody")
     ///     .pattern_start()
@@ -384,9 +384,9 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use super::*;
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
-    use crate::scales::C4_MAJOR_SCALE;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
+    use crate::consts::scales::C4_MAJOR_SCALE;
 
     // Sequence generation tests
 

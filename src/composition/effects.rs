@@ -1,10 +1,10 @@
 use super::TrackBuilder;
-use crate::effects::{
+use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
     Reverb, RingModulator, Saturation, Tremolo,
 };
-use crate::filter::Filter;
-use crate::lfo::ModRoute;
+use crate::synthesis::filter::Filter;
+use crate::synthesis::lfo::ModRoute;
 
 impl<'a> TrackBuilder<'a> {
     /// Set the filter for this track
@@ -38,9 +38,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::BitCrusher;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::BitCrusher;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("lead", &Instrument::synth_lead())
     ///     .bitcrusher(BitCrusher::new(4.0, 8.0, 0.5))
@@ -61,9 +61,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Compressor;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Compressor;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("drums", &Instrument::synth_lead())
     ///     .compressor(Compressor::new(-10.0, 4.0, 0.01, 0.1, 2.0))
@@ -84,9 +84,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Chorus;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Chorus;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .chorus(Chorus::new(0.5, 0.002, 0.3))
@@ -107,9 +107,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::EQ;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::EQ;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("bass", &Instrument::sub_bass())
     ///     .eq(EQ::new(2.0, 1.0, 0.5, 200.0, 2000.0))
@@ -130,9 +130,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Saturation;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Saturation;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .saturation(Saturation::new(2.0, 0.5, 0.7))
@@ -153,9 +153,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Phaser;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Phaser;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
     ///     .phaser(Phaser::new(0.5, 0.7, 0.5, 0.5, 4))
@@ -176,9 +176,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Flanger;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Flanger;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("guitar", &Instrument::pluck())
     ///     .flanger(Flanger::new(0.5, 3.0, 0.6, 0.5))
@@ -199,9 +199,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::RingModulator;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::RingModulator;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("robot_voice", &Instrument::synth_lead())
     ///     .ring_mod(RingModulator::new(440.0, 0.7))
@@ -222,9 +222,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Tremolo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Tremolo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
     ///     .tremolo(Tremolo::new(5.0, 0.7))
@@ -246,9 +246,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::AutoPan;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::AutoPan;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .autopan(AutoPan::new(0.5, 0.8))
@@ -271,9 +271,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Gate;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Gate;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("drums", &Instrument::synth_lead())
     ///     .gate(Gate::new(-40.0, 10.0, 0.001, 0.05))
@@ -296,9 +296,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::effects::Limiter;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Limiter;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("master", &Instrument::synth_lead())
     ///     .limiter(Limiter::new(-0.1, 0.05))
@@ -319,12 +319,12 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::effects::*;
-    use crate::filter::{Filter, FilterType};
-    use crate::lfo::{LFO, ModRoute, ModTarget};
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
-    use crate::waveform::Waveform;
+    use crate::synthesis::effects::*;
+    use crate::synthesis::filter::{Filter, FilterType};
+    use crate::synthesis::lfo::{LFO, ModRoute, ModTarget};
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
+    use crate::synthesis::waveform::Waveform;
 
     #[test]
     fn test_filter_sets_track_filter() {

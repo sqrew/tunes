@@ -1,5 +1,5 @@
 use super::TrackBuilder;
-use crate::drums::DrumType;
+use crate::composition::drums::DrumType;
 use crate::track::AudioEvent;
 
 impl<'a> TrackBuilder<'a> {
@@ -178,9 +178,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
-    /// # use tunes::scales::C4_MAJOR_SCALE;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::consts::scales::C4_MAJOR_SCALE;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("melody", &Instrument::pluck())
     ///     .pattern_start()
@@ -259,8 +259,8 @@ impl<'a> TrackBuilder<'a> {
                     [0.0; 8],
                     0,
                     0.0,
-                    crate::waveform::Waveform::Sine,
-                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    crate::synthesis::waveform::Waveform::Sine,
+                    crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                     0.0,
                     false,
                 ),
@@ -268,8 +268,8 @@ impl<'a> TrackBuilder<'a> {
                     [0.0; 8],
                     0,
                     0.0,
-                    crate::waveform::Waveform::Sine,
-                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    crate::synthesis::waveform::Waveform::Sine,
+                    crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                     0.0,
                     false,
                 ),
@@ -277,8 +277,8 @@ impl<'a> TrackBuilder<'a> {
                     [0.0; 8],
                     0,
                     0.0,
-                    crate::waveform::Waveform::Sine,
-                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    crate::synthesis::waveform::Waveform::Sine,
+                    crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                     0.0,
                     false,
                 ),
@@ -286,8 +286,8 @@ impl<'a> TrackBuilder<'a> {
                     [0.0; 8],
                     0,
                     0.0,
-                    crate::waveform::Waveform::Sine,
-                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    crate::synthesis::waveform::Waveform::Sine,
+                    crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                     0.0,
                     false,
                 ),
@@ -295,8 +295,8 @@ impl<'a> TrackBuilder<'a> {
                     [0.0; 8],
                     0,
                     0.0,
-                    crate::waveform::Waveform::Sine,
-                    crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                    crate::synthesis::waveform::Waveform::Sine,
+                    crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                     0.0,
                     false,
                 ),
@@ -549,8 +549,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("melody")
     ///     .pattern_start()
@@ -602,7 +602,7 @@ impl<'a> TrackBuilder<'a> {
                                 note.waveform,
                                 note.envelope,
                                 note.pitch_bend_semitones,
-                                crate::drums::DrumType::Kick,
+                                crate::composition::drums::DrumType::Kick,
                                 None,
                             ))
                         }
@@ -612,8 +612,8 @@ impl<'a> TrackBuilder<'a> {
                             0,
                             0.0,
                             new_time,
-                            crate::waveform::Waveform::Sine,
-                            crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                            crate::synthesis::waveform::Waveform::Sine,
+                            crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                             0.0,
                             drum.drum_type,
                             None,
@@ -624,10 +624,10 @@ impl<'a> TrackBuilder<'a> {
                             0,
                             0.0,
                             new_time,
-                            crate::waveform::Waveform::Sine,
-                            crate::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
+                            crate::synthesis::waveform::Waveform::Sine,
+                            crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                             0.0,
-                            crate::drums::DrumType::Kick,
+                            crate::composition::drums::DrumType::Kick,
                             Some((
                                 sample.sample.clone(),
                                 sample.playback_rate * factor,
@@ -730,8 +730,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("hihat")
     ///     .pattern_start()
@@ -805,9 +805,9 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// # use tunes::drums::DrumType;
-    /// # use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::drums::DrumType;
+    /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Add crash every 4th hihat
     /// comp.track("hihat")
@@ -866,9 +866,9 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::drums::DrumType;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::composition::drums::DrumType;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

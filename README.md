@@ -19,7 +19,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output via cpal
-- **WAV Import/Export**: Load samples and render compositions to WAV files
+- **WAV Import/Export, STEM Export**: Load samples and render compositions to WAV files
 - **MIDI Export**: Export compositions to Standard MIDI Files with proper metadata
 
 ## Installation
@@ -28,7 +28,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.1.0"
+tunes = "0.3.0"
 ```
 
 ### Platform Requirements
@@ -194,11 +194,11 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **607 comprehensive tests and 178 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **607 comprehensive tests and 181 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
-Run the included **50 examples** to hear the library in action:
+Run the included **50+ examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)
@@ -218,9 +218,10 @@ cargo run --example effects_showcase
 cargo run --example automation_demo
 
 # And many more...
+cargo run -- example example-name-here
 ```
 
-**Note:** Use `--release` for examples with complex synthesis to avoid audio underruns.
+**Note:** Use `--release` for examples with very complex synthesis to avoid audio underruns.
 
 ## License
 

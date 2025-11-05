@@ -178,7 +178,7 @@ impl<'a> TrackBuilder<'a> {
     ///     .key_signature(KeySignature::A_MINOR)  // Modulate to A minor
     ///     .notes(&[A3, C4, E4], 0.5);
     /// ```
-    pub fn key_signature(mut self, key_signature: crate::key_signature::KeySignature) -> Self {
+    pub fn key_signature(mut self, key_signature: crate::theory::key_signature::KeySignature) -> Self {
         let cursor = self.cursor;
         self.get_track_mut()
             .events
@@ -196,8 +196,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::{C3, C4, E3, E4, G3, G4};
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::{C3, C4, E3, E4, G3, G4};
+    use crate::composition::rhythm::Tempo;
 
     #[test]
     fn test_swing_sets_value() {

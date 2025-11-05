@@ -1,4 +1,4 @@
-use tunes::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
+use tunes::synthesis::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
 /// Demonstrate user-definable wavetable synthesis
 ///

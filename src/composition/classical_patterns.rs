@@ -15,8 +15,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("piano_left", &Instrument::acoustic_piano())
     ///     .alberti_bass(&[C3, E3, G3], 0.125);  // Classic C major Alberti bass
@@ -67,8 +67,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("waltz_bass", &Instrument::acoustic_piano())
     ///     .waltz_bass(C2, &[C3, E3, G3], 0.5);  // One measure of waltz
@@ -126,8 +126,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("stride", &Instrument::acoustic_piano())
     ///     .stride_bass(C2, &[C3, E3, G3], 0.5, 2);  // Two measures of stride
@@ -190,8 +190,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("arpeggios", &Instrument::acoustic_piano())
     ///     .broken_chord(&[C4, E4, G4], 0, 0.125);  // Up and back pattern
@@ -269,8 +269,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("baroque_bass", &Instrument::upright_bass())
     ///     .walking_bass(&[C2, D2, E2, F2, G2, F2, E2, D2], 0.25);
@@ -294,8 +294,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("strings", &Instrument::strings())
     ///     .tremolo_strings(&[C4, E4, G4], 2.0, 0.03);  // Tremolo chord for 2 seconds
@@ -331,8 +331,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("ostinato", &Instrument::pluck())
     ///     .ostinato(&[C4, E4, G4, E4], 0.125, 8);  // Repeat pattern 8 times
@@ -372,10 +372,10 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::rhythm::Tempo;
-    /// use tunes::notes::*;
-    /// use tunes::theory::chord;
-    /// use tunes::theory::ChordPattern;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// use tunes::consts::notes::*;
+    /// use tunes::theory::core::chord;
+    /// use tunes::theory::core::ChordPattern;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// comp.instrument("organ", &Instrument::warm_pad())
@@ -435,8 +435,8 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::notes::*;
-    use crate::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::composition::rhythm::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

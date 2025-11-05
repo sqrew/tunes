@@ -1,7 +1,7 @@
 /// MIDI export functionality
 /// Converts compositions to Standard MIDI Files (SMF).
 /// Supports notes, drums, tempo, but not samples or effects (MIDI limitations).
-use crate::drums::DrumType;
+use crate::composition::drums::DrumType;
 use crate::error::{Result, TunesError};
 use crate::track::{AudioEvent, Mixer};
 use midly::{
@@ -474,9 +474,9 @@ impl Mixer {
                     for mod_route in &track.modulation {
                         // Only export modulation that maps to standard MIDI CCs
                         let (cc_number, bipolar) = match mod_route.target {
-                            crate::lfo::ModTarget::Pitch => (1, true), // CC1: Modulation Wheel
-                            crate::lfo::ModTarget::Volume => (11, false), // CC11: Expression
-                            crate::lfo::ModTarget::Pan => (10, true),  // CC10: Pan
+                            crate::synthesis::lfo::ModTarget::Pitch => (1, true), // CC1: Modulation Wheel
+                            crate::synthesis::lfo::ModTarget::Volume => (11, false), // CC11: Expression
+                            crate::synthesis::lfo::ModTarget::Pan => (10, true),  // CC10: Pan
                             _ => continue, // Skip filter parameters (synthesis-specific)
                         };
 
