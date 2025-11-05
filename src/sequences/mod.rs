@@ -27,7 +27,11 @@
 //! Complex algorithms for creating evolving, non-repetitive patterns:
 //! - **Random Walk**: Smooth stochastic variation (Brownian motion)
 //! - **Bounded Walk**: Random variation constrained to a range
-//! - **Logistic Map**: Chaos theory for controllable complexity
+//! - **Logistic Map**: Classic chaos theory for controllable complexity
+//! - **Tent Map**: Simple chaotic map with predictable triangular dynamics
+//! - **Sine Map**: Smooth chaotic sequences based on sine waves (very musical!)
+//! - **Hénon Map**: 2D chaotic attractor with complex structure
+//! - **Baker's Map**: Fractal mixing and distribution patterns
 //! - **Thue-Morse**: Fair binary sequences avoiding repetition
 //! - **Recamán**: Backward-looking sequence creating spiraling patterns
 //! - **Van der Corput**: Quasi-random low-discrepancy sequences
@@ -39,7 +43,12 @@
 //! # Musical Transformations
 //!
 //! Functions for mapping sequences into musical parameters:
-//! - **Harmonic Series**: Generate overtone frequencies
+//! - **Harmonic Series**: Generate overtone frequencies (1, 2, 3, 4...)
+//! - **Undertone Series**: Mirror of harmonic series (1, 1/2, 1/3, 1/4...)
+//! - **Circle of Fifths**: Key relationships through perfect fifths
+//! - **Circle of Fourths**: Reverse circle of fifths progression
+//! - **Pythagorean Tuning**: Pure fifth-based tuning system
+//! - **Just Intonation**: Pure harmonic ratios for major/minor scales
 //! - **Golden Ratio**: Powers of φ for natural proportions
 //! - **Golden Sections**: Divide values by golden ratio
 //! - **Normalize**: Map sequences to specified ranges

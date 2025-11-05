@@ -8,9 +8,15 @@ pub mod golden_ratio;
 pub mod golden_sections;
 pub mod normalize;
 pub mod map_to_scale;
+pub mod undertone_series;
+pub mod circle_of_fifths;
+pub mod pythagorean_tuning;
 
 pub use harmonic_series::harmonic_series;
 pub use golden_ratio::golden_ratio;
 pub use golden_sections::golden_sections;
 pub use normalize::normalize;
 pub use map_to_scale::{map_to_scale, Scale};
+pub use undertone_series::undertone_series;
+pub use circle_of_fifths::{circle_of_fifths, circle_of_fourths};
+pub use pythagorean_tuning::{pythagorean_tuning, just_intonation_major, just_intonation_minor};

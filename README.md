@@ -194,11 +194,11 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **607 comprehensive tests and 181 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **680 comprehensive tests and 202 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
-Run the included **50+ examples** to hear the library in action:
+Run the included **60+ examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)
