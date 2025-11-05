@@ -12,7 +12,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Synthesis**: FM synthesis, filter envelopes, wavetable oscillators
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Instruments**: Pre-configured synthesizers, bass, pads, leads, and more
+- **Instruments**: 60+ Pre-configured synthesizers, bass, pads, leads, percussions, and more
 - **Effects, Automation and Filters**: Delay, reverb, distortion, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
@@ -28,7 +28,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.3.0"
+tunes = "0.4.0"
 ```
 
 ### Platform Requirements

@@ -142,4 +142,72 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Alto saxophone - bright, expressive, mid-range jazz and classical
+    pub fn alto_sax() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.5, 0.35); // Expressive vibrato
+        Self {
+            name: "Alto Sax".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.03, 0.15, 0.85, 0.4), // Quick attack, long sustain
+            filter: Filter::low_pass(3200.0, 0.48),         // Bright, reedy
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.3, 0.4, 0.25)),
+            distortion: Some(Distortion::new(1.2, 0.15)), // Slight breath/reed character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Tenor saxophone - warm, smooth, lower jazz tone
+    pub fn tenor_sax() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.0, 0.3); // Smooth vibrato
+        Self {
+            name: "Tenor Sax".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.04, 0.18, 0.88, 0.45), // Smooth, sustained
+            filter: Filter::low_pass(2400.0, 0.45),          // Warm, full
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.3)),
+            distortion: Some(Distortion::new(1.15, 0.12)), // Subtle warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Soprano saxophone - high, piercing, straight horn tone
+    pub fn soprano_sax() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 6.0, 0.4); // Faster vibrato
+        Self {
+            name: "Soprano Sax".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.025, 0.12, 0.85, 0.35), // Quick, bright attack
+            filter: Filter::low_pass(4200.0, 0.5),            // Piercing, clear
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.18)],
+            delay: None,
+            reverb: Some(Reverb::new(0.28, 0.38, 0.22)),
+            distortion: Some(Distortion::new(1.25, 0.18)), // Edgy tone
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Baritone saxophone - very low, full-bodied, foundational
+    pub fn baritone_sax() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.5, 0.25); // Slower, subtle vibrato
+        Self {
+            name: "Baritone Sax".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.05, 0.2, 0.9, 0.5), // Slower attack, very sustained
+            filter: Filter::low_pass(1800.0, 0.42),       // Deep, full
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.1)],
+            delay: None,
+            reverb: Some(Reverb::new(0.4, 0.5, 0.35)),
+            distortion: Some(Distortion::new(1.1, 0.1)), // Very subtle warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }
