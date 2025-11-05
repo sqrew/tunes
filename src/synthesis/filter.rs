@@ -130,7 +130,8 @@ impl Filter {
 
         // Smooth parameter changes to avoid zipper noise (simple one-pole smoothing)
         // Rewritten to use FMA operations
-        const SMOOTHING: f32 = 0.999;
+        // Reduced smoothing for better modulation response
+        const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
         self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
         self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
@@ -150,10 +151,12 @@ impl Filter {
         self.low = if self.low.abs() < 1e-15 { 0.0 } else { self.low };
         self.band = if self.band.abs() < 1e-15 { 0.0 } else { self.band };
 
-        // Stability check - prevent infinity
-        if self.low.abs() > 10.0 {
-            self.reset();
-            return input;
+        // Stability check - prevent infinity by clamping instead of resetting
+        // Resetting causes audible glitches, so we clamp the state instead
+        if self.low.abs() > 100.0 {
+            self.low = self.low.clamp(-100.0, 100.0);
+            self.band = self.band.clamp(-100.0, 100.0);
+            self.high = self.high.clamp(-100.0, 100.0);
         }
 
         // Get output from first stage
@@ -181,10 +184,11 @@ impl Filter {
                 self.low2 = if self.low2.abs() < 1e-15 { 0.0 } else { self.low2 };
                 self.band2 = if self.band2.abs() < 1e-15 { 0.0 } else { self.band2 };
 
-                // Stability check for second stage
-                if self.low2.abs() > 10.0 {
-                    self.reset();
-                    return input;
+                // Stability check for second stage - clamp instead of resetting
+                if self.low2.abs() > 100.0 {
+                    self.low2 = self.low2.clamp(-100.0, 100.0);
+                    self.band2 = self.band2.clamp(-100.0, 100.0);
+                    self.high2 = self.high2.clamp(-100.0, 100.0);
                 }
 
                 // Get output from second stage
@@ -214,8 +218,8 @@ impl Filter {
     /// - Classic "fat" Moog sound
     #[inline]
     fn process_moog(&mut self, input: f32, sample_rate: f32) -> f32 {
-        // Smooth parameter changes
-        const SMOOTHING: f32 = 0.999;
+        // Smooth parameter changes - reduced for better modulation response
+        const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
         self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
         self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);

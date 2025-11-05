@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### New Instrument Presets
+- **Bass category** - `bass_808()`, `slap_bass()`, `synth_bass()` (+3 presets)
+- **Lead category** - `laser_lead()`, `detuned_lead()`, `scream_lead()` (+3 presets)
+- **Pad category** - `dark_pad()`, `shimmer_pad()`, `string_pad()` (+3 presets)
+- **Orchestral category** - `oboe()`, `bassoon()`, `french_horn()`, `harp()` (+4 presets)
+- **Keys category** - `clavinet()`, `wurlitzer()`, `toy_piano()` (+3 presets)
+- **Synth category** - `acid_synth()`, `trance_synth()`, `analog_brass()` (+3 presets)
+- Total instrument presets expanded from 33 to 52 (+19 new instruments, +58% growth)
+
+### Fixed
+
+#### Filter Cutoff Modulation Bug
+- **Critical bug fix** - Fixed filter cutoff LFO modulation producing distorted static/buzzing sounds
+- **Root cause** - Filter modulation was compounding every audio sample, causing cutoff frequency to spiral exponentially
+- **Solution** - Store and restore base filter parameters each sample to prevent modulation compounding
+- **Impact** - All instruments with FilterCutoff modulation now work correctly (affects ~30 presets including brass, pads, leads, synth bass)
+- **Additional improvements**:
+  - Reduced filter parameter smoothing from 0.999 to 0.95 for better modulation response
+  - Changed filter stability checks to clamp state values instead of resetting (prevents audio glitches)
+  - Filter modulation now sounds smooth and musical as intended
+
 ### Changed
 
 #### Project Structure Refactoring

@@ -74,4 +74,72 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Oboe - nasal, reedy double-reed woodwind
+    pub fn oboe() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.8, 0.3); // Moderate vibrato
+        Self {
+            name: "Oboe".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.04, 0.18, 0.8, 0.45), // Relatively quick attack
+            filter: Filter::low_pass(2800.0, 0.55),         // Nasal, reedy range with resonance
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.25)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Bassoon - deep, woody double-reed woodwind
+    pub fn bassoon() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.5, 0.2); // Subtle vibrato
+        Self {
+            name: "Bassoon".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.08, 0.25, 0.75, 0.5), // Gentle attack
+            filter: Filter::low_pass(1200.0, 0.4),          // Deep, woody tone
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.4, 0.5, 0.3)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// French horn - warm, mellow brass instrument
+    pub fn french_horn() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.0, 0.25);
+        Self {
+            name: "French Horn".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.1, 0.2, 0.82, 0.5), // Smooth, mellow attack
+            filter: Filter::low_pass(3800.0, 0.38),       // Warm, not too bright
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.1)],
+            delay: None,
+            reverb: Some(Reverb::new(0.55, 0.6, 0.4)), // Concert hall
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Harp - plucked string instrument with bright, shimmering tone
+    pub fn harp() -> Self {
+        let shimmer = LFO::new(Waveform::Sine, 0.3, 0.15); // Slow shimmer
+        Self {
+            name: "Harp".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.002, 0.35, 0.15, 0.7), // Very fast attack, quick decay
+            filter: Filter::low_pass(7000.0, 0.25),          // Bright, clear
+            modulation: vec![ModRoute::new(shimmer, ModTarget::FilterCutoff, 0.08)],
+            delay: None,
+            reverb: Some(Reverb::new(0.5, 0.55, 0.35)), // Hall reverb for sparkle
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

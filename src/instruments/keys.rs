@@ -1,9 +1,10 @@
 //! Keyboard and piano instrument presets
 
 use super::Instrument;
-use crate::synthesis::effects::{Delay, Reverb};
+use crate::synthesis::effects::{Delay, Distortion, Reverb};
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter::Filter;
+use crate::synthesis::lfo::{LFO, ModRoute, ModTarget};
 use crate::synthesis::waveform::Waveform;
 
 impl Instrument {
@@ -81,6 +82,55 @@ impl Instrument {
             modulation: Vec::new(),
             delay: Some(Delay::new(0.25, 0.2, 0.15)),
             reverb: Some(Reverb::new(0.4, 0.5, 0.3)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Clavinet - funky, percussive electric keyboard
+    pub fn clavinet() -> Self {
+        Self {
+            name: "Clavinet".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.001, 0.08, 0.25, 0.1), // Instant attack, quick decay
+            filter: Filter::low_pass(4500.0, 0.55),           // Bright, cutting with resonance
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.15, 0.25, 0.1)), // Minimal reverb
+            distortion: Some(Distortion::new(1.3, 0.2)), // Slight funk grit
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Wurlitzer - warm electric piano with bell-like tone
+    pub fn wurlitzer() -> Self {
+        let tremolo = LFO::new(Waveform::Sine, 4.5, 0.15); // Subtle tremolo
+        Self {
+            name: "Wurlitzer".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.005, 0.4, 0.5, 0.8), // Warm, sustained
+            filter: Filter::low_pass(3200.0, 0.22),        // Warm, bell-like
+            modulation: vec![ModRoute::new(tremolo, ModTarget::Volume, 0.12)],
+            delay: Some(Delay::new(0.3, 0.25, 0.18)),
+            reverb: Some(Reverb::new(0.35, 0.45, 0.25)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Toy piano - small, metallic, quirky sound
+    pub fn toy_piano() -> Self {
+        Self {
+            name: "Toy Piano".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.2, 0.05, 0.3), // Sharp attack, very short decay
+            filter: Filter::low_pass(6000.0, 0.35),         // Bright, tinny, metallic
+            modulation: Vec::new(),
+            delay: Some(Delay::new(0.15, 0.2, 0.1)), // Short delay for character
+            reverb: Some(Reverb::new(0.2, 0.3, 0.15)), // Minimal reverb
             distortion: None,
             volume: 1.0,
             pan: 0.0,

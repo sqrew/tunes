@@ -138,4 +138,53 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// 808 bass - classic TR-808 drum machine bass
+    pub fn bass_808() -> Self {
+        Self {
+            name: "808 Bass".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.001, 0.15, 0.0, 0.4), // Punchy attack, no sustain, long release
+            filter: Filter::low_pass(80.0, 0.3),            // Very sub-heavy
+            modulation: Vec::new(),
+            delay: None,
+            reverb: None,
+            distortion: Some(Distortion::new(1.3, 0.25)), // Slight warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Slap bass - percussive electric bass with bright attack
+    pub fn slap_bass() -> Self {
+        Self {
+            name: "Slap Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.0005, 0.05, 0.3, 0.15), // Very sharp attack, quick decay
+            filter: Filter::low_pass(2000.0, 0.7),            // Bright, percussive
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.15, 0.25, 0.1)),
+            distortion: Some(Distortion::new(1.6, 0.3)), // Adds punch
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Synth bass - modern electronic bass with movement
+    pub fn synth_bass() -> Self {
+        let pulse_lfo = LFO::new(Waveform::Sine, 0.4, 0.6);
+        Self {
+            name: "Synth Bass".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.005, 0.15, 0.7, 0.35),
+            filter: Filter::low_pass(500.0, 0.5),
+            modulation: vec![ModRoute::new(pulse_lfo, ModTarget::FilterCutoff, 0.25)],
+            delay: None,
+            reverb: None,
+            distortion: Some(Distortion::new(1.4, 0.25)),
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

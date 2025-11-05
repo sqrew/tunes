@@ -184,7 +184,10 @@ impl Mixer {
 
             let mut track_value = 0.0;
             let mut has_active_event = false;
-            let mut filter_env_cutoff = track.filter.cutoff;
+            // Store the base filter parameters for proper modulation (don't use potentially modulated values)
+            let base_filter_cutoff = track.filter.cutoff;
+            let base_filter_resonance = track.filter.resonance;
+            let mut filter_env_cutoff = base_filter_cutoff;
             let mut filter_env_found = false;
 
             // Binary search to find potentially active events (O(log n) instead of O(n))
@@ -314,7 +317,7 @@ impl Mixer {
             // Apply LFO modulation on top of filter envelope
             let mut modulated_volume = track.volume;
             let mut modulated_cutoff = filter_env_cutoff;
-            let mut modulated_resonance = track.filter.resonance;
+            let mut modulated_resonance = base_filter_resonance;
 
             for mod_route in &mut track.modulation {
                 // Tick the LFO to advance its phase
@@ -340,9 +343,13 @@ impl Mixer {
                 track_value *= modulated_volume;
 
                 // Apply filter (with modulation)
+                // Temporarily set modulated values, process, then restore base values
                 track.filter.cutoff = modulated_cutoff;
                 track.filter.resonance = modulated_resonance;
                 track_value = track.filter.process(track_value, sample_rate);
+                // Restore base values to prevent compounding modulation on next sample
+                track.filter.cutoff = base_filter_cutoff;
+                track.filter.resonance = base_filter_resonance;
 
                 // Build list of active effects with their priorities
                 // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,

@@ -175,8 +175,9 @@ impl ModRoute {
         match self.target {
             ModTarget::FilterCutoff => {
                 // Filter cutoff modulation (logarithmic scaling)
+                // ±24 semitones (2 octaves) maximum range for musical filter sweeps
                 let mod_val = self.lfo.bipolar_value();
-                let semitones = mod_val.mul_add(self.amount * 48.0, 0.0);
+                let semitones = mod_val.mul_add(self.amount * 24.0, 0.0);
                 base_value * 2f32.powf(semitones / 12.0)
             }
             ModTarget::FilterResonance => {

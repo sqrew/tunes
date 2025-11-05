@@ -106,4 +106,55 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Laser lead - bright, futuristic lead with pitch sweep
+    pub fn laser_lead() -> Self {
+        let sweep_lfo = LFO::new(Waveform::Triangle, 8.0, 1.0); // Fast sweep
+        Self {
+            name: "Laser Lead".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.001, 0.08, 0.6, 0.15), // Sharp attack
+            filter: Filter::low_pass(8000.0, 0.8),            // Very bright, resonant
+            modulation: vec![ModRoute::new(sweep_lfo, ModTarget::FilterCutoff, 0.5)],
+            delay: Some(Delay::new(0.25, 0.2, 0.15)),
+            reverb: Some(Reverb::new(0.25, 0.35, 0.2)),
+            distortion: Some(Distortion::new(1.8, 0.35)), // Digital edge
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Detuned lead - thick, chorus-like lead from slight detuning
+    pub fn detuned_lead() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.8, 0.25);
+        Self {
+            name: "Detuned Lead".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.01, 0.18, 0.75, 0.3),
+            filter: Filter::low_pass(4500.0, 0.45),
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.18)],
+            delay: Some(Delay::new(0.3, 0.25, 0.2)),
+            reverb: Some(Reverb::new(0.4, 0.45, 0.28)),
+            distortion: Some(Distortion::new(1.2, 0.15)), // Slight thickness
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Scream lead - aggressive, distorted lead
+    pub fn scream_lead() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 6.5, 0.45);
+        Self {
+            name: "Scream Lead".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.005, 0.12, 0.85, 0.25),
+            filter: Filter::low_pass(7000.0, 0.7), // Bright and resonant
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.3)],
+            delay: Some(Delay::new(0.375, 0.28, 0.22)),
+            reverb: Some(Reverb::new(0.35, 0.42, 0.25)),
+            distortion: Some(Distortion::new(3.5, 0.6)), // Heavy distortion
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

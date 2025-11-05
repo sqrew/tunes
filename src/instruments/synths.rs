@@ -89,4 +89,59 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Acid synth - classic TB-303 style acid sound
+    pub fn acid_synth() -> Self {
+        let acid_sweep = LFO::new(Waveform::Sine, 0.7, 0.8); // Fast resonant sweep
+        Self {
+            name: "Acid Synth".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.001, 0.25, 0.3, 0.15), // Sharp, quick
+            filter: Filter::low_pass(700.0, 0.75),            // Highly resonant
+            modulation: vec![ModRoute::new(acid_sweep, ModTarget::FilterCutoff, 0.7)],
+            delay: None,
+            reverb: Some(Reverb::new(0.2, 0.3, 0.15)), // Minimal reverb
+            distortion: Some(Distortion::new(2.5, 0.4)), // Gritty acid character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Trance synth - uplifting, anthem-style trance lead
+    pub fn trance_synth() -> Self {
+        let trance_lfo = LFO::new(Waveform::Sine, 0.3, 0.6); // Slow movement
+        let vibrato = LFO::new(Waveform::Sine, 5.5, 0.25);
+        Self {
+            name: "Trance Synth".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.05, 0.3, 0.8, 0.5), // Medium attack for anthem feel
+            filter: Filter::low_pass(5500.0, 0.45),       // Bright, uplifting
+            modulation: vec![
+                ModRoute::new(trance_lfo, ModTarget::FilterCutoff, 0.3),
+                ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.15),
+            ],
+            delay: Some(Delay::new(0.375, 0.3, 0.25)),
+            reverb: Some(Reverb::new(0.6, 0.6, 0.45)), // Spacious, euphoric
+            distortion: Some(Distortion::new(1.3, 0.2)),
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Analog brass - warm, vintage synth brass section
+    pub fn analog_brass() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.8, 0.3);
+        Self {
+            name: "Analog Brass".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.08, 0.2, 0.8, 0.4), // Punchy attack for brass
+            filter: Filter::low_pass(3500.0, 0.42),       // Warm, full
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.3)),
+            distortion: Some(Distortion::new(1.4, 0.25)), // Analog warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }
