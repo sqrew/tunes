@@ -9,14 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### New Instrument Presets
+#### Massive Instrument Library Expansion - 105 Total Instruments!
 - **Bass category** - `bass_808()`, `slap_bass()`, `synth_bass()` (+3 presets)
 - **Lead category** - `laser_lead()`, `detuned_lead()`, `scream_lead()` (+3 presets)
 - **Pad category** - `dark_pad()`, `shimmer_pad()`, `string_pad()` (+3 presets)
-- **Orchestral category** - `oboe()`, `bassoon()`, `french_horn()`, `harp()` (+4 presets)
-- **Keys category** - `clavinet()`, `wurlitzer()`, `toy_piano()` (+3 presets)
-- **Synth category** - `acid_synth()`, `trance_synth()`, `analog_brass()` (+3 presets)
-- Total instrument presets expanded from 33 to 52 (+19 new instruments, +58% growth)
+- **Orchestral category** - `oboe()`, `bassoon()`, `french_horn()`, `harp()`, `alto_sax()`, `tenor_sax()`, `soprano_sax()`, `baritone_sax()`, `trombone()`, `tuba()`, `piccolo()`, `english_horn()` (+12 presets)
+- **Keys category** - `clavinet()`, `wurlitzer()`, `toy_piano()`, `hammond_organ()`, `church_organ()`, `reed_organ()`, `accordion()` (+7 presets)
+- **Synth category** - `acid_synth()`, `trance_synth()`, `analog_brass()`, `fm_bass()`, `pwm_bass()`, `pluck_bass()` (+6 presets)
+- **NEW: Strings category** - `violin()`, `viola()`, `cello()`, `double_bass()`, `pizzicato_strings()`, `tremolo_strings()`, `slow_strings()` (+7 presets)
+- **NEW: Vocal category** - `choir_aahs()`, `choir_oohs()`, `synth_voice()` (+3 presets)
+- **NEW: Ethnic/World category** - `sitar()`, `pan_flute()`, `didgeridoo()`, `shamisen()`, `bagpipes()`, `kalimba()`, `koto()`, `banjo()`, `tabla()`, `erhu()`, `dulcimer()` (+11 presets)
+- **NEW: Percussion category** - `vibraphone()`, `glockenspiel()`, `tubular_bells()`, `steel_drums()`, `music_box()`, `celesta()`, `xylophone()`, `marimba()`, `bells()`, `cowbell()`, `timpani()`, `taiko_drum()` (+12 presets)
+- **NEW: Guitars category** - `acoustic_guitar()`, `electric_guitar_clean()`, `electric_guitar_distorted()`, `guitar_12_string()` (+4 presets)
+- **Total instrument presets: 33 → 105** (+72 new instruments, +218% growth!)
+- **Now includes 13 instrument categories**: bass, leads, pads, keys, orchestral, fx, synths, strings, vocal, ethnic, percussion, guitars
 
 ### Fixed
 

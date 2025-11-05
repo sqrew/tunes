@@ -210,4 +210,72 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Trombone - smooth, sliding brass with warm, mellow tone
+    pub fn trombone() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.2, 0.28);
+        Self {
+            name: "Trombone".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.06, 0.18, 0.82, 0.45), // Smooth, warm attack
+            filter: Filter::low_pass(2800.0, 0.42),          // Warm, not too bright
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.4, 0.5, 0.32)),
+            distortion: Some(Distortion::new(1.25, 0.18)), // Slight brass character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Tuba - very deep foundational brass instrument
+    pub fn tuba() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.0, 0.2); // Slow, subtle vibrato
+        Self {
+            name: "Tuba".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.08, 0.25, 0.88, 0.6), // Deep, sustained
+            filter: Filter::low_pass(1200.0, 0.38),         // Very low, foundational
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.08)],
+            delay: None,
+            reverb: Some(Reverb::new(0.45, 0.52, 0.38)),
+            distortion: Some(Distortion::new(1.15, 0.12)), // Subtle depth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Piccolo - very high, piercing flute (octave above flute)
+    pub fn piccolo() -> Self {
+        let breath = LFO::new(Waveform::Sine, 4.5, 0.18); // Quick breath variation
+        Self {
+            name: "Piccolo".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.05, 0.15, 0.7, 0.4), // Quick, bright attack
+            filter: Filter::low_pass(8000.0, 0.25),        // Very high, piercing
+            modulation: vec![ModRoute::new(breath, ModTarget::Volume, 0.1)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.42, 0.28)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// English horn - melancholy, nasal woodwind (lower than oboe)
+    pub fn english_horn() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.2, 0.3);
+        Self {
+            name: "English Horn".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.06, 0.22, 0.78, 0.5), // Gentle, expressive
+            filter: Filter::low_pass(2200.0, 0.52),         // Melancholy, nasal
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.14)],
+            delay: None,
+            reverb: Some(Reverb::new(0.38, 0.48, 0.32)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

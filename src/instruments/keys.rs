@@ -136,4 +136,71 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Hammond organ - classic tonewheel organ with rotary speaker character
+    pub fn hammond_organ() -> Self {
+        let rotary = LFO::new(Waveform::Sine, 6.5, 0.3); // Rotary speaker effect
+        Self {
+            name: "Hammond Organ".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::organ(), // Instant on/off like real Hammond
+            filter: Filter::low_pass(5000.0, 0.2), // Bright, full organ tone
+            modulation: vec![ModRoute::new(rotary, ModTarget::Volume, 0.18)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.3)),
+            distortion: Some(Distortion::new(1.2, 0.15)), // Slight tube warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Church organ - massive pipe organ with cathedral presence
+    pub fn church_organ() -> Self {
+        Self {
+            name: "Church Organ".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::organ(), // Instant on/off
+            filter: Filter::low_pass(6000.0, 0.15), // Full, majestic
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.85, 0.8, 0.7)), // Massive cathedral space
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Reed organ - warm, breathy reed organ/harmonium
+    pub fn reed_organ() -> Self {
+        let breath = LFO::new(Waveform::Sine, 3.5, 0.12); // Subtle breath movement
+        Self {
+            name: "Reed Organ".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.05, 0.1, 0.95, 0.3), // Slightly slower attack for reeds
+            filter: Filter::low_pass(3500.0, 0.25),        // Warm, breathy
+            modulation: vec![ModRoute::new(breath, ModTarget::Volume, 0.08)],
+            delay: None,
+            reverb: Some(Reverb::new(0.4, 0.5, 0.35)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Accordion - squeezebox with characteristic bellows sound
+    pub fn accordion() -> Self {
+        let bellows = LFO::new(Waveform::Sine, 4.0, 0.2); // Bellows movement
+        Self {
+            name: "Accordion".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.03, 0.1, 0.9, 0.25), // Quick attack, sustained
+            filter: Filter::low_pass(4000.0, 0.3),         // Reedy, accordion character
+            modulation: vec![ModRoute::new(bellows, ModTarget::Volume, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.3, 0.4, 0.25)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

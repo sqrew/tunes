@@ -144,4 +144,54 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// FM bass - metallic, digital bell-like bass with FM character
+    pub fn fm_bass() -> Self {
+        let fm_sweep = LFO::new(Waveform::Sine, 0.6, 0.5); // Metallic sweep
+        Self {
+            name: "FM Bass".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.001, 0.25, 0.5, 0.35), // Metallic attack
+            filter: Filter::low_pass(1500.0, 0.6),           // Metallic, digital
+            modulation: vec![ModRoute::new(fm_sweep, ModTarget::FilterCutoff, 0.35)],
+            delay: None,
+            reverb: Some(Reverb::new(0.25, 0.35, 0.2)),
+            distortion: Some(Distortion::new(2.0, 0.4)), // Digital character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// PWM bass - pulse width modulation for thick, evolving bass
+    pub fn pwm_bass() -> Self {
+        let pwm_lfo = LFO::new(Waveform::Sine, 0.5, 0.7); // Pulse width sweep
+        Self {
+            name: "PWM Bass".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.01, 0.2, 0.75, 0.4), // Thick, sustained
+            filter: Filter::low_pass(700.0, 0.5),          // Deep, evolving
+            modulation: vec![ModRoute::new(pwm_lfo, ModTarget::FilterCutoff, 0.3)],
+            delay: None,
+            reverb: None,
+            distortion: Some(Distortion::new(1.5, 0.3)), // Adds thickness
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Pluck bass - short, percussive bass hits for rhythmic patterns
+    pub fn pluck_bass() -> Self {
+        Self {
+            name: "Pluck Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.08, 0.15, 0.12), // Very short, plucky
+            filter: Filter::low_pass(800.0, 0.45),            // Punchy, percussive
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.2, 0.3, 0.15)),
+            distortion: Some(Distortion::new(1.6, 0.3)), // Adds punch
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

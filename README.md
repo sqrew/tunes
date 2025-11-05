@@ -9,10 +9,10 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Music Theory**: Scales, chords, patterns, progressions, and transposition
 - **Composition DSL**: Fluent API for building musical sequences
 - **Sections & Arrangements**: Create reusable sections (verse, chorus, bridge) and arrange them
-- **Synthesis**: FM synthesis, filter envelopes, wavetable oscillators
+- **Synthesis**: FM synthesis, Granular synthesis, filter envelopes, wavetable oscillators
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Instruments**: 60+ Pre-configured synthesizers, bass, pads, leads, percussions, and more
+- **Instruments**: 100+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
 - **Effects, Automation and Filters**: Delay, reverb, distortion, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more

@@ -7,6 +7,11 @@ pub mod keys;
 pub mod orchestral;
 pub mod fx;
 pub mod synths;
+pub mod ethnic;
+pub mod percussion;
+pub mod guitars;
+pub mod strings;
+pub mod vocal;
 
 use crate::synthesis::effects::{Delay, Distortion, Reverb};
 use crate::synthesis::envelope::Envelope;
