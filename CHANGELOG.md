@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Live Coding / Hot Reload System
+- **`tunes-live` binary** - Watch and auto-reload composition code
+- Edit your composition in Rust and hear changes instantly
+- Automatic recompilation on file save
+- Graceful restart of audio playback
+- Real-time compilation error display
+- Template file for quick start (`templates/live_template.rs`)
+- Perfect for:
+  - Iterative composition workflow
+  - Live performances
+  - Experimentation and learning
+  - Rapid prototyping
+- Simple workflow: `cargo run --bin tunes-live -- my_composition.rs`
+- Uses file watching (`notify` crate) and process management
+- No complex serialization - just recompiles and restarts
+
 #### FLAC Export Support
 - **`Mixer::export_flac(path, sample_rate)`** - Export compositions to FLAC format
 - Lossless compression typically achieves 50-60% file size reduction compared to WAV
@@ -240,8 +256,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom waveform support
 
 #### Testing & Quality
-- 680 unit tests covering all modules
-- 202 documentation tests with examples
+- 694 unit tests covering all modules
+- 206 documentation tests with examples
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples

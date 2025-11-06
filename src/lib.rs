@@ -27,6 +27,7 @@ pub mod consts;
 pub mod engine;
 pub mod error;
 pub mod instruments;
+pub mod live_coding;
 pub mod midi;
 pub mod sequences;
 pub mod synthesis;

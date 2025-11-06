@@ -158,8 +158,8 @@ pub fn midi_note_to_drum_type(midi_note: u8) -> Option<DrumType> {
         40 => Some(DrumType::Snare808), // Electric Snare
 
         // Hi-hats
-        42 => Some(DrumType::HiHatClosed),    // Closed Hi-Hat
-        46 => Some(DrumType::HiHatOpen),      // Open Hi-Hat
+        42 => Some(DrumType::HiHatClosed), // Closed Hi-Hat
+        46 => Some(DrumType::HiHatOpen),   // Open Hi-Hat
 
         // Claps and rimshots
         37 => Some(DrumType::Rimshot), // Side Stick
@@ -560,7 +560,7 @@ impl Mixer {
                         let (cc_number, bipolar) = match mod_route.target {
                             crate::synthesis::lfo::ModTarget::Pitch => (1, true), // CC1: Modulation Wheel
                             crate::synthesis::lfo::ModTarget::Volume => (11, false), // CC11: Expression
-                            crate::synthesis::lfo::ModTarget::Pan => (10, true),  // CC10: Pan
+                            crate::synthesis::lfo::ModTarget::Pan => (10, true),     // CC10: Pan
                             _ => continue, // Skip filter parameters (synthesis-specific)
                         };
 
@@ -691,7 +691,7 @@ impl Mixer {
     /// # use tunes::prelude::*;
     /// # fn main() -> anyhow::Result<()> {
     /// // Import a MIDI file
-    /// let mixer = Mixer::import_midi("song.mid")?;
+    /// let mut mixer = Mixer::import_midi("song.mid")?;
     ///
     /// // Play it
     /// let engine = AudioEngine::new()?;
@@ -703,8 +703,8 @@ impl Mixer {
     /// # }
     /// ```
     pub fn import_midi(path: &str) -> Result<Self> {
-        use std::fs;
         use crate::track::Track;
+        use std::fs;
 
         // Read MIDI file
         let data = fs::read(path).map_err(|e| {
@@ -721,7 +721,7 @@ impl Mixer {
             Timing::Timecode(_, _) => {
                 return Err(TunesError::MidiError(
                     "SMPTE timecode timing not supported".to_string(),
-                ))
+                ));
             }
         };
 
@@ -792,14 +792,14 @@ impl Mixer {
                 match &event.kind {
                     TrackEventKind::Meta(meta) => match meta {
                         MetaMessage::TrackName(name) => {
-                            track_name = Some(
-                                String::from_utf8_lossy(name)
-                                    .to_string()
-                            );
+                            track_name = Some(String::from_utf8_lossy(name).to_string());
                         }
                         _ => {}
                     },
-                    TrackEventKind::Midi { channel: ch, message } => {
+                    TrackEventKind::Midi {
+                        channel: ch,
+                        message,
+                    } => {
                         let ch_num = ch.as_int();
                         if channel.is_none() {
                             channel = Some(ch_num);
@@ -840,7 +840,9 @@ impl Mixer {
                                                 None, // No custom wavetable
                                                 vel_normalized,
                                             );
-                                            track.events.push(crate::track::AudioEvent::Note(note_event));
+                                            track
+                                                .events
+                                                .push(crate::track::AudioEvent::Note(note_event));
                                             track.invalidate_time_cache();
                                         }
                                     }
@@ -880,7 +882,9 @@ impl Mixer {
                                             None, // No custom wavetable
                                             vel_normalized,
                                         );
-                                        track.events.push(crate::track::AudioEvent::Note(note_event));
+                                        track
+                                            .events
+                                            .push(crate::track::AudioEvent::Note(note_event));
                                         track.invalidate_time_cache();
                                     }
                                 }
@@ -924,7 +928,9 @@ impl Mixer {
                         None,
                         vel_normalized,
                     );
-                    track.events.push(crate::track::AudioEvent::Note(note_event));
+                    track
+                        .events
+                        .push(crate::track::AudioEvent::Note(note_event));
                     track.invalidate_time_cache();
                 }
             }
@@ -943,12 +949,14 @@ impl Mixer {
         for (time, bpm) in tempo_changes.iter().skip(1) {
             // Skip the first tempo change (it's the initial tempo)
             if let Some(first_track) = audio_tracks.first_mut() {
-                first_track.events.push(crate::track::AudioEvent::TempoChange(
-                    crate::track::TempoChangeEvent {
-                        start_time: *time,
-                        bpm: *bpm,
-                    },
-                ));
+                first_track
+                    .events
+                    .push(crate::track::AudioEvent::TempoChange(
+                        crate::track::TempoChangeEvent {
+                            start_time: *time,
+                            bpm: *bpm,
+                        },
+                    ));
                 first_track.invalidate_time_cache();
             }
         }
@@ -956,13 +964,15 @@ impl Mixer {
         // Add time signature changes to the first track
         for (time, num, denom) in time_sig_changes {
             if let Some(first_track) = audio_tracks.first_mut() {
-                first_track.events.push(crate::track::AudioEvent::TimeSignature(
-                    crate::track::TimeSignatureEvent {
-                        start_time: time,
-                        numerator: num,
-                        denominator: denom,
-                    },
-                ));
+                first_track
+                    .events
+                    .push(crate::track::AudioEvent::TimeSignature(
+                        crate::track::TimeSignatureEvent {
+                            start_time: time,
+                            numerator: num,
+                            denominator: denom,
+                        },
+                    ));
                 first_track.invalidate_time_cache();
             }
         }

@@ -22,6 +22,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
+- **Live Coding**: Hot-reload system - edit code and hear changes instantly
 
 ## Installation
 
@@ -29,7 +30,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.4.0"
+tunes = "0.5.0"
 ```
 
 ### Platform Requirements
@@ -166,6 +167,59 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
+### Live Coding (Hot Reload)
+
+```bash
+# 1. Copy the template
+cp templates/live_template.rs my_live.rs
+
+# 2. Start live coding mode
+cargo run --bin tunes-live -- my_live.rs
+
+# 3. Edit my_live.rs and save - hear changes instantly!
+```
+
+The live coding system watches your file and automatically:
+- ✅ Recompiles when you save
+- ✅ Stops the old version
+- ✅ Starts playing the new version
+- ✅ Shows compilation errors in real-time
+
+Perfect for iterative composition, live performances, and experimentation!
+
+```rust
+// my_live.rs - edit and save to hear changes!
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let mut comp = Composition::new(Tempo::new(140.0));
+
+    comp.track("drums")
+        .drum_grid(16, 0.125)
+        .kick(&[0, 4, 8, 12]);
+
+    // Try changing notes here and saving!
+    comp.instrument("lead", &Instrument::synth_lead())
+        .notes(&[C4, E4, G4], 0.25);
+
+    let mixer = comp.into_mixer();
+
+    // 4096 samples = ~93ms latency - good balance for live coding
+    let engine = AudioEngine::with_buffer_size(4096)?;
+
+    // Loop playback (don't use .repeat() - creates too many events!)
+    loop {
+        engine.play_mixer(&mixer)?;
+    }
+}
+```
+
+**Important:**
+- Don't use `.repeat(1000)` - it creates too many events for smooth real-time synthesis
+- Instead, use a regular `loop` to play the mixer repeatedly
+- Buffer size 4096 works well for most systems (increase to 8192 or 16384 if you hear glitches)
+
+
 ## Comparison with Other Music Programming Libraries
 
 `tunes` occupies a unique position in the music programming landscape:
@@ -179,6 +233,7 @@ fn main() -> Result<(), anyhow::Error> {
 | **FLAC export**          | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
 | **MIDI import**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **MIDI export**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
+| **Live coding**          | Yes           | Yes             | Partial         | Yes               | **Yes**            | No      |
 | **Easy to learn**        | No            | Yes             | Medium          | Yes               | **Yes**            | Yes     |
 | **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
 | **Algorithmic patterns** | Yes           | Yes             | Yes             | Yes               | **Yes**            | Yes     |
@@ -220,7 +275,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **680 comprehensive tests and 202 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **694 comprehensive tests and 206 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
