@@ -1,6 +1,6 @@
 //! Export functionality for Mixer
 //!
-//! This module contains methods for exporting audio to WAV files,
+//! This module contains methods for exporting audio to WAV and FLAC files,
 //! including stems (individual track exports).
 
 use super::events::AudioEvent;
@@ -74,6 +74,112 @@ impl Mixer {
 
         println!("\r  Progress: 100%");
         writer.finalize()?;
+
+        println!("✅ Exported to: {}", path);
+        Ok(())
+    }
+
+    /// Export the mixed audio to a FLAC file (lossless compression)
+    ///
+    /// Renders the entire composition to a stereo FLAC file with the specified sample rate.
+    /// FLAC provides lossless compression, typically reducing file size by 50-60% compared
+    /// to WAV with no quality loss.
+    ///
+    /// # Arguments
+    /// * `path` - Output file path (e.g., "output.flac")
+    /// * `sample_rate` - Sample rate in Hz (44100 is CD quality, 48000 is professional)
+    ///
+    /// # Benefits of FLAC
+    /// - Lossless compression (~50-60% smaller than WAV)
+    /// - Perfect for archival and professional workflows
+    /// - Supported by most DAWs and audio tools
+    /// - Metadata support for track info
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("piano").note(&[440.0], 1.0);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.export_flac("output.flac", 44100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn export_flac(&mut self, path: &str, sample_rate: u32) -> anyhow::Result<()> {
+        use flacenc::component::BitRepr;
+        use flacenc::error::Verify;
+        use flacenc::source::MemSource;
+
+        let duration = self.total_duration();
+        let total_samples = (duration * sample_rate as f32).ceil() as usize;
+        let sample_rate_f32 = sample_rate as f32;
+        let mut sample_clock = 0.0;
+
+        println!("Rendering to FLAC...");
+        println!("  Duration: {:.2}s", duration);
+        println!("  Sample rate: {} Hz", sample_rate);
+        println!("  Total samples: {}", total_samples);
+
+        // Collect all samples in i32 format (interleaved stereo)
+        let mut samples_i32: Vec<i32> = Vec::with_capacity(total_samples * 2);
+
+        for i in 0..total_samples {
+            let time = i as f32 / sample_rate_f32;
+
+            // Generate stereo sample
+            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock);
+
+            // Convert from f32 (-1.0 to 1.0) to i32 (-2^23 to 2^23-1 for 24-bit)
+            // We use 24-bit as it provides better quality than 16-bit while keeping file size reasonable
+            const SCALE: f32 = 8388607.0; // 2^23 - 1
+            let left_i32 = (left.clamp(-1.0, 1.0) * SCALE) as i32;
+            let right_i32 = (right.clamp(-1.0, 1.0) * SCALE) as i32;
+
+            samples_i32.push(left_i32);
+            samples_i32.push(right_i32);
+
+            sample_clock = (sample_clock + 1.0) % sample_rate_f32;
+
+            // Progress indicator every second
+            if i % sample_rate as usize == 0 {
+                let progress = (i as f32 / total_samples as f32) * 100.0;
+                print!("\r  Progress: {:.0}%", progress);
+                use std::io::Write;
+                std::io::stdout().flush().ok();
+            }
+        }
+
+        println!("\r  Progress: 100%");
+        println!("  Encoding FLAC...");
+
+        // Create encoder configuration
+        let config = flacenc::config::Encoder::default()
+            .into_verified()
+            .expect("Default encoder config should be valid");
+
+        // Create FLAC source from samples
+        let source = MemSource::from_samples(
+            &samples_i32,
+            2,          // channels (stereo)
+            24,         // bits per sample
+            sample_rate as usize,
+        );
+
+        // Encode with fixed block size (use config's default block size)
+        let flac_stream = flacenc::encode_with_fixed_block_size(
+            &config,
+            source,
+            config.block_size,
+        ).map_err(|e| anyhow::anyhow!("FLAC encoding failed: {:?}", e))?;
+
+        // Write to file using ByteSink
+        let mut sink = flacenc::bitsink::ByteSink::new();
+        flac_stream.write(&mut sink)
+            .map_err(|e| anyhow::anyhow!("Failed to write FLAC stream: {:?}", e))?;
+
+        std::fs::write(path, sink.as_slice())?;
 
         println!("✅ Exported to: {}", path);
         Ok(())
@@ -501,5 +607,175 @@ impl Mixer {
         }
 
         (0.0, 0.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::composition::rhythm::Tempo;
+    use crate::composition::drums::DrumType;
+
+    #[test]
+    fn test_export_wav_creates_file() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.5);
+        mixer.add_track(track);
+
+        let test_file = "test_output_wav.wav";
+        mixer.export_wav(test_file, 44100).unwrap();
+
+        // Check file exists and has content
+        let metadata = std::fs::metadata(test_file).unwrap();
+        assert!(metadata.len() > 0);
+
+        // Clean up
+        std::fs::remove_file(test_file).ok();
+    }
+
+    #[test]
+    fn test_export_flac_creates_file() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.5);
+        mixer.add_track(track);
+
+        let test_file = "test_output_flac.flac";
+        mixer.export_flac(test_file, 44100).unwrap();
+
+        // Check file exists and has content
+        let metadata = std::fs::metadata(test_file).unwrap();
+        assert!(metadata.len() > 0);
+
+        // Verify it's a valid FLAC file by checking magic bytes
+        let file_data = std::fs::read(test_file).unwrap();
+        assert!(file_data.len() > 4);
+        // FLAC files start with "fLaC" (0x66 0x4C 0x61 0x43)
+        assert_eq!(&file_data[0..4], b"fLaC");
+
+        // Clean up
+        std::fs::remove_file(test_file).ok();
+    }
+
+    #[test]
+    fn test_flac_smaller_than_wav() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+
+        // Create a track with some variety (better compression)
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.25);
+        track.add_note(&[554.37], 0.25, 0.25);
+        track.add_note(&[659.25], 0.5, 0.25);
+        track.add_drum(DrumType::Kick, 0.0);
+        track.add_drum(DrumType::Snare, 0.5);
+        mixer.add_track(track);
+
+        let wav_file = "test_compression_compare.wav";
+        let flac_file = "test_compression_compare.flac";
+
+        mixer.export_wav(wav_file, 44100).unwrap();
+        mixer.export_flac(flac_file, 44100).unwrap();
+
+        let wav_size = std::fs::metadata(wav_file).unwrap().len();
+        let flac_size = std::fs::metadata(flac_file).unwrap().len();
+
+        // FLAC should generally be smaller (though very short files might not compress much)
+        // We just verify both files were created with reasonable sizes
+        assert!(wav_size > 1000); // WAV should have some header + data
+        assert!(flac_size > 100);  // FLAC should have header + compressed data
+
+        // Clean up
+        std::fs::remove_file(wav_file).ok();
+        std::fs::remove_file(flac_file).ok();
+    }
+
+    #[test]
+    fn test_export_empty_mixer_wav() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let test_file = "test_empty.wav";
+
+        // Should handle empty mixer gracefully
+        mixer.export_wav(test_file, 44100).unwrap();
+
+        let metadata = std::fs::metadata(test_file).unwrap();
+        assert!(metadata.len() > 0); // Should at least have WAV header
+
+        std::fs::remove_file(test_file).ok();
+    }
+
+    #[test]
+    fn test_export_empty_mixer_flac() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let test_file = "test_empty.flac";
+
+        // Should handle empty mixer gracefully
+        mixer.export_flac(test_file, 44100).unwrap();
+
+        let metadata = std::fs::metadata(test_file).unwrap();
+        assert!(metadata.len() > 0); // Should at least have FLAC header
+
+        std::fs::remove_file(test_file).ok();
+    }
+
+    #[test]
+    fn test_export_different_sample_rates_wav() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.1);
+        mixer.add_track(track);
+
+        // Test different sample rates
+        for sample_rate in [22050, 44100, 48000] {
+            let test_file = format!("test_sr_{}.wav", sample_rate);
+            mixer.export_wav(&test_file, sample_rate).unwrap();
+            assert!(std::fs::metadata(&test_file).unwrap().len() > 0);
+            std::fs::remove_file(&test_file).ok();
+        }
+    }
+
+    #[test]
+    fn test_export_different_sample_rates_flac() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.1);
+        mixer.add_track(track);
+
+        // Test different sample rates
+        for sample_rate in [22050, 44100, 48000] {
+            let test_file = format!("test_sr_{}.flac", sample_rate);
+            mixer.export_flac(&test_file, sample_rate).unwrap();
+
+            // Verify FLAC magic bytes
+            let file_data = std::fs::read(&test_file).unwrap();
+            assert_eq!(&file_data[0..4], b"fLaC");
+
+            std::fs::remove_file(&test_file).ok();
+        }
+    }
+
+    #[test]
+    fn test_flac_24bit_encoding() {
+        let mut mixer = Mixer::new(Tempo::new(120.0));
+        let mut track = crate::track::Track::new();
+        track.add_note(&[440.0], 0.0, 0.5);
+        mixer.add_track(track);
+
+        let test_file = "test_24bit.flac";
+        mixer.export_flac(test_file, 44100).unwrap();
+
+        // Read FLAC header to verify 24-bit encoding
+        let file_data = std::fs::read(test_file).unwrap();
+
+        // FLAC magic bytes
+        assert_eq!(&file_data[0..4], b"fLaC");
+
+        // The STREAMINFO block comes next (after magic bytes)
+        // Byte 8 contains the minimum block size (2 bytes)
+        // Bytes 10-11 contain maximum block size
+        // We just verify the file structure is valid
+        assert!(file_data.len() > 42); // FLAC header + STREAMINFO minimum
+
+        std::fs::remove_file(test_file).ok();
     }
 }

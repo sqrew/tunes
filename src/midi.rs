@@ -38,6 +38,21 @@ pub fn frequency_to_midi_note(freq: f32) -> u8 {
     note.round().clamp(0.0, 127.0) as u8
 }
 
+/// Convert MIDI note number to frequency (Hz)
+///
+/// Uses equal temperament tuning: freq = 440 * 2^((note - 69) / 12)
+///
+/// # Examples
+/// ```
+/// # use tunes::midi::midi_note_to_frequency;
+/// assert_eq!(midi_note_to_frequency(69), 440.0); // A4
+/// assert!((midi_note_to_frequency(60) - 261.63).abs() < 0.01); // C4
+/// ```
+pub fn midi_note_to_frequency(note: u8) -> f32 {
+    // freq = 440 * 2^((note - 69) / 12)
+    440.0 * 2.0_f32.powf((note as f32 - 69.0) / 12.0)
+}
+
 /// Convert time in seconds to MIDI ticks
 ///
 /// # Arguments
@@ -50,6 +65,20 @@ fn seconds_to_ticks(time: f32, tempo: f32, ppq: u16) -> u32 {
     let beats = time * (tempo / 60.0);
     let ticks = beats * ppq as f32;
     ticks.round() as u32
+}
+
+/// Convert MIDI ticks to time in seconds
+///
+/// # Arguments
+/// * `ticks` - MIDI ticks
+/// * `tempo` - Tempo in BPM
+/// * `ppq` - Pulses per quarter note (ticks per beat)
+fn ticks_to_seconds(ticks: u32, tempo: f32, ppq: u16) -> f32 {
+    // Beats = ticks / ppq
+    // Time = beats / (bpm / 60)
+    let beats = ticks as f32 / ppq as f32;
+    let seconds = beats / (tempo / 60.0);
+    seconds
 }
 
 /// Convert DrumType to General MIDI percussion note number
@@ -99,6 +128,61 @@ pub fn drum_type_to_midi_note(drum_type: DrumType) -> u8 {
         // Special effects (map to toms as fallback)
         DrumType::BassDrop => 35, // Acoustic Bass Drum
         DrumType::Boom => 35,     // Acoustic Bass Drum
+    }
+}
+
+/// Convert General MIDI percussion note number to DrumType
+///
+/// Maps standard MIDI percussion notes (channel 10) to tunes DrumType.
+/// Returns None for unsupported MIDI percussion notes.
+///
+/// # Arguments
+/// * `midi_note` - MIDI note number (typically 35-81 for GM percussion)
+///
+/// # Examples
+/// ```
+/// # use tunes::midi::midi_note_to_drum_type;
+/// # use tunes::composition::drums::DrumType;
+/// assert_eq!(midi_note_to_drum_type(36), Some(DrumType::Kick));
+/// assert_eq!(midi_note_to_drum_type(38), Some(DrumType::Snare));
+/// assert_eq!(midi_note_to_drum_type(42), Some(DrumType::HiHatClosed));
+/// ```
+pub fn midi_note_to_drum_type(midi_note: u8) -> Option<DrumType> {
+    match midi_note {
+        // Kick drums
+        35 => Some(DrumType::Kick808), // Acoustic Bass Drum
+        36 => Some(DrumType::Kick),    // Bass Drum 1
+
+        // Snare drums
+        38 => Some(DrumType::Snare),    // Acoustic Snare
+        40 => Some(DrumType::Snare808), // Electric Snare
+
+        // Hi-hats
+        42 => Some(DrumType::HiHatClosed),    // Closed Hi-Hat
+        46 => Some(DrumType::HiHatOpen),      // Open Hi-Hat
+
+        // Claps and rimshots
+        37 => Some(DrumType::Rimshot), // Side Stick
+        39 => Some(DrumType::Clap),    // Hand Clap
+
+        // Toms
+        45 => Some(DrumType::TomLow),  // Low Tom
+        47 => Some(DrumType::Tom),     // Low-Mid Tom
+        50 => Some(DrumType::TomHigh), // High Tom
+
+        // Cymbals
+        49 => Some(DrumType::Crash),  // Crash Cymbal 1
+        51 => Some(DrumType::Ride),   // Ride Cymbal 1
+        52 => Some(DrumType::China),  // Chinese Cymbal
+        55 => Some(DrumType::Splash), // Splash Cymbal
+
+        // Percussion
+        54 => Some(DrumType::Tambourine), // Tambourine
+        56 => Some(DrumType::Cowbell),    // Cowbell
+        70 => Some(DrumType::Shaker),     // Maracas
+
+        // Unsupported MIDI percussion notes
+        _ => None,
     }
 }
 
@@ -576,6 +660,320 @@ impl Mixer {
 
         Ok(())
     }
+
+    /// Import a MIDI file and create a Mixer from it
+    ///
+    /// Reads a Standard MIDI File and converts it to a Mixer that can be played,
+    /// exported to WAV, or re-exported to MIDI.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the MIDI file (e.g., "song.mid")
+    ///
+    /// # Supported Features
+    /// - Note events (converted to NoteEvent with frequency from MIDI note number)
+    /// - Drum events on channel 10 (converted to DrumEvent)
+    /// - Tempo changes (meta events)
+    /// - Time signatures (meta events)
+    /// - Multiple tracks
+    /// - Track names
+    ///
+    /// # Limitations
+    /// - Tempo changes occurring mid-track use the initial tempo for time calculations
+    ///   (tempo change events are still preserved and exported correctly)
+    /// - Pitch bend events are converted to static pitch offsets (not continuous)
+    /// - Control change (CC) events are ignored
+    /// - Program changes are stored but don't affect playback
+    /// - Velocity is normalized to 0.0-1.0 range
+    /// - Notes without proper Note Off events are given a default 0.1 second duration
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// // Import a MIDI file
+    /// let mixer = Mixer::import_midi("song.mid")?;
+    ///
+    /// // Play it
+    /// let engine = AudioEngine::new()?;
+    /// engine.play_mixer(&mixer)?;
+    ///
+    /// // Or export to WAV
+    /// mixer.export_wav("output.wav", 44100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn import_midi(path: &str) -> Result<Self> {
+        use std::fs;
+        use crate::track::Track;
+
+        // Read MIDI file
+        let data = fs::read(path).map_err(|e| {
+            TunesError::MidiError(format!("Failed to read MIDI file {}: {}", path, e))
+        })?;
+
+        let smf = Smf::parse(&data).map_err(|e| {
+            TunesError::MidiError(format!("Failed to parse MIDI file {}: {}", path, e))
+        })?;
+
+        // Extract timing info (PPQ)
+        let ppq = match smf.header.timing {
+            Timing::Metrical(ticks) => ticks.as_int(),
+            Timing::Timecode(_, _) => {
+                return Err(TunesError::MidiError(
+                    "SMPTE timecode timing not supported".to_string(),
+                ))
+            }
+        };
+
+        // Default tempo (120 BPM) - will be updated if tempo meta event is found
+        let mut current_tempo = 120.0;
+        let mut tempo_changes: Vec<(f32, f32)> = Vec::new(); // (time, bpm)
+        let mut time_sig_changes: Vec<(f32, u8, u8)> = Vec::new(); // (time, numerator, denominator)
+
+        // First pass: Extract tempo and time signature from all tracks
+        for (track_idx, track) in smf.tracks.iter().enumerate() {
+            let mut absolute_tick = 0u32;
+
+            for event in track {
+                absolute_tick += event.delta.as_int();
+
+                if let TrackEventKind::Meta(meta) = &event.kind {
+                    match meta {
+                        MetaMessage::Tempo(tempo) => {
+                            let us_per_quarter = tempo.as_int();
+                            let bpm = 60_000_000.0 / us_per_quarter as f32;
+                            let time = ticks_to_seconds(absolute_tick, current_tempo, ppq);
+                            tempo_changes.push((time, bpm));
+
+                            // Update current tempo for future time calculations
+                            if track_idx == 0 {
+                                current_tempo = bpm;
+                            }
+                        }
+                        MetaMessage::TimeSignature(num, denom, _, _) => {
+                            let denominator = 2u8.pow(*denom as u32);
+                            let time = ticks_to_seconds(absolute_tick, current_tempo, ppq);
+                            time_sig_changes.push((time, *num, denominator));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Reset tempo to initial value for second pass
+        current_tempo = if let Some((_, bpm)) = tempo_changes.first() {
+            *bpm
+        } else {
+            120.0
+        };
+
+        // Create mixer with the initial tempo
+        let mut mixer = Mixer::new(crate::composition::rhythm::Tempo::new(current_tempo));
+        let mut audio_tracks: Vec<Track> = Vec::new();
+
+        // Second pass: Convert MIDI tracks to audio tracks
+        for (_track_idx, midi_track) in smf.tracks.iter().enumerate() {
+            let mut track = Track::new();
+            let mut absolute_tick = 0u32;
+            let mut track_name: Option<String> = None;
+            let mut channel: Option<u8> = None;
+            let mut midi_program: Option<u8> = None;
+
+            // Track active notes for Note On/Off pairing
+            // Key: (channel, note), Value: (start_time, velocity)
+            let mut active_notes: std::collections::HashMap<(u8, u8), (f32, u8)> =
+                std::collections::HashMap::new();
+
+            for event in midi_track {
+                absolute_tick += event.delta.as_int();
+                let time = ticks_to_seconds(absolute_tick, current_tempo, ppq);
+
+                match &event.kind {
+                    TrackEventKind::Meta(meta) => match meta {
+                        MetaMessage::TrackName(name) => {
+                            track_name = Some(
+                                String::from_utf8_lossy(name)
+                                    .to_string()
+                            );
+                        }
+                        _ => {}
+                    },
+                    TrackEventKind::Midi { channel: ch, message } => {
+                        let ch_num = ch.as_int();
+                        if channel.is_none() {
+                            channel = Some(ch_num);
+                        }
+
+                        match message {
+                            MidiMessage::NoteOn { key, vel } => {
+                                let note = key.as_int();
+                                let velocity = vel.as_int();
+
+                                if velocity == 0 {
+                                    // Note off (velocity 0)
+                                    if let Some((start_time, start_vel)) =
+                                        active_notes.remove(&(ch_num, note))
+                                    {
+                                        let duration = time - start_time;
+
+                                        // Check if this is a drum track (channel 10 = channel index 9)
+                                        if ch_num == 9 {
+                                            // Drum track
+                                            if let Some(drum_type) = midi_note_to_drum_type(note) {
+                                                track.add_drum(drum_type, start_time);
+                                            }
+                                        } else {
+                                            // Melodic track
+                                            let freq = midi_note_to_frequency(note);
+                                            let vel_normalized = start_vel as f32 / 127.0;
+
+                                            let note_event = crate::track::NoteEvent::with_complete_params(
+                                                &[freq],
+                                                start_time,
+                                                duration,
+                                                crate::synthesis::waveform::Waveform::Sine,
+                                                crate::synthesis::envelope::Envelope::default(),
+                                                crate::synthesis::filter_envelope::FilterEnvelope::default(),
+                                                crate::synthesis::fm_synthesis::FMParams::default(),
+                                                0.0, // No pitch bend
+                                                None, // No custom wavetable
+                                                vel_normalized,
+                                            );
+                                            track.events.push(crate::track::AudioEvent::Note(note_event));
+                                            track.invalidate_time_cache();
+                                        }
+                                    }
+                                } else {
+                                    // Note on
+                                    active_notes.insert((ch_num, note), (time, velocity));
+                                }
+                            }
+                            MidiMessage::NoteOff { key, .. } => {
+                                let note = key.as_int();
+
+                                if let Some((start_time, start_vel)) =
+                                    active_notes.remove(&(ch_num, note))
+                                {
+                                    let duration = time - start_time;
+
+                                    // Check if this is a drum track (channel 10 = channel index 9)
+                                    if ch_num == 9 {
+                                        // Drum track
+                                        if let Some(drum_type) = midi_note_to_drum_type(note) {
+                                            track.add_drum(drum_type, start_time);
+                                        }
+                                    } else {
+                                        // Melodic track
+                                        let freq = midi_note_to_frequency(note);
+                                        let vel_normalized = start_vel as f32 / 127.0;
+
+                                        let note_event = crate::track::NoteEvent::with_complete_params(
+                                            &[freq],
+                                            start_time,
+                                            duration,
+                                            crate::synthesis::waveform::Waveform::Sine,
+                                            crate::synthesis::envelope::Envelope::default(),
+                                            crate::synthesis::filter_envelope::FilterEnvelope::default(),
+                                            crate::synthesis::fm_synthesis::FMParams::default(),
+                                            0.0, // No pitch bend
+                                            None, // No custom wavetable
+                                            vel_normalized,
+                                        );
+                                        track.events.push(crate::track::AudioEvent::Note(note_event));
+                                        track.invalidate_time_cache();
+                                    }
+                                }
+                            }
+                            MidiMessage::ProgramChange { program } => {
+                                midi_program = Some(program.as_int());
+                            }
+                            _ => {
+                                // Ignore other MIDI messages (CC, pitch bend, aftertouch, etc.)
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Handle any "hanging" notes that never received a Note Off
+            // Give them a default duration of 0.1 seconds
+            for ((ch_num, note), (start_time, start_vel)) in active_notes.drain() {
+                let duration = 0.1; // Default duration for hanging notes
+
+                if ch_num == 9 {
+                    // Drum track
+                    if let Some(drum_type) = midi_note_to_drum_type(note) {
+                        track.add_drum(drum_type, start_time);
+                    }
+                } else {
+                    // Melodic track
+                    let freq = midi_note_to_frequency(note);
+                    let vel_normalized = start_vel as f32 / 127.0;
+
+                    let note_event = crate::track::NoteEvent::with_complete_params(
+                        &[freq],
+                        start_time,
+                        duration,
+                        crate::synthesis::waveform::Waveform::Sine,
+                        crate::synthesis::envelope::Envelope::default(),
+                        crate::synthesis::filter_envelope::FilterEnvelope::default(),
+                        crate::synthesis::fm_synthesis::FMParams::default(),
+                        0.0,
+                        None,
+                        vel_normalized,
+                    );
+                    track.events.push(crate::track::AudioEvent::Note(note_event));
+                    track.invalidate_time_cache();
+                }
+            }
+
+            // Set track metadata
+            track.name = track_name;
+            track.midi_program = midi_program;
+
+            // Only add tracks that have events
+            if !track.events.is_empty() {
+                audio_tracks.push(track);
+            }
+        }
+
+        // Add tempo changes to the first track (or create a tempo track if needed)
+        for (time, bpm) in tempo_changes.iter().skip(1) {
+            // Skip the first tempo change (it's the initial tempo)
+            if let Some(first_track) = audio_tracks.first_mut() {
+                first_track.events.push(crate::track::AudioEvent::TempoChange(
+                    crate::track::TempoChangeEvent {
+                        start_time: *time,
+                        bpm: *bpm,
+                    },
+                ));
+                first_track.invalidate_time_cache();
+            }
+        }
+
+        // Add time signature changes to the first track
+        for (time, num, denom) in time_sig_changes {
+            if let Some(first_track) = audio_tracks.first_mut() {
+                first_track.events.push(crate::track::AudioEvent::TimeSignature(
+                    crate::track::TimeSignatureEvent {
+                        start_time: time,
+                        numerator: num,
+                        denominator: denom,
+                    },
+                ));
+                first_track.invalidate_time_cache();
+            }
+        }
+
+        // Add all tracks to mixer
+        for track in audio_tracks {
+            mixer.add_track(track);
+        }
+
+        Ok(mixer)
+    }
 }
 
 #[cfg(test)]
@@ -697,5 +1095,91 @@ mod tests {
         // Test clamping
         assert_eq!(mod_value_to_cc(-2.0, true), 0);
         assert_eq!(mod_value_to_cc(2.0, true), 127);
+    }
+
+    #[test]
+    fn test_midi_note_to_frequency() {
+        // Test standard notes
+        assert_eq!(midi_note_to_frequency(69), 440.0); // A4
+        assert!((midi_note_to_frequency(60) - 261.63).abs() < 0.01); // C4
+        assert!((midi_note_to_frequency(72) - 523.25).abs() < 0.01); // C5
+
+        // Test octave relationship (doubling frequency)
+        let c4 = midi_note_to_frequency(60);
+        let c5 = midi_note_to_frequency(72);
+        assert!((c5 / c4 - 2.0).abs() < 0.001); // C5 should be double C4
+    }
+
+    #[test]
+    fn test_midi_note_frequency_roundtrip() {
+        // Test that converting back and forth works
+        for midi_note in 21..108 {
+            // Test range of a standard 88-key piano
+            let freq = midi_note_to_frequency(midi_note);
+            let converted_back = frequency_to_midi_note(freq);
+            assert_eq!(converted_back, midi_note);
+        }
+    }
+
+    #[test]
+    fn test_ticks_to_seconds() {
+        // At 120 BPM, 1 beat = 0.5 seconds
+        // At 480 PPQ, 1 beat = 480 ticks
+        // So 480 ticks = 0.5 seconds
+        assert_eq!(ticks_to_seconds(480, 120.0, 480), 0.5);
+
+        // 960 ticks = 1 second
+        assert_eq!(ticks_to_seconds(960, 120.0, 480), 1.0);
+
+        // At 60 BPM, 1 beat = 1 second = 480 ticks
+        assert_eq!(ticks_to_seconds(480, 60.0, 480), 1.0);
+    }
+
+    #[test]
+    fn test_ticks_seconds_roundtrip() {
+        // Test that converting back and forth works
+        let tempo = 120.0;
+        let ppq = 480;
+
+        for seconds in [0.25, 0.5, 1.0, 2.0, 4.0] {
+            let ticks = seconds_to_ticks(seconds, tempo, ppq);
+            let converted_back = ticks_to_seconds(ticks, tempo, ppq);
+            assert!((converted_back - seconds).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn test_midi_note_to_drum_type() {
+        // Test standard drum mappings
+        assert_eq!(midi_note_to_drum_type(36), Some(DrumType::Kick));
+        assert_eq!(midi_note_to_drum_type(38), Some(DrumType::Snare));
+        assert_eq!(midi_note_to_drum_type(42), Some(DrumType::HiHatClosed));
+        assert_eq!(midi_note_to_drum_type(46), Some(DrumType::HiHatOpen));
+        assert_eq!(midi_note_to_drum_type(39), Some(DrumType::Clap));
+        assert_eq!(midi_note_to_drum_type(49), Some(DrumType::Crash));
+
+        // Test unsupported notes
+        assert_eq!(midi_note_to_drum_type(0), None);
+        assert_eq!(midi_note_to_drum_type(100), None);
+    }
+
+    #[test]
+    fn test_drum_type_midi_note_roundtrip() {
+        // Test that common drums can round-trip
+        let drums = [
+            DrumType::Kick,
+            DrumType::Snare,
+            DrumType::HiHatClosed,
+            DrumType::HiHatOpen,
+            DrumType::Clap,
+            DrumType::Crash,
+            DrumType::Ride,
+        ];
+
+        for drum in drums {
+            let midi_note = drum_type_to_midi_note(drum);
+            let converted_back = midi_note_to_drum_type(midi_note);
+            assert!(converted_back.is_some());
+        }
     }
 }

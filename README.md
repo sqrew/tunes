@@ -19,8 +19,9 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output via cpal
-- **WAV Import/Export, STEM Export**: Load samples and render compositions to WAV files
-- **MIDI Export**: Export compositions to Standard MIDI Files with proper metadata
+- **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
+- **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
+- **Sample Import**: Load and manipulate WAV samples
 
 ## Installation
 
@@ -88,6 +89,24 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
+### Export to FLAC (Lossless Compression)
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    comp.instrument("piano", &Instrument::electric_piano())
+        .notes(&[C4, E4, G4, C5], 0.5);
+
+    // Export to FLAC (50-60% smaller than WAV, lossless quality)
+    let mut mixer = comp.into_mixer();
+    mixer.export_flac("my_song.flac", 44100)?;
+    Ok(())
+}
+```
+
 ### Sample Playback
 
 ```rust
@@ -118,26 +137,31 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-### MIDI Export
+### MIDI Import/Export
 
 ```rust
 use tunes::prelude::*;
 
 fn main() -> Result<(), anyhow::Error> {
+    // Export: Create and export a composition to MIDI
     let mut comp = Composition::new(Tempo::new(120.0));
-
-    // Create a composition
     comp.instrument("melody", &Instrument::synth_lead())
         .notes(&[C4, E4, G4, C5], 0.5);
-
     comp.track("drums")
         .drum_grid(16, 0.125)
         .kick(&[0, 4, 8, 12])
         .snare(&[4, 12]);
 
-    // Export to MIDI file
     let mixer = comp.into_mixer();
     mixer.export_midi("song.mid")?;
+
+    // Import: Load a MIDI file and render to audio
+    let mut imported = Mixer::import_midi("song.mid")?;
+    imported.export_wav("output.wav", 44100)?;
+
+    // Or play it directly
+    let engine = AudioEngine::new()?;
+    engine.play_mixer(&imported)?;
     Ok(())
 }
 ```
@@ -152,6 +176,8 @@ fn main() -> Result<(), anyhow::Error> {
 | **Real-time audio**      | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
 | **Sample playback**      | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
 | **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
+| **FLAC export**          | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
+| **MIDI import**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **MIDI export**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **Easy to learn**        | No            | Yes             | Medium          | Yes               | **Yes**            | Yes     |
 | **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |

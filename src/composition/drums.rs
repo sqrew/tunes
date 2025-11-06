@@ -571,7 +571,7 @@ pub fn pitched_tom_sample(sample_index: usize, sample_rate: f32, pitch_hz: f32) 
 }
 
 /// Drum types
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DrumType {
     Kick,
     Kick808, // Long, pitched 808 kick

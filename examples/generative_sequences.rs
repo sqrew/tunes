@@ -241,30 +241,30 @@ fn main() -> anyhow::Result<()> {
     engine.play_mixer(&comp.into_mixer())?;
 
     println!("\n✅ Generative Sequences Complete!\n");
-    println!("💡 Key Takeaways:");
-    println!("   • Cellular automata: Simple rules → complex patterns");
-    println!("   • L-Systems: Fractal growth through string rewriting");
-    println!("   • Markov chains: Learn patterns from data");
-    println!("   • Recamán: Back-and-forth spiraling with memory");
-    println!("   • Van der Corput: Better distribution than random\n");
-    println!("🎵 Generative Applications:");
-    println!("   • Algorithmic composition systems");
-    println!("   • Procedural game music");
-    println!("   • Evolving soundscapes");
-    println!("   • Non-repetitive background music");
-    println!("   • Interactive music systems\n");
-    println!("🔬 Famous Rules:");
-    println!("   Rule 30: Chaotic, used in random generation");
-    println!("   Rule 90: Sierpinski triangle fractal");
-    println!("   Rule 110: Turing complete!");
-    println!("   Rule 184: Traffic flow simulation\n");
-    println!("📚 Try Next:");
-    println!("   cargo run --example mathematical_sequences");
-    println!("   cargo run --example chaotic_sequences\n");
-    println!("🌟 Pro Tip:");
-    println!("   Combine these algorithms! Use CA for rhythm,");
-    println!("   Markov for melody, L-Systems for form,");
-    println!("   and Recamán for bass lines!\n");
+    println!("Key Takeaways:");
+    println!("• Cellular automata: Simple rules → complex patterns");
+    println!("• L-Systems: Fractal growth through string rewriting");
+    println!("• Markov chains: Learn patterns from data");
+    println!("• Recamán: Back-and-forth spiraling with memory");
+    println!("• Van der Corput: Better distribution than random\n");
+    println!("Generative Applications:");
+    println!("• Algorithmic composition systems");
+    println!("• Procedural game music");
+    println!("• Evolving soundscapes");
+    println!("• Non-repetitive background music");
+    println!("• Interactive music systems\n");
+    println!("Famous Rules:");
+    println!("Rule 30: Chaotic, used in random generation");
+    println!("Rule 90: Sierpinski triangle fractal");
+    println!("Rule 110: Turing complete!");
+    println!("Rule 184: Traffic flow simulation\n");
+    println!("Try Next:");
+    println!("cargo run --example mathematical_sequences");
+    println!("cargo run --example chaotic_sequences\n");
+    println!("Pro Tip:");
+    println!("Combine these algorithms! Use CA for rhythm,");
+    println!("Markov for melody, L-Systems for form,");
+    println!("and Recamán for bass lines!\n");
 
     Ok(())
 }

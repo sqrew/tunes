@@ -22,12 +22,6 @@ use composition::{Composition, Tempo};
 use consts::*;
 use engine::AudioEngine;
 use instruments::Instrument;
-use sequences::euclidean;
-use synthesis::effects::{BitCrusher, Delay, Distortion, Reverb, Saturation};
-use synthesis::filter::Filter;
-use synthesis::lfo::{LFO, ModRoute, ModTarget};
-use synthesis::noise::NoiseType;
-use synthesis::waveform::Waveform;
 
 fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));

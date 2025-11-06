@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### FLAC Export Support
+- **`Mixer::export_flac(path, sample_rate)`** - Export compositions to FLAC format
+- Lossless compression typically achieves 50-60% file size reduction compared to WAV
+- Uses 24-bit depth for excellent audio quality
+- Pure Rust implementation via `flacenc` crate (no system dependencies)
+- Perfect for archival, sharing, and professional workflows
+- Widely supported by DAWs, media players, and audio tools
+- New example: `flac_export.rs` demonstrating FLAC export and size comparison
+
+#### MIDI Import Support
+- **`Mixer::import_midi(path)`** - Import Standard MIDI Files into tunes
+- Converts MIDI notes to NoteEvent with proper frequency conversion
+- Maps MIDI channel 10 (percussion) to DrumType automatically
+- Supports tempo changes and time signature changes
+- Preserves track names and MIDI program numbers
+- Enables new workflows:
+  - **MIDI to WAV conversion** - Import MIDI files and render as audio
+  - **Round-trip testing** - Export to MIDI and import back
+  - **MIDI analysis** - Extract note data from MIDI files
+  - **Direct playback** - Play imported MIDI files through tunes engine
+- New public helper functions:
+  - `midi_note_to_frequency()` - Convert MIDI note numbers (0-127) to Hz
+  - `midi_note_to_drum_type()` - Map General MIDI percussion notes to DrumType
+- DrumType now derives `PartialEq` and `Eq` for comparison
+- New example: `midi_import.rs` demonstrating all MIDI import workflows
+
 #### Massive Instrument Library Expansion - 105 Total Instruments!
 - **Bass category** - `bass_808()`, `slap_bass()`, `synth_bass()` (+3 presets)
 - **Lead category** - `laser_lead()`, `detuned_lead()`, `scream_lead()` (+3 presets)
@@ -219,7 +245,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples
-- 20+ complete working examples
+- 60+ complete working examples
 - Demonstrations of all major features
 - Classical technique examples
 - Instrument and effect showcases

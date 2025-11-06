@@ -80,4 +80,10 @@ pub mod prelude {
         half_sharp, just_major_scale, just_minor_scale, just_ratio, just_scale, pythagorean_scale,
         quarter_flat, quarter_sharp, ratio_to_cents,
     };
+
+    // MIDI utilities
+    pub use crate::midi::{
+        frequency_to_midi_note, midi_note_to_frequency, midi_note_to_drum_type,
+        drum_type_to_midi_note,
+    };
 }
