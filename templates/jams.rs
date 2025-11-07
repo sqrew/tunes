@@ -38,6 +38,8 @@ fn main() -> anyhow::Result<()> {
     let engine = AudioEngine::with_buffer_size(4096)?;
 
     loop {
-        engine.play_mixer(&mixer)?;
+        // Use play_mixer_realtime when possible
+        // There is no pause to render between loops like there is with play_mixer
+        engine.play_mixer_realtime(&mixer)?;
     }
 }

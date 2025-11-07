@@ -209,7 +209,9 @@ fn main() -> anyhow::Result<()> {
 
     // Loop playback (don't use .repeat() - creates too many events!)
     loop {
-        engine.play_mixer(&mixer)?;
+        // Use play_mixer_realtime
+        // This is to avoid the render time between loops for smooth looping
+        engine.play_mixer_realtime(&mixer)?;
     }
 }
 ```

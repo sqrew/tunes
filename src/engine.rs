@@ -306,8 +306,9 @@ impl AudioEngine {
             *buf = local_buffer;
         });
 
-        // Wait for initial buffer (~1 second of audio)
-        let min_buffer_samples = (sample_rate * 1.0) as usize * 2; // 1 second in stereo
+        // Wait for initial buffer (up to 1 second of audio, or full duration if shorter)
+        let min_buffer_duration = duration_secs.min(1.0);
+        let min_buffer_samples = (sample_rate * min_buffer_duration) as usize * 2;
         loop {
             let buf_len = buffer.lock().unwrap().len();
             if buf_len >= min_buffer_samples {
