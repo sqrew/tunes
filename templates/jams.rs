@@ -23,11 +23,11 @@ fn main() -> anyhow::Result<()> {
     // Add bass
     comp.instrument("bass", &Instrument::sub_bass())
         .at(0.0)
-        .notes(&[C2, C2, G2, G2], 0.5);
+        .notes(&[C2, C2, G1, G2], 0.5);
 
     // Add melody
     comp.instrument("lead", &Instrument::synth_lead())
-        .notes(&[C4, E4, G4, C5, G4, E4, C4, C4], 0.25);
+        .notes(&[C4, E4, G4, C5, G4, E4, C4, A4], 0.25);
 
     // Convert to mixer
     let mixer = comp.into_mixer();

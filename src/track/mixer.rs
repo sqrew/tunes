@@ -537,13 +537,11 @@ impl Mixer {
             mixed_right += track_value * right_gain;
         }
 
-        // Normalize by number of tracks to prevent clipping
-        if !self.tracks.is_empty() {
-            let scale = 1.0 / self.tracks.len() as f32;
-            (mixed_left * scale, mixed_right * scale)
-        } else {
-            (0.0, 0.0)
-        }
+        // Apply soft clipping to prevent harsh distortion
+        // tanh provides smooth saturation - maintains dynamics while preventing clipping
+        // This is much better than dividing by track count, which unnecessarily
+        // reduces volume even when tracks don't play simultaneously
+        (mixed_left.tanh(), mixed_right.tanh())
     }
 
     /// Render the mixer to an in-memory stereo buffer

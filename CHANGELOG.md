@@ -9,6 +9,267 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Improved Mixer Volume Handling with Soft Clipping
+- **Smart volume management** - Replaced naive track count division with soft clipping
+- **Problem solved:** Previous behavior divided volume by number of tracks, causing unnecessarily quiet output when tracks don't play simultaneously
+- **Solution:** Uses `tanh()` soft clipping for smooth saturation
+- **Benefits:**
+  - Maintains full volume when tracks play sequentially
+  - Prevents harsh clipping when tracks overlap
+  - Industry-standard approach used in professional audio software
+  - Adds subtle warmth/saturation only when signals exceed 1.0
+  - No more artificially quiet mixes with many tracks!
+- **Example:** 20 tracks playing one at a time now have full volume instead of 5% volume
+- New example: `volume_test.rs` demonstrating the improvement
+
+#### New Algorithmic Sequence Generators
+- **4 powerful new generators** - Lorenz Attractor, Circle Map, Polyrhythm, and Perlin Noise
+- **Fills critical gaps** - Continuous chaotic system, phase-locking rhythms, mathematical cross-rhythms, and smooth organic modulation
+- **44+ total generators** - Comprehensive algorithmic composition toolkit
+
+**Lorenz Attractor** (Continuous Chaotic System):
+- **`lorenz_attractor(σ, ρ, β, initial, dt, steps)`** - Generate smooth 3D chaotic trajectories
+- **`lorenz_butterfly(steps)`** - Convenience function with classic parameters (σ=10, ρ=28, β=8/3)
+- **Returns:** Vec<(f32, f32, f32)> - X/Y/Z coordinates tracing the butterfly attractor
+- **Implementation:** Runge-Kutta 4th order integration for accuracy
+- **Use cases:**
+  - Smooth, flowing melodies without jumps (unlike discrete maps)
+  - Parameter automation: X→pitch, Y→volume, Z→filter cutoff
+  - Ambient textures, generative music, binaural effects
+  - Never-repeating but bounded patterns
+- **Key feature:** First continuous (not discrete) chaotic system in the library
+- Discards first 100 transient steps for stable attractor behavior
+- Coordinates span approximately -20 to 20, normalize to musical ranges
+
+**Circle Map** (Arnol'd Tongue / Phase-Locking):
+- **`circle_map(ω, k, initial, iterations)`** - Generate phase angles on unit circle
+- **`circle_map_to_hits(ω, k, initial, iterations, threshold)`** - Convert to rhythm hits
+- **`circle_map_hocket(ω, k, initial, iterations, threshold)`** - Generate complementary rhythms
+- **Parameters:**
+  - ω (omega): Driving frequency ratio (0.0-1.0). Rational = mode-locked, φ=0.618 = never locks
+  - K: Coupling strength (0=pure rotation, 1=critical, >1=strong locking)
+- **Use cases:**
+  - Polyrhythmic patterns with smooth transitions between locked/chaotic
+  - Metric modulation, phasing effects, groove generation
+  - Golden ratio rhythms (ω=0.618) for non-repeating patterns
+  - Hocket patterns (call-and-response)
+- **Key feature:** Models phase-locking in oscillators, specifically designed for rhythm
+- Exhibits Arnol'd tongues (triangular mode-locked regions in parameter space)
+
+**Polyrhythm Generator** (Mathematical Cross-Rhythms):
+- **`polyrhythm(ratios, total_length)`** - Generate multiple simultaneous subdivisions
+- **`polyrhythm_cycle(ratios)`** - Auto-calculate LCM for complete cycle
+- **`polyrhythm_timings(ratios, cycle_duration)`** - Get exact timing in beats
+- **`lcm(numbers)`** - Calculate least common multiple for pattern lengths
+- **Use cases:**
+  - Classic polyrhythms: 3:4 (hemiola), 5:7, 7:11
+  - Triple/quad polyrhythms: 3:4:5, 5:6:7:11
+  - Metric modulation, phasing, Steve Reich-style patterns
+  - Essential for rhythmic complexity in composition
+- **Key feature:** Surprisingly missing from library, now fills critical gap
+- Returns hit indices for each voice (easy integration with drum_grid)
+- LCM calculation ensures complete pattern cycles
+
+**Perlin Noise** (Smooth Organic Modulation):
+- **`perlin_noise(seed, frequency, octaves, persistence, length)`** - Smooth continuous pseudo-random sequences
+- **`perlin_noise_bipolar(seed, frequency, octaves, persistence, length)`** - Bipolar version in [-1, 1]
+- **Returns:** Vec<f32> with controllable smooth randomness
+- **Implementation:** Classic Perlin noise with Ken Perlin's improved fade function (6t^5 - 15t^4 + 10t^3)
+- **Parameters:**
+  - frequency: Speed of variation (0.01=slow drift, 0.5=fast changes)
+  - octaves: Number of detail layers (1-8, Fractal Brownian Motion)
+  - persistence: How much each octave contributes (typical: 0.5)
+- **Use cases:**
+  - Smooth filter sweeps (organic cutoff automation)
+  - Volume automation (breathing pads, natural swells)
+  - Vibrato/tremolo depth variation
+  - Stereo panning (smooth movement)
+  - Timbre evolution (overtone weight changes)
+  - Rhythm humanization (subtle timing/velocity drift)
+  - Pitch detune (natural variation)
+- **Key feature:** Fills the gap between mechanical (sine) and jumpy (random walk) - controllable smooth randomness
+- **Why important:** The "secret sauce" in modern synthesizers (Serum, Massive, Omnisphere all use Perlin for LFO modulation)
+- Multi-octave support (FBM) adds natural texture at different scales
+- Deterministic (same seed = same output) for reproducibility
+
+**Technical improvements:**
+- All generators include comprehensive tests (chaos verification, boundary checks, smoothness, determinism)
+- Fully documented with musical applications and parameter exploration guides
+- Integrated into existing sequences module hierarchy
+- New examples: `new_sequences_demo.rs` (Lorenz/circle map/polyrhythm), `perlin_noise_demo.rs` (organic modulation)
+
+**API Enhancement - Float Sequence Operations:**
+- **`normalize_f32(sequence, min, max)`** - Normalize f32 sequences to a target range
+  - Complements existing `normalize()` - Now have both u32 and f32 normalization
+  - Map Lorenz coordinates to pitch/volume ranges, Perlin noise to filter cutoffs, etc.
+- **`map_to_scale()` & `map_to_scale_f32()` - BREAKING CHANGE: Now return frequencies directly!**
+  - **Both functions now return `Vec<f32>` (frequencies) instead of MIDI notes**
+  - **Both accept `root: f32`** - Use note constants like `C4`, `D4` instead of MIDI numbers
+  - **Direct path from any sequence to in-key melodies** - no conversion needed!
+  - `map_to_scale()` - for integer sequences (Fibonacci, Collatz, primes, etc.)
+  - `map_to_scale_f32()` - for continuous sequences (Lorenz, Perlin, circle maps, etc.)
+  - Automatically normalizes input range (f32 version only) or wraps (u32 version)
+- **Why needed:** Lorenz attractor, Perlin noise, circle maps, and other continuous generators return f32 values
+- **Before/After comparison:**
+  ```rust
+  // OLD: MIDI numbers + manual conversion
+  let fib = sequences::fibonacci(16);
+  let midi = sequences::map_to_scale(&fib, &Scale::major(), 60, 2);  // u32 → Vec<u32>
+  let freqs: Vec<f32> = midi.iter()
+      .map(|&m| 440.0 * 2_f32.powf((m as f32 - 69.0) / 12.0))
+      .collect();
+  comp.track("melody").notes(&freqs, 0.25);
+
+  // NEW: Note constants, direct frequencies!
+  let fib = sequences::fibonacci(16);
+  let melody = sequences::map_to_scale(&fib, &Scale::major(), C4, 2);  // f32 → Vec<f32>
+  comp.track("melody").notes(&melody, 0.25);
+
+  // Works for continuous sequences too!
+  let phases = sequences::circle_map(0.618, 1.5, 0.0, 32);
+  let melody = sequences::map_to_scale_f32(&phases, &Scale::minor(), C4, 2);
+  comp.track("chaos").notes(&melody, 0.25);
+  ```
+- **Use cases:**
+  - Lorenz attractor melodies that stay in key (D minor butterfly!)
+  - Perlin noise for evolving pentatonic patterns
+  - Circle map phases quantized to blues scale
+  - Any continuous sequence → musical scale → ready to play!
+- **Examples updated** - All examples and doc tests demonstrate the new functions for API discoverability
+- Makes working with continuous sequences as easy as discrete ones
+
+**Total sequence library: 44 generators:**
+- Mathematical (7): Fibonacci, primes, Collatz, arithmetic, geometric, triangular, powers of two
+- Chaotic maps (8): Logistic, tent, sine, Hénon, Baker's, Lorenz (NEW!)
+- Fractal/recursive (6): L-systems, Thue-Morse, Cantor set, Recamán, van der Corput, cellular automata
+- Rhythmic (5): Euclidean, golden ratio, Shepard tone, circle map (NEW!), polyrhythm (NEW!)
+- Smooth noise (2): Random walk, bounded walk, **Perlin noise (NEW!)**
+- Musical transformations (14): Harmonic series, undertone series, circle of fifths/fourths, Pythagorean tuning, just intonation, golden ratio, normalize, map to scale, etc.
+- Stochastic: Markov chains
+
+#### Massively Expanded Drum Library
+- **69 new drum sounds** - Expanded from 22 to 91 total percussion instruments (4.1x increase!)
+- **Comprehensive coverage** - MIDI percussion, orchestral, world music, hand percussion, electronic effects, variations, and legendary drum machines
+- **Professional-grade variety** - Multiple variations of commonly-used drums for diverse sonic palettes
+- **Complete 808 & 909 kits** - Iconic drum machine sounds from Roland's TR-808 and TR-909
+- **Production-ready** - Covers acoustic, electronic, world music, experimental, and modern production needs
+
+**First Expansion (11 drums):**
+- **Simple Percussion:**
+  - `DrumType::Claves` - Sharp wooden click (2500Hz, 20ms duration)
+  - `DrumType::Triangle` - Metallic ding with odd harmonics (1.5s sustain)
+  - `DrumType::SideStick` - Soft rim click (less aggressive than rimshot)
+  - `DrumType::WoodBlock` - Dry, pitched click (1500Hz)
+- **909 Electronic Drums:**
+  - `DrumType::Kick909` - Punchier electronic kick with tanh() distortion
+  - `DrumType::Snare909` - Brighter electronic snare (85% noise / 15% tone)
+- **Latin Percussion:**
+  - `DrumType::CongaHigh` - Bright, high-pitched hand drum (400Hz → 320Hz drop)
+  - `DrumType::CongaLow` - Deep, resonant bass conga (180Hz → 140Hz drop)
+  - `DrumType::BongoHigh` - Sharp, articulate bongo (500Hz → 420Hz drop)
+  - `DrumType::BongoLow` - Deeper bongo with warmer tone (300Hz → 250Hz drop)
+- **Utility:**
+  - `DrumType::RideBell` - Metallic ping with inharmonic partials (4000Hz)
+
+**Second Expansion (13 drums - MIDI percussion gap filling):**
+- **Additional Toms:**
+  - `DrumType::FloorTomLow` - Deep floor tom (80Hz → 70Hz)
+  - `DrumType::FloorTomHigh` - Higher floor tom (110Hz → 95Hz)
+- **Additional Hi-Hat:**
+  - `DrumType::HiHatPedal` - Pedal hi-hat "chick" sound (GM #44)
+- **Additional Cymbals:**
+  - `DrumType::Crash2` - Second crash variation with slower decay
+- **Special Effects:**
+  - `DrumType::Vibraslap` - Distinctive rattling/buzzing percussion
+- **Additional Latin Percussion:**
+  - `DrumType::TimbaleHigh` - High timbale, metallic shell drum (850Hz)
+  - `DrumType::TimbaleLow` - Low timbale (550Hz)
+  - `DrumType::AgogoHigh` - High agogo bell, Brazilian (3500Hz)
+  - `DrumType::AgogoLow` - Low agogo bell (2500Hz)
+- **Additional Shakers/Scrapers:**
+  - `DrumType::Cabasa` - Textured shaker/scraper hybrid
+  - `DrumType::GuiroShort` - Short scraping sound (80ms)
+  - `DrumType::GuiroLong` - Long scraping sound (200ms)
+- **Additional Wood Percussion:**
+  - `DrumType::WoodBlockHigh` - High-pitched wooden click (2500Hz)
+
+**Third Expansion (15 drums - Orchestral, World, Hand Percussion, Effects):**
+- **Orchestral Percussion:**
+  - `DrumType::Timpani` - Tuned orchestral bass drum (80Hz, rich harmonics)
+  - `DrumType::Gong` - Deep metallic crash with long decay (3.5s)
+  - `DrumType::Chimes` - Tubular bells with bell-like inharmonic partials
+- **World Percussion:**
+  - `DrumType::Djembe` - West African hand drum with slap attack
+  - `DrumType::TablaBayan` - Indian bass drum with pitch bend (150Hz → 100Hz)
+  - `DrumType::TablaDayan` - Indian treble drum, bright ringing tone (400Hz)
+  - `DrumType::Cajon` - Box drum with internal wire buzz, very popular
+- **Hand Percussion:**
+  - `DrumType::Fingersnap` - Clean snap sound with high-frequency click
+  - `DrumType::Maracas` - Bright rattling shaker (distinct from generic shaker)
+  - `DrumType::Castanet` - Spanish wooden clapper with sharp attack
+  - `DrumType::SleighBells` - Jingle bells cluster with shimmer
+- **Electronic / Effects:**
+  - `DrumType::LaserZap` - Sci-fi pitch sweep (2000Hz → 80Hz)
+  - `DrumType::ReverseCymbal` - Reversed crash buildup effect
+  - `DrumType::WhiteNoiseHit` - Pure noise burst/clap effect
+  - `DrumType::StickClick` - Drumstick click sound
+
+**Fourth Expansion (18 drums - Variations of commonly-used percussion):**
+- **Kick Variations (4):**
+  - `DrumType::KickTight` - Short, punchy kick for electronic music (60ms)
+  - `DrumType::KickDeep` - Extended low-end, longer decay (500ms)
+  - `DrumType::KickAcoustic` - Natural drum kit sound with harmonics
+  - `DrumType::KickClick` - Prominent beater attack for clarity
+- **Snare Variations (4):**
+  - `DrumType::SnareRim` - Rim-focused, minimal body (80ms)
+  - `DrumType::SnareTight` - Short, dry, minimal resonance (70ms)
+  - `DrumType::SnareLoose` - Longer ring, more wire buzz (180ms)
+  - `DrumType::SnarePiccolo` - High-pitched, bright (350Hz)
+- **Hi-Hat Variations (2):**
+  - `DrumType::HiHatHalfOpen` - Between closed and open (100ms)
+  - `DrumType::HiHatSizzle` - Lots of high-frequency content (200ms)
+- **Clap Variations (4):**
+  - `DrumType::ClapDry` - No reverb, tight (50ms)
+  - `DrumType::ClapRoom` - Natural room ambience with tail
+  - `DrumType::ClapGroup` - Multiple hand claps layered
+  - `DrumType::ClapSnare` - Hybrid clap/snare sound
+- **Cymbal Variations (2):**
+  - `DrumType::CrashShort` - Quick crash, gated (500ms)
+  - `DrumType::RideTip` - Bell-less ride, stick tip sound (600ms)
+- **Shaker Variations (2):**
+  - `DrumType::EggShaker` - Tight, short shake (80ms)
+  - `DrumType::TubeShaker` - Longer, more sustained (250ms)
+
+**Fifth Expansion (12 drums - 808/909 Kit Completion + Transition Effects):**
+- **808 Kit Completion (5):**
+  - `DrumType::Tom808Low` - Deep 808 tom (105Hz → 65Hz, triangle oscillators, 400ms)
+  - `DrumType::Tom808Mid` - Mid 808 tom (145Hz → 90Hz, triangle oscillators, 350ms)
+  - `DrumType::Tom808High` - High 808 tom (220Hz → 140Hz, triangle oscillators, 300ms)
+  - `DrumType::Cowbell808` - Iconic 808 cowbell (540Hz + 800Hz square waves, 300ms)
+  - `DrumType::Clave808` - Sharp 808 clave (2500Hz + 5000Hz sine, 25ms)
+- **909 Kit Completion (5):**
+  - `DrumType::HiHat909Closed` - Bright 909 closed hat (12kHz noise + 10.5kHz metallic, 50ms)
+  - `DrumType::HiHat909Open` - Sustained 909 open hat (12kHz noise + metallic, 180ms)
+  - `DrumType::Clap909` - Classic 909 clap (multiple noise bursts with offsets, 100ms)
+  - `DrumType::Cowbell909` - Sharp 909 cowbell (587Hz + 845Hz triangle waves, 250ms)
+  - `DrumType::Rim909` - 909 rim shot (1950Hz triangle + filtered noise, 60ms)
+- **Transition Effects (2):**
+  - `DrumType::ReverseSnare` - Snare buildup effect (reverse envelope, 1.2s)
+  - `DrumType::CymbalSwell` - Building cymbal wash (gradual buildup then fade, 2.0s)
+- **Technical improvements:**
+  - Added `triangle_wave()` helper function for authentic 808 synthesis
+  - 808 toms use dual triangle oscillators with pitch drops (characteristic TR-808 sound)
+  - 808 cowbell uses square waves at specific harmonic ratios
+  - 909 hi-hats use high-frequency noise with metallic overtones
+  - 909 clap uses multiple time-offset noise bursts for realistic hand clap
+  - Transition effects use reverse/building envelopes for modern production
+
+- All 69 new drums have proper MIDI mappings for import/export compatibility
+- New examples: `new_drums_demo.rs`, `midi_percussion_demo.rs`, `expanded_percussion_demo.rs`, `drum_variations_demo.rs`, `808_909_complete_demo.rs`
+- **Final Breakdown:** 12 kicks, 11 snares, 9 hi-hats, 10 claps, 9 cymbals, 7 shakers, 8 toms, 3 cowbells
+- **Complete 808 kit:** Kick, Snare, 2 HiHats, Clap, 3 Toms, Cowbell, Clave (12 total)
+- **Complete 909 kit:** Kick, Snare, 2 HiHats, Clap, Cowbell, Rim (7 total)
+
 #### Live Coding / Hot Reload System
 - **`tunes-live` binary** - Watch and auto-reload composition code
 - Edit your composition in Rust and hear changes instantly
@@ -256,8 +517,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom waveform support
 
 #### Testing & Quality
-- 694 unit tests covering all modules
-- 206 documentation tests with examples
+- 728 unit tests covering all modules
+- 219 documentation tests with examples
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples

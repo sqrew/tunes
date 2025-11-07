@@ -78,3 +78,103 @@ pub fn normalize(sequence: &[u32], min: f32, max: f32) -> Vec<f32> {
         })
         .collect()
 }
+
+/// Normalize a floating-point sequence to a range
+///
+/// Works just like `normalize()` but for continuous sequences (f32) like Lorenz attractor,
+/// Perlin noise, or any other float-based sequence. Perfect for mapping continuous
+/// modulation sources to musical parameters.
+///
+/// # Arguments
+/// * `sequence` - The f32 sequence to normalize
+/// * `min` - The minimum value in the output range
+/// * `max` - The maximum value in the output range
+///
+/// # Returns
+/// Vector of f32 values scaled to the range [min, max]
+///
+/// # Examples
+/// ```
+/// use tunes::sequences;
+///
+/// // Normalize Lorenz attractor to pitch range
+/// let butterfly = sequences::lorenz_butterfly(100);
+/// let x_vals: Vec<f32> = butterfly.iter().map(|(x, _, _)| *x).collect();
+/// let melody = sequences::normalize_f32(&x_vals, 220.0, 880.0);
+///
+/// // Normalize Perlin noise to volume range
+/// let noise = sequences::perlin_noise(42, 0.1, 3, 0.5, 64);
+/// let volumes = sequences::normalize_f32(&noise, 0.3, 0.8);
+///
+/// // Map bipolar noise to pan (-1.0 to 1.0)
+/// let pan_noise = sequences::perlin_noise_bipolar(7, 0.15, 2, 0.5, 32);
+/// let panning = sequences::normalize_f32(&pan_noise, -1.0, 1.0);
+/// ```
+///
+/// # Musical Applications
+/// - Map Lorenz coordinates to pitch/volume/filter
+/// - Normalize Perlin noise for parameter automation
+/// - Scale any continuous modulation to musical ranges
+/// - Convert sensor data or external input to musical parameters
+pub fn normalize_f32(sequence: &[f32], min: f32, max: f32) -> Vec<f32> {
+    if sequence.is_empty() {
+        return vec![];
+    }
+
+    // Find min and max in the sequence
+    let seq_min = sequence.iter().cloned().fold(f32::INFINITY, f32::min);
+    let seq_max = sequence.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+
+    // Handle case where all values are the same
+    if (seq_max - seq_min).abs() < f32::EPSILON {
+        return vec![min; sequence.len()];
+    }
+
+    sequence
+        .iter()
+        .map(|&x| {
+            let normalized = (x - seq_min) / (seq_max - seq_min);
+            min + normalized * (max - min)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_f32() {
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let output = normalize_f32(&input, 0.0, 100.0);
+
+        assert_eq!(output[0], 0.0);   // min maps to 0
+        assert_eq!(output[4], 100.0); // max maps to 100
+        assert_eq!(output[2], 50.0);  // middle maps to 50
+    }
+
+    #[test]
+    fn test_normalize_f32_negative() {
+        let input = vec![-10.0, -5.0, 0.0, 5.0, 10.0];
+        let output = normalize_f32(&input, 220.0, 880.0);
+
+        assert_eq!(output[0], 220.0);  // -10 maps to min
+        assert_eq!(output[4], 880.0);  // 10 maps to max
+        assert_eq!(output[2], 550.0);  // 0 maps to middle
+    }
+
+    #[test]
+    fn test_normalize_f32_empty() {
+        let output = normalize_f32(&[], 0.0, 1.0);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_normalize_f32_constant() {
+        let input = vec![5.0, 5.0, 5.0];
+        let output = normalize_f32(&input, 10.0, 20.0);
+
+        // All same value should map to min
+        assert_eq!(output, vec![10.0, 10.0, 10.0]);
+    }
+}

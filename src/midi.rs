@@ -128,6 +128,123 @@ pub fn drum_type_to_midi_note(drum_type: DrumType) -> u8 {
         // Special effects (map to toms as fallback)
         DrumType::BassDrop => 35, // Acoustic Bass Drum
         DrumType::Boom => 35,     // Acoustic Bass Drum
+
+        // Simple percussion
+        DrumType::Claves => 75,    // Claves
+        DrumType::Triangle => 81,  // Open Triangle
+        DrumType::SideStick => 37, // Side Stick
+        DrumType::WoodBlock => 77, // Low Wood Block
+
+        // 909 electronic drums
+        DrumType::Kick909 => 36,  // Bass Drum 1
+        DrumType::Snare909 => 40, // Electric Snare
+
+        // Latin percussion
+        DrumType::CongaHigh => 62, // Mute Hi Conga
+        DrumType::CongaLow => 64,  // Low Conga
+        DrumType::BongoHigh => 60, // Hi Bongo
+        DrumType::BongoLow => 61,  // Low Bongo
+
+        // Utility
+        DrumType::RideBell => 53, // Ride Bell
+
+        // Additional toms
+        DrumType::FloorTomLow => 41,  // Low Floor Tom
+        DrumType::FloorTomHigh => 43, // High Floor Tom
+
+        // Additional hi-hat
+        DrumType::HiHatPedal => 44, // Pedal Hi-Hat
+
+        // Additional cymbals
+        DrumType::Crash2 => 57, // Crash Cymbal 2
+
+        // Special effects
+        DrumType::Vibraslap => 58, // Vibraslap
+
+        // Additional Latin percussion
+        DrumType::TimbaleHigh => 65, // High Timbale
+        DrumType::TimbaleLow => 66,  // Low Timbale
+        DrumType::AgogoHigh => 67,   // High Agogo
+        DrumType::AgogoLow => 68,    // Low Agogo
+
+        // Additional shakers/scrapers
+        DrumType::Cabasa => 69,     // Cabasa
+        DrumType::GuiroShort => 73, // Short Guiro
+        DrumType::GuiroLong => 74,  // Long Guiro
+
+        // Additional wood percussion
+        DrumType::WoodBlockHigh => 76, // Hi Wood Block
+
+        // Orchestral percussion (no direct GM mapping, use approximations)
+        DrumType::Timpani => 47,  // Low-Mid Tom (closest approximation)
+        DrumType::Gong => 52,     // Chinese Cymbal
+        DrumType::Chimes => 84,   // Belltree (GM note 84)
+
+        // World percussion (no direct GM mapping)
+        DrumType::Djembe => 60,      // Hi Bongo (similar hand drum)
+        DrumType::TablaBayan => 58,  // Vibraslap (as placeholder)
+        DrumType::TablaDayan => 77,  // Low Wood Block (sharp attack)
+        DrumType::Cajon => 38,       // Acoustic Snare (similar character)
+
+        // Hand percussion
+        DrumType::Fingersnap => 37, // Side Stick (similar click)
+        DrumType::Maracas => 70,    // Maracas (GM standard)
+        DrumType::Castanet => 85,   // Castanets (GM note 85)
+        DrumType::SleighBells => 83, // Jingle Bell (GM note 83)
+
+        // Electronic / Effects (no GM equivalents, use generic)
+        DrumType::LaserZap => 35,       // Bass Drum (placeholder)
+        DrumType::ReverseCymbal => 49,  // Crash Cymbal
+        DrumType::WhiteNoiseHit => 39,  // Hand Clap
+        DrumType::StickClick => 37,     // Side Stick
+
+        // Kick variations (all map to kick notes)
+        DrumType::KickTight => 36,    // Bass Drum 1
+        DrumType::KickDeep => 35,     // Acoustic Bass Drum
+        DrumType::KickAcoustic => 36, // Bass Drum 1
+        DrumType::KickClick => 36,    // Bass Drum 1
+
+        // Snare variations (all map to snare notes)
+        DrumType::SnareRim => 37,     // Side Stick (rim sound)
+        DrumType::SnareTight => 38,   // Acoustic Snare
+        DrumType::SnareLoose => 38,   // Acoustic Snare
+        DrumType::SnarePiccolo => 40, // Electric Snare
+
+        // Hi-hat variations
+        DrumType::HiHatHalfOpen => 46, // Open Hi-Hat
+        DrumType::HiHatSizzle => 46,   // Open Hi-Hat
+
+        // Clap variations (all map to clap)
+        DrumType::ClapDry => 39,   // Hand Clap
+        DrumType::ClapRoom => 39,  // Hand Clap
+        DrumType::ClapGroup => 39, // Hand Clap
+        DrumType::ClapSnare => 39, // Hand Clap
+
+        // Cymbal variations
+        DrumType::CrashShort => 49, // Crash Cymbal 1
+        DrumType::RideTip => 51,    // Ride Cymbal 1
+
+        // Shaker variations
+        DrumType::EggShaker => 70,  // Maracas
+        DrumType::TubeShaker => 70, // Maracas
+
+        // 808 Kit Completion
+        DrumType::Tom808Low => 45,  // Low Tom
+        DrumType::Tom808Mid => 47,  // Low-Mid Tom
+        DrumType::Tom808High => 48, // Hi-Mid Tom
+        DrumType::Cowbell808 => 56, // Cowbell
+        DrumType::Clave808 => 75,   // Claves
+
+        // 909 Kit Completion
+        DrumType::HiHat909Closed => 42, // Closed Hi-Hat
+        DrumType::HiHat909Open => 46,   // Open Hi-Hat
+        DrumType::Clap909 => 39,        // Hand Clap
+        DrumType::Cowbell909 => 56,     // Cowbell
+        DrumType::Rim909 => 37,         // Side Stick
+
+        // Transition Effects
+        DrumType::ReverseSnare => 38, // Acoustic Snare
+        DrumType::CymbalSwell => 55,  // Splash Cymbal
     }
 }
 
@@ -166,9 +283,10 @@ pub fn midi_note_to_drum_type(midi_note: u8) -> Option<DrumType> {
         39 => Some(DrumType::Clap),    // Hand Clap
 
         // Toms
-        45 => Some(DrumType::TomLow),  // Low Tom
-        47 => Some(DrumType::Tom),     // Low-Mid Tom
-        50 => Some(DrumType::TomHigh), // High Tom
+        45 => Some(DrumType::TomLow),     // Low Tom
+        47 => Some(DrumType::Tom),        // Low-Mid Tom
+        48 => Some(DrumType::Tom808High), // Hi-Mid Tom (808 variant)
+        50 => Some(DrumType::TomHigh),    // High Tom
 
         // Cymbals
         49 => Some(DrumType::Crash),  // Crash Cymbal 1
@@ -180,6 +298,52 @@ pub fn midi_note_to_drum_type(midi_note: u8) -> Option<DrumType> {
         54 => Some(DrumType::Tambourine), // Tambourine
         56 => Some(DrumType::Cowbell),    // Cowbell
         70 => Some(DrumType::Shaker),     // Maracas
+
+        // Simple percussion
+        75 => Some(DrumType::Claves),   // Claves
+        77 => Some(DrumType::WoodBlock), // Low Wood Block
+        81 => Some(DrumType::Triangle), // Open Triangle
+
+        // Latin percussion
+        60 => Some(DrumType::BongoHigh), // Hi Bongo
+        61 => Some(DrumType::BongoLow),  // Low Bongo
+        62 => Some(DrumType::CongaHigh), // Mute Hi Conga
+        64 => Some(DrumType::CongaLow),  // Low Conga
+
+        // Ride bell
+        53 => Some(DrumType::RideBell), // Ride Bell
+
+        // Additional toms
+        41 => Some(DrumType::FloorTomLow),  // Low Floor Tom
+        43 => Some(DrumType::FloorTomHigh), // High Floor Tom
+
+        // Additional hi-hat
+        44 => Some(DrumType::HiHatPedal), // Pedal Hi-Hat
+
+        // Additional cymbals
+        57 => Some(DrumType::Crash2), // Crash Cymbal 2
+
+        // Special effects
+        58 => Some(DrumType::Vibraslap), // Vibraslap
+
+        // Additional Latin percussion
+        65 => Some(DrumType::TimbaleHigh), // High Timbale
+        66 => Some(DrumType::TimbaleLow),  // Low Timbale
+        67 => Some(DrumType::AgogoHigh),   // High Agogo
+        68 => Some(DrumType::AgogoLow),    // Low Agogo
+
+        // Additional shakers/scrapers
+        69 => Some(DrumType::Cabasa),     // Cabasa
+        73 => Some(DrumType::GuiroShort), // Short Guiro
+        74 => Some(DrumType::GuiroLong),  // Long Guiro
+
+        // Additional wood percussion
+        76 => Some(DrumType::WoodBlockHigh), // Hi Wood Block
+
+        // Additional GM percussion (orchestral/hand percussion)
+        83 => Some(DrumType::SleighBells), // Jingle Bell
+        84 => Some(DrumType::Chimes),      // Belltree
+        85 => Some(DrumType::Castanet),    // Castanets
 
         // Unsupported MIDI percussion notes
         _ => None,

@@ -75,7 +75,7 @@
 //! let scale_notes = sequences::map_to_scale(
 //!     &fib,
 //!     &sequences::Scale::major(),
-//!     60,  // Middle C
+//!     C4,  // Middle C (use note constant!)
 //!     2    // Two octaves
 //! );
 //! ```
