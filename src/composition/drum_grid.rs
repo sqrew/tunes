@@ -42,7 +42,7 @@ impl<'a> DrumGrid<'a> {
         for &step in steps {
             if step < self.steps {
                 let time = self.start_time + (step as f32 * self.step_duration);
-                self.track.add_drum(drum_type, time);
+                self.track.add_drum(drum_type, time, None);
             }
         }
         self
@@ -199,7 +199,7 @@ impl<'a> DrumGrid<'a> {
             let offset = grid_duration * (i + 1) as f32;
             for &(drum_type, relative_time) in &pattern_events {
                 self.track
-                    .add_drum(drum_type, self.start_time + relative_time + offset);
+                    .add_drum(drum_type, self.start_time + relative_time + offset, None);
             }
         }
 

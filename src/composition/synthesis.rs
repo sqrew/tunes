@@ -158,6 +158,7 @@ impl<'a> TrackBuilder<'a> {
             start_time,
             playback_rate: 1.0,
             volume: 1.0, // Already applied amplitude above
+            spatial_position: None,
         };
 
         // Get the track and add the event

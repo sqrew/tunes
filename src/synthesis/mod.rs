@@ -14,6 +14,7 @@ pub mod wavetable;
 pub mod filter_envelope;
 pub mod karplus_strong;
 pub mod additive;
+pub mod spatial;
 
 // Re-export main types for convenience
 pub use waveform::Waveform;
@@ -33,3 +34,8 @@ pub use wavetable::Wavetable;
 pub use filter_envelope::FilterEnvelope;
 pub use karplus_strong::KarplusStrong;
 pub use additive::{AdditiveSynth, Partial};
+pub use spatial::{
+    Vec3, SpatialPosition, ListenerConfig, SpatialParams, SpatialResult, AttenuationModel,
+    calculate_spatial, calculate_attenuation, calculate_azimuth, azimuth_to_pan,
+    calculate_doppler,
+};

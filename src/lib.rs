@@ -69,6 +69,11 @@ pub mod prelude {
     // Effects (Parametric EQ)
     pub use crate::synthesis::{ParametricEQ, EQBand, EQPreset};
 
+    // Spatial Audio
+    pub use crate::synthesis::{
+        Vec3, SpatialPosition, ListenerConfig, SpatialParams, SpatialResult, AttenuationModel,
+    };
+
     // LFO
     pub use crate::synthesis::{LFO, ModRoute, ModTarget};
 

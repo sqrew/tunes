@@ -60,8 +60,8 @@ impl Mixer {
         for i in 0..total_samples {
             let time = i as f32 / sample_rate_f32;
 
-            // Generate stereo sample
-            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock);
+            // Generate stereo sample (no spatial audio for export)
+            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock, None, None);
 
             // Convert from f32 (-1.0 to 1.0) to i16 (-32768 to 32767)
             let left_i16 = (left.clamp(-1.0, 1.0) * 32767.0) as i16;
@@ -146,8 +146,8 @@ impl Mixer {
         for i in 0..total_samples {
             let time = i as f32 / sample_rate_f32;
 
-            // Generate stereo sample
-            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock);
+            // Generate stereo sample (no spatial audio for export)
+            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock, None, None);
 
             // Convert from f32 (-1.0 to 1.0) to i32 (-2^23 to 2^23-1 for 24-bit)
             // We use 24-bit as it provides better quality than 16-bit while keeping file size reasonable
@@ -685,8 +685,8 @@ mod tests {
         track.add_note(&[440.0], 0.0, 0.25);
         track.add_note(&[554.37], 0.25, 0.25);
         track.add_note(&[659.25], 0.5, 0.25);
-        track.add_drum(DrumType::Kick, 0.0);
-        track.add_drum(DrumType::Snare, 0.5);
+        track.add_drum(DrumType::Kick, 0.0, None);
+        track.add_drum(DrumType::Snare, 0.5, None);
         mixer.add_track(track);
 
         let wav_file = "test_compression_compare.wav";

@@ -10,6 +10,7 @@ use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::synthesis::sample::Sample;
+use crate::synthesis::spatial::SpatialPosition;
 use crate::synthesis::waveform::Waveform;
 use crate::theory::key_signature::KeySignature;
 
@@ -74,6 +75,7 @@ pub struct NoteEvent {
     pub pitch_bend_semitones: f32, // Pitch bend amount in semitones (0.0 = no bend)
     pub custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
     pub velocity: f32, // Note velocity (0.0 to 1.0), affects MIDI export and can be used for expression
+    pub spatial_position: Option<SpatialPosition>, // 3D spatial position for spatial audio (None = no spatial processing)
 }
 
 /// Represents a drum hit event
@@ -81,6 +83,7 @@ pub struct NoteEvent {
 pub struct DrumEvent {
     pub drum_type: DrumType,
     pub start_time: f32,
+    pub spatial_position: Option<SpatialPosition>, // 3D spatial position for spatial audio
 }
 
 /// Represents a sample playback event
@@ -90,6 +93,7 @@ pub struct SampleEvent {
     pub start_time: f32,
     pub playback_rate: f32, // 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed
     pub volume: f32,        // 0.0 to 1.0
+    pub spatial_position: Option<SpatialPosition>, // 3D spatial position for spatial audio
 }
 
 /// Represents a tempo change event
@@ -126,6 +130,7 @@ impl SampleEvent {
             start_time,
             playback_rate: 1.0,
             volume: 1.0,
+            spatial_position: None,
         }
     }
 
@@ -320,6 +325,7 @@ impl NoteEvent {
             pitch_bend_semitones,
             custom_wavetable,
             velocity,
+            spatial_position: None,
         }
     }
 }

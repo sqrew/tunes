@@ -1,5 +1,6 @@
 use crate::error::{Result, TunesError};
 use crate::track::Mixer;
+use crate::synthesis::spatial::{ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -37,6 +38,23 @@ enum AudioCommand {
     Resume {
         id: SoundId,
     },
+    SetSoundPosition {
+        id: SoundId,
+        position: SpatialPosition,
+    },
+    SetListenerPosition {
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    SetListenerForward {
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    SetSpatialParams {
+        params: SpatialParams,
+    },
 }
 
 /// State for an actively playing sound
@@ -49,6 +67,7 @@ struct ActiveSound {
     playback_rate: f32, // 1.0 = normal, 2.0 = double speed/pitch
     paused: bool,
     looping: bool,
+    spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
 }
 
 /// Central audio engine that manages playback with concurrent mixing
@@ -56,6 +75,8 @@ pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
     next_id: Arc<AtomicU64>,
     active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>>,
+    listener_config: Arc<Mutex<ListenerConfig>>,
+    spatial_params: Arc<Mutex<SpatialParams>>,
     sample_rate: f32,
     _stream: cpal::Stream, // Persistent stream, kept alive
 }
@@ -112,6 +133,13 @@ impl AudioEngine {
             Arc::new(Mutex::new(HashMap::new()));
         let active_sounds_for_stream = Arc::clone(&active_sounds);
 
+        // Shared state for spatial audio
+        let listener_config = Arc::new(Mutex::new(ListenerConfig::new()));
+        let listener_config_for_stream = Arc::clone(&listener_config);
+
+        let spatial_params = Arc::new(Mutex::new(SpatialParams::default()));
+        let spatial_params_for_stream = Arc::clone(&spatial_params);
+
         // Build stream configuration
         let mut stream_config: cpal::StreamConfig = config.clone().into();
         stream_config.buffer_size = cpal::BufferSize::Fixed(buffer_size);
@@ -125,14 +153,16 @@ impl AudioEngine {
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 // Lock once for entire audio callback (better granularity)
                 let mut active_sounds = active_sounds_for_stream.lock().unwrap();
+                let mut listener = listener_config_for_stream.lock().unwrap();
+                let mut spatial = spatial_params_for_stream.lock().unwrap();
 
                 // Process all pending commands (non-blocking)
                 while let Ok(cmd) = command_rx.try_recv() {
-                    Self::handle_command(cmd, &mut active_sounds);
+                    Self::handle_command(cmd, &mut active_sounds, &mut listener, &mut spatial);
                 }
 
                 // Mix all active sounds into the output buffer
-                Self::mix_sounds(data, &mut active_sounds, sample_rate, channels);
+                Self::mix_sounds(data, &mut active_sounds, &listener, &spatial, sample_rate, channels);
 
                 // Unlock at end of scope
             },
@@ -151,13 +181,20 @@ impl AudioEngine {
             command_tx,
             next_id: Arc::new(AtomicU64::new(1)),
             active_sounds,
+            listener_config,
+            spatial_params,
             sample_rate,
             _stream: stream,
         })
     }
 
     /// Handle commands from the main thread (called from audio thread)
-    fn handle_command(cmd: AudioCommand, active_sounds: &mut HashMap<SoundId, ActiveSound>) {
+    fn handle_command(
+        cmd: AudioCommand,
+        active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        listener: &mut ListenerConfig,
+        spatial: &mut SpatialParams,
+    ) {
         match cmd {
             AudioCommand::Play { id, mixer, looping } => {
                 active_sounds.insert(
@@ -171,6 +208,7 @@ impl AudioEngine {
                         playback_rate: 1.0,
                         paused: false,
                         looping,
+                        spatial_position: None,
                     },
                 );
             }
@@ -203,6 +241,23 @@ impl AudioEngine {
                     sound.paused = false;
                 }
             }
+            AudioCommand::SetSoundPosition { id, position } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.spatial_position = Some(position);
+                }
+            }
+            AudioCommand::SetListenerPosition { x, y, z } => {
+                listener.position.x = x;
+                listener.position.y = y;
+                listener.position.z = z;
+            }
+            AudioCommand::SetListenerForward { x, y, z } => {
+                use crate::synthesis::spatial::Vec3;
+                listener.forward = Vec3::new(x, y, z).normalize();
+            }
+            AudioCommand::SetSpatialParams { params } => {
+                *spatial = params;
+            }
         }
     }
 
@@ -210,6 +265,8 @@ impl AudioEngine {
     fn mix_sounds(
         output: &mut [f32],
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        listener: &ListenerConfig,
+        spatial_params: &SpatialParams,
         sample_rate: f32,
         channels: usize,
     ) {
@@ -240,24 +297,43 @@ impl AudioEngine {
                     }
                 }
 
-                // Get stereo sample from mixer
+                // Only apply composition-time spatial audio if NO runtime position is set
+                // Runtime position (set_sound_position) overrides composition-time position
+                let (listener_for_mixer, params_for_mixer) = if sound.spatial_position.is_some() {
+                    (None, None) // Runtime position will handle spatial audio
+                } else {
+                    (Some(listener), Some(spatial_params)) // Use composition-time position
+                };
+
+                // Get stereo sample from mixer (with spatial audio support for events)
                 let (mut left, mut right) = sound.mixer.sample_at(
                     sound.elapsed_time,
                     sample_rate,
                     sound.sample_clock,
+                    listener_for_mixer,
+                    params_for_mixer,
                 );
 
-                // Apply volume
-                left *= sound.volume;
-                right *= sound.volume;
+                // Calculate spatial audio if runtime position is set
+                let (spatial_volume, spatial_pan) = if let Some(pos) = &sound.spatial_position {
+                    let result = calculate_spatial(pos, listener, spatial_params);
+                    (result.volume, result.pan)
+                    // Note: Doppler (result.pitch) would require resampling - not implemented yet
+                } else {
+                    (1.0, sound.pan)
+                };
 
-                // Apply pan (-1.0 = left, 0.0 = center, 1.0 = right)
-                if sound.pan < 0.0 {
+                // Apply volume (sound volume * spatial attenuation)
+                left *= sound.volume * spatial_volume;
+                right *= sound.volume * spatial_volume;
+
+                // Apply pan (spatial pan overrides manual pan when spatial position is set)
+                if spatial_pan < 0.0 {
                     // Pan left: reduce right channel
-                    right *= 1.0 + sound.pan;
-                } else if sound.pan > 0.0 {
+                    right *= 1.0 + spatial_pan;
+                } else if spatial_pan > 0.0 {
                     // Pan right: reduce left channel
-                    left *= 1.0 - sound.pan;
+                    left *= 1.0 - spatial_pan;
                 }
 
                 // Mix into output (additive mixing)
@@ -475,6 +551,139 @@ impl AudioEngine {
             .unwrap()
             .contains_key(&id)
     }
+
+    // ============================================================================
+    // Spatial Audio Control Methods
+    // ============================================================================
+
+    /// Set the 3D position of a playing sound
+    ///
+    /// Updates the spatial position of a sound in real-time. The sound will be
+    /// automatically panned and attenuated based on its position relative to the listener.
+    ///
+    /// # Arguments
+    /// * `id` - The sound ID returned from `play_mixer_realtime()`
+    /// * `x` - X coordinate (left/right: negative = left, positive = right)
+    /// * `y` - Y coordinate (up/down: negative = below, positive = above)
+    /// * `z` - Z coordinate (forward/back: negative = behind, positive = in front)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("guitar").note(&[440.0], 2.0);
+    ///
+    /// let sound_id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Move sound to the right over time
+    /// for i in 0..10 {
+    ///     engine.set_sound_position(sound_id, i as f32, 0.0, 5.0)?;
+    ///     std::thread::sleep(std::time::Duration::from_millis(100));
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_sound_position(&self, id: SoundId, x: f32, y: f32, z: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetSoundPosition {
+                id,
+                position: SpatialPosition::new(x, y, z),
+            })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set the listener's 3D position
+    ///
+    /// The listener represents the "ears" or camera position in your 3D world.
+    /// All spatial audio is calculated relative to the listener's position and orientation.
+    ///
+    /// # Arguments
+    /// * `x` - X coordinate
+    /// * `y` - Y coordinate
+    /// * `z` - Z coordinate
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Set listener at standing height
+    /// engine.set_listener_position(0.0, 1.7, 0.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_listener_position(&self, x: f32, y: f32, z: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetListenerPosition { x, y, z })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set the listener's forward direction
+    ///
+    /// Controls which direction the listener is facing. This affects how sounds
+    /// are panned (sounds in front are centered, sounds to the right are panned right, etc.).
+    ///
+    /// The vector will be automatically normalized.
+    ///
+    /// # Arguments
+    /// * `x` - X component of forward direction
+    /// * `y` - Y component of forward direction
+    /// * `z` - Z component of forward direction
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Face forward (+Z direction)
+    /// engine.set_listener_forward(0.0, 0.0, 1.0)?;
+    ///
+    /// // Face right (+X direction)
+    /// engine.set_listener_forward(1.0, 0.0, 0.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_listener_forward(&self, x: f32, y: f32, z: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetListenerForward { x, y, z })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Configure spatial audio parameters
+    ///
+    /// Controls how spatial audio behaves, including distance attenuation model,
+    /// maximum audible distance, Doppler effect, etc.
+    ///
+    /// # Arguments
+    /// * `params` - Spatial audio parameters
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// let mut params = SpatialParams::default();
+    /// params.max_distance = 50.0;  // Sounds silent beyond 50 units
+    /// params.attenuation_model = AttenuationModel::Linear;
+    ///
+    /// engine.set_spatial_params(params)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_spatial_params(&self, params: SpatialParams) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetSpatialParams { params })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    // ============================================================================
+    // End Spatial Audio Control Methods
+    // ============================================================================
 
     /// Block until a sound finishes playing
     ///

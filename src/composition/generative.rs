@@ -237,6 +237,7 @@ impl<'a> TrackBuilder<'a> {
                                 pitch_bend_semitones: note.pitch_bend_semitones,
                                 custom_wavetable: note.custom_wavetable.clone(),
                                 velocity: note.velocity,
+                                spatial_position: note.spatial_position,
                             }))
                         }
                         AudioEvent::Drum(_)
@@ -342,6 +343,7 @@ impl<'a> TrackBuilder<'a> {
                                 pitch_bend_semitones: note.pitch_bend_semitones,
                                 custom_wavetable: note.custom_wavetable.clone(),
                                 velocity: note.velocity,
+                                spatial_position: note.spatial_position,
                             }))
                         }
                         AudioEvent::Drum(_)

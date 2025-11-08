@@ -12,6 +12,7 @@ impl<'a> TrackBuilder<'a> {
         let pitch_bend = self.pitch_bend;
         let custom_wavetable = self.custom_wavetable.clone();
         let velocity = self.velocity;
+        let spatial_position = self.spatial_position;
 
         self.get_track_mut().add_note_with_complete_params(
             frequencies,
@@ -24,6 +25,7 @@ impl<'a> TrackBuilder<'a> {
             pitch_bend,
             custom_wavetable,
             velocity,
+            spatial_position,
         );
         let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
@@ -34,7 +36,8 @@ impl<'a> TrackBuilder<'a> {
     /// Add a drum hit at the current cursor position
     pub fn drum(mut self, drum_type: DrumType) -> Self {
         let cursor = self.cursor;
-        self.get_track_mut().add_drum(drum_type, cursor);
+        let spatial_position = self.spatial_position;
+        self.get_track_mut().add_drum(drum_type, cursor, spatial_position);
         let base_duration = drum_type.duration();
         let swung_duration = self.apply_swing(base_duration);
         self.cursor += swung_duration;
@@ -200,6 +203,7 @@ impl<'a> TrackBuilder<'a> {
         let pitch_bend = self.pitch_bend;
         let custom_wavetable = self.custom_wavetable.clone();
         let velocity = self.velocity;
+        let spatial_position = self.spatial_position;
 
         for &freq in frequencies {
             let cursor = self.cursor;
@@ -214,6 +218,7 @@ impl<'a> TrackBuilder<'a> {
                 pitch_bend,
                 custom_wavetable.clone(),
                 velocity,
+                spatial_position,
             );
             let swung_duration = self.apply_swing(note_duration);
             self.cursor += swung_duration;

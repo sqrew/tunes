@@ -13,6 +13,36 @@ impl<'a> TrackBuilder<'a> {
         self.get_track_mut().pan = pan.clamp(-1.0, 1.0);
         self
     }
+
+    /// Set 3D spatial position for subsequent notes, drums, and samples
+    ///
+    /// Places sounds in 3D space relative to the listener. Spatial audio automatically
+    /// applies distance attenuation and stereo panning based on the sound's position.
+    ///
+    /// # Arguments
+    /// * `x` - X coordinate (left/right: negative = left, positive = right)
+    /// * `y` - Y coordinate (up/down: negative = below, positive = above)
+    /// * `z` - Z coordinate (forward/back: negative = behind, positive = in front)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Place guitar 2 meters to the right and 5 meters forward
+    /// comp.track("guitar")
+    ///     .spatial_position(2.0, 0.0, 5.0)
+    ///     .note(&[C4], 1.0);
+    ///
+    /// // Place drums at listener position (center)
+    /// comp.track("drums")
+    ///     .spatial_position(0.0, 0.0, 0.0)
+    ///     .note(&[D4], 1.0);
+    /// ```
+    pub fn spatial_position(mut self, x: f32, y: f32, z: f32) -> Self {
+        use crate::synthesis::spatial::SpatialPosition;
+        self.spatial_position = Some(SpatialPosition::new(x, y, z));
+        self
+    }
     /// Set the MIDI program (instrument) for this track (0-127)
     ///
     /// This sets the General MIDI program number used when exporting to MIDI.

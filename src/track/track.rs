@@ -433,20 +433,22 @@ impl Track {
         pitch_bend_semitones: f32,
         custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>,
         velocity: f32,
+        spatial_position: Option<crate::synthesis::spatial::SpatialPosition>,
     ) {
-        self.events
-            .push(AudioEvent::Note(NoteEvent::with_complete_params(
-                frequencies,
-                start_time,
-                duration,
-                waveform,
-                envelope,
-                filter_envelope,
-                fm_params,
-                pitch_bend_semitones,
-                custom_wavetable,
-                velocity,
-            )));
+        let mut note = NoteEvent::with_complete_params(
+            frequencies,
+            start_time,
+            duration,
+            waveform,
+            envelope,
+            filter_envelope,
+            fm_params,
+            pitch_bend_semitones,
+            custom_wavetable,
+            velocity,
+        );
+        note.spatial_position = spatial_position;
+        self.events.push(AudioEvent::Note(note));
         self.invalidate_time_cache();
     }
 
@@ -455,10 +457,12 @@ impl Track {
     /// # Arguments
     /// * `drum_type` - Type of drum (Kick, Snare, HiHat, etc.)
     /// * `start_time` - When to trigger the drum (in seconds from track start)
-    pub fn add_drum(&mut self, drum_type: DrumType, start_time: f32) {
+    /// * `spatial_position` - Optional 3D spatial position
+    pub fn add_drum(&mut self, drum_type: DrumType, start_time: f32, spatial_position: Option<crate::synthesis::spatial::SpatialPosition>) {
         self.events.push(AudioEvent::Drum(DrumEvent {
             drum_type,
             start_time,
+            spatial_position,
         }));
         self.invalidate_time_cache();
     }

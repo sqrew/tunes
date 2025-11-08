@@ -146,6 +146,7 @@ impl Composition {
             tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            spatial_position: None,
             last_chord: None,
         }
     }
@@ -231,6 +232,7 @@ impl Composition {
             tempo,
             custom_wavetable: template.custom_wavetable,
             velocity: template.velocity,
+            spatial_position: None,
             last_chord: None,
         };
 
@@ -279,6 +281,7 @@ impl Composition {
             tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            spatial_position: None,
             last_chord: None,
         };
 
@@ -299,10 +302,67 @@ impl Composition {
     pub fn into_mixer(self) -> Mixer {
         let mut mixer = Mixer::new(self.tempo);
         for (name, mut track) in self.tracks {
-            track.name = Some(name);
+            // Validate that all events in this track have the same spatial position (if any)
+            Self::validate_track_spatial_positions(&name, &track);
+
+            track.name = Some(name.clone());
             mixer.add_track(track);
         }
         mixer
+    }
+
+    /// Validate that all events in a track have the same spatial position
+    ///
+    /// Panics if a track has events with multiple different spatial positions.
+    /// This is necessary because the current architecture applies spatial audio
+    /// at the track level, not per-event. Multiple positions require separate tracks.
+    fn validate_track_spatial_positions(track_name: &str, track: &crate::track::Track) {
+        use crate::track::AudioEvent;
+
+        let mut found_positions: Vec<crate::synthesis::spatial::SpatialPosition> = Vec::new();
+
+        for event in &track.events {
+            let spatial_pos = match event {
+                AudioEvent::Note(note) => note.spatial_position,
+                AudioEvent::Drum(drum) => drum.spatial_position,
+                AudioEvent::Sample(sample) => sample.spatial_position,
+                _ => None,
+            };
+
+            if let Some(pos) = spatial_pos {
+                // Check if we've seen this exact position before
+                let is_duplicate = found_positions.iter().any(|existing| {
+                    // Compare positions (approximately, due to floating point)
+                    (existing.position.x - pos.position.x).abs() < 0.0001
+                        && (existing.position.y - pos.position.y).abs() < 0.0001
+                        && (existing.position.z - pos.position.z).abs() < 0.0001
+                });
+
+                if !is_duplicate {
+                    found_positions.push(pos);
+                }
+            }
+        }
+
+        // If we found more than one unique spatial position, that's an error
+        if found_positions.len() > 1 {
+            panic!(
+                "Track '{}' has events with {} different spatial positions. \
+                The current architecture applies spatial audio at the track level, so all events \
+                in a track must have the same spatial position (or no position). \
+                \n\nTo fix this:\n\
+                - Use separate tracks for sounds at different positions, OR\n\
+                - Use engine.set_sound_position() to move sounds in real-time\n\n\
+                Found positions:\n{}\n\
+                See: https://docs.claude.com/spatial-audio for more details.",
+                track_name,
+                found_positions.len(),
+                found_positions.iter()
+                    .map(|p| format!("  - ({:.2}, {:.2}, {:.2})", p.position.x, p.position.y, p.position.z))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+        }
     }
 
     /// Convert a specific section into a Mixer for isolated playback or export
@@ -561,6 +621,7 @@ pub struct TrackBuilder<'a> {
     pub(crate) tempo: Tempo, // Tempo for musical time calculations
     pub(crate) custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
     pub(crate) velocity: f32, // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
+    pub(crate) spatial_position: Option<crate::synthesis::spatial::SpatialPosition>, // 3D spatial position for subsequent notes/drums/samples
     pub(crate) last_chord: Option<Vec<f32>>, // Last chord played, used for voice leading
 }
 
@@ -958,5 +1019,68 @@ mod tests {
         // Both should have delay from template
         assert!(mixer.tracks[0].delay.is_some());
         assert!(mixer.tracks[1].delay.is_some());
+    }
+
+    #[test]
+    #[should_panic(expected = "has events with 2 different spatial positions")]
+    fn test_multiple_spatial_positions_on_same_track_panics() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // This should panic: setting two different spatial positions on the same track
+        comp.instrument("guitar", &Instrument::pluck())
+            .spatial_position(3.0, 0.0, 5.0)
+            .notes(&[C4], 0.5)
+            .spatial_position(5.0, 0.0, 3.0) // Different position!
+            .notes(&[E4], 0.5);
+
+        // This should panic when we try to convert to mixer
+        comp.into_mixer();
+    }
+
+    #[test]
+    fn test_same_spatial_position_on_track_is_ok() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // This should be fine: same position for all events
+        comp.instrument("guitar", &Instrument::pluck())
+            .spatial_position(3.0, 0.0, 5.0)
+            .notes(&[C4], 0.5)
+            .spatial_position(3.0, 0.0, 5.0) // Same position
+            .notes(&[E4], 0.5);
+
+        // Should not panic
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 1);
+    }
+
+    #[test]
+    fn test_no_spatial_position_is_ok() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // No spatial positioning at all
+        comp.instrument("guitar", &Instrument::pluck())
+            .notes(&[C4, E4, G4], 0.5);
+
+        // Should not panic
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 1);
+    }
+
+    #[test]
+    fn test_multiple_tracks_different_positions_is_ok() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Different tracks can have different positions
+        comp.instrument("guitar", &Instrument::pluck())
+            .spatial_position(3.0, 0.0, 5.0)
+            .notes(&[C4], 0.5);
+
+        comp.instrument("bass", &Instrument::synth_bass())
+            .spatial_position(-3.0, 0.0, 2.0) // Different position, but different track
+            .notes(&[C4], 1.0);
+
+        // Should not panic
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks.len(), 2);
     }
 }

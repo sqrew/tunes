@@ -167,8 +167,8 @@ mod tests {
     #[test]
     fn test_track_add_drum() {
         let mut track = Track::new();
-        track.add_drum(DrumType::Kick, 0.0);
-        track.add_drum(DrumType::Snare, 0.5);
+        track.add_drum(DrumType::Kick, 0.0, None);
+        track.add_drum(DrumType::Snare, 0.5, None);
 
         assert_eq!(track.events.len(), 2);
 
@@ -193,8 +193,8 @@ mod tests {
     #[test]
     fn test_track_total_duration_drums() {
         let mut track = Track::new();
-        track.add_drum(DrumType::Kick, 0.0); // Duration 0.15
-        track.add_drum(DrumType::Crash, 1.0); // Duration 1.5, ends at 2.5
+        track.add_drum(DrumType::Kick, 0.0, None); // Duration 0.15
+        track.add_drum(DrumType::Crash, 1.0, None); // Duration 1.5, ends at 2.5
 
         let duration = track.total_duration();
         assert_eq!(duration, 2.5, "Should account for drum durations");
@@ -255,7 +255,7 @@ mod tests {
         track1.add_note(&[440.0], 0.0, 1.0);
 
         let mut track2 = Track::new();
-        track2.add_drum(DrumType::Kick, 0.0);
+        track2.add_drum(DrumType::Kick, 0.0, None);
 
         mixer.add_track(track1);
         mixer.add_track(track2);
@@ -335,6 +335,7 @@ mod tests {
         let drum = DrumEvent {
             drum_type: DrumType::Snare,
             start_time: 0.5,
+            spatial_position: None,
         };
 
         assert!(matches!(drum.drum_type, DrumType::Snare));
@@ -354,6 +355,7 @@ mod tests {
         let drum_event = AudioEvent::Drum(DrumEvent {
             drum_type: DrumType::Kick,
             start_time: 0.0,
+            spatial_position: None,
         });
 
         match drum_event {

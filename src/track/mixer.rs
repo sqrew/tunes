@@ -115,7 +115,7 @@ impl Mixer {
                             );
                         }
                         AudioEvent::Drum(drum) => {
-                            track.add_drum(drum.drum_type, drum.start_time + offset);
+                            track.add_drum(drum.drum_type, drum.start_time + offset, drum.spatial_position);
                         }
                         AudioEvent::Sample(sample) => {
                             track
@@ -125,6 +125,7 @@ impl Mixer {
                                     start_time: sample.start_time + offset,
                                     playback_rate: sample.playback_rate,
                                     volume: sample.volume,
+                                    spatial_position: sample.spatial_position,
                                 }));
                             track.invalidate_time_cache();
                         }
@@ -169,17 +170,27 @@ impl Mixer {
     /// This is the core rendering method that generates audio samples by:
     /// 1. Finding active events on all tracks at the given time
     /// 2. Synthesizing audio for each event
-    /// 3. Applying track-level effects (filter, reverb, delay, etc.)
-    /// 4. Mixing tracks with stereo panning
+    /// 3. Applying event-level spatial audio (if spatial_position is set on events)
+    /// 4. Applying track-level effects (filter, reverb, delay, etc.)
+    /// 5. Mixing tracks with stereo panning
     ///
     /// # Arguments
     /// * `time` - The time position in seconds
     /// * `sample_rate` - Sample rate in Hz (e.g., 44100)
     /// * `_sample_clock` - Reserved for future use
+    /// * `listener` - Optional listener configuration for spatial audio
+    /// * `spatial_params` - Optional spatial audio parameters
     ///
     /// # Returns
     /// A tuple of (left_channel, right_channel) audio samples in range -1.0 to 1.0
-    pub fn sample_at(&mut self, time: f32, sample_rate: f32, _sample_clock: f32) -> (f32, f32) {
+    pub fn sample_at(
+        &mut self,
+        time: f32,
+        sample_rate: f32,
+        _sample_clock: f32,
+        listener: Option<&crate::synthesis::spatial::ListenerConfig>,
+        spatial_params: Option<&crate::synthesis::spatial::SpatialParams>,
+    ) -> (f32, f32) {
         // Increment sample count for quantized automation lookups
         self.sample_count = self.sample_count.wrapping_add(1);
 
@@ -203,6 +214,19 @@ impl Mixer {
             {
                 continue;
             }
+
+            // Check if any event in this track has a spatial position
+            // If so, we'll use it for spatial audio for the whole track
+            let track_spatial_position = if listener.is_some() && spatial_params.is_some() {
+                track.events.iter().find_map(|event| match event {
+                    AudioEvent::Note(note) => note.spatial_position,
+                    AudioEvent::Drum(drum) => drum.spatial_position,
+                    AudioEvent::Sample(sample) => sample.spatial_position,
+                    _ => None,
+                })
+            } else {
+                None
+            };
 
             let mut track_value = 0.0;
             let mut has_active_event = false;
@@ -490,24 +514,36 @@ impl Mixer {
                 }
             }
 
-            // Apply stereo panning using constant power panning
-            // pan: -1.0 (full left), 0.0 (center), 1.0 (full right)
-
-            // Add AutoPan offset if present
-            let pan_offset = if let Some(ref mut autopan) = track.autopan {
-                autopan.get_pan_offset(time, self.sample_count)
+            // Apply spatial audio or stereo panning
+            let (final_volume, final_pan) = if let Some(pos) = track_spatial_position {
+                // Apply spatial audio for this track
+                let listener_cfg = listener.unwrap();
+                let spatial_cfg = spatial_params.unwrap();
+                let result = crate::synthesis::spatial::calculate_spatial(&pos, listener_cfg, spatial_cfg);
+                (result.volume, result.pan)
             } else {
-                0.0
+                // Use normal panning
+                // Add AutoPan offset if present
+                let pan_offset = if let Some(ref mut autopan) = track.autopan {
+                    autopan.get_pan_offset(time, self.sample_count)
+                } else {
+                    0.0
+                };
+                (1.0, (track.pan + pan_offset).clamp(-1.0, 1.0))
             };
 
-            let pan_clamped = (track.pan + pan_offset).clamp(-1.0, 1.0);
-            let pan_angle = (pan_clamped + 1.0) * 0.25 * std::f32::consts::PI; // 0 to PI/2
+            // Apply volume attenuation
+            let attenuated_value = track_value * final_volume;
+
+            // Apply stereo panning using constant power panning
+            // pan: -1.0 (full left), 0.0 (center), 1.0 (full right)
+            let pan_angle = (final_pan + 1.0) * 0.25 * std::f32::consts::PI; // 0 to PI/2
             let left_gain = pan_angle.cos();
             let right_gain = pan_angle.sin();
 
             // Add to stereo mix
-            mixed_left += track_value * left_gain;
-            mixed_right += track_value * right_gain;
+            mixed_left += attenuated_value * left_gain;
+            mixed_right += attenuated_value * right_gain;
         }
 
         // Apply soft clipping to prevent harsh distortion
@@ -539,7 +575,7 @@ impl Mixer {
         // Render all samples
         for i in 0..total_samples {
             let time = i as f32 / sample_rate;
-            let (left, right) = self.sample_at(time, sample_rate, sample_clock);
+            let (left, right) = self.sample_at(time, sample_rate, sample_clock, None, None);
 
             // Clamp to valid range and add to buffer
             buffer.push(left.clamp(-1.0, 1.0));

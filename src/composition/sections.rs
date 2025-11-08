@@ -131,6 +131,7 @@ impl<'a> SectionBuilder<'a> {
             tempo: self.tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            spatial_position: None,
             last_chord: None,
         }
     }
@@ -169,6 +170,7 @@ impl<'a> SectionBuilder<'a> {
             tempo: self.tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            spatial_position: None,
             last_chord: None,
         };
 

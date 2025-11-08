@@ -285,6 +285,7 @@ pub fn create_granular_events(
             start_time: current_time,
             playback_rate: pitch_variation,
             volume: 1.0,
+            spatial_position: None,
         });
 
         current_time += grain_spacing;

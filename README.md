@@ -19,6 +19,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
+- **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
@@ -30,7 +31,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.9.0"
+tunes = "0.10.0"
 ```
 
 ### Platform Requirements
@@ -278,7 +279,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **942 comprehensive tests and 299 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **961 comprehensive tests and 304 doc tests** ensuring reliability and correctness.
 
 ## Examples
 

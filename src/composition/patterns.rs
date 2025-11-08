@@ -45,7 +45,7 @@ impl<'a> TrackBuilder<'a> {
         for (i, c) in pattern.chars().enumerate() {
             if matches!(c, 'x' | 'X' | '1' | '*') {
                 let time = start_time + (i as f32 * step_duration);
-                self.get_track_mut().add_drum(drum, time);
+                self.get_track_mut().add_drum(drum, time, None);
             }
         }
 
@@ -110,7 +110,7 @@ impl<'a> TrackBuilder<'a> {
                     }
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
-                            .add_drum(drum.drum_type, drum.start_time + offset);
+                            .add_drum(drum.drum_type, drum.start_time + offset, None);
                     }
                     crate::track::AudioEvent::Sample(sample) => {
                         self.get_track_mut()
@@ -121,6 +121,7 @@ impl<'a> TrackBuilder<'a> {
                                     start_time: sample.start_time + offset,
                                     playback_rate: sample.playback_rate,
                                     volume: sample.volume,
+                                    spatial_position: sample.spatial_position,
                                 },
                             ));
                         self.get_track_mut().invalidate_time_cache();
@@ -370,7 +371,7 @@ impl<'a> TrackBuilder<'a> {
                 crate::track::AudioEvent::Drum(_) => {
                     drum_idx -= 1;
                     if drum_idx < drum_data.len() {
-                        self.get_track_mut().add_drum(drum_data[drum_idx], timing);
+                        self.get_track_mut().add_drum(drum_data[drum_idx], timing, None);
                     }
                 }
                 crate::track::AudioEvent::Sample(_) => {
@@ -385,6 +386,7 @@ impl<'a> TrackBuilder<'a> {
                                     start_time: timing,
                                     playback_rate: sample.playback_rate,
                                     volume: sample.volume,
+                                    spatial_position: sample.spatial_position,
                                 },
                             ));
                         self.get_track_mut().invalidate_time_cache();
@@ -478,7 +480,7 @@ impl<'a> TrackBuilder<'a> {
                     }
                     crate::track::AudioEvent::Drum(drum) => {
                         self.get_track_mut()
-                            .add_drum(drum.drum_type, drum.start_time + offset);
+                            .add_drum(drum.drum_type, drum.start_time + offset, None);
                     }
                     crate::track::AudioEvent::Sample(sample) => {
                         self.get_track_mut()
@@ -489,6 +491,7 @@ impl<'a> TrackBuilder<'a> {
                                     start_time: sample.start_time + offset,
                                     playback_rate: sample.playback_rate,
                                     volume: sample.volume,
+                                    spatial_position: sample.spatial_position,
                                 },
                             ));
                         self.get_track_mut().invalidate_time_cache();
@@ -691,6 +694,7 @@ impl<'a> TrackBuilder<'a> {
                             start_time: time,
                             playback_rate,
                             volume,
+                            spatial_position: None,
                         },
                     ));
                 self.get_track_mut().invalidate_time_cache();
@@ -705,7 +709,7 @@ impl<'a> TrackBuilder<'a> {
                         bend,
                     );
             } else {
-                self.get_track_mut().add_drum(drum_type, time);
+                self.get_track_mut().add_drum(drum_type, time, None);
             }
         }
 
@@ -855,7 +859,7 @@ impl<'a> TrackBuilder<'a> {
         // Add drum at every nth event (1-indexed: 4th, 8th, 12th...)
         for (i, &time) in events_in_range.iter().enumerate() {
             if (i + 1) % n == 0 {
-                self.get_track_mut().add_drum(drum, time);
+                self.get_track_mut().add_drum(drum, time, None);
             }
         }
 

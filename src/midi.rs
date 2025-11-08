@@ -984,7 +984,7 @@ impl Mixer {
                                         if ch_num == 9 {
                                             // Drum track
                                             if let Some(drum_type) = midi_note_to_drum_type(note) {
-                                                track.add_drum(drum_type, start_time);
+                                                track.add_drum(drum_type, start_time, None);
                                             }
                                         } else {
                                             // Melodic track
@@ -1026,7 +1026,7 @@ impl Mixer {
                                     if ch_num == 9 {
                                         // Drum track
                                         if let Some(drum_type) = midi_note_to_drum_type(note) {
-                                            track.add_drum(drum_type, start_time);
+                                            track.add_drum(drum_type, start_time, None);
                                         }
                                     } else {
                                         // Melodic track
@@ -1072,7 +1072,7 @@ impl Mixer {
                 if ch_num == 9 {
                     // Drum track
                     if let Some(drum_type) = midi_note_to_drum_type(note) {
-                        track.add_drum(drum_type, start_time);
+                        track.add_drum(drum_type, start_time, None);
                     }
                 } else {
                     // Melodic track

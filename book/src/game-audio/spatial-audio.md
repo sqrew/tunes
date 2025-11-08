@@ -2,6 +2,236 @@
 
 Position sounds in 3D space using panning and volume attenuation. Tunes provides real-time control of sound positioning for immersive game audio.
 
+## Built-in 3D Spatial Audio
+
+Tunes includes a comprehensive 3D spatial audio system with automatic distance attenuation, azimuth-based panning, and listener orientation. This is ideal for games, VR/AR applications, and interactive installations.
+
+**Important:** Spatial positioning applies at the **track level**. All events in a track share the same spatial position. For sounds at different positions, use separate tracks (see examples below).
+
+### Composition-Time Positioning
+
+Position sounds in 3D space when creating a composition:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    // Guitar 3 meters to the right, 5 meters forward
+    comp.instrument("guitar", &Instrument::pluck())
+        .spatial_position(3.0, 0.0, 5.0)
+        .notes(&[C4, E4, G4, C5], 0.5);
+
+    // Bass at center, 2 meters forward
+    comp.instrument("bass", &Instrument::synth_bass())
+        .spatial_position(0.0, 0.0, 2.0)
+        .notes(&[C2, C2, G2, G2], 1.0);
+
+    // Drums at listener position (origin)
+    comp.track("drums")
+        .spatial_position(0.0, 0.0, 0.0)
+        .drum(DrumType::Kick)
+        .wait(0.5)
+        .drum(DrumType::Snare);
+
+    engine.play_mixer(&comp.into_mixer())?;
+    Ok(())
+}
+```
+
+**Coordinate System:**
+- **X-axis:** Left (negative) to Right (positive)
+- **Y-axis:** Down (negative) to Up (positive)
+- **Z-axis:** Behind (negative) to Forward (positive)
+- **Listener default:** Position (0, 0, 0) facing +Z direction
+
+### Real-Time Position Updates
+
+Move sounds dynamically during playback.
+
+**Note:** Runtime positioning with `set_sound_position()` **overrides** any composition-time position. This allows you to set a default position in the composition and then control it at runtime.
+
+```rust
+use tunes::prelude::*;
+use std::thread;
+use std::time::Duration;
+
+fn moving_sound_demo() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("moving", &Instrument::synth_lead())
+        .note(&[A4], 3.0);  // 3 second tone
+
+    let sound_id = engine.play_mixer_realtime(&comp.into_mixer())?;
+
+    // Move sound from left to right over 3 seconds
+    // This overrides any composition-time position
+    for i in 0..30 {
+        let x = -5.0 + (i as f32 * 10.0 / 30.0);  // -5 to +5
+        engine.set_sound_position(sound_id, x, 0.0, 5.0)?;
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    Ok(())
+}
+```
+
+### Distance Attenuation
+
+Sounds automatically get quieter with distance. Multiple attenuation models are available:
+
+```rust
+use tunes::prelude::*;
+use tunes::synthesis::spatial::{SpatialParams, AttenuationModel};
+
+fn configure_attenuation() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    let mut params = SpatialParams::default();
+    params.attenuation_model = AttenuationModel::InverseSquare;  // Realistic physics
+    params.max_distance = 50.0;  // Silent beyond 50 meters
+    params.ref_distance = 1.0;   // Full volume within 1 meter
+    params.rolloff = 1.0;        // Attenuation steepness
+
+    engine.set_spatial_params(params)?;
+
+    Ok(())
+}
+```
+
+**Available Attenuation Models:**
+- `None` - No distance attenuation (volume constant)
+- `Linear` - Linear falloff with distance
+- `Inverse` - 1/distance (realistic for sound pressure)
+- `InverseSquare` - 1/distance² (default, realistic for sound intensity)
+- `Exponential` - Exponential decay with configurable rolloff
+
+### Listener Position and Orientation
+
+Control where the listener is and which direction they're facing:
+
+```rust
+use tunes::prelude::*;
+
+fn listener_control() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Move listener position (e.g., player moved to new location)
+    engine.set_listener_position(5.0, 1.7, 10.0)?;  // x, y (standing height), z
+
+    // Change which direction listener is facing
+    // This affects which side sounds come from
+    engine.set_listener_forward(1.0, 0.0, 0.0)?;  // Now facing +X (right)
+
+    Ok(())
+}
+```
+
+### Multi-Source Spatial Scene
+
+Create complex 3D soundscapes with multiple positioned instruments.
+
+**Note:** Each instrument is on a separate track with its own spatial position. All events within each track share that position.
+
+```rust
+use tunes::prelude::*;
+
+fn spatial_scene() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+    let mut scene = Composition::new(Tempo::new(140.0));
+
+    // Left side: Piano melody (separate track)
+    scene.instrument("piano-left", &Instrument::electric_piano())
+        .spatial_position(-4.0, 0.0, 6.0)
+        .notes(&[C4, E4, G4, E4], 0.375);
+
+    // Right side: Synth harmony (separate track)
+    scene.instrument("synth-right", &Instrument::warm_pad())
+        .spatial_position(4.0, 0.0, 6.0)
+        .note(&[G3, B3, D4], 3.0);
+
+    // Center front: Lead (separate track)
+    scene.instrument("lead-center", &Instrument::synth_lead())
+        .spatial_position(0.0, 1.0, 3.0)  // Slightly above listener
+        .notes(&[E5, G5, B5, D5], 0.375);
+
+    // Behind listener: Ambient pad (separate track)
+    scene.instrument("ambient-back", &Instrument::warm_pad())
+        .spatial_position(0.0, 0.0, -5.0)  // Negative Z = behind
+        .note(&[C3, E3, G3], 3.0);
+
+    engine.play_mixer(&scene.into_mixer())?;
+    Ok(())
+}
+```
+
+### Game Integration Example
+
+Use spatial audio in a game loop:
+
+```rust
+use tunes::prelude::*;
+
+struct GameObject {
+    position: (f32, f32, f32),
+    sound_id: Option<SoundId>,
+}
+
+struct Game {
+    engine: AudioEngine,
+    player_pos: (f32, f32, f32),
+    objects: Vec<GameObject>,
+}
+
+impl Game {
+    fn update_audio(&mut self) -> anyhow::Result<()> {
+        // Update listener to player position
+        let (x, y, z) = self.player_pos;
+        self.engine.set_listener_position(x, y, z)?;
+
+        // Update all spatial sound sources
+        for obj in &self.objects {
+            if let Some(sound_id) = obj.sound_id {
+                let (x, y, z) = obj.position;
+                self.engine.set_sound_position(sound_id, x, y, z)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn spawn_sound_at_position(&self, pos: (f32, f32, f32)) -> anyhow::Result<SoundId> {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.instrument("sfx", &Instrument::synth_lead())
+            .spatial_position(pos.0, pos.1, pos.2)
+            .note(&[440.0], 0.5);
+
+        self.engine.play_mixer_realtime(&comp.into_mixer())
+    }
+}
+```
+
+### Complete Example
+
+See `examples/spatial_audio_demo.rs` for a comprehensive demonstration showing:
+- Static spatial composition
+- Moving sounds in real-time
+- Distance attenuation
+- Listener rotation
+- Custom spatial parameters
+- Multi-source spatial scenes
+
+Run it with: `cargo run --example spatial_audio_demo`
+
+---
+
+## Manual Spatial Audio Implementation
+
+The following sections show how to implement spatial audio manually using basic pan and volume controls. This is useful for 2D games or custom spatial audio logic.
+
 ## Basic Panning
 
 Pan sounds left (-1.0) to right (+1.0):

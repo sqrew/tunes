@@ -402,6 +402,150 @@ let cmaj7_voiced = voice_lead(&g7_voiced, &cmaj7);
 - Interval module: `interval_between`, `interval_name`, `Interval` enum
 - All available in prelude for convenient access
 
+#### 3D Spatial Audio System
+- **Comprehensive 3D spatial audio** - Built-in positioning, distance attenuation, and listener orientation
+- **Game-ready implementation** - Perfect for 3D games, VR/AR, and interactive installations
+- **Zero-configuration basics** - Automatic distance attenuation and azimuth-based panning out of the box
+- **Real-time control** - Move sounds and listener dynamically during playback
+
+**Core Spatial Audio Module (`synthesis::spatial`):**
+- **`Vec3`** - 3D vector with standard operations (dot product, cross product, normalization, distance)
+- **`SpatialPosition`** - Sound source position and velocity in 3D space
+- **`ListenerConfig`** - Listener position, orientation (forward/up vectors), and velocity
+- **`SpatialParams`** - Global spatial audio configuration (attenuation model, distances, doppler)
+- **`SpatialResult`** - Calculated volume attenuation, pan value, and pitch adjustment
+- **`calculate_spatial()`** - Core function computing all spatial audio effects
+
+**Attenuation Models:**
+- **`AttenuationModel::None`** - No distance attenuation (constant volume)
+- **`AttenuationModel::Linear`** - Linear falloff with distance
+- **`AttenuationModel::Inverse`** - 1/distance (realistic for sound pressure)
+- **`AttenuationModel::InverseSquare`** - 1/distance² (default, realistic for sound intensity)
+- **`AttenuationModel::Exponential`** - Exponential decay with configurable rolloff factor
+
+**Composition-Time Positioning:**
+- **`.spatial_position(x, y, z)`** - Set 3D position when composing tracks
+- **Track-level positioning** - Spatial position applies to the entire track, not individual events
+- **Important:** All events in a track must have the same spatial position (validation enforces this at `into_mixer()`)
+- **For different positions:** Use separate tracks or runtime `set_sound_position()` for moving sounds
+- **Coordinate system:**
+  - X-axis: Left (negative) to Right (positive)
+  - Y-axis: Down (negative) to Up (positive)
+  - Z-axis: Behind (negative) to Forward (positive)
+  - Listener default: Position (0, 0, 0) facing +Z direction
+- **Example:**
+  ```rust
+  // Each instrument on separate track with its own position
+  comp.instrument("guitar", &Instrument::pluck())
+      .spatial_position(3.0, 0.0, 5.0)  // 3m right, 5m forward
+      .notes(&[C4, E4, G4], 0.5);
+
+  comp.instrument("bass", &Instrument::synth_bass())
+      .spatial_position(-3.0, 0.0, 2.0)  // 3m left, 2m forward
+      .notes(&[C2, G2], 1.0);
+  ```
+
+**Real-Time Spatial Control (AudioEngine methods):**
+- **`set_sound_position(id, x, y, z)`** - Move a playing sound in real-time
+- **`set_listener_position(x, y, z)`** - Update listener position (e.g., player moved)
+- **`set_listener_forward(x, y, z)`** - Change listener orientation (which way they're facing)
+- **`set_spatial_params(params)`** - Update global spatial audio settings
+- **Runtime overrides composition:** If you call `set_sound_position()`, it overrides any composition-time position
+- **Use case:** Game loop updates - move sounds with game objects, track player position
+
+**Spatial Audio Features:**
+- **Distance attenuation** - Sounds get quieter automatically based on distance
+- **Azimuth-based panning** - Horizontal angle determines left/right stereo placement
+- **Listener orientation** - Sounds pan correctly relative to which way listener is facing
+- **Configurable parameters:**
+  - `ref_distance` - Distance where attenuation starts (default: 1.0m)
+  - `max_distance` - Distance where sound becomes inaudible (default: 100.0m)
+  - `rolloff` - Attenuation curve steepness (default: 1.0)
+  - `speed_of_sound` - For doppler calculations (default: 343.0 m/s)
+  - `doppler_enabled` - Enable/disable doppler effect (default: false)
+  - `doppler_factor` - Doppler effect strength (default: 1.0)
+
+**Key Spatial Concepts:**
+- **Automatic mixing** - Spatial calculations integrated into AudioEngine render callback
+- **Per-sound positions** - Each sound maintains independent 3D position
+- **Global listener** - Single listener configuration affects all spatial sounds
+- **Optional positioning** - Sounds without spatial_position use normal pan/volume
+- **Multi-source scenes** - Create complex 3D soundscapes with many positioned sounds
+
+**Technical Implementation:**
+- **Event-level spatial data storage** - `NoteEvent`, `DrumEvent`, and `SampleEvent` store `spatial_position: Option<SpatialPosition>`
+- **Track-level spatial processing** - Spatial audio calculations applied at track level during rendering (mono to stereo conversion)
+- **Validation at composition** - `into_mixer()` validates that all events in a track have the same position (panics with clear error if violated)
+- **TrackBuilder support** - `.spatial_position()` method sets position for all subsequent events in the builder
+- **Lock-free updates** - Command queue for updating sound positions during playback
+- **Efficient calculation** - Spatial processing only when `spatial_position` is present
+- **Vector math** - Proper 3D mathematics for accurate positioning
+
+**Use Cases:**
+- **Game audio:** Footsteps, gunshots, ambient sounds positioned in 3D world
+- **VR/AR applications:** Immersive spatial soundscapes
+- **Music production:** Creative stereo placement beyond simple panning
+- **Cinematic audio:** Dialog, effects, and ambience in 3D space
+- **Interactive installations:** Sound that responds to user movement
+
+**Example - Game Integration:**
+```rust
+// In game loop
+let (x, y, z) = player.position;
+engine.set_listener_position(x, y, z)?;
+
+for enemy in &enemies {
+    if let Some(sound_id) = enemy.sound_id {
+        let (ex, ey, ez) = enemy.position;
+        engine.set_sound_position(sound_id, ex, ey, ez)?;
+    }
+}
+```
+
+**Example - Multi-Source Spatial Scene:**
+```rust
+let mut scene = Composition::new(Tempo::new(140.0));
+
+// Left side: Piano
+scene.instrument("piano-left", &Instrument::electric_piano())
+    .spatial_position(-4.0, 0.0, 6.0)
+    .notes(&[C4, E4, G4, E4], 0.375);
+
+// Right side: Synth
+scene.instrument("synth-right", &Instrument::warm_pad())
+    .spatial_position(4.0, 0.0, 6.0)
+    .note(&[G3, B3, D4], 3.0);
+
+// Behind listener: Ambient
+scene.instrument("ambient-back", &Instrument::warm_pad())
+    .spatial_position(0.0, 0.0, -5.0)
+    .note(&[C3, E3, G3], 3.0);
+```
+
+**16 comprehensive tests** covering:
+- Vector operations (dot, cross, normalization, distance)
+- All attenuation models with edge cases
+- Azimuth calculation for stereo panning
+- Doppler effect calculations
+- Spatial result accuracy
+
+**New example:** `spatial_audio_demo.rs` - Comprehensive demonstration with 6 scenarios:
+1. Static spatial composition
+2. Moving sound in real-time (left-to-right pan)
+3. Distance attenuation (approaching sound)
+4. Listener movement (rotation around stationary sound)
+5. Custom spatial parameters
+6. Multi-source spatial scene
+
+**Documentation:** Complete spatial audio guide in `book/src/game-audio/spatial-audio.md` with:
+- Built-in 3D spatial audio tutorial
+- Composition-time positioning examples
+- Real-time control patterns
+- Game integration examples
+- Manual 2D/3D implementation (for custom logic)
+
+**Exported:** All spatial types in `synthesis::spatial` module and relevant items in prelude
+
 #### Concurrent Audio Engine with Real-Time Mixing
 - **Major refactor to concurrent architecture** - AudioEngine now maintains a persistent audio stream
 - **Multi-sound playback** - Play unlimited sounds simultaneously with automatic mixing
@@ -951,8 +1095,8 @@ let cmaj7_voiced = voice_lead(&g7_voiced, &cmaj7);
 - Custom waveform support
 
 #### Testing & Quality
-- 942 unit tests covering all modules
-- 299 documentation tests with examples
+- 957 unit tests covering all modules
+- 304 documentation tests with examples
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples
