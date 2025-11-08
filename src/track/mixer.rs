@@ -48,6 +48,28 @@ impl Mixer {
             .fold(0.0, f32::max)
     }
 
+    /// Check if the mixer has any audio events
+    ///
+    /// Returns `true` if all tracks are empty (no notes, drums, or samples).
+    /// Useful for detecting empty compositions before playback.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mixer = comp.into_mixer();
+    /// assert!(mixer.is_empty());
+    ///
+    /// let mut comp2 = Composition::new(Tempo::new(120.0));
+    /// comp2.instrument("piano", &Instrument::electric_piano())
+    ///     .note(&[440.0], 1.0);
+    /// let mixer2 = comp2.into_mixer();
+    /// assert!(!mixer2.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.tracks.iter().all(|t| t.events.is_empty())
+    }
+
     /// Repeat all tracks in the mixer N times
     ///
     /// This duplicates all events in all tracks, placing copies sequentially.

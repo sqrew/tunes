@@ -4,18 +4,23 @@ Here's where Tunes gets interesting. Let's generate a melody from the **Collatz 
 
 ```rust
 use tunes::prelude::*;
+use tunes::sequences;
 
 fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(140.0));
 
     // Generate melody from Collatz sequence
+    let collatz_seq = sequences::collatz(27, 20);  // Start at 27, take 20 values
+    let melody = sequences::map_to_scale(
+        &collatz_seq,
+        &sequences::Scale::minor_pentatonic(),
+        C4,  // Root note
+        2    // Two octaves
+    );
+
     comp.instrument("lead", &Instrument::synth_lead())
-        .sequence()
-        .generative(Generative::collatz(27, 20))  // Start at 27, take 20 values
-        .map_to_scale(&Scale::minor_pentatonic(C4))
-        .normalize(0.15, 0.3)  // Random note durations
-        .play();
+        .notes(&melody, 0.25);
 
     // Add bass
     comp.instrument("bass", &Instrument::sub_bass())
@@ -28,9 +33,9 @@ fn main() -> Result<(), anyhow::Error> {
 
 ## The Magic
 
-- **`Generative::collatz(27, 20)`** – Generates 20 numbers from the Collatz sequence starting at 27
-- **`.map_to_scale()`** – Maps those numbers to musical notes in C minor pentatonic
-- **`.normalize()`** – Converts the sequence to random note durations between 0.15-0.3 seconds
+- **`sequences::collatz(27, 20)`** – Generates 20 numbers from the Collatz sequence starting at 27
+- **`sequences::map_to_scale()`** – Maps those numbers to musical notes in C minor pentatonic across 2 octaves
+- **`.notes(&melody, 0.25)`** – Plays each note for 0.25 seconds
 - **The result?** A hauntingly beautiful melody that sounds composed, but emerged from mathematics
 
 ## The Collatz Sequence

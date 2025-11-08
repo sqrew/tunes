@@ -30,7 +30,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.7.0"
+tunes = "0.8.0"
 ```
 
 ### Platform Requirements
@@ -207,19 +207,20 @@ fn main() -> anyhow::Result<()> {
     // 4096 samples = ~93ms latency - good balance for live coding
     let engine = AudioEngine::with_buffer_size(4096)?;
 
-    // Loop playback (don't use .repeat() - creates too many events!)
+    // Start looping playback
+    let loop_id = engine.play_looping(&mixer)?;
+
+    // Keep program running (live reload will restart)
     loop {
-        // Use play_mixer_realtime
-        // This is to avoid the render time between loops for smooth looping
-        engine.play_mixer_realtime(&mixer)?;
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
 ```
 
 **Important:**
-- Don't use `.repeat(1000)` - it creates too many events for smooth real-time synthesis
-- Instead, use a regular `loop` to play the mixer repeatedly
+- Use `play_looping()` for seamless loops without gaps
 - Buffer size 4096 works well for most systems (increase to 8192 or 16384 if you hear glitches)
+- The live reload system will automatically stop and restart with your changes
 
 
 ## Comparison with Other Music Programming Libraries
@@ -277,7 +278,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **882 comprehensive tests and 255 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **870 comprehensive tests and 261 doc tests** ensuring reliability and correctness.
 
 ## Examples
 

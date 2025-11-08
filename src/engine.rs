@@ -297,9 +297,13 @@ impl AudioEngine {
     /// It plays the composition and blocks until playback is complete.
     ///
     /// For non-blocking playback (games, interactive use), use `play_mixer_realtime()`.
+    ///
+    /// # Returns
+    /// `Ok(())` on successful playback. Note that this returns success even if the
+    /// mixer is empty - check with `mixer.is_empty()` first if you want to detect this.
     pub fn play_mixer(&self, mixer: &Mixer) -> Result<()> {
         let id = self.play_mixer_realtime(mixer)?;
-        self.wait_for(id)
+        self.wait_for(id, mixer.is_empty())
     }
 
     /// Play a composition in real-time mode, returns immediately
@@ -313,8 +317,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # use tunes::{Composition, Tempo, AudioEngine};
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// let engine = AudioEngine::new()?;
     ///
@@ -356,8 +359,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # use tunes::{Composition, Tempo, AudioEngine};
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// let engine = AudioEngine::new()?;
     /// let loop_id = engine.play_looping(&comp.into_mixer())?;
@@ -423,7 +425,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// # comp.track("sfx").note(&[440.0], 1.0);
     /// let engine = AudioEngine::new()?;
@@ -477,10 +479,42 @@ impl AudioEngine {
     /// Block until a sound finishes playing
     ///
     /// Used internally by `play_mixer()` to provide blocking behavior.
-    fn wait_for(&self, id: SoundId) -> Result<()> {
+    ///
+    /// # Arguments
+    /// * `id` - The sound ID to wait for
+    /// * `is_empty` - Whether the mixer is known to be empty (improves error messages)
+    fn wait_for(&self, id: SoundId, is_empty: bool) -> Result<()> {
         use std::time::Duration;
         use std::thread;
 
+        // Wait for sound to start playing (avoid race condition)
+        // The audio thread needs time to process the Play command
+        let mut started = false;
+        for _ in 0..100 {  // Try for up to 1 second
+            if self.is_playing(id) {
+                started = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        if !started {
+            // Sound never started - could be:
+            // 1. Empty mixer (no events) - expected, not an error
+            // 2. Very short sound (< 10ms, finished before we checked) - expected
+            // 3. Audio thread not processing commands - critical failure
+
+            if is_empty {
+                // Empty mixer - this is expected, no warning needed
+                return Ok(());
+            } else {
+                // Non-empty mixer didn't play - unexpected
+                eprintln!("Warning: Sound {} never started or finished very quickly (< 10ms)", id);
+                return Ok(());
+            }
+        }
+
+        // Now wait for it to finish
         while self.is_playing(id) {
             thread::sleep(Duration::from_millis(10));
         }
@@ -499,7 +533,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let engine = AudioEngine::new()?;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
@@ -529,7 +563,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let engine = AudioEngine::new()?;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
@@ -556,7 +590,7 @@ impl AudioEngine {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let engine = AudioEngine::new()?;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("sfx").note(&[440.0], 0.1);

@@ -32,14 +32,15 @@ fn main() -> anyhow::Result<()> {
     // Convert to mixer
     let mixer = comp.into_mixer();
 
-    // Loop the playback instead of repeating the mixer
-    // (Repeating creates too many events for smooth real-time synthesis)
     // 4096 samples = ~93ms latency at 44.1kHz - good balance for live coding
     let engine = AudioEngine::with_buffer_size(4096)?;
 
+    // Start looping playback
+    let loop_id = engine.play_looping(&mixer)?;
+
+    // Keep the program running
+    // Live reload will stop this and restart with new code
     loop {
-        // Use play_mixer_realtime when possible
-        // There is no pause to render between loops like there is with play_mixer
-        engine.play_mixer_realtime(&mixer)?;
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
