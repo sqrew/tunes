@@ -421,6 +421,60 @@ impl ChordPattern {
     pub const POWER_OCTAVE: ChordPattern = ChordPattern {
         intervals: &[0, 7, 12],
     };
+
+    // ==== Jazz & Extended Chords ====
+
+    /// Major 6th: R-M3-P5-M6 (0-4-7-9)
+    pub const MAJOR6: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 7, 9],
+    };
+
+    /// Minor 6th: R-m3-P5-M6 (0-3-7-9)
+    pub const MINOR6: ChordPattern = ChordPattern {
+        intervals: &[0, 3, 7, 9],
+    };
+
+    /// Dominant 7 sus4: R-P4-P5-m7 (0-5-7-10)
+    pub const DOMINANT7SUS4: ChordPattern = ChordPattern {
+        intervals: &[0, 5, 7, 10],
+    };
+
+    /// Minor-major 7th: R-m3-P5-M7 (0-3-7-11) - "James Bond chord"
+    pub const MINOR_MAJOR7: ChordPattern = ChordPattern {
+        intervals: &[0, 3, 7, 11],
+    };
+
+    /// 11th chord: R-M3-P5-m7-M9-P11 (0-4-7-10-14-17)
+    pub const ELEVENTH: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 7, 10, 14, 17],
+    };
+
+    /// 13th chord: R-M3-P5-m7-M9-P11-M13 (0-4-7-10-14-17-21)
+    pub const THIRTEENTH: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 7, 10, 14, 17, 21],
+    };
+
+    // ==== Altered Dominants ====
+
+    /// Dominant 7♯9: R-M3-P5-m7-♯9 (0-4-7-10-15) - "Hendrix chord"
+    pub const DOMINANT7SHARP9: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 7, 10, 15],
+    };
+
+    /// Dominant 7♭9: R-M3-P5-m7-♭9 (0-4-7-10-13)
+    pub const DOMINANT7FLAT9: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 7, 10, 13],
+    };
+
+    /// Dominant 7♯5: R-M3-♯5-m7 (0-4-8-10) - augmented dominant
+    pub const DOMINANT7SHARP5: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 8, 10],
+    };
+
+    /// Dominant 7♭5: R-M3-♭5-m7 (0-4-6-10) - flat-five dominant
+    pub const DOMINANT7FLAT5: ChordPattern = ChordPattern {
+        intervals: &[0, 4, 6, 10],
+    };
 }
 
 /// Generates a chord from a root note using a chord pattern
@@ -1059,6 +1113,123 @@ mod tests {
         let c4 = 261.63;
         let c_major_chord = chord(c4, &ChordPattern::MAJOR);
         assert_eq!(c_major_chord.len(), 3); // Root, 3rd, 5th
+    }
+
+    #[test]
+    fn test_all_chord_patterns_generate() {
+        let c4 = 261.63;
+
+        // Test that all chord patterns generate valid chords
+        let chords = vec![
+            // Triads
+            (&ChordPattern::MAJOR, 3),
+            (&ChordPattern::MINOR, 3),
+            (&ChordPattern::DIMINISHED, 3),
+            (&ChordPattern::AUGMENTED, 3),
+            (&ChordPattern::SUS2, 3),
+            (&ChordPattern::SUS4, 3),
+            // Sevenths
+            (&ChordPattern::MAJOR7, 4),
+            (&ChordPattern::MINOR7, 4),
+            (&ChordPattern::DOMINANT7, 4),
+            (&ChordPattern::DIMINISHED7, 4),
+            (&ChordPattern::HALF_DIMINISHED7, 4),
+            // Jazz & Extended
+            (&ChordPattern::MAJOR6, 4),
+            (&ChordPattern::MINOR6, 4),
+            (&ChordPattern::DOMINANT7SUS4, 4),
+            (&ChordPattern::MINOR_MAJOR7, 4),
+            (&ChordPattern::ADD9, 4),
+            (&ChordPattern::NINTH, 5),
+            (&ChordPattern::ELEVENTH, 6),
+            (&ChordPattern::THIRTEENTH, 7),
+            // Altered dominants
+            (&ChordPattern::DOMINANT7SHARP9, 5),
+            (&ChordPattern::DOMINANT7FLAT9, 5),
+            (&ChordPattern::DOMINANT7SHARP5, 4),
+            (&ChordPattern::DOMINANT7FLAT5, 4),
+            // Power chords
+            (&ChordPattern::POWER, 2),
+            (&ChordPattern::POWER_OCTAVE, 3),
+        ];
+
+        for (pattern, expected_len) in chords {
+            let result = chord(c4, pattern);
+            assert_eq!(
+                result.len(),
+                expected_len,
+                "Chord pattern should have {} notes",
+                expected_len
+            );
+
+            // Verify all frequencies are positive
+            for &freq in &result {
+                assert!(freq > 0.0, "Chord frequencies should be positive");
+            }
+
+            // Verify first note is the root
+            assert!((result[0] - c4).abs() < 0.01, "First note should be root");
+        }
+    }
+
+    #[test]
+    fn test_jazz_chord_intervals() {
+        let c4 = 261.63;
+
+        // Test major 6th (C-E-G-A)
+        let maj6 = chord(c4, &ChordPattern::MAJOR6);
+        assert_eq!(maj6.len(), 4);
+
+        // Test minor 6th (C-Eb-G-A)
+        let min6 = chord(c4, &ChordPattern::MINOR6);
+        assert_eq!(min6.len(), 4);
+
+        // Test minor-major 7 (C-Eb-G-B) - James Bond chord
+        let min_maj7 = chord(c4, &ChordPattern::MINOR_MAJOR7);
+        assert_eq!(min_maj7.len(), 4);
+
+        // Test dominant 7 sus4 (C-F-G-Bb)
+        let dom7sus4 = chord(c4, &ChordPattern::DOMINANT7SUS4);
+        assert_eq!(dom7sus4.len(), 4);
+    }
+
+    #[test]
+    fn test_altered_dominant_chords() {
+        let c4 = 261.63;
+
+        // Test dominant 7#9 - Hendrix chord (C-E-G-Bb-D#)
+        let dom7sharp9 = chord(c4, &ChordPattern::DOMINANT7SHARP9);
+        assert_eq!(dom7sharp9.len(), 5);
+
+        // Test dominant 7b9 (C-E-G-Bb-Db)
+        let dom7flat9 = chord(c4, &ChordPattern::DOMINANT7FLAT9);
+        assert_eq!(dom7flat9.len(), 5);
+
+        // Test dominant 7#5 (C-E-G#-Bb)
+        let dom7sharp5 = chord(c4, &ChordPattern::DOMINANT7SHARP5);
+        assert_eq!(dom7sharp5.len(), 4);
+
+        // Test dominant 7b5 (C-E-Gb-Bb)
+        let dom7flat5 = chord(c4, &ChordPattern::DOMINANT7FLAT5);
+        assert_eq!(dom7flat5.len(), 4);
+    }
+
+    #[test]
+    fn test_extended_chords() {
+        let c4 = 261.63;
+
+        // Test 11th chord (C-E-G-Bb-D-F)
+        let eleventh = chord(c4, &ChordPattern::ELEVENTH);
+        assert_eq!(eleventh.len(), 6);
+
+        // Test 13th chord (C-E-G-Bb-D-F-A)
+        let thirteenth = chord(c4, &ChordPattern::THIRTEENTH);
+        assert_eq!(thirteenth.len(), 7);
+
+        // Verify extended notes are higher than the root
+        for &freq in &eleventh[1..] {
+            assert!(freq > c4, "Extended notes should be higher than root");
+        }
     }
 
     #[test]
