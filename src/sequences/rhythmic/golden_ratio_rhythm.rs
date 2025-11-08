@@ -40,7 +40,7 @@
 /// - **Balanced**: Neither too sparse nor too dense
 /// - **Organic**: Sounds natural, not mechanical
 pub fn golden_ratio_rhythm(steps: usize) -> Vec<usize> {
-    const PHI: f32 = 1.618033988749;
+    const PHI: f32 = 1.618_034;
 
     (0..steps)
         .filter(|&i| {

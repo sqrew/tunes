@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 //! Track implementation
 //!
 //! A track contains a sequence of audio events with global properties like
@@ -350,6 +351,7 @@ impl Track {
     /// * `pitch_bend_semitones` - Pitch bend in semitones
     /// * `custom_wavetable` - Custom wavetable (overrides waveform if Some)
     /// * `velocity` - Note velocity 0.0-1.0 (affects MIDI export)
+    #[allow(clippy::too_many_arguments)]
     pub fn add_note_with_complete_params(
         &mut self,
         frequencies: &[f32],

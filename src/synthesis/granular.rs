@@ -82,7 +82,7 @@ impl GranularParams {
         pitch_variation: f32,
     ) -> Self {
         Self {
-            grain_size_ms: grain_size_ms.max(5.0).min(500.0),
+            grain_size_ms: grain_size_ms.clamp(5.0, 500.0),
             density: density.clamp(0.0, 1.0),
             position: position.clamp(0.0, 1.0),
             position_spread: position_spread.clamp(0.0, 1.0),

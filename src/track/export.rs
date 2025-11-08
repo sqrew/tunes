@@ -7,9 +7,17 @@ use super::events::AudioEvent;
 use super::mixer::Mixer;
 
 impl Mixer {
-    /// Export the mixed audio to a WAV file
+    /// Export the mixed audio to a WAV file with explicit sample rate
     ///
     /// Renders the entire composition to a stereo WAV file with the specified sample rate.
+    ///
+    /// # When to use
+    /// - **Standalone rendering** (no AudioEngine, e.g., CLI tools, batch processing)
+    /// - **Custom sample rates** (upsampling, downsampling)
+    /// - **Testing/CI** without audio hardware
+    ///
+    /// **If you're using AudioEngine for playback**, prefer `engine.export_wav(mixer, path)`
+    /// to automatically match the engine's sample rate.
     ///
     /// # Arguments
     /// * `path` - Output file path (e.g., "output.wav")
@@ -19,6 +27,7 @@ impl Mixer {
     /// ```no_run
     /// # use tunes::prelude::*;
     /// # fn main() -> anyhow::Result<()> {
+    /// // Standalone rendering (no engine needed)
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
     ///
@@ -85,6 +94,14 @@ impl Mixer {
     /// FLAC provides lossless compression, typically reducing file size by 50-60% compared
     /// to WAV with no quality loss.
     ///
+    /// # When to use
+    /// - **Standalone rendering** (no AudioEngine, e.g., CLI tools, batch processing)
+    /// - **Custom sample rates** (upsampling, downsampling)
+    /// - **Testing/CI** without audio hardware
+    ///
+    /// **If you're using AudioEngine for playback**, prefer `engine.export_flac(mixer, path)`
+    /// to automatically match the engine's sample rate.
+    ///
     /// # Arguments
     /// * `path` - Output file path (e.g., "output.flac")
     /// * `sample_rate` - Sample rate in Hz (44100 is CD quality, 48000 is professional)
@@ -99,6 +116,7 @@ impl Mixer {
     /// ```no_run
     /// # use tunes::prelude::*;
     /// # fn main() -> anyhow::Result<()> {
+    /// // Standalone rendering (no engine needed)
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
     ///

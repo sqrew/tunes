@@ -34,7 +34,7 @@
 /// - **Phrase lengths**: Natural-feeling asymmetric phrase structures
 /// - **Tempo changes**: Scale tempo by golden ratio for smooth transitions
 pub fn golden_sections(value: f32, divisions: usize) -> Vec<f32> {
-    const PHI: f32 = 1.618033988749;
+    const PHI: f32 = 1.618_034;
     let mut sections = vec![value];
 
     for _ in 0..divisions {

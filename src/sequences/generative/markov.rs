@@ -162,7 +162,7 @@ pub fn build_markov_transitions(
 
         transition_counts
             .entry(current)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .entry(next)
             .and_modify(|count| *count += 1)
             .or_insert(1);

@@ -69,9 +69,9 @@ fn main() -> anyhow::Result<()> {
 
     // Render to file
     println!("\nRendering composition to wavetable_demo.wav...");
-    let mut mixer = comp.into_mixer();
     let engine = AudioEngine::new()?;
-    engine.render_to_wav(&mut mixer, "wavetable_demo.wav")?;
+    let mut mixer = comp.into_mixer();
+    engine.export_wav(&mut mixer, "wavetable_demo.wav")?;
 
     println!("✓ Done! Play wavetable_demo.wav to hear the custom wavetables.");
     println!("\nNotice how each track has a distinct timbre from its custom wavetable!");

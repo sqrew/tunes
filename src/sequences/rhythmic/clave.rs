@@ -1,66 +1,65 @@
-/// Generate clave rhythm patterns - fundamental to Afro-Cuban and Latin music
-///
-/// Clave (Spanish for "key") is the rhythmic foundation of Latin music, providing
-/// the timeline that all other instruments follow. These patterns create the characteristic
-/// tension and release that defines genres like salsa, son, rumba, and bossa nova.
-///
-/// The clave is traditionally played on claves (wooden sticks), but its pattern
-/// permeates all instruments in the ensemble. Understanding clave is essential
-/// for authentic Latin rhythm programming.
-///
-/// # Clave Types
-///
-/// ## Son Clave
-/// The most common clave in salsa, son, and mambo. Has two sides:
-/// - **3-2**: Three hits in first bar, two in second (forward/tresillo side)
-/// - **2-3**: Two hits in first bar, three in second (reverse side)
-///
-/// ## Rumba Clave
-/// Similar to son but with the third hit delayed, creating more syncopation.
-/// Common in Afro-Cuban rumba, guaguancó, and Columbia.
-///
-/// ## Bossa Nova Clave
-/// Brazilian variation used in bossa nova and samba. More symmetrical
-/// than Cuban claves with a smoother, less syncopated feel.
-///
-/// # Musical Context
-/// - Typically played over 2 bars (16 steps at 1/8 note resolution)
-/// - The "strong" side (usually 3-side) creates more tension
-/// - Musicians must be aware of clave direction to maintain groove
-/// - Breaking or contradicting the clave sounds wrong to trained ears
-///
-/// # Examples
-/// ```
-/// use tunes::sequences;
-///
-/// // Son clave 3-2 (most common in salsa)
-/// let pattern = sequences::son_clave_3_2();
-/// assert_eq!(pattern, vec![0, 3, 6, 10, 12]);
-///
-/// // Son clave 2-3 (reverse)
-/// let pattern = sequences::son_clave_2_3();
-/// assert_eq!(pattern, vec![0, 2, 6, 9, 12]);
-///
-/// // Rumba clave 3-2 (more syncopated)
-/// let pattern = sequences::rumba_clave_3_2();
-/// assert_eq!(pattern, vec![0, 3, 7, 10, 12]);
-///
-/// // Bossa nova (Brazilian feel)
-/// let pattern = sequences::bossa_clave();
-/// assert_eq!(pattern, vec![0, 3, 6, 10, 13]);
-///
-/// // Use in composition:
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(120.0));
-/// comp.track("clave")
-///     .drum_grid(16, 0.125)
-///     .rimshot(&sequences::son_clave_3_2());
-/// ```
-///
-/// # References
-/// - "The Clave Matrix: Afro-Cuban Rhythm" by David Peñalosa
-/// - "Afro-Cuban Rhythms for Drumset" by Frank Malabe & Bob Weiner
-
+//! Generate clave rhythm patterns - fundamental to Afro-Cuban and Latin music
+//!
+//! Clave (Spanish for "key") is the rhythmic foundation of Latin music, providing
+//! the timeline that all other instruments follow. These patterns create the characteristic
+//! tension and release that defines genres like salsa, son, rumba, and bossa nova.
+//!
+//! The clave is traditionally played on claves (wooden sticks), but its pattern
+//! permeates all instruments in the ensemble. Understanding clave is essential
+//! for authentic Latin rhythm programming.
+//!
+//! # Clave Types
+//!
+//! ## Son Clave
+//! The most common clave in salsa, son, and mambo. Has two sides:
+//! - **3-2**: Three hits in first bar, two in second (forward/tresillo side)
+//! - **2-3**: Two hits in first bar, three in second (reverse side)
+//!
+//! ## Rumba Clave
+//! Similar to son but with the third hit delayed, creating more syncopation.
+//! Common in Afro-Cuban rumba, guaguancó, and Columbia.
+//!
+//! ## Bossa Nova Clave
+//! Brazilian variation used in bossa nova and samba. More symmetrical
+//! than Cuban claves with a smoother, less syncopated feel.
+//!
+//! # Musical Context
+//! - Typically played over 2 bars (16 steps at 1/8 note resolution)
+//! - The "strong" side (usually 3-side) creates more tension
+//! - Musicians must be aware of clave direction to maintain groove
+//! - Breaking or contradicting the clave sounds wrong to trained ears
+//!
+//! # Examples
+//! ```
+//! use tunes::sequences;
+//!
+//! // Son clave 3-2 (most common in salsa)
+//! let pattern = sequences::son_clave_3_2();
+//! assert_eq!(pattern, vec![0, 3, 6, 10, 12]);
+//!
+//! // Son clave 2-3 (reverse)
+//! let pattern = sequences::son_clave_2_3();
+//! assert_eq!(pattern, vec![0, 2, 6, 9, 12]);
+//!
+//! // Rumba clave 3-2 (more syncopated)
+//! let pattern = sequences::rumba_clave_3_2();
+//! assert_eq!(pattern, vec![0, 3, 7, 10, 12]);
+//!
+//! // Bossa nova (Brazilian feel)
+//! let pattern = sequences::bossa_clave();
+//! assert_eq!(pattern, vec![0, 3, 6, 10, 13]);
+//!
+//! // Use in composition:
+//! # use tunes::prelude::*;
+//! # let mut comp = Composition::new(Tempo::new(120.0));
+//! comp.track("clave")
+//!     .drum_grid(16, 0.125)
+//!     .rimshot(&sequences::son_clave_3_2());
+//! ```
+//!
+//! # References
+//! - "The Clave Matrix: Afro-Cuban Rhythm" by David Peñalosa
+//! - "Afro-Cuban Rhythms for Drumset" by Frank Malabe & Bob Weiner
 /// Son clave in 3-2 direction (forward clave)
 ///
 /// The most fundamental clave pattern in salsa and Afro-Cuban music.
@@ -217,10 +216,7 @@ pub fn bossa_clave() -> Vec<usize> {
 /// assert_eq!(pattern, vec![0, 5]); // 20 is out of bounds
 /// ```
 pub fn clave_pattern(hits: &[usize], steps: usize) -> Vec<usize> {
-    hits.iter()
-        .copied()
-        .filter(|&h| h < steps)
-        .collect()
+    hits.iter().copied().filter(|&h| h < steps).collect()
 }
 
 #[cfg(test)]
@@ -387,7 +383,11 @@ mod tests {
         for pattern in patterns {
             let mut unique = pattern.clone();
             unique.dedup();
-            assert_eq!(pattern.len(), unique.len(), "Pattern should have no duplicates");
+            assert_eq!(
+                pattern.len(),
+                unique.len(),
+                "Pattern should have no duplicates"
+            );
         }
     }
 }

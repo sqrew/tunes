@@ -1,6 +1,6 @@
 # tunes
 
-A standalone Rust library for music composition, synthesis, and audio generation. Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
+A standalone Rust library for music composition, synthesis, and audio generation with real-time, concurrent playback and control. Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
@@ -18,7 +18,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
-- **Real-time Playback**: Cross-platform audio output via cpal
+- **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
@@ -30,7 +30,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.6.0"
+tunes = "0.7.0"
 ```
 
 ### Platform Requirements

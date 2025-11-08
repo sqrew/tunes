@@ -461,8 +461,16 @@ pub fn clap_808_sample(sample_index: usize, sample_rate: f32) -> f32 {
     // 808 clap uses multiple tightly-timed bursts (simulates multiple hands)
     // First burst is strongest, followed by two weaker echoes
     let burst1 = if t < 0.008 { 1.0 } else { 0.0 };
-    let burst2 = if t >= 0.008 && t < 0.016 { 0.7 } else { 0.0 };
-    let burst3 = if t >= 0.016 && t < 0.024 { 0.5 } else { 0.0 };
+    let burst2 = if (0.008..0.016).contains(&t) {
+        0.7
+    } else {
+        0.0
+    };
+    let burst3 = if (0.016..0.024).contains(&t) {
+        0.5
+    } else {
+        0.0
+    };
 
     // Overall decay envelope
     let envelope = (-t * 25.0).exp();
@@ -2275,20 +2283,20 @@ pub enum DrumType {
     Gong,    // Deep metallic crash
     Chimes,  // Tubular bells/chimes
     // World percussion
-    Djembe,      // West African hand drum
-    TablaBayan,  // Indian bass drum (left hand)
-    TablaDayan,  // Indian treble drum (right hand)
-    Cajon,       // Box drum
+    Djembe,     // West African hand drum
+    TablaBayan, // Indian bass drum (left hand)
+    TablaDayan, // Indian treble drum (right hand)
+    Cajon,      // Box drum
     // Hand percussion
     Fingersnap,  // Fingersnap sound
     Maracas,     // Rattling shaker
     Castanet,    // Spanish wooden clapper
     SleighBells, // Jingle bells
     // Electronic / Effects
-    LaserZap,       // Sci-fi laser sound
-    ReverseCymbal,  // Reverse crash buildup
-    WhiteNoiseHit,  // Noise burst/clap
-    StickClick,     // Drumstick click
+    LaserZap,      // Sci-fi laser sound
+    ReverseCymbal, // Reverse crash buildup
+    WhiteNoiseHit, // Noise burst/clap
+    StickClick,    // Drumstick click
     // Kick variations
     KickTight,    // Short, punchy kick
     KickDeep,     // Extended low-end
@@ -2314,11 +2322,11 @@ pub enum DrumType {
     EggShaker,  // Tight, short shake
     TubeShaker, // Longer, sustained
     // 808 Kit Completion
-    Tom808Low,    // Deep 808 tom
-    Tom808Mid,    // Mid 808 tom
-    Tom808High,   // High 808 tom
-    Cowbell808,   // Iconic 808 cowbell
-    Clave808,     // Sharp 808 clave
+    Tom808Low,  // Deep 808 tom
+    Tom808Mid,  // Mid 808 tom
+    Tom808High, // High 808 tom
+    Cowbell808, // Iconic 808 cowbell
+    Clave808,   // Sharp 808 clave
     // 909 Kit Completion
     HiHat909Closed, // Bright 909 closed hat
     HiHat909Open,   // Sustained 909 open hat

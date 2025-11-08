@@ -77,8 +77,7 @@ fn ticks_to_seconds(ticks: u32, tempo: f32, ppq: u16) -> f32 {
     // Beats = ticks / ppq
     // Time = beats / (bpm / 60)
     let beats = ticks as f32 / ppq as f32;
-    let seconds = beats / (tempo / 60.0);
-    seconds
+    beats / (tempo / 60.0)
 }
 
 /// Convert DrumType to General MIDI percussion note number
@@ -176,27 +175,27 @@ pub fn drum_type_to_midi_note(drum_type: DrumType) -> u8 {
         DrumType::WoodBlockHigh => 76, // Hi Wood Block
 
         // Orchestral percussion (no direct GM mapping, use approximations)
-        DrumType::Timpani => 47,  // Low-Mid Tom (closest approximation)
-        DrumType::Gong => 52,     // Chinese Cymbal
-        DrumType::Chimes => 84,   // Belltree (GM note 84)
+        DrumType::Timpani => 47, // Low-Mid Tom (closest approximation)
+        DrumType::Gong => 52,    // Chinese Cymbal
+        DrumType::Chimes => 84,  // Belltree (GM note 84)
 
         // World percussion (no direct GM mapping)
-        DrumType::Djembe => 60,      // Hi Bongo (similar hand drum)
-        DrumType::TablaBayan => 58,  // Vibraslap (as placeholder)
-        DrumType::TablaDayan => 77,  // Low Wood Block (sharp attack)
-        DrumType::Cajon => 38,       // Acoustic Snare (similar character)
+        DrumType::Djembe => 60,     // Hi Bongo (similar hand drum)
+        DrumType::TablaBayan => 58, // Vibraslap (as placeholder)
+        DrumType::TablaDayan => 77, // Low Wood Block (sharp attack)
+        DrumType::Cajon => 38,      // Acoustic Snare (similar character)
 
         // Hand percussion
-        DrumType::Fingersnap => 37, // Side Stick (similar click)
-        DrumType::Maracas => 70,    // Maracas (GM standard)
-        DrumType::Castanet => 85,   // Castanets (GM note 85)
+        DrumType::Fingersnap => 37,  // Side Stick (similar click)
+        DrumType::Maracas => 70,     // Maracas (GM standard)
+        DrumType::Castanet => 85,    // Castanets (GM note 85)
         DrumType::SleighBells => 83, // Jingle Bell (GM note 83)
 
         // Electronic / Effects (no GM equivalents, use generic)
-        DrumType::LaserZap => 35,       // Bass Drum (placeholder)
-        DrumType::ReverseCymbal => 49,  // Crash Cymbal
-        DrumType::WhiteNoiseHit => 39,  // Hand Clap
-        DrumType::StickClick => 37,     // Side Stick
+        DrumType::LaserZap => 35,      // Bass Drum (placeholder)
+        DrumType::ReverseCymbal => 49, // Crash Cymbal
+        DrumType::WhiteNoiseHit => 39, // Hand Clap
+        DrumType::StickClick => 37,    // Side Stick
 
         // Kick variations (all map to kick notes)
         DrumType::KickTight => 36,    // Bass Drum 1
@@ -300,9 +299,9 @@ pub fn midi_note_to_drum_type(midi_note: u8) -> Option<DrumType> {
         70 => Some(DrumType::Shaker),     // Maracas
 
         // Simple percussion
-        75 => Some(DrumType::Claves),   // Claves
+        75 => Some(DrumType::Claves),    // Claves
         77 => Some(DrumType::WoodBlock), // Low Wood Block
-        81 => Some(DrumType::Triangle), // Open Triangle
+        81 => Some(DrumType::Triangle),  // Open Triangle
 
         // Latin percussion
         60 => Some(DrumType::BongoHigh), // Hi Bongo
@@ -937,7 +936,7 @@ impl Mixer {
         let mut audio_tracks: Vec<Track> = Vec::new();
 
         // Second pass: Convert MIDI tracks to audio tracks
-        for (_track_idx, midi_track) in smf.tracks.iter().enumerate() {
+        for midi_track in smf.tracks.iter() {
             let mut track = Track::new();
             let mut absolute_tick = 0u32;
             let mut track_name: Option<String> = None;

@@ -9,9 +9,9 @@ use crate::composition::drums::DrumType;
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
-use crate::theory::key_signature::KeySignature;
 use crate::synthesis::sample::Sample;
 use crate::synthesis::waveform::Waveform;
+use crate::theory::key_signature::KeySignature;
 
 /// Represents different types of audio events
 ///
@@ -286,6 +286,7 @@ impl NoteEvent {
     /// * `pitch_bend_semitones` - Pitch bend in semitones
     /// * `custom_wavetable` - Custom wavetable (overrides waveform if Some)
     /// * `velocity` - Note velocity 0.0-1.0 (affects MIDI export)
+    #[allow(clippy::too_many_arguments)]
     pub fn with_complete_params(
         frequencies: &[f32],
         start_time: f32,

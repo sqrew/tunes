@@ -1,80 +1,79 @@
-/// Generate phase-shifting patterns - Steve Reich-style minimalist technique
-///
-/// Phase shifting (or phasing) is a compositional technique where two or more identical
-/// patterns are played simultaneously, with one gradually shifting out of phase with the other.
-/// As the patterns drift apart and realign, complex polyrhythmic textures emerge from simple
-/// material.
-///
-/// # Historical Context
-///
-/// Developed by Steve Reich in the 1960s:
-/// - **"It's Gonna Rain" (1965)**: Tape loops gradually going out of phase
-/// - **"Piano Phase" (1967)**: Two pianos, one gradually speeds up
-/// - **"Clapping Music" (1972)**: Hand claps, one performer shifts by one beat every 12 bars
-/// - **"Music for 18 Musicians" (1976)**: Multiple interlocking phasing patterns
-///
-/// The technique creates:
-/// - **Emergent patterns**: New rhythmic patterns appear from the phase relationship
-/// - **Gradual process**: The change is slow enough to hear but fast enough to stay interesting
-/// - **Trance-like quality**: Repetition with slow transformation is hypnotic
-/// - **Polyrhythmic complexity**: Simple patterns create intricate textures
-///
-/// # Musical Applications
-///
-/// - **Minimalist composition**: Core technique of minimalism
-/// - **Electronic music**: Techno, ambient, IDM use phasing extensively
-/// - **Generative music**: Brian Eno's ambient work uses phasing
-/// - **Live performance**: Creates constantly evolving texture from fixed material
-///
-/// # Examples
-/// ```
-/// use tunes::sequences;
-///
-/// // Simple 4-note pattern
-/// let pattern = vec![0, 2, 5, 7];
-///
-/// // Generate 8 phase steps (each shifts by 1)
-/// let phases = sequences::phase_shift(&pattern, 8, 16);
-///
-/// // phases[0] = [0, 2, 5, 7]        (original)
-/// // phases[1] = [1, 3, 6, 8]        (shift +1)
-/// // phases[2] = [2, 4, 7, 9]        (shift +2)
-/// // ... and so on
-///
-/// // Reich's "Clapping Music" pattern
-/// let clap_pattern = vec![0, 1, 2, 3, 5, 6, 8, 9, 10];
-/// let clapping_music = sequences::phase_shift(&clap_pattern, 12, 12);
-///
-/// // Use in composition with gradual transition:
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let pattern = vec![0, 3, 7, 10];
-/// let phases = sequences::phase_shift(&pattern, 8, 16);
-///
-/// // Voice 1: original pattern, repeating
-/// for i in 0..8 {
-///     for &hit in &pattern {
-///         comp.track("voice1")
-///             .at(i as f32 * 2.0 + hit as f32 * 0.125)
-///             .note(&[440.0], 0.1);
-///     }
-/// }
-///
-/// // Voice 2: gradually shifts through phases
-/// for (i, phase_pattern) in phases.iter().enumerate() {
-///     for &hit in phase_pattern {
-///         comp.track("voice2")
-///             .at(i as f32 * 2.0 + hit as f32 * 0.125)
-///             .note(&[660.0], 0.1);
-///     }
-/// }
-/// ```
-///
-/// # References
-/// - "Music as a Gradual Process" by Steve Reich (1968)
-/// - "Writings on Music, 1965-2000" by Steve Reich
-/// - "The Music of Steve Reich" by K. Robert Schwarz
-
+//! Generate phase-shifting patterns - Steve Reich-style minimalist technique
+//!
+//! Phase shifting (or phasing) is a compositional technique where two or more identical
+//! patterns are played simultaneously, with one gradually shifting out of phase with the other.
+//! As the patterns drift apart and realign, complex polyrhythmic textures emerge from simple
+//! material.
+//!
+//! # Historical Context
+//!
+//! Developed by Steve Reich in the 1960s:
+//! - **"It's Gonna Rain" (1965)**: Tape loops gradually going out of phase
+//! - **"Piano Phase" (1967)**: Two pianos, one gradually speeds up
+//! - **"Clapping Music" (1972)**: Hand claps, one performer shifts by one beat every 12 bars
+//! - **"Music for 18 Musicians" (1976)**: Multiple interlocking phasing patterns
+//!
+//! The technique creates:
+//! - **Emergent patterns**: New rhythmic patterns appear from the phase relationship
+//! - **Gradual process**: The change is slow enough to hear but fast enough to stay interesting
+//! - **Trance-like quality**: Repetition with slow transformation is hypnotic
+//! - **Polyrhythmic complexity**: Simple patterns create intricate textures
+//!
+//! # Musical Applications
+//!
+//! - **Minimalist composition**: Core technique of minimalism
+//! - **Electronic music**: Techno, ambient, IDM use phasing extensively
+//! - **Generative music**: Brian Eno's ambient work uses phasing
+//! - **Live performance**: Creates constantly evolving texture from fixed material
+//!
+//! # Examples
+//! ```
+//! use tunes::sequences;
+//!
+//! // Simple 4-note pattern
+//! let pattern = vec![0, 2, 5, 7];
+//!
+//! // Generate 8 phase steps (each shifts by 1)
+//! let phases = sequences::phase_shift(&pattern, 8, 16);
+//!
+//! // phases[0] = [0, 2, 5, 7]        (original)
+//! // phases[1] = [1, 3, 6, 8]        (shift +1)
+//! // phases[2] = [2, 4, 7, 9]        (shift +2)
+//! // ... and so on
+//!
+//! // Reich's "Clapping Music" pattern
+//! let clap_pattern = vec![0, 1, 2, 3, 5, 6, 8, 9, 10];
+//! let clapping_music = sequences::phase_shift(&clap_pattern, 12, 12);
+//!
+//! // Use in composition with gradual transition:
+//! # use tunes::prelude::*;
+//! # let mut comp = Composition::new(Tempo::new(120.0));
+//! let pattern = vec![0, 3, 7, 10];
+//! let phases = sequences::phase_shift(&pattern, 8, 16);
+//!
+//! // Voice 1: original pattern, repeating
+//! for i in 0..8 {
+//!     for &hit in &pattern {
+//!         comp.track("voice1")
+//!             .at(i as f32 * 2.0 + hit as f32 * 0.125)
+//!             .note(&[440.0], 0.1);
+//!     }
+//! }
+//!
+//! // Voice 2: gradually shifts through phases
+//! for (i, phase_pattern) in phases.iter().enumerate() {
+//!     for &hit in phase_pattern {
+//!         comp.track("voice2")
+//!             .at(i as f32 * 2.0 + hit as f32 * 0.125)
+//!             .note(&[660.0], 0.1);
+//!     }
+//! }
+//! ```
+//!
+//! # References
+//! - "Music as a Gradual Process" by Steve Reich (1968)
+//! - "Writings on Music, 1965-2000" by Steve Reich
+//! - "The Music of Steve Reich" by K. Robert Schwarz
 /// Generate a sequence of phase-shifted versions of a pattern
 ///
 /// Takes a rhythmic pattern (as step indices) and generates multiple versions,

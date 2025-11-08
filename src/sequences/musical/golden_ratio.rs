@@ -34,7 +34,7 @@
 /// - **Rhythm**: Use phi ratios for timing relationships (not strictly metric)
 /// - **Texture density**: Scale number of voices/layers by phi
 pub fn golden_ratio(n: usize) -> Vec<f32> {
-    const PHI: f32 = 1.618033988749;
+    const PHI: f32 = 1.618_034;
     (0..n).map(|i| PHI.powi(i as i32)).collect()
 }
 

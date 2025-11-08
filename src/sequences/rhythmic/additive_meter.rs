@@ -1,67 +1,66 @@
-/// Generate additive meter patterns - asymmetric rhythms from Balkans, Middle East, and beyond
-///
-/// Additive meters (also called asymmetric or irregular meters) are time signatures that
-/// combine groups of 2s and 3s to create complex, dance-like rhythms. Unlike Western
-/// "compound" meters that evenly subdivide (4/4, 6/8), additive meters create intentional
-/// asymmetry that drives forward motion.
-///
-/// # Cultural Context
-///
-/// These meters are fundamental to:
-/// - **Bulgarian music**: "Kopanitsa" (11/8 as 2+2+3+2+2), "Rachenitsa" (7/8 as 2+2+3)
-/// - **Greek music**: "Kalamatianos" (7/8), "Hasapiko" (9/8)
-/// - **Turkish music**: "Aksak" rhythms (9/8, 7/8, 5/8)
-/// - **Middle Eastern**: Various odd meters in Arabic and Persian music
-/// - **Progressive rock**: Tool, Dream Theater, King Crimson use these extensively
-///
-/// # Musical Character
-///
-/// The asymmetry creates:
-/// - **Forward momentum**: The irregular stress pattern propels the rhythm
-/// - **Dance grooves**: Despite being "odd", they're highly danceable
-/// - **Sophisticated feel**: More complex than straight 4/4 or 6/8
-/// - **Ethnic authenticity**: Essential for world music styles
-///
-/// # Common Patterns
-///
-/// The groupings determine where the strong beats fall:
-/// - `[2, 2, 3]` - Bulgarian "quick-quick-slow" (7/8 Rachenitsa)
-/// - `[3, 2, 2]` - Rotated version with slow beat first
-/// - `[2, 2, 2, 3]` - 9/8 pattern (common in Greek music)
-/// - `[2, 3, 2]` - 7/8 with emphasis in middle
-/// - `[3, 3, 2]` - 8/8 but grouped asymmetrically
-/// - `[2, 2, 3, 2, 2]` - 11/8 "Kopanitsa" pattern
-///
-/// # Examples
-/// ```
-/// use tunes::sequences;
-///
-/// // Bulgarian Rachenitsa: 2+2+3 = 7/8
-/// let pattern = sequences::additive_meter(&[2, 2, 3]);
-/// assert_eq!(pattern, vec![0, 2, 4]); // Strong beats at 0, 2, 4
-///
-/// // Greek pattern: 2+2+2+3 = 9/8
-/// let pattern = sequences::additive_meter(&[2, 2, 2, 3]);
-/// assert_eq!(pattern, vec![0, 2, 4, 6]);
-///
-/// // Kopanitsa: 2+2+3+2+2 = 11/8
-/// let pattern = sequences::additive_meter(&[2, 2, 3, 2, 2]);
-/// assert_eq!(pattern, vec![0, 2, 4, 7, 9]);
-///
-/// // Use in composition:
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(120.0));
-/// // 7/8 Bulgarian pattern with kick on strong beats
-/// comp.track("bulgarian")
-///     .drum_grid(7, 0.125)
-///     .kick(&sequences::additive_meter(&[2, 2, 3]));
-/// ```
-///
-/// # References
-/// - "Bulgarian Rhythm" by Rumen Shopov
-/// - "The Metric Matrix" by Jeff Pressing
-/// - Béla Bartók's ethnomusicological work on Bulgarian rhythm
-
+//! Generate additive meter patterns - asymmetric rhythms from Balkans, Middle East, and beyond
+//!
+//! Additive meters (also called asymmetric or irregular meters) are time signatures that
+//! combine groups of 2s and 3s to create complex, dance-like rhythms. Unlike Western
+//! "compound" meters that evenly subdivide (4/4, 6/8), additive meters create intentional
+//! asymmetry that drives forward motion.
+//!
+//! # Cultural Context
+//!
+//! These meters are fundamental to:
+//! - **Bulgarian music**: "Kopanitsa" (11/8 as 2+2+3+2+2), "Rachenitsa" (7/8 as 2+2+3)
+//! - **Greek music**: "Kalamatianos" (7/8), "Hasapiko" (9/8)
+//! - **Turkish music**: "Aksak" rhythms (9/8, 7/8, 5/8)
+//! - **Middle Eastern**: Various odd meters in Arabic and Persian music
+//! - **Progressive rock**: Tool, Dream Theater, King Crimson use these extensively
+//!
+//! # Musical Character
+//!
+//! The asymmetry creates:
+//! - **Forward momentum**: The irregular stress pattern propels the rhythm
+//! - **Dance grooves**: Despite being "odd", they're highly danceable
+//! - **Sophisticated feel**: More complex than straight 4/4 or 6/8
+//! - **Ethnic authenticity**: Essential for world music styles
+//!
+//! # Common Patterns
+//!
+//! The groupings determine where the strong beats fall:
+//! - `[2, 2, 3]` - Bulgarian "quick-quick-slow" (7/8 Rachenitsa)
+//! - `[3, 2, 2]` - Rotated version with slow beat first
+//! - `[2, 2, 2, 3]` - 9/8 pattern (common in Greek music)
+//! - `[2, 3, 2]` - 7/8 with emphasis in middle
+//! - `[3, 3, 2]` - 8/8 but grouped asymmetrically
+//! - `[2, 2, 3, 2, 2]` - 11/8 "Kopanitsa" pattern
+//!
+//! # Examples
+//! ```
+//! use tunes::sequences;
+//!
+//! // Bulgarian Rachenitsa: 2+2+3 = 7/8
+//! let pattern = sequences::additive_meter(&[2, 2, 3]);
+//! assert_eq!(pattern, vec![0, 2, 4]); // Strong beats at 0, 2, 4
+//!
+//! // Greek pattern: 2+2+2+3 = 9/8
+//! let pattern = sequences::additive_meter(&[2, 2, 2, 3]);
+//! assert_eq!(pattern, vec![0, 2, 4, 6]);
+//!
+//! // Kopanitsa: 2+2+3+2+2 = 11/8
+//! let pattern = sequences::additive_meter(&[2, 2, 3, 2, 2]);
+//! assert_eq!(pattern, vec![0, 2, 4, 7, 9]);
+//!
+//! // Use in composition:
+//! # use tunes::prelude::*;
+//! # let mut comp = Composition::new(Tempo::new(120.0));
+//! // 7/8 Bulgarian pattern with kick on strong beats
+//! comp.track("bulgarian")
+//!     .drum_grid(7, 0.125)
+//!     .kick(&sequences::additive_meter(&[2, 2, 3]));
+//! ```
+//!
+//! # References
+//! - "Bulgarian Rhythm" by Rumen Shopov
+//! - "The Metric Matrix" by Jeff Pressing
+//! - Béla Bartók's ethnomusicological work on Bulgarian rhythm
 /// Generate an additive meter pattern from groupings of 2s and 3s
 ///
 /// Takes subdivisions (groups of 2s and 3s) and returns the step indices

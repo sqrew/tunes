@@ -1,15 +1,58 @@
-use crate::composition::drums::DrumType;
 use crate::error::{Result, TunesError};
-use crate::composition::rhythm::{NoteDuration, Tempo};
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use std::f32::consts::PI;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use crossbeam::channel::{Sender, Receiver, unbounded};
 
-/// Central audio engine that manages playback
+/// Unique identifier for playing sounds
+pub type SoundId = u64;
+
+/// Commands sent from main thread to audio thread
+enum AudioCommand {
+    Play {
+        id: SoundId,
+        mixer: Mixer,
+        looping: bool,
+    },
+    Stop {
+        id: SoundId,
+    },
+    SetVolume {
+        id: SoundId,
+        volume: f32,
+    },
+    SetPan {
+        id: SoundId,
+        pan: f32, // -1.0 (left) to 1.0 (right)
+    },
+    Pause {
+        id: SoundId,
+    },
+    Resume {
+        id: SoundId,
+    },
+}
+
+/// State for an actively playing sound
+struct ActiveSound {
+    mixer: Mixer,
+    sample_clock: f32,
+    elapsed_time: f32,
+    volume: f32,
+    pan: f32,
+    paused: bool,
+    looping: bool,
+}
+
+/// Central audio engine that manages playback with concurrent mixing
 pub struct AudioEngine {
-    device: cpal::Device,
-    config: cpal::SupportedStreamConfig,
-    buffer_size: u32, // Buffer size in samples (larger = more stable, higher latency)
+    command_tx: Sender<AudioCommand>,
+    next_id: Arc<AtomicU64>,
+    active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>>,
+    sample_rate: f32,
+    _stream: cpal::Stream, // Persistent stream, kept alive
 }
 
 impl AudioEngine {
@@ -24,12 +67,13 @@ impl AudioEngine {
 
     /// Create a new audio engine with custom buffer size
     ///
+    /// Creates a persistent audio stream that can play multiple sounds concurrently.
+    ///
     /// # Arguments
     /// * `buffer_size` - Buffer size in samples
     ///   - Smaller (512-1024): Lower latency, may underrun with complex synthesis
     ///   - Medium (2048-4096): Balanced
     ///   - Large (8192-16384): Very stable for most cases
-    ///   - Very large (32768+): Rock-solid for complex synthesis, ideal for pre-composed playback
     pub fn with_buffer_size(buffer_size: u32) -> Result<Self> {
         let host = cpal::default_host();
         let device = host.default_output_device().ok_or_else(|| {
@@ -39,7 +83,9 @@ impl AudioEngine {
             TunesError::AudioEngineError(format!("Failed to get default config: {}", e))
         })?;
 
-        let latency_ms = (buffer_size as f32 / config.sample_rate().0 as f32) * 1000.0;
+        let sample_rate = config.sample_rate().0 as f32;
+        let channels = config.channels() as usize;
+        let latency_ms = (buffer_size as f32 / sample_rate) * 1000.0;
 
         println!("Audio Engine initialized:");
         println!(
@@ -51,641 +97,428 @@ impl AudioEngine {
             "  Buffer size: {} samples ({:.1}ms latency)",
             buffer_size, latency_ms
         );
+        println!("  Concurrent mixing: enabled");
+
+        // Create command channel for communication with audio thread
+        let (command_tx, command_rx): (Sender<AudioCommand>, Receiver<AudioCommand>) = unbounded();
+
+        // Shared state for active sounds
+        let active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let active_sounds_for_stream = Arc::clone(&active_sounds);
+
+        // Build stream configuration
+        let mut stream_config: cpal::StreamConfig = config.clone().into();
+        stream_config.buffer_size = cpal::BufferSize::Fixed(buffer_size);
+
+        // Error handler
+        let err_fn = |err| eprintln!("Audio stream error: {}", err);
+
+        // Build the persistent output stream
+        let stream = device.build_output_stream(
+            &stream_config,
+            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                // Process all pending commands (non-blocking)
+                while let Ok(cmd) = command_rx.try_recv() {
+                    Self::handle_command(cmd, &mut active_sounds_for_stream.lock().unwrap());
+                }
+
+                // Mix all active sounds into the output buffer
+                Self::mix_sounds(
+                    data,
+                    &mut active_sounds_for_stream.lock().unwrap(),
+                    sample_rate,
+                    channels,
+                );
+            },
+            err_fn,
+            None,
+        ).map_err(|e| {
+            TunesError::AudioEngineError(format!("Failed to build output stream: {}", e))
+        })?;
+
+        // Start the stream
+        stream.play().map_err(|e| {
+            TunesError::AudioEngineError(format!("Failed to start audio stream: {}", e))
+        })?;
 
         Ok(Self {
-            device,
-            config,
-            buffer_size,
+            command_tx,
+            next_id: Arc::new(AtomicU64::new(1)),
+            active_sounds,
+            sample_rate,
+            _stream: stream,
         })
     }
 
-    /// Play a single note or chord for a duration in seconds
-    pub fn play(&self, frequencies: &[f32], duration_secs: f32) -> Result<()> {
-        match self.config.sample_format() {
-            cpal::SampleFormat::F32 => self.run::<f32>(frequencies, duration_secs),
-            cpal::SampleFormat::I16 => self.run::<i16>(frequencies, duration_secs),
-            cpal::SampleFormat::U16 => self.run::<u16>(frequencies, duration_secs),
-            _ => Err(TunesError::InvalidAudioFormat(
-                "Unsupported sample format".to_string(),
-            )),
-        }
-    }
-
-    /// Play notes with tempo-based duration
-    pub fn play_tempo(
-        &self,
-        frequencies: &[f32],
-        duration: NoteDuration,
-        tempo: &Tempo,
-    ) -> Result<()> {
-        let duration_secs = tempo.duration_to_seconds(duration);
-        self.play(frequencies, duration_secs)
-    }
-
-    /// Play a drum sound
-    pub fn play_drum(&self, drum_type: DrumType) -> Result<()> {
-        match self.config.sample_format() {
-            cpal::SampleFormat::F32 => self.run_drum::<f32>(drum_type),
-            cpal::SampleFormat::I16 => self.run_drum::<i16>(drum_type),
-            cpal::SampleFormat::U16 => self.run_drum::<u16>(drum_type),
-            _ => Err(TunesError::InvalidAudioFormat(
-                "Unsupported sample format".to_string(),
-            )),
-        }
-    }
-
-    /// Play an interpolated sequence from start to end frequency
-    pub fn play_interpolated(
-        &self,
-        start_freq: f32,
-        end_freq: f32,
-        segments: usize,
-        note_duration: f32,
-    ) -> Result<()> {
-        // Handle edge cases
-        if segments == 0 {
-            return Ok(()); // Nothing to play
-        }
-        if segments == 1 {
-            // Just play the start frequency
-            return self.play(&[start_freq], note_duration);
-        }
-
-        for i in 0..segments {
-            let t = i as f32 / (segments - 1) as f32;
-            let freq = start_freq + (end_freq - start_freq) * t;
-            self.play(&[freq], note_duration)?;
-        }
-        Ok(())
-    }
-
-    /// Play a complete composition with multiple tracks
-    ///
-    /// Uses streaming pre-render: starts playback quickly while rendering ahead.
-    /// This provides near-instant playback (~1s delay) with zero glitches.
-    ///
-    /// For true real-time mode (instant but may have glitches), use `play_mixer_realtime()`.
-    /// For full pre-render (slower start, guaranteed quality), use `play_mixer_prerender()`.
-    pub fn play_mixer(&self, mixer: &Mixer) -> Result<()> {
-        match self.config.sample_format() {
-            cpal::SampleFormat::F32 => self.run_mixer_streaming::<f32>(mixer),
-            cpal::SampleFormat::I16 => self.run_mixer_streaming::<i16>(mixer),
-            cpal::SampleFormat::U16 => self.run_mixer_streaming::<u16>(mixer),
-            _ => Err(TunesError::InvalidAudioFormat(
-                "Unsupported sample format".to_string(),
-            )),
-        }
-    }
-
-    /// Play a composition in pure real-time mode (no pre-rendering)
-    ///
-    /// Instant playback start, but may have glitches with complex synthesis.
-    /// Use `play_mixer()` for better quality with minimal delay.
-    pub fn play_mixer_realtime(&self, mixer: &Mixer) -> Result<()> {
-        match self.config.sample_format() {
-            cpal::SampleFormat::F32 => self.run_mixer::<f32>(mixer, false),
-            cpal::SampleFormat::I16 => self.run_mixer::<i16>(mixer, false),
-            cpal::SampleFormat::U16 => self.run_mixer::<u16>(mixer, false),
-            _ => Err(TunesError::InvalidAudioFormat(
-                "Unsupported sample format".to_string(),
-            )),
-        }
-    }
-
-    /// Play a composition with pre-rendering for glitch-free playback
-    ///
-    /// Pre-renders the entire composition before playback starts.
-    /// This eliminates audio glitches but takes time upfront (~1.4x realtime for complex synthesis).
-    /// Use `play_mixer()` for faster iteration during development.
-    pub fn play_mixer_prerender(&self, mixer: &Mixer) -> Result<()> {
-        match self.config.sample_format() {
-            cpal::SampleFormat::F32 => self.run_mixer::<f32>(mixer, true),
-            cpal::SampleFormat::I16 => self.run_mixer::<i16>(mixer, true),
-            cpal::SampleFormat::U16 => self.run_mixer::<u16>(mixer, true),
-            _ => Err(TunesError::InvalidAudioFormat(
-                "Unsupported sample format".to_string(),
-            )),
-        }
-    }
-
-    // Internal playback implementation for notes
-    fn run<T>(&self, frequencies: &[f32], duration_secs: f32) -> Result<()>
-    where
-        T: cpal::SizedSample + cpal::FromSample<f32>,
-    {
-        // Don't play anything if no frequencies provided
-        if frequencies.is_empty() {
-            return Ok(());
-        }
-
-        let sample_rate = self.config.sample_rate().0 as f32;
-        let channels = self.config.channels() as usize;
-
-        // Use configured buffer size to prevent underruns
-        let mut config: cpal::StreamConfig = self.config.clone().into();
-        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
-
-        let mut sample_clock = 0f32;
-        let frequencies = frequencies.to_vec();
-        let num_frequencies = frequencies.len() as f32;
-
-        let mut next_value = move || {
-            sample_clock = (sample_clock + 1.0) % sample_rate;
-
-            let mut value = 0.0;
-            for &freq in &frequencies {
-                value += (sample_clock * freq * 2.0 * PI / sample_rate).sin();
-            }
-
-            // Safe division - num_frequencies is always > 0 due to check above
-            value / num_frequencies * 0.5
-        };
-
-        let err_fn = |err| eprintln!("Audio stream error: {}", err);
-
-        let stream = self.device.build_output_stream(
-            &config,
-            move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-                for frame in data.chunks_mut(channels) {
-                    let value: T = cpal::Sample::from_sample(next_value());
-                    for sample in frame.iter_mut() {
-                        *sample = value;
-                    }
-                }
-            },
-            err_fn,
-            None,
-        )?;
-
-        stream.play()?;
-        std::thread::sleep(std::time::Duration::from_secs_f32(duration_secs));
-
-        Ok(())
-    }
-
-    // Internal playback implementation for drums
-    fn run_drum<T>(&self, drum_type: DrumType) -> Result<()>
-    where
-        T: cpal::SizedSample + cpal::FromSample<f32>,
-    {
-        let sample_rate = self.config.sample_rate().0 as f32;
-        let channels = self.config.channels() as usize;
-        let duration_secs = drum_type.duration();
-
-        // Use configured buffer size to prevent underruns
-        let mut config: cpal::StreamConfig = self.config.clone().into();
-        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
-
-        let mut sample_index = 0usize;
-
-        let err_fn = |err| eprintln!("Audio stream error: {}", err);
-
-        let stream = self.device.build_output_stream(
-            &config,
-            move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-                for frame in data.chunks_mut(channels) {
-                    let value = drum_type.sample(sample_index, sample_rate);
-                    sample_index += 1;
-
-                    let sample_value: T = cpal::Sample::from_sample(value);
-                    for sample in frame.iter_mut() {
-                        *sample = sample_value;
-                    }
-                }
-            },
-            err_fn,
-            None,
-        )?;
-
-        stream.play()?;
-        std::thread::sleep(std::time::Duration::from_secs_f32(duration_secs));
-
-        Ok(())
-    }
-
-    // Streaming pre-render: render ahead while playing
-    fn run_mixer_streaming<T>(&self, mixer: &Mixer) -> Result<()>
-    where
-        T: cpal::SizedSample + cpal::FromSample<f32>,
-    {
-        use std::sync::{Arc, Mutex};
-        use std::thread;
-
-        let sample_rate = self.config.sample_rate().0 as f32;
-        let channels = self.config.channels() as usize;
-        let duration_secs = mixer.total_duration();
-
-        // Shared buffer for rendered audio (thread-safe)
-        let buffer = Arc::new(Mutex::new(Vec::<f32>::new()));
-        let buffer_clone = Arc::clone(&buffer);
-
-        // Spawn rendering thread
-        let mut mixer_clone = mixer.clone();
-        let render_thread = thread::spawn(move || {
-            let duration = mixer_clone.total_duration();
-            let total_samples = (duration * sample_rate).ceil() as usize;
-            let mut local_buffer = Vec::with_capacity(total_samples * 2);
-            let mut sample_clock = 0.0;
-
-            for i in 0..total_samples {
-                let time = i as f32 / sample_rate;
-                let (left, right) = mixer_clone.sample_at(time, sample_rate, sample_clock);
-                local_buffer.push(left.clamp(-1.0, 1.0));
-                local_buffer.push(right.clamp(-1.0, 1.0));
-                sample_clock = (sample_clock + 1.0) % sample_rate;
-
-                // Update shared buffer every 4410 samples (~0.1s at 44.1kHz)
-                if i % 4410 == 0 {
-                    let mut buf = buffer_clone.lock().unwrap();
-                    *buf = local_buffer.clone();
-                }
-            }
-
-            // Final update with complete buffer
-            let mut buf = buffer_clone.lock().unwrap();
-            *buf = local_buffer;
-        });
-
-        // Wait for initial buffer (up to 1 second of audio, or full duration if shorter)
-        let min_buffer_duration = duration_secs.min(1.0);
-        let min_buffer_samples = (sample_rate * min_buffer_duration) as usize * 2;
-        loop {
-            let buf_len = buffer.lock().unwrap().len();
-            if buf_len >= min_buffer_samples {
-                println!(
-                    "Buffered {:.1}s, starting playback...",
-                    buf_len as f32 / (sample_rate * 2.0)
+    /// Handle commands from the main thread (called from audio thread)
+    fn handle_command(cmd: AudioCommand, active_sounds: &mut HashMap<SoundId, ActiveSound>) {
+        match cmd {
+            AudioCommand::Play { id, mixer, looping } => {
+                active_sounds.insert(
+                    id,
+                    ActiveSound {
+                        mixer,
+                        sample_clock: 0.0,
+                        elapsed_time: 0.0,
+                        volume: 1.0,
+                        pan: 0.0,
+                        paused: false,
+                        looping,
+                    },
                 );
-                break;
             }
-            thread::sleep(std::time::Duration::from_millis(50));
+            AudioCommand::Stop { id } => {
+                active_sounds.remove(&id);
+            }
+            AudioCommand::SetVolume { id, volume } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.volume = volume.clamp(0.0, 1.0);
+                }
+            }
+            AudioCommand::SetPan { id, pan } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.pan = pan.clamp(-1.0, 1.0);
+                }
+            }
+            AudioCommand::Pause { id } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.paused = true;
+                }
+            }
+            AudioCommand::Resume { id } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.paused = false;
+                }
+            }
+        }
+    }
+
+    /// Mix all active sounds into the output buffer (called from audio thread)
+    fn mix_sounds(
+        output: &mut [f32],
+        active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        sample_rate: f32,
+        channels: usize,
+    ) {
+        // Clear output buffer
+        for sample in output.iter_mut() {
+            *sample = 0.0;
         }
 
-        // Create audio stream
-        let mut config: cpal::StreamConfig = self.config.clone().into();
-        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
+        let mut finished_sounds = Vec::new();
 
-        let mut sample_index = 0;
-        let buffer_for_playback = Arc::clone(&buffer);
+        // Mix each active sound
+        for (id, sound) in active_sounds.iter_mut() {
+            if sound.paused {
+                continue;
+            }
 
-        let err_fn = |err| eprintln!("Audio stream error: {}", err);
+            let duration = sound.mixer.total_duration();
 
-        let stream = self.device.build_output_stream(
-            &config,
-            move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-                for frame in data.chunks_mut(channels) {
-                    let buf = buffer_for_playback.lock().unwrap();
-
-                    if sample_index * 2 + 1 >= buf.len() {
-                        // Not enough data yet, fill with silence
-                        for sample in frame.iter_mut() {
-                            *sample = cpal::Sample::from_sample(0.0f32);
-                        }
-                        continue;
-                    }
-
-                    let buffer_idx = sample_index * 2;
-                    let left = buf[buffer_idx];
-                    let right = buf[buffer_idx + 1];
-                    sample_index += 1;
-
-                    if channels == 1 {
-                        frame[0] = cpal::Sample::from_sample((left + right) * 0.5);
-                    } else if channels == 2 {
-                        frame[0] = cpal::Sample::from_sample(left);
-                        frame[1] = cpal::Sample::from_sample(right);
+            for frame in output.chunks_mut(channels) {
+                // Check if sound has finished
+                if sound.elapsed_time >= duration {
+                    if sound.looping {
+                        sound.elapsed_time = 0.0;
+                        sound.sample_clock = 0.0;
                     } else {
-                        frame[0] = cpal::Sample::from_sample(left);
-                        frame[1] = cpal::Sample::from_sample(right);
-                        for sample in frame.iter_mut().skip(2) {
-                            *sample = cpal::Sample::from_sample(0.0f32);
-                        }
+                        finished_sounds.push(*id);
+                        break;
                     }
                 }
-            },
-            err_fn,
-            None,
-        )?;
 
-        stream.play()?;
-        std::thread::sleep(std::time::Duration::from_secs_f32(duration_secs));
+                // Get stereo sample from mixer
+                let (mut left, mut right) = sound.mixer.sample_at(
+                    sound.elapsed_time,
+                    sample_rate,
+                    sound.sample_clock,
+                );
 
-        // Wait for rendering to complete
-        render_thread.join().ok();
+                // Apply volume
+                left *= sound.volume;
+                right *= sound.volume;
 
-        Ok(())
-    }
+                // Apply pan (-1.0 = left, 0.0 = center, 1.0 = right)
+                if sound.pan < 0.0 {
+                    // Pan left: reduce right channel
+                    right *= 1.0 + sound.pan;
+                } else if sound.pan > 0.0 {
+                    // Pan right: reduce left channel
+                    left *= 1.0 - sound.pan;
+                }
 
-    // Internal playback implementation for mixer
-    fn run_mixer<T>(&self, mixer: &Mixer, pre_render: bool) -> Result<()>
-    where
-        T: cpal::SizedSample + cpal::FromSample<f32>,
-    {
-        let sample_rate = self.config.sample_rate().0 as f32;
-        let channels = self.config.channels() as usize;
-        let duration_secs = mixer.total_duration();
+                // Mix into output (additive mixing)
+                if channels == 1 {
+                    // Mono: average left and right
+                    frame[0] += (left + right) * 0.5;
+                } else if channels == 2 {
+                    // Stereo
+                    frame[0] += left;
+                    frame[1] += right;
+                } else {
+                    // Multi-channel: use first two channels for stereo, silence others
+                    frame[0] += left;
+                    frame[1] += right;
+                }
 
-        // Create config with configured buffer size
-        let mut config: cpal::StreamConfig = self.config.clone().into();
-        config.buffer_size = cpal::BufferSize::Fixed(self.buffer_size);
-
-        let err_fn = |err| eprintln!("Audio stream error: {}", err);
-
-        if pre_render {
-            // PRE-RENDER MODE: Generate all audio samples upfront for glitch-free playback
-            println!("Pre-rendering audio...");
-            let start = std::time::Instant::now();
-
-            let mut mixer_owned = mixer.clone();
-            let rendered_buffer = mixer_owned.render_to_buffer(sample_rate);
-
-            let render_time = start.elapsed();
-            println!(
-                "  Rendered {:.2}s of audio in {:.2}s ({:.1}x realtime)",
-                duration_secs,
-                render_time.as_secs_f32(),
-                duration_secs / render_time.as_secs_f32()
-            );
-
-            // Playback simply reads from the pre-rendered buffer (trivial CPU load)
-            let mut sample_index = 0;
-            let total_samples = rendered_buffer.len() / 2; // Stereo pairs
-
-            let stream = self.device.build_output_stream(
-                &config,
-                move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-                    for frame in data.chunks_mut(channels) {
-                        if sample_index >= total_samples {
-                            for sample in frame.iter_mut() {
-                                *sample = cpal::Sample::from_sample(0.0f32);
-                            }
-                            continue;
-                        }
-
-                        let buffer_idx = sample_index * 2;
-                        let left = rendered_buffer[buffer_idx];
-                        let right = rendered_buffer[buffer_idx + 1];
-                        sample_index += 1;
-
-                        if channels == 1 {
-                            frame[0] = cpal::Sample::from_sample((left + right) * 0.5);
-                        } else if channels == 2 {
-                            frame[0] = cpal::Sample::from_sample(left);
-                            frame[1] = cpal::Sample::from_sample(right);
-                        } else {
-                            frame[0] = cpal::Sample::from_sample(left);
-                            frame[1] = cpal::Sample::from_sample(right);
-                            for sample in frame.iter_mut().skip(2) {
-                                *sample = cpal::Sample::from_sample(0.0f32);
-                            }
-                        }
-                    }
-                },
-                err_fn,
-                None,
-            )?;
-
-            stream.play()?;
-            std::thread::sleep(std::time::Duration::from_secs_f32(duration_secs));
-        } else {
-            // REAL-TIME MODE: Synthesize on-the-fly (faster startup, may have glitches)
-            let mut mixer_owned = mixer.clone();
-            let mut sample_clock = 0f32;
-            let mut elapsed_time = 0f32;
-
-            let stream = self.device.build_output_stream(
-                &config,
-                move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-                    for frame in data.chunks_mut(channels) {
-                        let (left, right) =
-                            mixer_owned.sample_at(elapsed_time, sample_rate, sample_clock);
-                        sample_clock = (sample_clock + 1.0) % sample_rate;
-                        elapsed_time += 1.0 / sample_rate;
-
-                        if channels == 1 {
-                            frame[0] = cpal::Sample::from_sample((left + right) * 0.5);
-                        } else if channels == 2 {
-                            frame[0] = cpal::Sample::from_sample(left);
-                            frame[1] = cpal::Sample::from_sample(right);
-                        } else {
-                            frame[0] = cpal::Sample::from_sample(left);
-                            frame[1] = cpal::Sample::from_sample(right);
-                            for sample in frame.iter_mut().skip(2) {
-                                *sample = cpal::Sample::from_sample(0.0f32);
-                            }
-                        }
-                    }
-                },
-                err_fn,
-                None,
-            )?;
-
-            stream.play()?;
-            std::thread::sleep(std::time::Duration::from_secs_f32(duration_secs));
+                // Advance time
+                sound.elapsed_time += 1.0 / sample_rate;
+                sound.sample_clock = (sound.sample_clock + 1.0) % sample_rate;
+            }
         }
 
+        // Remove finished sounds
+        for id in finished_sounds {
+            active_sounds.remove(&id);
+        }
+
+        // Clamp output to prevent distortion from overlapping sounds
+        for sample in output.iter_mut() {
+            *sample = sample.clamp(-1.0, 1.0);
+        }
+    }
+
+    /// Play a composition and block until it finishes
+    ///
+    /// This is the main method for simple use cases, examples, and scripts.
+    /// It plays the composition and blocks until playback is complete.
+    ///
+    /// For non-blocking playback (games, interactive use), use `play_mixer_realtime()`.
+    pub fn play_mixer(&self, mixer: &Mixer) -> Result<()> {
+        let id = self.play_mixer_realtime(mixer)?;
+        self.wait_for(id)
+    }
+
+    /// Play a composition in real-time mode, returns immediately
+    ///
+    /// **BREAKING CHANGE:** This method now returns `SoundId` instead of blocking.
+    /// This enables concurrent playback for games and interactive applications.
+    ///
+    /// # Returns
+    /// `SoundId` - Unique identifier for this sound, use with control methods
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # use tunes::{Composition, Tempo, AudioEngine};
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Non-blocking - returns immediately
+    /// let sound_id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Control the sound while it plays
+    /// engine.set_volume(sound_id, 0.5)?;
+    /// engine.set_pan(sound_id, -0.5)?; // Pan left
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_mixer_realtime(&self, mixer: &Mixer) -> Result<SoundId> {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        self.command_tx
+            .send(AudioCommand::Play {
+                id,
+                mixer: mixer.clone(),
+                looping: false,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(id)
+    }
+
+    /// Play a composition with pre-rendering, blocks until finished
+    ///
+    /// Currently behaves the same as `play_mixer()` but reserved for future
+    /// pre-rendering optimizations.
+    pub fn play_mixer_prerender(&self, mixer: &Mixer) -> Result<()> {
+        // For now, same as play_mixer - concurrent engine handles this efficiently
+        // In the future, could pre-render to buffer for guaranteed zero glitches
+        self.play_mixer(mixer)
+    }
+
+    /// Play a composition in a loop
+    ///
+    /// Returns immediately with a `SoundId`. The sound will loop until stopped.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # use tunes::{Composition, Tempo, AudioEngine};
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// let engine = AudioEngine::new()?;
+    /// let loop_id = engine.play_looping(&comp.into_mixer())?;
+    ///
+    /// // Later: stop the loop
+    /// engine.stop(loop_id)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_looping(&self, mixer: &Mixer) -> Result<SoundId> {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        self.command_tx
+            .send(AudioCommand::Play {
+                id,
+                mixer: mixer.clone(),
+                looping: true,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(id)
+    }
+
+    /// Stop a playing sound
+    pub fn stop(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::Stop { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
         Ok(())
     }
 
-    /// Render a mixer to a WAV file
-    ///
-    /// Convenience method that renders the mixer's audio to a WAV file.
-    /// Uses the default sample rate (44100 Hz).
+    /// Set the volume of a playing sound
     ///
     /// # Arguments
-    /// * `mixer` - The mixer to render
+    /// * `id` - The sound to modify
+    /// * `volume` - Volume level (0.0 = silence, 1.0 = full volume)
+    pub fn set_volume(&self, id: SoundId, volume: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetVolume { id, volume })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Set the stereo pan of a playing sound
+    ///
+    /// # Arguments
+    /// * `id` - The sound to modify
+    /// * `pan` - Pan position (-1.0 = full left, 0.0 = center, 1.0 = full right)
+    pub fn set_pan(&self, id: SoundId, pan: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetPan { id, pan })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Pause a playing sound
+    pub fn pause(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::Pause { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Resume a paused sound
+    pub fn resume(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::Resume { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Check if a sound is still playing
+    pub fn is_playing(&self, id: SoundId) -> bool {
+        self.active_sounds
+            .lock()
+            .unwrap()
+            .contains_key(&id)
+    }
+
+    /// Block until a sound finishes playing
+    ///
+    /// Used internally by `play_mixer()` to provide blocking behavior.
+    fn wait_for(&self, id: SoundId) -> Result<()> {
+        use std::time::Duration;
+        use std::thread;
+
+        while self.is_playing(id) {
+            thread::sleep(Duration::from_millis(10));
+        }
+        Ok(())
+    }
+
+    /// Export mixer to WAV file using the engine's sample rate
+    ///
+    /// This is a convenience method that automatically uses the AudioEngine's sample rate,
+    /// ensuring the exported audio matches what you hear during playback.
+    ///
+    /// # Arguments
+    /// * `mixer` - The mixer to export
     /// * `path` - Output file path (e.g., "output.wav")
     ///
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> Result<()> {
+    /// # fn main() -> Result<(), anyhow::Error> {
     /// let engine = AudioEngine::new()?;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
     ///
     /// let mut mixer = comp.into_mixer();
-    /// engine.render_to_wav(&mut mixer, "output.wav")?;
+    /// engine.export_wav(&mut mixer, "output.wav")?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn render_to_wav(&self, mixer: &mut Mixer, path: &str) -> Result<()> {
-        let sample_rate = self.config.sample_rate().0;
-        mixer
-            .export_wav(path, sample_rate)
-            .map_err(|e| TunesError::WavWriteError(e.to_string()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::consts::notes::*;
-
-    // Note: Most engine tests require actual audio device access and are integration tests.
-    // These tests focus on the logic we can test without device interaction.
-
-    #[test]
-    fn test_interpolated_frequency_calculation() {
-        // Test that interpolation produces correct intermediate frequencies
-        let start = 100.0;
-        let end = 200.0;
-        let segments = 5;
-
-        let mut frequencies = Vec::new();
-        for i in 0..segments {
-            let t = i as f32 / (segments - 1) as f32;
-            let freq = start + (end - start) * t;
-            frequencies.push(freq);
-        }
-
-        // Should produce: 100, 125, 150, 175, 200
-        assert_eq!(frequencies[0], 100.0);
-        assert_eq!(frequencies[1], 125.0);
-        assert_eq!(frequencies[2], 150.0);
-        assert_eq!(frequencies[3], 175.0);
-        assert_eq!(frequencies[4], 200.0);
+    ///
+    /// # Note
+    /// If you need a specific sample rate (e.g., for upsampling/downsampling),
+    /// use `mixer.export_wav(path, sample_rate)` directly.
+    pub fn export_wav(&self, mixer: &mut crate::track::Mixer, path: &str) -> anyhow::Result<()> {
+        mixer.export_wav(path, self.sample_rate as u32)
     }
 
-    #[test]
-    fn test_interpolated_single_segment() {
-        // With 1 segment, t = 0/0 which would be NaN, but code handles this
-        // by just playing start_freq
-
-        // The formula with segments=1 would use t = 0/(1-1) = 0/0
-        // But the code has special handling for segments == 1
-        // We're just validating the math works correctly for this edge case
-        let segments = 1;
-        let t = 0.0_f32 / (segments - 1) as f32;
-        assert!(t.is_nan() || t == 0.0); // This would be NaN without special handling
+    /// Export mixer to FLAC file using the engine's sample rate
+    ///
+    /// This is a convenience method that automatically uses the AudioEngine's sample rate.
+    /// FLAC provides lossless compression (typically 50-60% of WAV size).
+    ///
+    /// # Arguments
+    /// * `mixer` - The mixer to export
+    /// * `path` - Output file path (e.g., "output.flac")
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let engine = AudioEngine::new()?;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("piano").note(&[440.0], 1.0);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    /// engine.export_flac(&mut mixer, "output.flac")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Note
+    /// If you need a specific sample rate, use `mixer.export_flac(path, sample_rate)` directly.
+    pub fn export_flac(&self, mixer: &mut crate::track::Mixer, path: &str) -> anyhow::Result<()> {
+        mixer.export_flac(path, self.sample_rate as u32)
     }
 
-    #[test]
-    fn test_interpolated_zero_segments() {
-        // Segments = 0 should be handled as no-op
-        // The code checks for this and returns Ok(()) early
-        let segments = 0;
-        assert_eq!(segments, 0); // Just verify the edge case exists
+    /// Render mixer to an in-memory buffer using the engine's sample rate
+    ///
+    /// Useful for pre-rendering sounds for later playback or further processing.
+    ///
+    /// # Returns
+    /// Stereo interleaved samples as `Vec<f32>` (left, right, left, right, ...)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// let engine = AudioEngine::new()?;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("sfx").note(&[440.0], 0.1);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    /// let buffer = engine.render_to_buffer(&mut mixer);
+    /// println!("Rendered {} samples", buffer.len());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn render_to_buffer(&self, mixer: &mut crate::track::Mixer) -> Vec<f32> {
+        mixer.render_to_buffer(self.sample_rate)
     }
-
-    #[test]
-    fn test_tempo_duration_conversion() {
-        let tempo = Tempo::new(120.0); // 120 BPM
-
-        // Quarter note at 120 BPM = 0.5 seconds
-        let quarter_duration = tempo.quarter_note();
-        assert_eq!(quarter_duration, 0.5);
-
-        // Whole note = 4 * quarter note
-        let whole_duration = tempo.whole_note();
-        assert_eq!(whole_duration, 2.0);
-
-        // Eighth note = quarter / 2
-        let eighth_duration = tempo.eighth_note();
-        assert_eq!(eighth_duration, 0.25);
-
-        // Sixteenth note = quarter / 4
-        let sixteenth_duration = tempo.sixteenth_note();
-        assert_eq!(sixteenth_duration, 0.125);
-    }
-
-    #[test]
-    fn test_frequency_array_handling() {
-        // Test that multiple frequencies are properly handled
-        let frequencies = vec![440.0, 554.37, 659.25]; // A major chord
-        assert_eq!(frequencies.len(), 3);
-
-        // Average should be calculated during mixing
-        let sum: f32 = frequencies.iter().sum();
-        let avg = sum / frequencies.len() as f32;
-        assert!((avg - 551.21).abs() < 0.01);
-    }
-
-    #[test]
-    fn test_empty_frequency_array() {
-        // Empty array should be handled gracefully (checked in run())
-        let frequencies: Vec<f32> = vec![];
-        assert!(frequencies.is_empty());
-        // The engine's run() method checks for this and returns Ok(()) early
-    }
-
-    #[test]
-    fn test_sample_rate_calculation() {
-        // Common sample rates
-        let sample_rate = 44100.0_f32;
-        let frequency = 440.0_f32; // A4
-
-        // Number of samples per cycle
-        let samples_per_cycle = sample_rate / frequency;
-        assert!((samples_per_cycle - 100.227_f32).abs() < 0.001);
-
-        // Verify sample clock wrapping
-        let sample_clock = sample_rate + 1.0;
-        let wrapped = sample_clock % sample_rate;
-        assert_eq!(wrapped, 1.0);
-    }
-
-    #[test]
-    fn test_drum_duration_consistency() {
-        // Verify drum durations are sensible
-        assert_eq!(DrumType::Kick.duration(), 0.15);
-        assert_eq!(DrumType::Snare.duration(), 0.1);
-        assert_eq!(DrumType::HiHatClosed.duration(), 0.05);
-        assert_eq!(DrumType::Crash.duration(), 1.5);
-
-        // Longer drums should have longer durations
-        assert!(DrumType::Crash.duration() > DrumType::Kick.duration());
-        assert!(DrumType::HiHatOpen.duration() > DrumType::HiHatClosed.duration());
-    }
-
-    #[test]
-    fn test_channel_handling_mono() {
-        // Test mono channel mixing
-        let left = 0.5;
-        let right = 0.3;
-        let mono = (left + right) * 0.5;
-        assert_eq!(mono, 0.4);
-    }
-
-    #[test]
-    fn test_channel_handling_stereo() {
-        // Stereo keeps channels separate
-        let left = 0.5;
-        let right = 0.3;
-        assert_eq!(left, 0.5);
-        assert_eq!(right, 0.3);
-    }
-
-    #[test]
-    fn test_time_advancement() {
-        // Test time advancement calculation
-        let sample_rate = 44100.0_f32;
-        let time_per_sample = 1.0 / sample_rate;
-
-        assert!((time_per_sample - 0.0000226_f32).abs() < 0.0000001);
-
-        // After 44100 samples, time should advance by 1 second
-        let elapsed = time_per_sample * 44100.0;
-        assert!((elapsed - 1.0_f32).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_note_constants() {
-        // Verify note frequency constants are reasonable
-        assert_eq!(A4, 440.0);
-        assert!(C4 < D4);
-        assert!(D4 < E4);
-
-        // Octave relationship: next octave should be 2x frequency
-        assert!((C5 / C4 - 2.0).abs() < 0.01);
-    }
-
-    // Integration tests that require audio device would go in tests/ directory
-    // These would include:
-    // - Actual playback tests (if audio device available)
-    // - Full mixer playback
-    // - Multi-track rendering
-    // - Effect chain processing
 }
 
 // Note: Full integration tests requiring audio devices should be placed in

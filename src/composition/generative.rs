@@ -384,8 +384,8 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use super::*;
     use crate::composition::Composition;
-    use crate::consts::notes::*;
     use crate::composition::rhythm::Tempo;
+    use crate::consts::notes::*;
     use crate::consts::scales::C4_MAJOR_SCALE;
 
     // Sequence generation tests

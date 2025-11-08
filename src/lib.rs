@@ -38,7 +38,7 @@ pub mod track;
 pub mod prelude {
     // Core composition
     pub use crate::composition::{Composition, DrumGrid, DrumType, Tempo};
-    pub use crate::engine::AudioEngine;
+    pub use crate::engine::{AudioEngine, SoundId};
     pub use crate::track::Mixer;
 
     // Error handling

@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Concurrent Audio Engine with Real-Time Mixing
+- **Major refactor to concurrent architecture** - AudioEngine now maintains a persistent audio stream
+- **Multi-sound playback** - Play unlimited sounds simultaneously with automatic mixing
+- **Zero overhead triggering** - Eliminated 5-20ms stream creation overhead per sound
+- **Real-time control** - New methods for controlling sounds during playback:
+  - `set_volume(id, volume)` - Adjust volume (0.0 to 1.0)
+  - `set_pan(id, pan)` - Stereo panning (-1.0=left, 0.0=center, 1.0=right)
+  - `pause(id)` / `resume(id)` - Pause and resume playback
+  - `stop(id)` - Stop a sound immediately
+  - `play_looping(mixer)` - Play a composition in a loop
+  - `is_playing(id)` - Check if a sound is active
+- **Export convenience methods** - AudioEngine now has export methods that automatically use the engine's sample rate:
+  - `export_wav(&mut mixer, path)` - Export to WAV using engine's sample rate
+  - `export_flac(&mut mixer, path)` - Export to FLAC using engine's sample rate
+  - `render_to_buffer(&mut mixer)` - Render to in-memory buffer
+  - **Why:** Prevents sample rate mismatches between playback and export
+  - **Note:** Mixer-level methods (`mixer.export_wav(path, sample_rate)`) still available for standalone use
+- **Game-ready** - Perfect for Bevy integration, UI sounds, real-time audio
+- **Backward compatible** - `play_mixer()` and `play_mixer_prerender()` unchanged
+- **New example:** `concurrent_playback_demo.rs` - Demonstrates overlapping sounds with real-time control
+- **Dependencies:** Added `crossbeam` for thread-safe channels
+
 #### Improved Mixer Volume Handling with Soft Clipping
 - **Smart volume management** - Replaced naive track count division with soft clipping
 - **Problem solved:** Previous behavior divided volume by number of tracks, causing unnecessarily quiet output when tracks don't play simultaneously
@@ -340,6 +362,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Filter modulation now sounds smooth and musical as intended
 
 ### Changed
+
+#### AudioEngine API - BREAKING CHANGE
+- **`play_mixer_realtime(&Mixer)` now returns `Result<SoundId>` instead of `Result<()>`**
+  - **Breaking change** for code using `play_mixer_realtime()`
+  - Enables non-blocking playback and real-time control
+  - Migration: Store the returned `SoundId` to control the sound
+  - **Before:** `engine.play_mixer_realtime(&mixer)?;`
+  - **After:** `let sound_id = engine.play_mixer_realtime(&mixer)?;`
+- **`play_mixer()` and `play_mixer_prerender()` are unchanged** (backward compatible)
+- **Removed legacy methods** (unused by any examples or internal code):
+  - `play()` - Play raw frequencies
+  - `play_tempo()` - Play with tempo-based duration
+  - `play_interpolated()` - Play frequency sweeps
+  - `play_drum()` - Play drum sounds directly
+  - All internal `run*()` methods
+- These methods were superseded by the Composition → Mixer → AudioEngine pattern
+
+### Changed (Continued)
 
 #### Project Structure Refactoring
 - **Reorganized codebase** into logical module hierarchy for improved discoverability and maintainability

@@ -108,7 +108,7 @@ pub const EDO31: Edo = Edo {
 /// 53-tone equal temperament (Mercator's comma, historical, approximates Pythagorean tuning)
 pub const EDO53: Edo = Edo {
     divisions: 53,
-    step_cents: 22.641510,
+    step_cents: 22.641_51,
 };
 
 // Convenience functions for common EDOs
