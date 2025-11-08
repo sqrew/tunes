@@ -212,4 +212,9 @@ For most use cases, you'll work primarily with `Composition` and `AudioEngine`, 
 
 ---
 
-**Next:** Explore specific layers in detail or jump to [Game Audio Patterns](../game-audio/concurrent-sfx.md) →
+**Next:** Explore each layer in detail:
+- [Composition Layer](./composition.md) - Build musical ideas
+- [Mixer Layer](./mixer.md) - Understand audio rendering
+- [AudioEngine Layer](./engine.md) - Play and control audio
+
+Or jump to [Game Audio Patterns](../game-audio/concurrent-sfx.md) for practical examples →

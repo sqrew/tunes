@@ -126,8 +126,7 @@ comp.instrument("piano", &Instrument::electric_piano())
 - Bass lines
 - Pads and textures
 - Any time you want a preset sound
-
-**Available presets:** `electric_piano()`, `synth_lead()`, `synth_pad()`, `sub_bass()`, `pluck()`, `bell()`, `organ()`, `string_ensemble()`, `brass_section()`, `trumpet()`, and more.
+**Over 100 presets** 
 
 ---
 
@@ -554,27 +553,29 @@ comp.track("vibrato")
 
 ### Automation
 
-Automate parameters over time:
+Set parameters and advance time:
 
 ```rust
-// Fade volume
+// Fade volume (sets final volume, advances cursor)
 comp.track("fade")
     .volume(1.0)
     .note(&[C4], 0.5)
-    .fade_to(0.0, 2.0);  // Fade to silence over 2 seconds
+    .fade_to(0.0, 2.0);  // Sets volume to 0.0, waits 2 seconds
 
-// Pan sweep
+// Pan sweep (sets final pan, advances cursor)
 comp.track("sweep")
     .pan(-1.0)
     .note(&[C4], 0.5)
-    .pan_to(1.0, 2.0);  // Pan from left to right over 2 seconds
+    .pan_to(1.0, 2.0);  // Sets pan to 1.0, waits 2 seconds
 
-// Filter sweep
+// Filter sweep (sets final filter, advances cursor)
 comp.track("filter")
     .filter(Filter::low_pass(200.0, 0.7))
     .note(&[C3], 1.0)
-    .filter_sweep(2000.0, 3.0);  // Sweep filter up over 3 seconds
+    .filter_sweep(2000.0, 3.0);  // Sets cutoff to 2000Hz, waits 3 seconds
 ```
+
+> **Note:** These methods set the target value instantly and advance the cursor by the duration. For smooth per-sample automation, use the AudioEngine's real-time control methods during playback or use long envelope release times for volume fades.
 
 ---
 

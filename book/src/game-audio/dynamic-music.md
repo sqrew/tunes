@@ -233,10 +233,10 @@ fn create_procedural_music(danger_level: f32, player_health: f32) -> Mixer {
     // Lower health = lower pitch range
     let base_pitch = C3 + (player_health * 24.0);
 
-    // Use euclidean rhythms for tension
-    let rhythm = sequences::euclidean(note_count, 16);
+    // Use fibonacci sequence for melodic pattern
+    let fib = sequences::fibonacci(note_count);
     let pitches = sequences::map_to_scale(
-        &rhythm,
+        &fib,
         &sequences::Scale::minor_pentatonic(),
         base_pitch,
         2,
@@ -291,8 +291,7 @@ fn play_death_stinger(engine: &AudioEngine) -> anyhow::Result<SoundId> {
     let mut comp = Composition::new(Tempo::new(60.0));
 
     comp.instrument("ominous", &Instrument::synth_pad())
-        .note(&[C2], 1.0)
-        .fade_to(C1, 1.0)
+        .note(&[C2], 2.0)
         .reverb(Reverb::new(0.8, 0.7));
 
     engine.play_mixer_realtime(&comp.into_mixer())

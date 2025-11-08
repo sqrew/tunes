@@ -58,4 +58,6 @@ Create command-line music generators, audio processors, or batch rendering tools
 
 ---
 
-Ready to get started? Let's make some sound. →
+---
+
+**Ready to get started?** → [Installation & First Sound](./getting-started/installation.md)
