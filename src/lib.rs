@@ -61,10 +61,13 @@ pub mod prelude {
     pub use crate::synthesis::effects::*;
 
     // Advanced synthesis
-    pub use crate::synthesis::{Envelope, FMParams, FilterEnvelope, GranularParams, NoiseType, Waveform, Wavetable, KarplusStrong};
+    pub use crate::synthesis::{Envelope, FMParams, FilterEnvelope, GranularParams, NoiseType, Waveform, Wavetable, KarplusStrong, AdditiveSynth, Partial};
 
     // Noise generators
     pub use crate::synthesis::{NoiseGenerator, WhiteNoise, BrownNoise, PinkNoise, BlueNoise, GreenNoise, PerlinNoise};
+
+    // Effects (Parametric EQ)
+    pub use crate::synthesis::{ParametricEQ, EQBand, EQPreset};
 
     // LFO
     pub use crate::synthesis::{LFO, ModRoute, ModTarget};

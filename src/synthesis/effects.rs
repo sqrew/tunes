@@ -1846,6 +1846,287 @@ impl Limiter {
     }
 }
 
+/// A single parametric EQ band using a biquad peaking filter
+///
+/// Allows boosting or cutting a specific frequency range with adjustable bandwidth.
+#[derive(Debug, Clone)]
+pub struct EQBand {
+    /// Center frequency in Hz
+    pub frequency: f32,
+    /// Gain in dB (positive = boost, negative = cut)
+    pub gain_db: f32,
+    /// Q factor (bandwidth) - higher = narrower, typical range 0.5 - 10
+    pub q: f32,
+    /// Whether this band is enabled
+    pub enabled: bool,
+
+    // Biquad filter coefficients
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+
+    // State variables (for filtering)
+    x1: f32,
+    x2: f32,
+    y1: f32,
+    y2: f32,
+}
+
+impl EQBand {
+    /// Create a new EQ band
+    ///
+    /// # Arguments
+    /// * `frequency` - Center frequency in Hz
+    /// * `gain_db` - Gain in dB (+ = boost, - = cut)
+    /// * `q` - Bandwidth (0.5 = wide, 2.0 = medium, 10.0 = narrow)
+    ///
+    /// # Example
+    /// ```
+    /// use tunes::synthesis::effects::EQBand;
+    ///
+    /// // Boost 3kHz by 6dB with medium bandwidth
+    /// let band = EQBand::new(3000.0, 6.0, 2.0);
+    /// ```
+    pub fn new(frequency: f32, gain_db: f32, q: f32) -> Self {
+        let mut band = Self {
+            frequency,
+            gain_db,
+            q,
+            enabled: true,
+            b0: 1.0,
+            b1: 0.0,
+            b2: 0.0,
+            a1: 0.0,
+            a2: 0.0,
+            x1: 0.0,
+            x2: 0.0,
+            y1: 0.0,
+            y2: 0.0,
+        };
+        band.update_coefficients(44100.0);
+        band
+    }
+
+    /// Update biquad coefficients for peaking EQ
+    fn update_coefficients(&mut self, sample_rate: f32) {
+        use std::f32::consts::PI;
+
+        let w0 = 2.0 * PI * self.frequency / sample_rate;
+        let cos_w0 = w0.cos();
+        let sin_w0 = w0.sin();
+        let alpha = sin_w0 / (2.0 * self.q);
+        let a = 10.0_f32.powf(self.gain_db / 40.0); // Amplitude multiplier
+
+        // Peaking EQ coefficients
+        let b0 = 1.0 + alpha * a;
+        let b1 = -2.0 * cos_w0;
+        let b2 = 1.0 - alpha * a;
+        let a0 = 1.0 + alpha / a;
+        let a1 = -2.0 * cos_w0;
+        let a2 = 1.0 - alpha / a;
+
+        // Normalize by a0
+        self.b0 = b0 / a0;
+        self.b1 = b1 / a0;
+        self.b2 = b2 / a0;
+        self.a1 = a1 / a0;
+        self.a2 = a2 / a0;
+    }
+
+    /// Process a sample through this EQ band
+    #[inline]
+    fn process(&mut self, input: f32) -> f32 {
+        if !self.enabled {
+            return input;
+        }
+
+        // Biquad filter
+        let output = self.b0 * input + self.b1 * self.x1 + self.b2 * self.x2
+                   - self.a1 * self.y1 - self.a2 * self.y2;
+
+        // Update state
+        self.x2 = self.x1;
+        self.x1 = input;
+        self.y2 = self.y1;
+        self.y1 = output;
+
+        output
+    }
+
+    /// Reset filter state
+    pub fn reset(&mut self) {
+        self.x1 = 0.0;
+        self.x2 = 0.0;
+        self.y1 = 0.0;
+        self.y2 = 0.0;
+    }
+}
+
+/// Parametric Equalizer - multi-band frequency shaping
+///
+/// A parametric EQ allows surgical control over the frequency spectrum by
+/// boosting or cutting specific frequency bands. Essential for mixing and
+/// sound design.
+///
+/// # Common Uses
+///
+/// - **Mixing**: Balance frequency content between instruments
+/// - **Vocal clarity**: Boost presence (2-5kHz), cut muddiness (200-400Hz)
+/// - **Bass control**: Tighten low end, remove rumble
+/// - **Fixing problems**: Remove resonances, feedback frequencies
+///
+/// # Example
+///
+/// ```
+/// use tunes::synthesis::effects::ParametricEQ;
+///
+/// // Professional vocal EQ
+/// let mut eq = ParametricEQ::new()
+///     .band(100.0, -6.0, 1.0)    // Cut low rumble
+///     .band(250.0, -3.0, 1.5)    // Reduce muddiness
+///     .band(3000.0, 4.0, 2.0)    // Boost presence
+///     .band(8000.0, -2.0, 1.5);  // Tame harshness
+/// ```
+#[derive(Debug, Clone)]
+pub struct ParametricEQ {
+    /// EQ bands
+    pub bands: Vec<EQBand>,
+    /// Processing priority
+    pub priority: u8,
+}
+
+impl ParametricEQ {
+    /// Create a new parametric EQ with no bands
+    pub fn new() -> Self {
+        Self {
+            bands: Vec::new(),
+            priority: 50,
+        }
+    }
+
+    /// Add an EQ band (builder pattern)
+    ///
+    /// # Arguments
+    /// * `frequency` - Center frequency in Hz
+    /// * `gain_db` - Gain in dB (+ = boost, - = cut)
+    /// * `q` - Bandwidth (0.5 = wide, 2.0 = medium, 10.0 = narrow)
+    ///
+    /// # Example
+    /// ```
+    /// use tunes::synthesis::effects::ParametricEQ;
+    ///
+    /// let eq = ParametricEQ::new()
+    ///     .band(100.0, -4.0, 1.0)   // Cut 100Hz
+    ///     .band(3000.0, 3.0, 2.0);  // Boost 3kHz
+    /// ```
+    pub fn band(mut self, frequency: f32, gain_db: f32, q: f32) -> Self {
+        self.bands.push(EQBand::new(frequency, gain_db, q));
+        self
+    }
+
+    /// Add a shelf EQ preset (builder pattern)
+    ///
+    /// Pre-configured EQ curves for common scenarios
+    pub fn preset(mut self, preset: EQPreset) -> Self {
+        match preset {
+            EQPreset::VocalClarity => {
+                self.bands.push(EQBand::new(100.0, -6.0, 1.0));   // Cut rumble
+                self.bands.push(EQBand::new(250.0, -3.0, 1.5));   // Reduce mud
+                self.bands.push(EQBand::new(3000.0, 4.0, 2.0));   // Presence boost
+                self.bands.push(EQBand::new(8000.0, -2.0, 1.5));  // Tame sibilance
+            }
+            EQPreset::BassBoost => {
+                self.bands.push(EQBand::new(60.0, 4.0, 1.0));     // Sub boost
+                self.bands.push(EQBand::new(120.0, 3.0, 1.5));    // Bass boost
+                self.bands.push(EQBand::new(300.0, -2.0, 1.0));   // Clean up mud
+            }
+            EQPreset::BrightAiry => {
+                self.bands.push(EQBand::new(5000.0, 3.0, 1.5));   // Presence
+                self.bands.push(EQBand::new(10000.0, 4.0, 1.0));  // Air
+                self.bands.push(EQBand::new(15000.0, 2.0, 0.7));  // Sparkle
+            }
+            EQPreset::Telephone => {
+                self.bands.push(EQBand::new(200.0, -12.0, 0.5));  // Cut lows
+                self.bands.push(EQBand::new(1000.0, 6.0, 1.0));   // Boost mids
+                self.bands.push(EQBand::new(4000.0, -12.0, 0.5)); // Cut highs
+            }
+            EQPreset::Warmth => {
+                self.bands.push(EQBand::new(200.0, 3.0, 1.0));    // Low mids
+                self.bands.push(EQBand::new(500.0, 2.0, 1.5));    // Warmth
+                self.bands.push(EQBand::new(8000.0, -2.0, 1.0));  // Reduce harshness
+            }
+        }
+        self
+    }
+
+    /// Enable or disable a specific band
+    pub fn enable_band(&mut self, index: usize, enabled: bool) {
+        if let Some(band) = self.bands.get_mut(index) {
+            band.enabled = enabled;
+        }
+    }
+
+    /// Update a band's parameters
+    pub fn update_band(&mut self, index: usize, frequency: f32, gain_db: f32, q: f32, sample_rate: f32) {
+        if let Some(band) = self.bands.get_mut(index) {
+            band.frequency = frequency;
+            band.gain_db = gain_db;
+            band.q = q;
+            band.update_coefficients(sample_rate);
+        }
+    }
+
+    /// Reset all EQ bands
+    pub fn reset(&mut self) {
+        for band in &mut self.bands {
+            band.reset();
+        }
+    }
+
+    /// Process a sample through all EQ bands
+    ///
+    /// # Arguments
+    /// * `input` - Input sample
+    /// * `_time` - Current time (unused, for compatibility with other effects)
+    /// * `_sample_index` - Sample index (unused, for compatibility with other effects)
+    ///
+    /// # Returns
+    /// Processed sample with EQ applied
+    pub fn process(&mut self, input: f32, _time: f32, _sample_index: usize) -> f32 {
+        let mut output = input;
+
+        // Process through each band in series
+        for band in &mut self.bands {
+            output = band.process(output);
+        }
+
+        output
+    }
+}
+
+impl Default for ParametricEQ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// EQ presets for common scenarios
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EQPreset {
+    /// Vocal clarity - cut rumble/mud, boost presence
+    VocalClarity,
+    /// Bass boost - enhance low end
+    BassBoost,
+    /// Bright and airy - high frequency enhancement
+    BrightAiry,
+    /// Telephone/lo-fi effect
+    Telephone,
+    /// Warmth - enhance low-mid richness
+    Warmth,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1869,5 +2150,79 @@ mod tests {
         let mut dist = Distortion::new(5.0, 1.0);
         let output = dist.process(0.5, 0.0, 0);
         assert!(output >= -1.0 && output <= 1.0);
+    }
+
+    #[test]
+    fn test_eq_band_creation() {
+        let band = EQBand::new(1000.0, 6.0, 2.0);
+        assert_eq!(band.frequency, 1000.0);
+        assert_eq!(band.gain_db, 6.0);
+        assert_eq!(band.q, 2.0);
+        assert!(band.enabled);
+    }
+
+    #[test]
+    fn test_eq_band_process() {
+        let mut band = EQBand::new(1000.0, 6.0, 2.0);
+        let output = band.process(0.5);
+        assert!(output.is_finite());
+    }
+
+    #[test]
+    fn test_parametric_eq_creation() {
+        let eq = ParametricEQ::new();
+        assert_eq!(eq.bands.len(), 0);
+    }
+
+    #[test]
+    fn test_parametric_eq_add_band() {
+        let eq = ParametricEQ::new()
+            .band(100.0, -6.0, 1.0)
+            .band(3000.0, 4.0, 2.0);
+
+        assert_eq!(eq.bands.len(), 2);
+    }
+
+    #[test]
+    fn test_parametric_eq_process() {
+        let mut eq = ParametricEQ::new()
+            .band(1000.0, 3.0, 2.0);
+
+        let output = eq.process(0.5, 0.0, 0);
+        assert!(output.is_finite());
+    }
+
+    #[test]
+    fn test_parametric_eq_preset() {
+        let eq = ParametricEQ::new().preset(EQPreset::VocalClarity);
+        assert_eq!(eq.bands.len(), 4);
+    }
+
+    #[test]
+    fn test_parametric_eq_enable_disable_band() {
+        let mut eq = ParametricEQ::new()
+            .band(1000.0, 3.0, 2.0);
+
+        eq.enable_band(0, false);
+        assert!(!eq.bands[0].enabled);
+
+        eq.enable_band(0, true);
+        assert!(eq.bands[0].enabled);
+    }
+
+    #[test]
+    fn test_parametric_eq_reset() {
+        let mut eq = ParametricEQ::new()
+            .band(1000.0, 3.0, 2.0);
+
+        // Process some samples to build up state
+        for _ in 0..10 {
+            eq.process(0.5, 0.0, 0);
+        }
+
+        // Reset should clear state
+        eq.reset();
+        assert_eq!(eq.bands[0].x1, 0.0);
+        assert_eq!(eq.bands[0].y1, 0.0);
     }
 }

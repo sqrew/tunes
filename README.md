@@ -9,11 +9,11 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Music Theory**: Scales, chords, patterns, progressions, and transposition
 - **Composition DSL**: Fluent API for building musical sequences
 - **Sections & Arrangements**: Create reusable sections (verse, chorus, bridge) and arrange them
-- **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, filter envelopes, wavetable oscillators
+- **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: 100+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
-- **Effects, Automation and Filters**: Delay, reverb, distortion, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, filters
+- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, various filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
@@ -278,7 +278,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **921 comprehensive tests and 286 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **942 comprehensive tests and 299 doc tests** ensuring reliability and correctness.
 
 ## Examples
 

@@ -13,6 +13,7 @@ pub mod granular;
 pub mod wavetable;
 pub mod filter_envelope;
 pub mod karplus_strong;
+pub mod additive;
 
 // Re-export main types for convenience
 pub use waveform::Waveform;
@@ -31,3 +32,4 @@ pub use granular::GranularParams;
 pub use wavetable::Wavetable;
 pub use filter_envelope::FilterEnvelope;
 pub use karplus_strong::KarplusStrong;
+pub use additive::{AdditiveSynth, Partial};

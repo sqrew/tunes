@@ -9,6 +9,399 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Karplus-Strong Physical Modeling Synthesis
+- **New synthesis technique** - Physical modeling for realistic plucked string sounds
+- **`KarplusStrong`** - Simulates plucked strings using delay line with feedback filtering
+- **Key features:**
+  - Minimal computational cost for authentic guitar, harp, and plucked instrument sounds
+  - Configurable decay (sustain length) - 0.99=staccato, 0.996=realistic guitar, 0.999=long sustain
+  - Configurable brightness (high-frequency content) - 0.0=dark/muffled, 0.5=balanced, 1.0=bright/metallic
+  - `pluck()` method to re-excite without recreating the object
+  - Deterministic output with `with_seed()` for reproducible sounds
+- **How it works:**
+  - Delay buffer filled with noise acts as initial pluck
+  - Buffer feeds back through lowpass filter creating harmonic decay
+  - Buffer length determines pitch, filter determines timbre
+  - Natural-sounding attack and decay without explicit envelopes
+- **Use cases:**
+  - Acoustic guitar sounds
+  - Harp and lute timbres
+  - Pizzicato strings
+  - Realistic plucked bass
+  - Minimal-CPU string synthesis
+- **API:**
+  ```rust
+  let mut string = KarplusStrong::new(440.0, 44100.0)
+      .with_decay(0.996)      // Realistic sustain
+      .with_brightness(0.5);  // Balanced tone
+
+  let samples = string.generate(44100); // 1 second
+  string.pluck(); // Re-trigger for new note
+  ```
+- **10 comprehensive tests** covering buffer creation, decay behavior, pluck re-excitation, brightness effects, and determinism
+- **Exported** in `synthesis` module and prelude
+
+#### Expanded Noise Generator Suite
+- **4 new noise types** - Pink, Blue, Green, and Perlin noise (expanded from 2 to 6 total)
+- **Comprehensive spectral coverage** - From low-frequency rumble to high-frequency sizzle
+- **Coherent noise** - Perlin noise for smooth organic modulation
+
+**Pink Noise** (1/f spectrum):
+- **`PinkNoise`** - Equal energy per octave, balanced and natural-sounding
+- **Implementation:** Voss-McCartney algorithm with 7 octaves for high-quality 1/f spectrum
+- **Use cases:**
+  - Audio testing (more representative of real-world sounds than white noise)
+  - Ambient soundscapes and background textures
+  - Gentle, non-fatiguing sound
+  - Professional audio calibration
+
+**Blue Noise** (High-frequency emphasis):
+- **`BlueNoise`** - Increases energy at higher frequencies (+3dB per octave)
+- **Implementation:** Differentiation of white noise (opposite of pink noise)
+- **Use cases:**
+  - Dithering in digital audio processing
+  - High-frequency textures (sizzle, air, breath sounds)
+  - Complementary to bass-heavy content
+  - Crispy, bright sound effects
+
+**Green Noise** (Midrange emphasis):
+- **`GreenNoise`** - Emphasizes frequencies around 500Hz, tuned to human hearing
+- **Implementation:** Pink noise with gentle highpass for midrange peak
+- **Use cases:**
+  - Nature sounds (rustling leaves, gentle rain)
+  - Relaxation and meditation audio
+  - Organic, natural-sounding textures
+  - Pleasant, non-fatiguing background
+
+**Perlin Noise** (Coherent gradient noise):
+- **`PerlinNoise`** - Smooth, organic, continuous noise for modulation
+- **Implementation:** 1D Perlin noise using same algorithm as `sequences::perlin_noise`
+- **Key features:**
+  - Configurable frequency (0.001-0.1 for different speeds of variation)
+  - Deterministic with `with_seed()` for reproducibility
+  - `set_frequency()` for runtime control
+  - `reset()` to return to initial phase
+- **Use cases:**
+  - LFO modulation (more natural than sine/triangle waves)
+  - Organic filter sweeps and automation
+  - Smooth vibrato/tremolo depth variation
+  - Evolving pad textures
+  - Wind and breath sounds
+  - Natural parameter modulation
+- **API:**
+  ```rust
+  let mut perlin = PerlinNoise::new()
+      .with_frequency(0.02);  // Smooth variation
+
+  let modulation = perlin.generate(1000);
+  ```
+
+**Noise Type Enum:**
+- **`NoiseType`** updated with Pink, Blue, Green, and Perlin variants
+- All noise types implement `NoiseGenerator` trait
+- Seeded constructors for deterministic output
+- **Total coverage:** White (flat), Brown (1/f²), Pink (1/f), Blue (f), Green (midrange), Perlin (coherent)
+
+**23 comprehensive tests** covering all noise types with range validation, determinism, and spectral characteristics
+**New example:** `noise_generator_showcase.rs` - Demonstrates all 6 noise types with usage patterns
+
+#### Additive Synthesis
+- **New synthesis module** - Build complex sounds by summing sine wave partials
+- **`AdditiveSynth`** - Generate timbres from scratch using frequency components
+- **`Partial`** - Individual sine wave component with frequency ratio and amplitude
+
+**Key Features:**
+- **Harmonic synthesis:** `Partial::harmonic(n, amplitude)` - Integer ratios (1, 2, 3...) for musical sounds
+- **Inharmonic synthesis:** `Partial::inharmonic(ratio, amplitude)` - Non-integer ratios for bells and metallic timbres
+- **Flexible configuration:**
+  - `.add_partial()` - Builder pattern for individual partials
+  - `.with_partials(vec)` - Bulk configuration
+  - `set_frequency()` - Dynamic frequency control
+  - `reset()` - Reset phase accumulators
+- **Phase control:** Optional phase offset for each partial (0.0-1.0)
+
+**Sound Building Blocks:**
+- **Sawtooth:** All harmonics with 1/n amplitude
+- **Square:** Odd harmonics only (1, 3, 5, 7, 9...)
+- **Organ sounds:** Selected harmonics (1, 2, 3, 4, 5, 8) for warm timbre
+- **Bells:** Inharmonic partials (1.0, 2.76, 5.4, 8.93, 13.34)
+- **Gongs:** Complex inharmonic spectrum for metallic resonance
+- **Custom timbres:** Precise control over each frequency component
+
+**Use Cases:**
+- Organ and electric piano sounds
+- Bell, chime, and gong synthesis
+- Evolving pads with time-varying partials
+- Spectral composition and sound design
+- Educational tool for understanding harmonics
+- Building waveforms from first principles
+
+**API:**
+```rust
+// Create sawtooth-like sound
+let mut synth = AdditiveSynth::new(440.0, 44100.0)
+    .add_partial(Partial::harmonic(1, 1.0))
+    .add_partial(Partial::harmonic(2, 0.5))
+    .add_partial(Partial::harmonic(3, 0.33));
+
+// Bell with inharmonic partials
+let mut bell = AdditiveSynth::new(220.0, 44100.0)
+    .add_partial(Partial::inharmonic(1.0, 1.0))
+    .add_partial(Partial::inharmonic(2.76, 0.6))
+    .add_partial(Partial::inharmonic(5.4, 0.4));
+
+let samples = synth.generate(44100);
+```
+
+**13 comprehensive tests** covering partial creation, harmonic/inharmonic synthesis, phase control, and multi-partial summation
+**New example:** `additive_synthesis_demo.rs` - Demonstrates building various timbres from partials
+**Exported** in `synthesis` module and prelude
+
+#### Parametric EQ - Professional Multi-Band Frequency Shaping
+- **New effect** - Essential mixing and mastering tool for surgical frequency control
+- **`ParametricEQ`** - Multi-band equalizer with peaking filters
+- **`EQBand`** - Individual biquad peaking filter with frequency, gain, and Q control
+- **`EQPreset`** - 5 professional presets for common scenarios
+
+**Key Features:**
+- **Surgical precision:** Boost or cut specific frequencies with adjustable bandwidth
+- **Multi-band:** Add unlimited bands, each with independent control
+- **Biquad filters:** Industry-standard peaking EQ implementation
+- **Runtime control:**
+  - `enable_band(index, bool)` - Enable/disable individual bands
+  - `update_band(index, freq, gain_db, q, sample_rate)` - Dynamic parameter changes
+  - `reset()` - Clear filter state
+- **Parameters:**
+  - **Frequency:** Center frequency to affect (Hz)
+  - **Gain:** Boost (+) or cut (-) in dB
+  - **Q (bandwidth):** 0.5=wide/gentle, 2.0=medium, 10.0=narrow/surgical
+
+**Professional Presets:**
+- **`EQPreset::VocalClarity`** - Cut rumble (100Hz, -6dB), reduce mud (250Hz, -3dB), boost presence (3kHz, +4dB), tame sibilance (8kHz, -2dB)
+- **`EQPreset::BassBoost`** - Enhance sub (60Hz, +4dB) and bass (120Hz, +3dB), clean up mud (300Hz, -2dB)
+- **`EQPreset::BrightAiry`** - Boost presence (5kHz, +3dB), air (10kHz, +4dB), and sparkle (15kHz, +2dB)
+- **`EQPreset::Telephone`** - Lo-fi effect: cut lows (200Hz, -12dB), boost mids (1kHz, +6dB), cut highs (4kHz, -12dB)
+- **`EQPreset::Warmth`** - Enhance low-mids (200Hz, +3dB), warmth (500Hz, +2dB), reduce harshness (8kHz, -2dB)
+
+**Common Mixing Techniques:**
+- Cut before boost (remove problems first)
+- High-pass at 80-100Hz (remove rumble)
+- Boost 3-5kHz (vocal presence and clarity)
+- Cut 200-400Hz (reduce muddiness)
+- Boost 10kHz+ (add air and sparkle)
+- Narrow Q for surgical cuts, wide Q for gentle shaping
+
+**Use Cases:**
+- Vocal processing (clarity, de-essing, warmth)
+- Instrument balancing in mixes
+- Mastering and frequency correction
+- Creative effects (telephone, lo-fi, radio)
+- Removing problematic resonances
+- Enhancing desired frequency characteristics
+
+**API:**
+```rust
+// Custom EQ for vocals
+let mut eq = ParametricEQ::new()
+    .band(100.0, -6.0, 1.0)    // Cut rumble
+    .band(250.0, -3.0, 1.5)    // Reduce mud
+    .band(3000.0, 4.0, 2.0)    // Presence boost
+    .band(8000.0, -2.0, 1.5);  // Tame harshness
+
+// Or use preset
+let mut eq = ParametricEQ::new()
+    .preset(EQPreset::VocalClarity);
+
+// Process audio
+for sample in &mut audio_buffer {
+    *sample = eq.process(*sample, 0.0, 0);
+}
+```
+
+**8 comprehensive tests** covering band creation, processing, presets, enable/disable, and state management
+**New example:** `parametric_eq_demo.rs` - Demonstrates all presets and custom EQ configurations
+**Exported** in `synthesis::effects` and prelude
+
+#### Extended Jazz and Altered Chord Patterns
+- **10 new chord patterns** - Comprehensive jazz harmony support (expanded from 14 to 24 total patterns)
+- **Professional chord library** - Complete coverage for jazz, classical, and contemporary music
+- **Essential harmony extensions** - 6th chords, extended chords (11th, 13th), and altered dominants
+
+**Jazz and Extended Chords (6 patterns):**
+- **`ChordPattern::MAJOR6`** - Major 6th chord (R-M3-P5-M6) - Classic jazz voicing, stable and warm
+- **`ChordPattern::MINOR6`** - Minor 6th chord (R-m3-P5-M6) - Jazz minor color, sophisticated sound
+- **`ChordPattern::DOMINANT7SUS4`** - Dominant 7 sus4 (R-P4-P5-m7) - Suspended dominant for tension/resolution
+- **`ChordPattern::MINOR_MAJOR7`** - Minor-major 7th (R-m3-P5-M7) - "James Bond chord", dramatic and tense
+- **`ChordPattern::ELEVENTH`** - 11th chord (R-M3-P5-m7-M9-P11) - Rich extended harmony, complex voicing
+- **`ChordPattern::THIRTEENTH`** - 13th chord (R-M3-P5-m7-M9-P11-M13) - Maximum extension, full spectrum harmony
+
+**Altered Dominant Chords (4 patterns):**
+- **`ChordPattern::DOMINANT7SHARP9`** - Dominant 7♯9 (R-M3-P5-m7-♯9) - "Hendrix chord", bluesy and tense
+- **`ChordPattern::DOMINANT7FLAT9`** - Dominant 7♭9 (R-M3-P5-m7-♭9) - Dark altered dominant, strong resolution tendency
+- **`ChordPattern::DOMINANT7SHARP5`** - Dominant 7♯5 (R-M3-♯5-m7) - Augmented dominant, whole-tone flavor
+- **`ChordPattern::DOMINANT7FLAT5`** - Dominant 7♭5 (R-M3-♭5-m7) - Flat-five dominant, diminished flavor
+
+**Complete Chord Pattern Library (24 total):**
+- **Triads (5):** Major, Minor, Diminished, Augmented, Sus4
+- **Seventh Chords (5):** Dominant7, Major7, Minor7, Diminished7, HalfDiminished7
+- **Extended & Altered (4):** Dominant7Sus4, MinorMajor7, Eleventh, Thirteenth
+- **Sixth Chords (2):** Major6, Minor6
+- **Altered Dominants (4):** Dominant7Sharp9, Dominant7Flat9, Dominant7Sharp5, Dominant7Flat5
+- **Power Chords (2):** Power5 (root+fifth), Power5Octave (root+fifth+octave)
+- **Add Chords (2):** Add9 (major+9th), MinorAdd9 (minor+9th)
+
+**Use Cases:**
+- Jazz compositions and reharmonization
+- Complex chord progressions (ii-V-I with alterations)
+- Modal interchange and borrowed chords
+- Film scoring and dramatic harmony
+- Contemporary fusion and neo-soul progressions
+- Blues and bebop vocabulary
+- Chord melody and voicing studies
+
+**Musical Context:**
+- **6th chords:** Replace major/minor 7ths for lighter, more open sound
+- **Extended chords:** Add color and complexity to progressions
+- **Altered dominants:** Increase tension and harmonic interest in V-I resolutions
+- **Sus4 chords:** Create suspension and anticipation before resolution
+- **Minor-major 7:** Classic film noir and dramatic tension chord
+
+**API Examples:**
+```rust
+use tunes::prelude::*;
+
+// Jazz ii-V-I with extensions
+let dm11 = chord(&[D4], ChordPattern::ELEVENTH);
+let g13 = chord(&[G4], ChordPattern::THIRTEENTH);
+let cmaj7 = chord(&[C4], ChordPattern::MAJOR7);
+
+// Altered dominant resolution
+let g7alt = chord(&[G4], ChordPattern::DOMINANT7SHARP9);
+let cmaj = chord(&[C4], ChordPattern::MAJOR);
+
+// Classic 6th chord substitution
+let cmaj6 = chord(&[C4], ChordPattern::MAJOR6);  // Instead of Cmaj7
+
+// Minor-major chord (James Bond)
+let am_maj7 = chord(&[A3], ChordPattern::MINOR_MAJOR7);
+```
+
+**4 new comprehensive tests:**
+- `test_all_chord_patterns_generate` - Verifies all 24 patterns generate valid notes
+- `test_jazz_chord_intervals` - Tests 6th, 11th, 13th chord structures
+- `test_altered_dominant_chords` - Verifies all 4 altered dominant voicings
+- `test_extended_chords` - Tests extended harmony (9th, 11th, 13th intervals)
+
+**Completeness:** Library now covers essential jazz harmony, classical extensions, and contemporary chord vocabulary
+
+#### Advanced Music Theory - Intervals, Voicing, and Voice Leading
+- **Professional music theory utilities** - Essential tools for composition, arranging, and harmonic analysis
+- **Interval semantics** - Calculate and name musical intervals between pitches
+- **Chord voicing** - Generate inversions, close/open voicings, and custom bass notes
+- **Voice leading** - Smooth voice motion with minimal movement between chords
+- **13 comprehensive functions** for professional music theory workflows
+
+**Interval Functions:**
+- **`interval_between(from, to)`** - Calculate semitone distance between two frequencies
+  - Returns signed integer (positive = up, negative = down)
+  - Example: `interval_between(C4, G4)` → 7 (perfect fifth up)
+- **`interval_name(semitones)`** - Convert semitone distance to musical interval name
+  - Returns: "Unison", "Minor second", "Major second", "Minor third", "Major third", "Perfect fourth", "Tritone", "Perfect fifth", "Minor sixth", "Major sixth", "Minor seventh", "Major seventh", "Octave"
+  - Useful for analysis, debugging, and educational applications
+- **`Interval` enum** - Type-safe interval representation with semantic names
+  - Variants: Unison, MinorSecond, MajorSecond, MinorThird, MajorThird, PerfectFourth, Tritone, PerfectFifth, MinorSixth, MajorSixth, MinorSeventh, MajorSeventh, Octave
+  - Convert to/from semitones: `Interval::PerfectFifth.semitones()` → 7
+
+**Chord Inversion:**
+- **`chord_inversion(chord, inversion)`** - Generate chord inversions
+  - `inversion = 0` → Root position (e.g., C-E-G)
+  - `inversion = 1` → First inversion (e.g., E-G-C)
+  - `inversion = 2` → Second inversion (e.g., G-C-E)
+  - Automatically octave-transposes to maintain ascending order
+  - Essential for voice leading and smooth bass lines
+- **`chord_over_bass(chord, bass_note)`** - Custom bass note (slash chords)
+  - Example: `chord_over_bass(G_maj, D4)` → G/D chord
+  - Useful for modal harmony and pedal points
+
+**Chord Voicing:**
+- **`close_voicing(chord)`** - Compact voicing within one octave
+  - Moves notes down to fit within 12 semitones
+  - Example: C-E-G-C (wide) → C-E-G (close)
+  - Useful for piano voicings and tight harmony
+- **`open_voicing(chord, spread)`** - Spread chord across multiple octaves
+  - `spread` parameter controls width (typically 1-3)
+  - Creates spacious, orchestral voicings
+  - Useful for strings, brass sections, and pad sounds
+
+**Voice Leading:**
+- **`voice_lead(from_chord, to_chord)`** - Smart voice leading with minimal movement
+  - Finds the voicing of `to_chord` closest to `from_chord`
+  - Minimizes total distance traveled by all voices
+  - Creates smooth, connected harmonic motion
+  - Essential for professional chord progressions
+  - Example:
+    ```rust
+    let c_maj = chord(&[C4], ChordPattern::MAJOR);  // [C4, E4, G4]
+    let f_maj = chord(&[F4], ChordPattern::MAJOR);  // [F4, A4, C5]
+    let voiced = voice_lead(&c_maj, &f_maj);        // [C4, F4, A4]
+    // Result: Minimal movement - C stays, E→F (up 1), G→A (up 2)
+    ```
+- **`voice_leading_distance(from, to)`** - Calculate total movement distance
+  - Returns total Hz movement across all voices
+  - Lower values = smoother voice leading
+  - Useful for analyzing progressions and choosing optimal voicings
+
+**Use Cases:**
+- **Composition:** Create smooth chord progressions with voice_lead()
+- **Arranging:** Generate inversions and voicings for different instruments
+- **Analysis:** Calculate intervals and analyze harmonic relationships
+- **Jazz/Classical:** Professional voice leading for ii-V-I progressions
+- **Film scoring:** Smooth modulations and reharmonization
+- **Education:** Teach interval recognition and voice leading principles
+- **Bass line writing:** Use inversions to create walking bass patterns
+
+**API Examples:**
+```rust
+use tunes::prelude::*;
+
+// Interval analysis
+let interval = interval_between(C4, G4);  // 7 semitones
+let name = interval_name(interval);        // "Perfect fifth"
+
+// Chord inversions for smooth bass line
+let c_root = chord_inversion(&c_maj, 0);   // C-E-G (root position)
+let c_first = chord_inversion(&c_maj, 1);  // E-G-C (first inversion)
+let c_second = chord_inversion(&c_maj, 2); // G-C-E (second inversion)
+
+// Slash chord (G major over D bass)
+let g_over_d = chord_over_bass(&g_maj, D3);
+
+// Close voicing for piano
+let piano_voicing = close_voicing(&chord);
+
+// Smooth voice leading for progression
+let dm7 = chord(&[D4], ChordPattern::MINOR7);
+let g7 = chord(&[G4], ChordPattern::DOMINANT7);
+let cmaj7 = chord(&[C4], ChordPattern::MAJOR7);
+
+// Voice lead through ii-V-I
+let g7_voiced = voice_lead(&dm7, &g7);
+let cmaj7_voiced = voice_lead(&g7_voiced, &cmaj7);
+// Result: Smooth, minimal movement between all chords
+```
+
+**Musical Context:**
+- **Inversions:** Essential for creating interesting bass lines and avoiding repeated root notes
+- **Voice leading:** The foundation of counterpoint, classical harmony, and jazz arranging
+- **Close voicing:** Standard for piano, guitar, and compact ensemble writing
+- **Open voicing:** Used in orchestration for clarity and resonance
+- **Minimal movement:** Professional arrangers always minimize voice motion for smooth sound
+
+**Exported functions:**
+- Core module: `chord_inversion`, `chord_over_bass`, `voice_lead`, `close_voicing`, `open_voicing`, `voice_leading_distance`
+- Interval module: `interval_between`, `interval_name`, `Interval` enum
+- All available in prelude for convenient access
+
 #### Concurrent Audio Engine with Real-Time Mixing
 - **Major refactor to concurrent architecture** - AudioEngine now maintains a persistent audio stream
 - **Multi-sound playback** - Play unlimited sounds simultaneously with automatic mixing
@@ -558,12 +951,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom waveform support
 
 #### Testing & Quality
-- 921 unit tests covering all modules
-- 286 documentation tests with examples
+- 942 unit tests covering all modules
+- 299 documentation tests with examples
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples
-- 60+ complete working examples
+- 70+ complete working examples
 - Demonstrations of all major features
 - Classical technique examples
 - Instrument and effect showcases
