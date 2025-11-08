@@ -30,7 +30,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.8.0"
+tunes = "0.9.0"
 ```
 
 ### Platform Requirements
