@@ -52,6 +52,13 @@ pub struct Track {
 
     // Flag to track if events are sorted by start_time
     pub(super) events_sorted: bool,
+
+    // Pre-computed effect order (cached for performance)
+    // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
+    //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
+    //             11=Delay, 12=Reverb, 13=Limiter
+    // (AutoPan excluded - handled separately in stereo stage)
+    pub(super) effect_order: Vec<u8>,
 }
 
 impl Track {
@@ -89,7 +96,66 @@ impl Track {
             cached_start_time: None,
             cached_end_time: None,
             events_sorted: true, // Empty list is sorted
+            effect_order: Vec::new(), // No effects initially
         }
+    }
+
+    /// Compute the effect processing order based on priority
+    ///
+    /// Called automatically when effects are added/modified.
+    /// This pre-computation avoids allocating and sorting on every audio sample.
+    pub(crate) fn compute_effect_order(&mut self) {
+        // Build list of (priority, effect_id) for active effects
+        let mut effects = Vec::with_capacity(14);
+
+        if let Some(ref eq) = self.eq {
+            effects.push((eq.priority, 0));
+        }
+        if let Some(ref compressor) = self.compressor {
+            effects.push((compressor.priority, 1));
+        }
+        if let Some(ref gate) = self.gate {
+            effects.push((gate.priority, 2));
+        }
+        if let Some(ref saturation) = self.saturation {
+            effects.push((saturation.priority, 3));
+        }
+        if let Some(ref bitcrusher) = self.bitcrusher {
+            effects.push((bitcrusher.priority, 4));
+        }
+        if let Some(ref distortion) = self.distortion {
+            effects.push((distortion.priority, 5));
+        }
+        if let Some(ref chorus) = self.chorus {
+            effects.push((chorus.priority, 6));
+        }
+        if let Some(ref phaser) = self.phaser {
+            effects.push((phaser.priority, 7));
+        }
+        if let Some(ref flanger) = self.flanger {
+            effects.push((flanger.priority, 8));
+        }
+        if let Some(ref ring_mod) = self.ring_mod {
+            effects.push((ring_mod.priority, 9));
+        }
+        if let Some(ref tremolo) = self.tremolo {
+            effects.push((tremolo.priority, 10));
+        }
+        if let Some(ref delay) = self.delay {
+            effects.push((delay.priority, 11));
+        }
+        if let Some(ref reverb) = self.reverb {
+            effects.push((reverb.priority, 12));
+        }
+        if let Some(ref limiter) = self.limiter {
+            effects.push((limiter.priority, 13));
+        }
+
+        // Sort by priority (lower = earlier in chain)
+        effects.sort_by_key(|&(priority, _)| priority);
+
+        // Extract just the effect IDs
+        self.effect_order = effects.into_iter().map(|(_, id)| id).collect();
     }
 
     /// Get the start time of the first event (cached for performance)
@@ -207,6 +273,7 @@ impl Track {
     /// * `delay` - Delay effect configuration
     pub fn with_delay(mut self, delay: Delay) -> Self {
         self.delay = Some(delay);
+        self.compute_effect_order();
         self
     }
 
@@ -216,6 +283,7 @@ impl Track {
     /// * `reverb` - Reverb effect configuration
     pub fn with_reverb(mut self, reverb: Reverb) -> Self {
         self.reverb = Some(reverb);
+        self.compute_effect_order();
         self
     }
 
@@ -225,6 +293,7 @@ impl Track {
     /// * `distortion` - Distortion effect configuration
     pub fn with_distortion(mut self, distortion: Distortion) -> Self {
         self.distortion = Some(distortion);
+        self.compute_effect_order();
         self
     }
 

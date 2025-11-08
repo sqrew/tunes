@@ -351,61 +351,12 @@ impl Mixer {
                 track.filter.cutoff = base_filter_cutoff;
                 track.filter.resonance = base_filter_resonance;
 
-                // Build list of active effects with their priorities
+                // Apply effects in pre-computed priority order
                 // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
                 //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
                 //             11=Delay, 12=Reverb, 13=Limiter
-                // Note: AutoPan (14) is handled separately at the stereo stage
-                let mut effect_order: Vec<(u8, u8)> = Vec::with_capacity(14);
-
-                if let Some(ref eq) = track.eq {
-                    effect_order.push((eq.priority, 0));
-                }
-                if let Some(ref compressor) = track.compressor {
-                    effect_order.push((compressor.priority, 1));
-                }
-                if let Some(ref gate) = track.gate {
-                    effect_order.push((gate.priority, 2));
-                }
-                if let Some(ref saturation) = track.saturation {
-                    effect_order.push((saturation.priority, 3));
-                }
-                if let Some(ref bitcrusher) = track.bitcrusher {
-                    effect_order.push((bitcrusher.priority, 4));
-                }
-                if let Some(ref distortion) = track.distortion {
-                    effect_order.push((distortion.priority, 5));
-                }
-                if let Some(ref chorus) = track.chorus {
-                    effect_order.push((chorus.priority, 6));
-                }
-                if let Some(ref phaser) = track.phaser {
-                    effect_order.push((phaser.priority, 7));
-                }
-                if let Some(ref flanger) = track.flanger {
-                    effect_order.push((flanger.priority, 8));
-                }
-                if let Some(ref ring_mod) = track.ring_mod {
-                    effect_order.push((ring_mod.priority, 9));
-                }
-                if let Some(ref tremolo) = track.tremolo {
-                    effect_order.push((tremolo.priority, 10));
-                }
-                if let Some(ref delay) = track.delay {
-                    effect_order.push((delay.priority, 11));
-                }
-                if let Some(ref reverb) = track.reverb {
-                    effect_order.push((reverb.priority, 12));
-                }
-                if let Some(ref limiter) = track.limiter {
-                    effect_order.push((limiter.priority, 13));
-                }
-
-                // Sort by priority (lower priority = earlier in chain)
-                effect_order.sort_by_key(|&(priority, _)| priority);
-
-                // Apply effects in priority order
-                for (_, effect_id) in effect_order {
+                // Note: AutoPan is handled separately at the stereo stage
+                for &effect_id in &track.effect_order {
                     match effect_id {
                         0 => {
                             // EQ

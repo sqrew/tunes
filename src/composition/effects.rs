@@ -14,17 +14,23 @@ impl<'a> TrackBuilder<'a> {
     }
     /// Add delay effect to this track
     pub fn delay(mut self, delay: Delay) -> Self {
-        self.get_track_mut().delay = Some(delay);
+        let track = self.get_track_mut();
+        track.delay = Some(delay);
+        track.compute_effect_order();
         self
     }
     /// Add reverb effect to this track
     pub fn reverb(mut self, reverb: Reverb) -> Self {
-        self.get_track_mut().reverb = Some(reverb);
+        let track = self.get_track_mut();
+        track.reverb = Some(reverb);
+        track.compute_effect_order();
         self
     }
     /// Add distortion effect to this track
     pub fn distortion(mut self, distortion: Distortion) -> Self {
-        self.get_track_mut().distortion = Some(distortion);
+        let track = self.get_track_mut();
+        track.distortion = Some(distortion);
+        track.compute_effect_order();
         self
     }
     /// Add bitcrusher effect to this track
@@ -47,7 +53,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 1.0);
     /// ```
     pub fn bitcrusher(mut self, bitcrusher: BitCrusher) -> Self {
-        self.get_track_mut().bitcrusher = Some(bitcrusher);
+        let track = self.get_track_mut();
+        track.bitcrusher = Some(bitcrusher);
+        track.compute_effect_order();
         self
     }
     /// Add compressor effect to this track
@@ -70,7 +78,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 1.0);
     /// ```
     pub fn compressor(mut self, compressor: Compressor) -> Self {
-        self.get_track_mut().compressor = Some(compressor);
+        let track = self.get_track_mut();
+        track.compressor = Some(compressor);
+        track.compute_effect_order();
         self
     }
     /// Add chorus effect to this track
@@ -93,7 +103,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4, E4, G4], 2.0);
     /// ```
     pub fn chorus(mut self, chorus: Chorus) -> Self {
-        self.get_track_mut().chorus = Some(chorus);
+        let track = self.get_track_mut();
+        track.chorus = Some(chorus);
+        track.compute_effect_order();
         self
     }
     /// Add EQ effect to this track
@@ -116,7 +128,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C2], 1.0);
     /// ```
     pub fn eq(mut self, eq: EQ) -> Self {
-        self.get_track_mut().eq = Some(eq);
+        let track = self.get_track_mut();
+        track.eq = Some(eq);
+        track.compute_effect_order();
         self
     }
     /// Add saturation effect to this track
@@ -139,7 +153,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[E3], 1.0);
     /// ```
     pub fn saturation(mut self, saturation: Saturation) -> Self {
-        self.get_track_mut().saturation = Some(saturation);
+        let track = self.get_track_mut();
+        track.saturation = Some(saturation);
+        track.compute_effect_order();
         self
     }
     /// Add phaser effect to this track
@@ -162,7 +178,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[A4], 2.0);
     /// ```
     pub fn phaser(mut self, phaser: Phaser) -> Self {
-        self.get_track_mut().phaser = Some(phaser);
+        let track = self.get_track_mut();
+        track.phaser = Some(phaser);
+        track.compute_effect_order();
         self
     }
     /// Add flanger effect to this track
@@ -185,7 +203,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[E4], 2.0);
     /// ```
     pub fn flanger(mut self, flanger: Flanger) -> Self {
-        self.get_track_mut().flanger = Some(flanger);
+        let track = self.get_track_mut();
+        track.flanger = Some(flanger);
+        track.compute_effect_order();
         self
     }
     /// Add ring modulator effect to this track
@@ -208,7 +228,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 1.0);
     /// ```
     pub fn ring_mod(mut self, ring_mod: RingModulator) -> Self {
-        self.get_track_mut().ring_mod = Some(ring_mod);
+        let track = self.get_track_mut();
+        track.ring_mod = Some(ring_mod);
+        track.compute_effect_order();
         self
     }
     /// Add tremolo effect to this track
@@ -231,7 +253,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 2.0);
     /// ```
     pub fn tremolo(mut self, tremolo: Tremolo) -> Self {
-        self.get_track_mut().tremolo = Some(tremolo);
+        let track = self.get_track_mut();
+        track.tremolo = Some(tremolo);
+        track.compute_effect_order();
         self
     }
 
@@ -255,7 +279,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4, E4, G4], 4.0);
     /// ```
     pub fn autopan(mut self, autopan: AutoPan) -> Self {
-        self.get_track_mut().autopan = Some(autopan);
+        let track = self.get_track_mut();
+        track.autopan = Some(autopan);
+        // Note: AutoPan is not in effect_order (handled separately in stereo stage)
         self
     }
 
@@ -280,7 +306,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 1.0);
     /// ```
     pub fn gate(mut self, gate: Gate) -> Self {
-        self.get_track_mut().gate = Some(gate);
+        let track = self.get_track_mut();
+        track.gate = Some(gate);
+        track.compute_effect_order();
         self
     }
 
@@ -305,7 +333,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[C4], 1.0);
     /// ```
     pub fn limiter(mut self, limiter: Limiter) -> Self {
-        self.get_track_mut().limiter = Some(limiter);
+        let track = self.get_track_mut();
+        track.limiter = Some(limiter);
+        track.compute_effect_order();
         self
     }
 

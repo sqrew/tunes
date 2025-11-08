@@ -26,3 +26,4 @@
 # Backup files
 *.bak
 *.orig
+book/book/

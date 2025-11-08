@@ -1,0 +1,16 @@
+[book]
+authors = ["Nicholas Manson"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Tunes Guide"
+description = "A comprehensive guide to the Tunes music composition and synthesis library"
+
+[build]
+build-dir = "book"
+
+[output.html]
+git-repository-url = "https://github.com/sqrew/tunes"
+edit-url-template = "https://github.com/sqrew/tunes/edit/master/book/{path}"
+default-theme = "rust"
+preferred-dark-theme = "navy"

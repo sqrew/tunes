@@ -123,18 +123,18 @@ impl AudioEngine {
         let stream = device.build_output_stream(
             &stream_config,
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                // Lock once for entire audio callback (better granularity)
+                let mut active_sounds = active_sounds_for_stream.lock().unwrap();
+
                 // Process all pending commands (non-blocking)
                 while let Ok(cmd) = command_rx.try_recv() {
-                    Self::handle_command(cmd, &mut active_sounds_for_stream.lock().unwrap());
+                    Self::handle_command(cmd, &mut active_sounds);
                 }
 
                 // Mix all active sounds into the output buffer
-                Self::mix_sounds(
-                    data,
-                    &mut active_sounds_for_stream.lock().unwrap(),
-                    sample_rate,
-                    channels,
-                );
+                Self::mix_sounds(data, &mut active_sounds, sample_rate, channels);
+
+                // Unlock at end of scope
             },
             err_fn,
             None,
