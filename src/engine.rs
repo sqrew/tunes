@@ -27,6 +27,10 @@ enum AudioCommand {
         id: SoundId,
         pan: f32, // -1.0 (left) to 1.0 (right)
     },
+    SetPlaybackRate {
+        id: SoundId,
+        rate: f32, // 1.0 = normal, 2.0 = double speed/pitch
+    },
     Pause {
         id: SoundId,
     },
@@ -42,6 +46,7 @@ struct ActiveSound {
     elapsed_time: f32,
     volume: f32,
     pan: f32,
+    playback_rate: f32, // 1.0 = normal, 2.0 = double speed/pitch
     paused: bool,
     looping: bool,
 }
@@ -163,6 +168,7 @@ impl AudioEngine {
                         elapsed_time: 0.0,
                         volume: 1.0,
                         pan: 0.0,
+                        playback_rate: 1.0,
                         paused: false,
                         looping,
                     },
@@ -179,6 +185,12 @@ impl AudioEngine {
             AudioCommand::SetPan { id, pan } => {
                 if let Some(sound) = active_sounds.get_mut(&id) {
                     sound.pan = pan.clamp(-1.0, 1.0);
+                }
+            }
+            AudioCommand::SetPlaybackRate { id, rate } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    // Clamp to reasonable range (0.1x to 4.0x speed)
+                    sound.playback_rate = rate.clamp(0.1, 4.0);
                 }
             }
             AudioCommand::Pause { id } => {
@@ -262,9 +274,9 @@ impl AudioEngine {
                     frame[1] += right;
                 }
 
-                // Advance time
-                sound.elapsed_time += 1.0 / sample_rate;
-                sound.sample_clock = (sound.sample_clock + 1.0) % sample_rate;
+                // Advance time (affected by playback rate)
+                sound.elapsed_time += (1.0 / sample_rate) * sound.playback_rate;
+                sound.sample_clock = (sound.sample_clock + sound.playback_rate) % sample_rate;
             }
         }
 
@@ -395,6 +407,45 @@ impl AudioEngine {
     pub fn set_pan(&self, id: SoundId, pan: f32) -> Result<()> {
         self.command_tx
             .send(AudioCommand::SetPan { id, pan })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Set the playback rate (speed and pitch) of a playing sound
+    ///
+    /// Changes both the speed and pitch of the sound. Higher values = faster/higher,
+    /// lower values = slower/lower. Clamped to 0.1x - 4.0x for stability.
+    ///
+    /// # Arguments
+    /// * `id` - The sound to modify
+    /// * `rate` - Playback rate multiplier (1.0 = normal, 2.0 = double speed/octave up, 0.5 = half speed/octave down)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> Result<(), anyhow::Error> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # comp.track("sfx").note(&[440.0], 1.0);
+    /// let engine = AudioEngine::new()?;
+    /// let sound_id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Play at double speed (one octave higher)
+    /// engine.set_playback_rate(sound_id, 2.0)?;
+    ///
+    /// // Play at half speed (one octave lower)
+    /// engine.set_playback_rate(sound_id, 0.5)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Common use cases
+    /// - Footstep variations (0.9 - 1.1 for subtle variation)
+    /// - Impact sounds based on velocity (0.8 - 1.5)
+    /// - Voice pitch shifting
+    /// - Retro game sound effects
+    pub fn set_playback_rate(&self, id: SoundId, rate: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetPlaybackRate { id, rate })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
         Ok(())
     }

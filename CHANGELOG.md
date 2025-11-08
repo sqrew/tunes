@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Real-time control** - New methods for controlling sounds during playback:
   - `set_volume(id, volume)` - Adjust volume (0.0 to 1.0)
   - `set_pan(id, pan)` - Stereo panning (-1.0=left, 0.0=center, 1.0=right)
+  - `set_playback_rate(id, rate)` - Change speed and pitch (0.5=half speed/octave down, 2.0=double speed/octave up)
   - `pause(id)` / `resume(id)` - Pause and resume playback
   - `stop(id)` - Stop a sound immediately
   - `play_looping(mixer)` - Play a composition in a loop
