@@ -7,7 +7,12 @@ pub mod key_signature;
 // Re-export main types for convenience
 pub use core::{
     ChordPattern, ProgressionType, ScalePattern, chord, progression, scale, transpose,
-    transpose_sequence,
+    transpose_sequence, scale_degree,
+    // Voicing & voice leading
+    chord_inversion, chord_over_bass, voice_lead, close_voicing, open_voicing,
+    voice_leading_distance,
+    // Interval semantics
+    Interval, interval_between, interval_name,
 };
 pub use microtonal::{
     EDO12, EDO19, EDO24, EDO31, EDO53, Edo, cents_to_ratio, freq_from_cents, half_flat,

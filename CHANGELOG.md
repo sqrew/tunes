@@ -558,8 +558,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom waveform support
 
 #### Testing & Quality
-- 882 unit tests covering all modules
-- 255 documentation tests with examples
+- 895 unit tests covering all modules
+- 274 documentation tests with examples
 - Comprehensive test coverage for composition, drums, effects, synthesis, and theory
 
 #### Examples

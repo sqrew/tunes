@@ -20,6 +20,7 @@ use crate::synthesis::lfo::ModRoute;
 pub mod drums;
 pub mod drum_grid;
 pub mod rhythm;
+mod chords;
 mod classical_patterns;
 mod effects;
 mod expression;
@@ -145,6 +146,7 @@ impl Composition {
             tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            last_chord: None,
         }
     }
 
@@ -229,6 +231,7 @@ impl Composition {
             tempo,
             custom_wavetable: template.custom_wavetable,
             velocity: template.velocity,
+            last_chord: None,
         };
 
         // Apply track-level settings
@@ -276,6 +279,7 @@ impl Composition {
             tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            last_chord: None,
         };
 
         // Apply instrument settings to the track
@@ -557,6 +561,7 @@ pub struct TrackBuilder<'a> {
     pub(crate) tempo: Tempo, // Tempo for musical time calculations
     pub(crate) custom_wavetable: Option<crate::synthesis::wavetable::Wavetable>, // Custom wavetable (overrides waveform if present)
     pub(crate) velocity: f32, // Note velocity (0.0 to 1.0) for subsequent notes (default: 0.8)
+    pub(crate) last_chord: Option<Vec<f32>>, // Last chord played, used for voice leading
 }
 
 impl<'a> TrackBuilder<'a> {

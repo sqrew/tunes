@@ -131,6 +131,7 @@ impl<'a> SectionBuilder<'a> {
             tempo: self.tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            last_chord: None,
         }
     }
 
@@ -168,6 +169,7 @@ impl<'a> SectionBuilder<'a> {
             tempo: self.tempo,
             custom_wavetable: None,
             velocity: 0.8,
+            last_chord: None,
         };
 
         // Get or create the track and apply instrument settings

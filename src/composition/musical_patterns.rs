@@ -18,6 +18,8 @@ impl<'a> TrackBuilder<'a> {
                     envelope,
                     pitch_bend,
                 );
+            // Store this chord for voice leading
+            self.last_chord = Some(chord.to_vec());
             let swung_duration = self.apply_swing(chord_duration);
             self.cursor += swung_duration;
         }
@@ -139,6 +141,8 @@ impl<'a> TrackBuilder<'a> {
                     envelope,
                     pitch_bend,
                 );
+            // Store this chord for voice leading
+            self.last_chord = Some(chord.clone());
             let swung_duration = self.apply_swing(chord_duration);
             self.cursor += swung_duration;
         }
