@@ -53,6 +53,8 @@ Create command-line music generators, audio processors, or batch rendering tools
 - Sample playback only → Consider [Rodio](https://github.com/RustAudio/rodio) or [Kira](https://github.com/tesselode/kira)
 - Live coding focused → Consider [Sonic Pi](https://sonic-pi.net/)
 - Browser-based → Consider [Strudel](https://strudel.tidalcycles.org/)
+- Synthesis → Consider [SuperCollider](https://supercollider.github.io/)
+- Other mentions in no particular order: Leipzig, ChucK, PureData, Max/MSP, TidalCycles, CSound, Faust, OverTone, Alda, Music21
 
 ---
 
