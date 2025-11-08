@@ -5,6 +5,7 @@
 use super::events::*;
 use super::track::Track;
 use crate::composition::rhythm::Tempo;
+use crate::synthesis::effects::EffectChain;
 
 /// Mix multiple tracks together
 #[derive(Debug, Clone)]
@@ -12,6 +13,7 @@ pub struct Mixer {
     pub tracks: Vec<Track>,
     pub tempo: Tempo,
     pub(super) sample_count: u64, // For quantized automation lookups
+    pub master: EffectChain,      // Master effects chain (stereo processing)
 }
 
 impl Mixer {
@@ -24,6 +26,7 @@ impl Mixer {
             tracks: Vec::new(),
             tempo,
             sample_count: 0,
+            master: EffectChain::new(),
         }
     }
 
@@ -115,7 +118,11 @@ impl Mixer {
                             );
                         }
                         AudioEvent::Drum(drum) => {
-                            track.add_drum(drum.drum_type, drum.start_time + offset, drum.spatial_position);
+                            track.add_drum(
+                                drum.drum_type,
+                                drum.start_time + offset,
+                                drum.spatial_position,
+                            );
                         }
                         AudioEvent::Sample(sample) => {
                             track
@@ -209,8 +216,8 @@ impl Mixer {
             // Skip track entirely if we're before it starts or after it ends
             // (unless it has delay/reverb which can extend beyond the events)
             if (time < track_start || time > track_end)
-                && track.delay.is_none()
-                && track.reverb.is_none()
+                && track.effects.delay.is_none()
+                && track.effects.reverb.is_none()
             {
                 continue;
             }
@@ -249,11 +256,9 @@ impl Mixer {
 
                         if time_in_sample >= 0.0 && time_in_sample < sample_duration {
                             has_active_event = true;
-                            let (sample_left, sample_right) =
-                                sample_event.sample.sample_at_interpolated(
-                                    time_in_sample,
-                                    sample_event.playback_rate,
-                                );
+                            let (sample_left, sample_right) = sample_event
+                                .sample
+                                .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
                             track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
                         }
                     }
@@ -354,7 +359,8 @@ impl Mixer {
             }
 
             // Skip all effect processing if track has no active events
-            if !has_active_event && track.delay.is_none() && track.reverb.is_none() {
+            if !has_active_event && track.effects.delay.is_none() && track.effects.reverb.is_none()
+            {
                 continue;
             }
 
@@ -384,7 +390,10 @@ impl Mixer {
             }
 
             // Only process effects if there's actual audio
-            if track_value.abs() > 0.0001 || track.delay.is_some() || track.reverb.is_some() {
+            if track_value.abs() > 0.0001
+                || track.effects.delay.is_some()
+                || track.effects.reverb.is_some()
+            {
                 // Apply track volume (with modulation)
                 track_value *= modulated_volume;
 
@@ -397,121 +406,11 @@ impl Mixer {
                 track.filter.cutoff = base_filter_cutoff;
                 track.filter.resonance = base_filter_resonance;
 
-                // Apply effects in pre-computed priority order
-                // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
-                //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
-                //             11=Delay, 12=Reverb, 13=Limiter
-                // Note: AutoPan is handled separately at the stereo stage
-                for &effect_id in &track.effect_order {
-                    match effect_id {
-                        0 => {
-                            // EQ
-                            if let Some(ref mut eq) = track.eq {
-                                track_value =
-                                    eq.process(track_value, sample_rate, time, self.sample_count);
-                            }
-                        }
-                        1 => {
-                            // Compressor
-                            if let Some(ref mut compressor) = track.compressor {
-                                track_value = compressor.process(
-                                    track_value,
-                                    sample_rate,
-                                    time,
-                                    self.sample_count,
-                                );
-                            }
-                        }
-                        2 => {
-                            // Gate
-                            if let Some(ref mut gate) = track.gate {
-                                track_value =
-                                    gate.process(track_value, sample_rate, time, self.sample_count);
-                            }
-                        }
-                        3 => {
-                            // Saturation
-                            if let Some(ref mut saturation) = track.saturation {
-                                track_value =
-                                    saturation.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        4 => {
-                            // BitCrusher
-                            if let Some(ref mut bitcrusher) = track.bitcrusher {
-                                track_value =
-                                    bitcrusher.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        5 => {
-                            // Distortion
-                            if let Some(ref mut distortion) = track.distortion {
-                                track_value =
-                                    distortion.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        6 => {
-                            // Chorus
-                            if let Some(ref mut chorus) = track.chorus {
-                                track_value = chorus.process(
-                                    track_value,
-                                    sample_rate,
-                                    time,
-                                    self.sample_count,
-                                );
-                            }
-                        }
-                        7 => {
-                            // Phaser
-                            if let Some(ref mut phaser) = track.phaser {
-                                track_value = phaser.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        8 => {
-                            // Flanger
-                            if let Some(ref mut flanger) = track.flanger {
-                                track_value = flanger.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        9 => {
-                            // Ring Modulator
-                            if let Some(ref mut ring_mod) = track.ring_mod {
-                                track_value =
-                                    ring_mod.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        10 => {
-                            // Tremolo
-                            if let Some(ref mut tremolo) = track.tremolo {
-                                track_value = tremolo.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        11 => {
-                            // Delay
-                            if let Some(ref mut delay) = track.delay {
-                                track_value = delay.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        12 => {
-                            // Reverb
-                            if let Some(ref mut reverb) = track.reverb {
-                                track_value = reverb.process(track_value, time, self.sample_count);
-                            }
-                        }
-                        13 => {
-                            // Limiter
-                            if let Some(ref mut limiter) = track.limiter {
-                                track_value = limiter.process(
-                                    track_value,
-                                    sample_rate,
-                                    time,
-                                    self.sample_count,
-                                );
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+                // Apply effects through the unified effect chain
+                track_value =
+                    track
+                        .effects
+                        .process_mono(track_value, sample_rate, time, self.sample_count);
             }
 
             // Apply spatial audio or stereo panning
@@ -519,12 +418,13 @@ impl Mixer {
                 // Apply spatial audio for this track
                 let listener_cfg = listener.unwrap();
                 let spatial_cfg = spatial_params.unwrap();
-                let result = crate::synthesis::spatial::calculate_spatial(&pos, listener_cfg, spatial_cfg);
+                let result =
+                    crate::synthesis::spatial::calculate_spatial(&pos, listener_cfg, spatial_cfg);
                 (result.volume, result.pan)
             } else {
                 // Use normal panning
                 // Add AutoPan offset if present
-                let pan_offset = if let Some(ref mut autopan) = track.autopan {
+                let pan_offset = if let Some(ref mut autopan) = track.effects.autopan {
                     autopan.get_pan_offset(time, self.sample_count)
                 } else {
                     0.0
@@ -546,11 +446,20 @@ impl Mixer {
             mixed_right += attenuated_value * right_gain;
         }
 
+        // Apply master effects (stereo processing)
+        let (master_left, master_right) = self.master.process_stereo(
+            mixed_left,
+            mixed_right,
+            sample_rate,
+            time,
+            self.sample_count,
+        );
+
         // Apply soft clipping to prevent harsh distortion
         // tanh provides smooth saturation - maintains dynamics while preventing clipping
         // This is much better than dividing by track count, which unnecessarily
         // reduces volume even when tracks don't play simultaneously
-        (mixed_left.tanh(), mixed_right.tanh())
+        (master_left.tanh(), master_right.tanh())
     }
 
     /// Render the mixer to an in-memory stereo buffer
@@ -585,6 +494,343 @@ impl Mixer {
         }
 
         buffer
+    }
+
+    /// Add a compressor to the master output
+    ///
+    /// Applies dynamic range compression to the final stereo mix. Master compression
+    /// uses stereo-linked processing to preserve the stereo image.
+    ///
+    /// # Arguments
+    /// * `compressor` - Compressor effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Compressor;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_compressor(Compressor::new(-10.0, 4.0, 0.01, 0.1, 2.0));
+    /// ```
+    pub fn master_compressor(&mut self, compressor: crate::synthesis::effects::Compressor) {
+        self.master.compressor = Some(compressor);
+        self.master.compute_effect_order();
+    }
+
+    /// Add a limiter to the master output
+    ///
+    /// Applies limiting to prevent clipping on the final stereo mix. Master limiting
+    /// uses stereo-linked processing to preserve the stereo image. This is typically
+    /// the last effect in the master chain.
+    ///
+    /// # Arguments
+    /// * `limiter` - Limiter effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Limiter;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_limiter(Limiter::new(0.0, 0.01));
+    /// ```
+    pub fn master_limiter(&mut self, limiter: crate::synthesis::effects::Limiter) {
+        self.master.limiter = Some(limiter);
+        self.master.compute_effect_order();
+    }
+
+    /// Add EQ to the master output
+    ///
+    /// Applies 3-band equalization to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `eq` - EQ effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::EQ;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_eq(EQ::new(1.5, 1.0, 1.2, 200.0, 3000.0));
+    /// ```
+    pub fn master_eq(&mut self, eq: crate::synthesis::effects::EQ) {
+        self.master.eq = Some(eq);
+        self.master.compute_effect_order();
+    }
+
+    /// Add parametric EQ to the master output
+    ///
+    /// Applies multi-band parametric equalization to the final stereo mix for
+    /// precise frequency shaping and mastering.
+    ///
+    /// # Arguments
+    /// * `parametric_eq` - ParametricEQ effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::ParametricEQ;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let eq = ParametricEQ::new()
+    ///     .band(100.0, -3.0, 0.7)  // Cut low rumble
+    ///     .band(3000.0, 2.0, 1.5); // Boost presence
+    /// mixer.master_parametric_eq(eq);
+    /// ```
+    pub fn master_parametric_eq(&mut self, parametric_eq: crate::synthesis::effects::ParametricEQ) {
+        self.master.parametric_eq = Some(parametric_eq);
+        self.master.compute_effect_order();
+    }
+
+    /// Add reverb to the master output
+    ///
+    /// Applies reverb to the final stereo mix. Use sparingly as master reverb
+    /// affects the entire mix.
+    ///
+    /// # Arguments
+    /// * `reverb` - Reverb effect configuration
+    pub fn master_reverb(&mut self, reverb: crate::synthesis::effects::Reverb) {
+        self.master.reverb = Some(reverb);
+        self.master.compute_effect_order();
+    }
+
+    /// Add delay to the master output
+    ///
+    /// Applies delay to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `delay` - Delay effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Delay;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_delay(Delay::new(0.5, 0.4, 0.3));
+    /// ```
+    pub fn master_delay(&mut self, delay: crate::synthesis::effects::Delay) {
+        self.master.delay = Some(delay);
+        self.master.compute_effect_order();
+    }
+
+    /// Add gate to the master output
+    ///
+    /// Applies noise gate to the final stereo mix. Useful for cutting unwanted
+    /// background noise or creating rhythmic gating effects.
+    ///
+    /// # Arguments
+    /// * `gate` - Gate effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Gate;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_gate(Gate::new(-40.0, 4.0, 0.01, 0.1));
+    /// ```
+    pub fn master_gate(&mut self, gate: crate::synthesis::effects::Gate) {
+        self.master.gate = Some(gate);
+        self.master.compute_effect_order();
+    }
+
+    /// Add saturation to the master output
+    ///
+    /// Applies saturation/warmth to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `saturation` - Saturation effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Saturation;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_saturation(Saturation::new(2.0, 0.5, 1.0));
+    /// ```
+    pub fn master_saturation(&mut self, saturation: crate::synthesis::effects::Saturation) {
+        self.master.saturation = Some(saturation);
+        self.master.compute_effect_order();
+    }
+
+    /// Add bit crusher to the master output
+    ///
+    /// Applies bit reduction and sample rate reduction to the final stereo mix
+    /// for lo-fi effects.
+    ///
+    /// # Arguments
+    /// * `bitcrusher` - BitCrusher effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::BitCrusher;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_bitcrusher(BitCrusher::new(8.0, 2.0, 1.0));
+    /// ```
+    pub fn master_bitcrusher(&mut self, bitcrusher: crate::synthesis::effects::BitCrusher) {
+        self.master.bitcrusher = Some(bitcrusher);
+        self.master.compute_effect_order();
+    }
+
+    /// Add distortion to the master output
+    ///
+    /// Applies distortion to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `distortion` - Distortion effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Distortion;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_distortion(Distortion::new(2.0, 0.5));
+    /// ```
+    pub fn master_distortion(&mut self, distortion: crate::synthesis::effects::Distortion) {
+        self.master.distortion = Some(distortion);
+        self.master.compute_effect_order();
+    }
+
+    /// Add chorus to the master output
+    ///
+    /// Applies chorus modulation to the final stereo mix for widening effects.
+    ///
+    /// # Arguments
+    /// * `chorus` - Chorus effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Chorus;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_chorus(Chorus::new(0.003, 0.5, 0.3));
+    /// ```
+    pub fn master_chorus(&mut self, chorus: crate::synthesis::effects::Chorus) {
+        self.master.chorus = Some(chorus);
+        self.master.compute_effect_order();
+    }
+
+    /// Add phaser to the master output
+    ///
+    /// Applies phaser modulation to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `phaser` - Phaser effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Phaser;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_phaser(Phaser::new(0.5, 0.7, 0.5, 0.5, 4));
+    /// ```
+    pub fn master_phaser(&mut self, phaser: crate::synthesis::effects::Phaser) {
+        self.master.phaser = Some(phaser);
+        self.master.compute_effect_order();
+    }
+
+    /// Add flanger to the master output
+    ///
+    /// Applies flanger modulation to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `flanger` - Flanger effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Flanger;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_flanger(Flanger::new(0.5, 3.0, 0.7, 0.5));
+    /// ```
+    pub fn master_flanger(&mut self, flanger: crate::synthesis::effects::Flanger) {
+        self.master.flanger = Some(flanger);
+        self.master.compute_effect_order();
+    }
+
+    /// Add ring modulator to the master output
+    ///
+    /// Applies ring modulation to the final stereo mix for metallic/robotic effects.
+    ///
+    /// # Arguments
+    /// * `ring_mod` - RingModulator effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::RingModulator;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_ring_mod(RingModulator::new(30.0, 0.5));
+    /// ```
+    pub fn master_ring_mod(&mut self, ring_mod: crate::synthesis::effects::RingModulator) {
+        self.master.ring_mod = Some(ring_mod);
+        self.master.compute_effect_order();
+    }
+
+    /// Add tremolo to the master output
+    ///
+    /// Applies tremolo (amplitude modulation) to the final stereo mix.
+    ///
+    /// # Arguments
+    /// * `tremolo` - Tremolo effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::Tremolo;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_tremolo(Tremolo::new(4.0, 0.5));
+    /// ```
+    pub fn master_tremolo(&mut self, tremolo: crate::synthesis::effects::Tremolo) {
+        self.master.tremolo = Some(tremolo);
+        self.master.compute_effect_order();
+    }
+
+    /// Add auto-pan to the master output
+    ///
+    /// Applies automatic panning to the final stereo mix, moving the sound
+    /// between left and right channels.
+    ///
+    /// # Arguments
+    /// * `autopan` - AutoPan effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::AutoPan;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_autopan(AutoPan::new(0.25, 1.0));
+    /// ```
+    pub fn master_autopan(&mut self, autopan: crate::synthesis::effects::AutoPan) {
+        self.master.autopan = Some(autopan);
+        self.master.compute_effect_order();
     }
 }
 

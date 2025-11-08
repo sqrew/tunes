@@ -187,9 +187,9 @@ impl Track {
         self.volume = instrument.volume;
         self.pan = instrument.pan;
         self.filter = instrument.filter;
-        self.delay = instrument.delay.clone();
-        self.reverb = instrument.reverb.clone();
-        self.distortion = instrument.distortion.clone();
+        self.effects.delay = instrument.delay.clone();
+        self.effects.reverb = instrument.reverb.clone();
+        self.effects.distortion = instrument.distortion.clone();
         self.modulation = instrument.modulation.clone();
     }
 }

@@ -142,8 +142,8 @@ mod tests {
         assert_eq!(track.events.len(), 0);
         assert_eq!(track.volume, 1.0);
         assert_eq!(track.pan, 0.0);
-        assert!(track.delay.is_none());
-        assert!(track.reverb.is_none());
+        assert!(track.effects.delay.is_none());
+        assert!(track.effects.reverb.is_none());
     }
 
     #[test]

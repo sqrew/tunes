@@ -279,7 +279,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **961 comprehensive tests and 304 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **961 comprehensive tests and 320 doc tests** ensuring reliability and correctness.
 
 ## Examples
 

@@ -241,21 +241,21 @@ impl Composition {
         track.volume = template.volume;
         track.pan = template.pan;
         track.filter = template.filter;
-        track.delay = template.delay;
-        track.reverb = template.reverb;
-        track.distortion = template.distortion;
-        track.bitcrusher = template.bitcrusher;
-        track.compressor = template.compressor;
-        track.gate = template.gate;
-        track.chorus = template.chorus;
-        track.eq = template.eq;
-        track.saturation = template.saturation;
-        track.phaser = template.phaser;
-        track.flanger = template.flanger;
-        track.ring_mod = template.ring_mod;
-        track.tremolo = template.tremolo;
-        track.autopan = template.autopan;
-        track.limiter = template.limiter;
+        track.effects.delay = template.delay;
+        track.effects.reverb = template.reverb;
+        track.effects.distortion = template.distortion;
+        track.effects.bitcrusher = template.bitcrusher;
+        track.effects.compressor = template.compressor;
+        track.effects.gate = template.gate;
+        track.effects.chorus = template.chorus;
+        track.effects.eq = template.eq;
+        track.effects.saturation = template.saturation;
+        track.effects.phaser = template.phaser;
+        track.effects.flanger = template.flanger;
+        track.effects.ring_mod = template.ring_mod;
+        track.effects.tremolo = template.tremolo;
+        track.effects.autopan = template.autopan;
+        track.effects.limiter = template.limiter;
         track.modulation = template.modulation.clone();
         track.midi_program = template.midi_program;
 
@@ -290,9 +290,9 @@ impl Composition {
         track.volume = instrument.volume;
         track.pan = instrument.pan;
         track.filter = instrument.filter;
-        track.delay = instrument.delay.clone();
-        track.reverb = instrument.reverb.clone();
-        track.distortion = instrument.distortion.clone();
+        track.effects.delay = instrument.delay.clone();
+        track.effects.reverb = instrument.reverb.clone();
+        track.effects.distortion = instrument.distortion.clone();
         track.modulation = instrument.modulation.clone();
 
         builder
@@ -563,9 +563,9 @@ impl Composition {
                         comp_track.volume = offset_track.volume;
                         comp_track.pan = offset_track.pan;
                         comp_track.filter = offset_track.filter;
-                        comp_track.delay = offset_track.delay;
-                        comp_track.reverb = offset_track.reverb;
-                        comp_track.distortion = offset_track.distortion;
+                        comp_track.effects.delay = offset_track.effects.delay;
+                        comp_track.effects.reverb = offset_track.effects.reverb;
+                        comp_track.effects.distortion = offset_track.effects.distortion;
                         comp_track.modulation = offset_track.modulation.clone();
                     }
                 }
@@ -699,21 +699,21 @@ impl<'a> TrackBuilder<'a> {
         let volume = track.volume;
         let pan = track.pan;
         let filter = track.filter;
-        let delay = track.delay.clone();
-        let reverb = track.reverb.clone();
-        let distortion = track.distortion.clone();
-        let bitcrusher = track.bitcrusher.clone();
-        let compressor = track.compressor.clone();
-        let gate = track.gate.clone();
-        let chorus = track.chorus.clone();
-        let eq = track.eq.clone();
-        let saturation = track.saturation.clone();
-        let phaser = track.phaser.clone();
-        let flanger = track.flanger.clone();
-        let ring_mod = track.ring_mod.clone();
-        let tremolo = track.tremolo.clone();
-        let autopan = track.autopan.clone();
-        let limiter = track.limiter.clone();
+        let delay = track.effects.delay.clone();
+        let reverb = track.effects.reverb.clone();
+        let distortion = track.effects.distortion.clone();
+        let bitcrusher = track.effects.bitcrusher.clone();
+        let compressor = track.effects.compressor.clone();
+        let gate = track.effects.gate.clone();
+        let chorus = track.effects.chorus.clone();
+        let eq = track.effects.eq.clone();
+        let saturation = track.effects.saturation.clone();
+        let phaser = track.effects.phaser.clone();
+        let flanger = track.effects.flanger.clone();
+        let ring_mod = track.effects.ring_mod.clone();
+        let tremolo = track.effects.tremolo.clone();
+        let autopan = track.effects.autopan.clone();
+        let limiter = track.effects.limiter.clone();
         let modulation = track.modulation.clone();
         let midi_program = track.midi_program;
 
@@ -854,8 +854,8 @@ mod tests {
         assert_eq!(mixer.tracks.len(), 2);
 
         // Both tracks should have the same reverb settings
-        assert!(mixer.tracks[0].reverb.is_some());
-        assert!(mixer.tracks[1].reverb.is_some());
+        assert!(mixer.tracks[0].effects.reverb.is_some());
+        assert!(mixer.tracks[1].effects.reverb.is_some());
         assert_eq!(mixer.tracks[0].volume, 0.7);
         assert_eq!(mixer.tracks[1].volume, 0.7);
     }
@@ -880,12 +880,12 @@ mod tests {
         let mixer = comp.into_mixer();
 
         // Both tracks should have the same effects
-        assert!(mixer.tracks[0].reverb.is_some());
-        assert!(mixer.tracks[1].reverb.is_some());
-        assert!(mixer.tracks[0].delay.is_some());
-        assert!(mixer.tracks[1].delay.is_some());
-        assert!(mixer.tracks[0].chorus.is_some());
-        assert!(mixer.tracks[1].chorus.is_some());
+        assert!(mixer.tracks[0].effects.reverb.is_some());
+        assert!(mixer.tracks[1].effects.reverb.is_some());
+        assert!(mixer.tracks[0].effects.delay.is_some());
+        assert!(mixer.tracks[1].effects.delay.is_some());
+        assert!(mixer.tracks[0].effects.chorus.is_some());
+        assert!(mixer.tracks[1].effects.chorus.is_some());
         assert_eq!(mixer.tracks[0].volume, 0.6);
         assert_eq!(mixer.tracks[1].volume, 0.6);
         assert_eq!(mixer.tracks[0].pan, -0.3);
@@ -932,9 +932,9 @@ mod tests {
         assert_eq!(mixer.tracks.len(), 3);
 
         // All should have reverb
-        assert!(mixer.tracks[0].reverb.is_some());
-        assert!(mixer.tracks[1].reverb.is_some());
-        assert!(mixer.tracks[2].reverb.is_some());
+        assert!(mixer.tracks[0].effects.reverb.is_some());
+        assert!(mixer.tracks[1].effects.reverb.is_some());
+        assert!(mixer.tracks[2].effects.reverb.is_some());
     }
 
     #[test]
@@ -971,15 +971,15 @@ mod tests {
 
         // Base track should have original settings (no delay)
         assert_eq!(base_track.volume, 0.7);
-        assert!(base_track.delay.is_none());
+        assert!(base_track.effects.delay.is_none());
 
         // Modified track should have overridden settings
         assert_eq!(modified_track.volume, 0.3);
-        assert!(modified_track.delay.is_some());
+        assert!(modified_track.effects.delay.is_some());
 
         // Both should still have reverb from template
-        assert!(base_track.reverb.is_some());
-        assert!(modified_track.reverb.is_some());
+        assert!(base_track.effects.reverb.is_some());
+        assert!(modified_track.effects.reverb.is_some());
     }
 
     #[test]
@@ -1017,8 +1017,8 @@ mod tests {
         assert_eq!(mixer.tracks.len(), 2);
 
         // Both should have delay from template
-        assert!(mixer.tracks[0].delay.is_some());
-        assert!(mixer.tracks[1].delay.is_some());
+        assert!(mixer.tracks[0].effects.delay.is_some());
+        assert!(mixer.tracks[1].effects.delay.is_some());
     }
 
     #[test]

@@ -57,9 +57,9 @@ impl Instrument {
         track.volume = self.volume;
         track.pan = self.pan;
         track.filter = self.filter;
-        track.delay = self.delay.clone();
-        track.reverb = self.reverb.clone();
-        track.distortion = self.distortion.clone();
+        track.effects.delay = self.delay.clone();
+        track.effects.reverb = self.reverb.clone();
+        track.effects.distortion = self.distortion.clone();
         track.modulation = self.modulation.clone();
         track
     }

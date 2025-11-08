@@ -380,8 +380,8 @@ impl Mixer {
 
         // Skip if outside track's time bounds (unless delay/reverb)
         if (time < track_start || time > track_end)
-            && track.delay.is_none()
-            && track.reverb.is_none()
+            && track.effects.delay.is_none()
+            && track.effects.reverb.is_none()
         {
             return (0.0, 0.0);
         }
@@ -477,7 +477,7 @@ impl Mixer {
         }
 
         // Apply effects chain (same as in Mixer::sample_at)
-        if has_active_event || track.delay.is_some() || track.reverb.is_some() {
+        if has_active_event || track.effects.delay.is_some() || track.effects.reverb.is_some() {
             track_value *= track.volume;
 
             // Apply filter
@@ -494,46 +494,46 @@ impl Mixer {
             // Build and apply effects chain (same logic as in sample_at)
             let mut effect_order: Vec<(u8, u8)> = Vec::with_capacity(14);
 
-            if let Some(ref eq) = track.eq {
+            if let Some(ref eq) = track.effects.eq {
                 effect_order.push((eq.priority, 0));
             }
-            if let Some(ref compressor) = track.compressor {
+            if let Some(ref compressor) = track.effects.compressor {
                 effect_order.push((compressor.priority, 1));
             }
-            if let Some(ref gate) = track.gate {
+            if let Some(ref gate) = track.effects.gate {
                 effect_order.push((gate.priority, 2));
             }
-            if let Some(ref saturation) = track.saturation {
+            if let Some(ref saturation) = track.effects.saturation {
                 effect_order.push((saturation.priority, 3));
             }
-            if let Some(ref bitcrusher) = track.bitcrusher {
+            if let Some(ref bitcrusher) = track.effects.bitcrusher {
                 effect_order.push((bitcrusher.priority, 4));
             }
-            if let Some(ref distortion) = track.distortion {
+            if let Some(ref distortion) = track.effects.distortion {
                 effect_order.push((distortion.priority, 5));
             }
-            if let Some(ref chorus) = track.chorus {
+            if let Some(ref chorus) = track.effects.chorus {
                 effect_order.push((chorus.priority, 6));
             }
-            if let Some(ref phaser) = track.phaser {
+            if let Some(ref phaser) = track.effects.phaser {
                 effect_order.push((phaser.priority, 7));
             }
-            if let Some(ref flanger) = track.flanger {
+            if let Some(ref flanger) = track.effects.flanger {
                 effect_order.push((flanger.priority, 8));
             }
-            if let Some(ref ring_mod) = track.ring_mod {
+            if let Some(ref ring_mod) = track.effects.ring_mod {
                 effect_order.push((ring_mod.priority, 9));
             }
-            if let Some(ref tremolo) = track.tremolo {
+            if let Some(ref tremolo) = track.effects.tremolo {
                 effect_order.push((tremolo.priority, 10));
             }
-            if let Some(ref delay) = track.delay {
+            if let Some(ref delay) = track.effects.delay {
                 effect_order.push((delay.priority, 11));
             }
-            if let Some(ref reverb) = track.reverb {
+            if let Some(ref reverb) = track.effects.reverb {
                 effect_order.push((reverb.priority, 12));
             }
-            if let Some(ref limiter) = track.limiter {
+            if let Some(ref limiter) = track.effects.limiter {
                 effect_order.push((limiter.priority, 13));
             }
 
@@ -543,72 +543,72 @@ impl Mixer {
             for (_, effect_id) in effect_order {
                 match effect_id {
                     0 => {
-                        if let Some(ref mut eq) = track.eq {
+                        if let Some(ref mut eq) = track.effects.eq {
                             track_value = eq.process(track_value, sample_rate, time, self.sample_count);
                         }
                     }
                     1 => {
-                        if let Some(ref mut compressor) = track.compressor {
+                        if let Some(ref mut compressor) = track.effects.compressor {
                             track_value = compressor.process(track_value, sample_rate, time, self.sample_count);
                         }
                     }
                     2 => {
-                        if let Some(ref mut gate) = track.gate {
+                        if let Some(ref mut gate) = track.effects.gate {
                             track_value = gate.process(track_value, sample_rate, time, self.sample_count);
                         }
                     }
                     3 => {
-                        if let Some(ref mut saturation) = track.saturation {
+                        if let Some(ref mut saturation) = track.effects.saturation {
                             track_value = saturation.process(track_value, time, self.sample_count);
                         }
                     }
                     4 => {
-                        if let Some(ref mut bitcrusher) = track.bitcrusher {
+                        if let Some(ref mut bitcrusher) = track.effects.bitcrusher {
                             track_value = bitcrusher.process(track_value, time, self.sample_count);
                         }
                     }
                     5 => {
-                        if let Some(ref mut distortion) = track.distortion {
+                        if let Some(ref mut distortion) = track.effects.distortion {
                             track_value = distortion.process(track_value, time, self.sample_count);
                         }
                     }
                     6 => {
-                        if let Some(ref mut chorus) = track.chorus {
+                        if let Some(ref mut chorus) = track.effects.chorus {
                             track_value = chorus.process(track_value, sample_rate, time, self.sample_count);
                         }
                     }
                     7 => {
-                        if let Some(ref mut phaser) = track.phaser {
+                        if let Some(ref mut phaser) = track.effects.phaser {
                             track_value = phaser.process(track_value, time, self.sample_count);
                         }
                     }
                     8 => {
-                        if let Some(ref mut flanger) = track.flanger {
+                        if let Some(ref mut flanger) = track.effects.flanger {
                             track_value = flanger.process(track_value, time, self.sample_count);
                         }
                     }
                     9 => {
-                        if let Some(ref mut ring_mod) = track.ring_mod {
+                        if let Some(ref mut ring_mod) = track.effects.ring_mod {
                             track_value = ring_mod.process(track_value, time, self.sample_count);
                         }
                     }
                     10 => {
-                        if let Some(ref mut tremolo) = track.tremolo {
+                        if let Some(ref mut tremolo) = track.effects.tremolo {
                             track_value = tremolo.process(track_value, time, self.sample_count);
                         }
                     }
                     11 => {
-                        if let Some(ref mut delay) = track.delay {
+                        if let Some(ref mut delay) = track.effects.delay {
                             track_value = delay.process(track_value, time, self.sample_count);
                         }
                     }
                     12 => {
-                        if let Some(ref mut reverb) = track.reverb {
+                        if let Some(ref mut reverb) = track.effects.reverb {
                             track_value = reverb.process(track_value, time, self.sample_count);
                         }
                     }
                     13 => {
-                        if let Some(ref mut limiter) = track.limiter {
+                        if let Some(ref mut limiter) = track.effects.limiter {
                             track_value = limiter.process(track_value, sample_rate, time, self.sample_count);
                         }
                     }

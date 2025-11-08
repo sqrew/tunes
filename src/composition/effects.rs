@@ -15,22 +15,22 @@ impl<'a> TrackBuilder<'a> {
     /// Add delay effect to this track
     pub fn delay(mut self, delay: Delay) -> Self {
         let track = self.get_track_mut();
-        track.delay = Some(delay);
-        track.compute_effect_order();
+        track.effects.delay = Some(delay);
+        track.effects.compute_effect_order();
         self
     }
     /// Add reverb effect to this track
     pub fn reverb(mut self, reverb: Reverb) -> Self {
         let track = self.get_track_mut();
-        track.reverb = Some(reverb);
-        track.compute_effect_order();
+        track.effects.reverb = Some(reverb);
+        track.effects.compute_effect_order();
         self
     }
     /// Add distortion effect to this track
     pub fn distortion(mut self, distortion: Distortion) -> Self {
         let track = self.get_track_mut();
-        track.distortion = Some(distortion);
-        track.compute_effect_order();
+        track.effects.distortion = Some(distortion);
+        track.effects.compute_effect_order();
         self
     }
     /// Add bitcrusher effect to this track
@@ -54,8 +54,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn bitcrusher(mut self, bitcrusher: BitCrusher) -> Self {
         let track = self.get_track_mut();
-        track.bitcrusher = Some(bitcrusher);
-        track.compute_effect_order();
+        track.effects.bitcrusher = Some(bitcrusher);
+        track.effects.compute_effect_order();
         self
     }
     /// Add compressor effect to this track
@@ -79,8 +79,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn compressor(mut self, compressor: Compressor) -> Self {
         let track = self.get_track_mut();
-        track.compressor = Some(compressor);
-        track.compute_effect_order();
+        track.effects.compressor = Some(compressor);
+        track.effects.compute_effect_order();
         self
     }
     /// Add chorus effect to this track
@@ -104,8 +104,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn chorus(mut self, chorus: Chorus) -> Self {
         let track = self.get_track_mut();
-        track.chorus = Some(chorus);
-        track.compute_effect_order();
+        track.effects.chorus = Some(chorus);
+        track.effects.compute_effect_order();
         self
     }
     /// Add EQ effect to this track
@@ -129,8 +129,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn eq(mut self, eq: EQ) -> Self {
         let track = self.get_track_mut();
-        track.eq = Some(eq);
-        track.compute_effect_order();
+        track.effects.eq = Some(eq);
+        track.effects.compute_effect_order();
         self
     }
     /// Add saturation effect to this track
@@ -154,8 +154,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn saturation(mut self, saturation: Saturation) -> Self {
         let track = self.get_track_mut();
-        track.saturation = Some(saturation);
-        track.compute_effect_order();
+        track.effects.saturation = Some(saturation);
+        track.effects.compute_effect_order();
         self
     }
     /// Add phaser effect to this track
@@ -179,8 +179,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn phaser(mut self, phaser: Phaser) -> Self {
         let track = self.get_track_mut();
-        track.phaser = Some(phaser);
-        track.compute_effect_order();
+        track.effects.phaser = Some(phaser);
+        track.effects.compute_effect_order();
         self
     }
     /// Add flanger effect to this track
@@ -204,8 +204,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn flanger(mut self, flanger: Flanger) -> Self {
         let track = self.get_track_mut();
-        track.flanger = Some(flanger);
-        track.compute_effect_order();
+        track.effects.flanger = Some(flanger);
+        track.effects.compute_effect_order();
         self
     }
     /// Add ring modulator effect to this track
@@ -229,8 +229,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn ring_mod(mut self, ring_mod: RingModulator) -> Self {
         let track = self.get_track_mut();
-        track.ring_mod = Some(ring_mod);
-        track.compute_effect_order();
+        track.effects.ring_mod = Some(ring_mod);
+        track.effects.compute_effect_order();
         self
     }
     /// Add tremolo effect to this track
@@ -254,8 +254,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn tremolo(mut self, tremolo: Tremolo) -> Self {
         let track = self.get_track_mut();
-        track.tremolo = Some(tremolo);
-        track.compute_effect_order();
+        track.effects.tremolo = Some(tremolo);
+        track.effects.compute_effect_order();
         self
     }
 
@@ -280,7 +280,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn autopan(mut self, autopan: AutoPan) -> Self {
         let track = self.get_track_mut();
-        track.autopan = Some(autopan);
+        track.effects.autopan = Some(autopan);
         // Note: AutoPan is not in effect_order (handled separately in stereo stage)
         self
     }
@@ -307,8 +307,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn gate(mut self, gate: Gate) -> Self {
         let track = self.get_track_mut();
-        track.gate = Some(gate);
-        track.compute_effect_order();
+        track.effects.gate = Some(gate);
+        track.effects.compute_effect_order();
         self
     }
 
@@ -334,8 +334,8 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn limiter(mut self, limiter: Limiter) -> Self {
         let track = self.get_track_mut();
-        track.limiter = Some(limiter);
-        track.compute_effect_order();
+        track.effects.limiter = Some(limiter);
+        track.effects.compute_effect_order();
         self
     }
 
@@ -377,8 +377,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.delay.is_some());
-        let track_delay = track.delay.as_ref().unwrap();
+        assert!(track.effects.delay.is_some());
+        let track_delay = track.effects.delay.as_ref().unwrap();
         assert_eq!(track_delay.delay_time, 0.5);
         assert_eq!(track_delay.feedback, 0.4);
         assert_eq!(track_delay.mix, 0.6);
@@ -392,8 +392,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.reverb.is_some());
-        let track_reverb = track.reverb.as_ref().unwrap();
+        assert!(track.effects.reverb.is_some());
+        let track_reverb = track.effects.reverb.as_ref().unwrap();
         assert_eq!(track_reverb.room_size, 0.8);
         assert_eq!(track_reverb.damping, 0.5);
         assert_eq!(track_reverb.mix, 0.3);
@@ -407,8 +407,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.distortion.is_some());
-        let track_dist = track.distortion.as_ref().unwrap();
+        assert!(track.effects.distortion.is_some());
+        let track_dist = track.effects.distortion.as_ref().unwrap();
         assert_eq!(track_dist.drive, 2.0);
         assert_eq!(track_dist.mix, 0.5);
     }
@@ -421,8 +421,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.bitcrusher.is_some());
-        let track_bc = track.bitcrusher.as_ref().unwrap();
+        assert!(track.effects.bitcrusher.is_some());
+        let track_bc = track.effects.bitcrusher.as_ref().unwrap();
         assert_eq!(track_bc.bit_depth, 4.0);
         assert_eq!(track_bc.sample_rate_reduction, 8.0);
         assert_eq!(track_bc.mix, 0.5);
@@ -436,8 +436,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.compressor.is_some());
-        let track_comp = track.compressor.as_ref().unwrap();
+        assert!(track.effects.compressor.is_some());
+        let track_comp = track.effects.compressor.as_ref().unwrap();
         assert_eq!(track_comp.threshold, 0.3);
         assert_eq!(track_comp.ratio, 4.0);
         assert_eq!(track_comp.attack, 0.01);
@@ -453,8 +453,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.chorus.is_some());
-        let track_chorus = track.chorus.as_ref().unwrap();
+        assert!(track.effects.chorus.is_some());
+        let track_chorus = track.effects.chorus.as_ref().unwrap();
         assert_eq!(track_chorus.rate, 0.5);
         assert_eq!(track_chorus.depth, 2.0);
         assert_eq!(track_chorus.mix, 0.3);
@@ -468,8 +468,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.eq.is_some());
-        let track_eq = track.eq.as_ref().unwrap();
+        assert!(track.effects.eq.is_some());
+        let track_eq = track.effects.eq.as_ref().unwrap();
         assert_eq!(track_eq.low_gain, 2.0);
         assert_eq!(track_eq.mid_gain, 1.0);
         assert_eq!(track_eq.high_gain, 0.5);
@@ -485,8 +485,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.saturation.is_some());
-        let track_sat = track.saturation.as_ref().unwrap();
+        assert!(track.effects.saturation.is_some());
+        let track_sat = track.effects.saturation.as_ref().unwrap();
         assert_eq!(track_sat.drive, 2.0);
         assert_eq!(track_sat.character, 0.5);
         assert_eq!(track_sat.mix, 0.7);
@@ -500,8 +500,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.phaser.is_some());
-        let track_phaser = track.phaser.as_ref().unwrap();
+        assert!(track.effects.phaser.is_some());
+        let track_phaser = track.effects.phaser.as_ref().unwrap();
         assert_eq!(track_phaser.rate, 0.5);
         assert_eq!(track_phaser.depth, 0.7);
         assert_eq!(track_phaser.feedback, 0.5);
@@ -517,8 +517,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.flanger.is_some());
-        let track_flanger = track.flanger.as_ref().unwrap();
+        assert!(track.effects.flanger.is_some());
+        let track_flanger = track.effects.flanger.as_ref().unwrap();
         assert_eq!(track_flanger.rate, 0.5);
         assert_eq!(track_flanger.depth, 3.0);
         assert_eq!(track_flanger.feedback, 0.6);
@@ -533,8 +533,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.ring_mod.is_some());
-        let track_ring = track.ring_mod.as_ref().unwrap();
+        assert!(track.effects.ring_mod.is_some());
+        let track_ring = track.effects.ring_mod.as_ref().unwrap();
         assert_eq!(track_ring.carrier_freq, 440.0);
         assert_eq!(track_ring.mix, 0.7);
     }
@@ -577,9 +577,9 @@ mod tests {
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
         assert!(matches!(track.filter.filter_type, FilterType::LowPass));
-        assert!(track.delay.is_some());
-        assert!(track.reverb.is_some());
-        assert!(track.distortion.is_some());
+        assert!(track.effects.delay.is_some());
+        assert!(track.effects.reverb.is_some());
+        assert!(track.effects.distortion.is_some());
     }
 
     #[test]
@@ -603,17 +603,17 @@ mod tests {
         let track = &mixer.tracks[0];
         // Verify all effects are set
         assert!(matches!(track.filter.filter_type, FilterType::BandPass));
-        assert!(track.delay.is_some());
-        assert!(track.reverb.is_some());
-        assert!(track.distortion.is_some());
-        assert!(track.bitcrusher.is_some());
-        assert!(track.compressor.is_some());
-        assert!(track.chorus.is_some());
-        assert!(track.eq.is_some());
-        assert!(track.saturation.is_some());
-        assert!(track.phaser.is_some());
-        assert!(track.flanger.is_some());
-        assert!(track.ring_mod.is_some());
+        assert!(track.effects.delay.is_some());
+        assert!(track.effects.reverb.is_some());
+        assert!(track.effects.distortion.is_some());
+        assert!(track.effects.bitcrusher.is_some());
+        assert!(track.effects.compressor.is_some());
+        assert!(track.effects.chorus.is_some());
+        assert!(track.effects.eq.is_some());
+        assert!(track.effects.saturation.is_some());
+        assert!(track.effects.phaser.is_some());
+        assert!(track.effects.flanger.is_some());
+        assert!(track.effects.ring_mod.is_some());
     }
 
     #[test]
@@ -625,8 +625,8 @@ mod tests {
             .note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        assert!(mixer.tracks[0].delay.is_some());
-        assert!(mixer.tracks[0].reverb.is_some());
+        assert!(mixer.tracks[0].effects.delay.is_some());
+        assert!(mixer.tracks[0].effects.reverb.is_some());
         assert_eq!(mixer.tracks[0].events.len(), 1);
     }
 
@@ -672,8 +672,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.delay.is_some());
-        let delay = track.delay.as_ref().unwrap();
+        assert!(track.effects.delay.is_some());
+        let delay = track.effects.delay.as_ref().unwrap();
         assert_eq!(delay.delay_time, 0.25);
         assert_eq!(delay.feedback, 0.6);
         assert_eq!(delay.mix, 0.7);
@@ -688,8 +688,8 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        assert!(track.reverb.is_some());
-        let reverb = track.reverb.as_ref().unwrap();
+        assert!(track.effects.reverb.is_some());
+        let reverb = track.effects.reverb.as_ref().unwrap();
         assert_eq!(reverb.room_size, 0.3);
         assert_eq!(reverb.damping, 0.2);
         assert_eq!(reverb.mix, 0.4);
@@ -706,9 +706,9 @@ mod tests {
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
         // Just verify that effects were set successfully
-        assert!(track.delay.is_some());
-        assert!(track.reverb.is_some());
-        assert!(track.distortion.is_some());
+        assert!(track.effects.delay.is_some());
+        assert!(track.effects.reverb.is_some());
+        assert!(track.effects.distortion.is_some());
     }
 
     #[test]
@@ -719,7 +719,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_bc = track.bitcrusher.as_ref().unwrap();
+        let track_bc = track.effects.bitcrusher.as_ref().unwrap();
         assert_eq!(track_bc.bit_depth, 6.0);
         assert_eq!(track_bc.sample_rate_reduction, 10.0);
         assert_eq!(track_bc.mix, 0.8);
@@ -733,7 +733,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_comp = track.compressor.as_ref().unwrap();
+        let track_comp = track.effects.compressor.as_ref().unwrap();
         assert_eq!(track_comp.threshold, 0.25);
         assert_eq!(track_comp.ratio, 6.0);
         assert_eq!(track_comp.attack, 0.005);
@@ -749,7 +749,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_chorus = track.chorus.as_ref().unwrap();
+        let track_chorus = track.effects.chorus.as_ref().unwrap();
         assert_eq!(track_chorus.rate, 1.2);
         assert_eq!(track_chorus.depth, 4.0);
         assert_eq!(track_chorus.mix, 0.6);
@@ -764,7 +764,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_eq = track.eq.as_ref().unwrap();
+        let track_eq = track.effects.eq.as_ref().unwrap();
         assert_eq!(track_eq.low_gain, 1.5);
         assert_eq!(track_eq.mid_gain, 0.5);
         assert_eq!(track_eq.high_gain, 1.8);
@@ -778,7 +778,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_sat = track.saturation.as_ref().unwrap();
+        let track_sat = track.effects.saturation.as_ref().unwrap();
         assert_eq!(track_sat.drive, 3.0);
         assert_eq!(track_sat.character, 0.8);
         assert_eq!(track_sat.mix, 0.9);
@@ -792,7 +792,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks[0];
-        let track_phaser = track.phaser.as_ref().unwrap();
+        let track_phaser = track.effects.phaser.as_ref().unwrap();
         assert_eq!(track_phaser.stages, 8);
         assert_eq!(track_phaser.rate, 0.3);
     }
@@ -816,11 +816,11 @@ mod tests {
         let has_flanger_5 = mixer
             .tracks
             .iter()
-            .any(|t| t.flanger.as_ref().map_or(false, |f| f.depth == 5.0));
+            .any(|t| t.effects.flanger.as_ref().map_or(false, |f| f.depth == 5.0));
         let has_chorus_3 = mixer
             .tracks
             .iter()
-            .any(|t| t.chorus.as_ref().map_or(false, |c| c.depth == 3.0));
+            .any(|t| t.effects.chorus.as_ref().map_or(false, |c| c.depth == 3.0));
 
         assert!(has_flanger_5, "Should have flanger with depth 5.0");
         assert!(has_chorus_3, "Should have chorus with depth 3.0");
@@ -842,12 +842,12 @@ mod tests {
 
         // Check that both ring modulators exist with correct frequencies (HashMap order not guaranteed)
         let has_200hz = mixer.tracks.iter().any(|t| {
-            t.ring_mod
+            t.effects.ring_mod
                 .as_ref()
                 .map_or(false, |rm| rm.carrier_freq == 200.0)
         });
         let has_880hz = mixer.tracks.iter().any(|t| {
-            t.ring_mod
+            t.effects.ring_mod
                 .as_ref()
                 .map_or(false, |rm| rm.carrier_freq == 880.0)
         });

@@ -1,11 +1,13 @@
 use crate::error::{Result, TunesError};
+use crate::synthesis::spatial::{
+    ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial,
+};
 use crate::track::Mixer;
-use crate::synthesis::spatial::{ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use crossbeam::channel::{Receiver, Sender, unbounded};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
-use crossbeam::channel::{Sender, Receiver, unbounded};
+use std::sync::{Arc, Mutex};
 
 /// Unique identifier for playing sounds
 pub type SoundId = u64;
@@ -148,29 +150,38 @@ impl AudioEngine {
         let err_fn = |err| eprintln!("Audio stream error: {}", err);
 
         // Build the persistent output stream
-        let stream = device.build_output_stream(
-            &stream_config,
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                // Lock once for entire audio callback (better granularity)
-                let mut active_sounds = active_sounds_for_stream.lock().unwrap();
-                let mut listener = listener_config_for_stream.lock().unwrap();
-                let mut spatial = spatial_params_for_stream.lock().unwrap();
+        let stream = device
+            .build_output_stream(
+                &stream_config,
+                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    // Lock once for entire audio callback (better granularity)
+                    let mut active_sounds = active_sounds_for_stream.lock().unwrap();
+                    let mut listener = listener_config_for_stream.lock().unwrap();
+                    let mut spatial = spatial_params_for_stream.lock().unwrap();
 
-                // Process all pending commands (non-blocking)
-                while let Ok(cmd) = command_rx.try_recv() {
-                    Self::handle_command(cmd, &mut active_sounds, &mut listener, &mut spatial);
-                }
+                    // Process all pending commands (non-blocking)
+                    while let Ok(cmd) = command_rx.try_recv() {
+                        Self::handle_command(cmd, &mut active_sounds, &mut listener, &mut spatial);
+                    }
 
-                // Mix all active sounds into the output buffer
-                Self::mix_sounds(data, &mut active_sounds, &listener, &spatial, sample_rate, channels);
+                    // Mix all active sounds into the output buffer
+                    Self::mix_sounds(
+                        data,
+                        &mut active_sounds,
+                        &listener,
+                        &spatial,
+                        sample_rate,
+                        channels,
+                    );
 
-                // Unlock at end of scope
-            },
-            err_fn,
-            None,
-        ).map_err(|e| {
-            TunesError::AudioEngineError(format!("Failed to build output stream: {}", e))
-        })?;
+                    // Unlock at end of scope
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| {
+                TunesError::AudioEngineError(format!("Failed to build output stream: {}", e))
+            })?;
 
         // Start the stream
         stream.play().map_err(|e| {
@@ -546,10 +557,7 @@ impl AudioEngine {
 
     /// Check if a sound is still playing
     pub fn is_playing(&self, id: SoundId) -> bool {
-        self.active_sounds
-            .lock()
-            .unwrap()
-            .contains_key(&id)
+        self.active_sounds.lock().unwrap().contains_key(&id)
     }
 
     // ============================================================================
@@ -693,13 +701,14 @@ impl AudioEngine {
     /// * `id` - The sound ID to wait for
     /// * `is_empty` - Whether the mixer is known to be empty (improves error messages)
     fn wait_for(&self, id: SoundId, is_empty: bool) -> Result<()> {
-        use std::time::Duration;
         use std::thread;
+        use std::time::Duration;
 
         // Wait for sound to start playing (avoid race condition)
         // The audio thread needs time to process the Play command
         let mut started = false;
-        for _ in 0..100 {  // Try for up to 1 second
+        for _ in 0..100 {
+            // Try for up to 1 second
             if self.is_playing(id) {
                 started = true;
                 break;
@@ -718,7 +727,10 @@ impl AudioEngine {
                 return Ok(());
             } else {
                 // Non-empty mixer didn't play - unexpected
-                eprintln!("Warning: Sound {} never started or finished very quickly (< 10ms)", id);
+                eprintln!(
+                    "Warning: Sound {} never started or finished very quickly (< 10ms)",
+                    id
+                );
                 return Ok(());
             }
         }
