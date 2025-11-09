@@ -693,7 +693,7 @@ mod tests {
         let chords: Vec<&[f32]> = vec![&[C4, E4, G4], &[F4, A4, C5]];
         comp.track("chords").chords(&chords, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         // First chord
@@ -716,7 +716,7 @@ mod tests {
         let chords = vec![vec![C4, E4, G4], vec![F4, A4, C5]];
         comp.track("chords").chords_from(&chords, 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
     }
 
@@ -726,7 +726,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4];
         comp.track("scale").scale(&scale, 0.2);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // Verify ascending order
@@ -743,7 +743,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4];
         comp.track("scale").scale_reverse(&scale, 0.2);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // Verify descending order (reversed)
@@ -760,7 +760,7 @@ mod tests {
         let scale = [C4, D4, E4];
         comp.track("scale").scale_updown(&scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should be: C4, D4, E4 (up), then D4, C4 (down, skipping E4)
         // Total = 5 notes
         assert_eq!(track.events.len(), 5);
@@ -787,7 +787,7 @@ mod tests {
         let scale = [C4, D4, E4];
         comp.track("scale").scale_downup(&scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should be: E4, D4, C4 (down), then D4, E4 (up, skipping C4)
         // Total = 5 notes
         assert_eq!(track.events.len(), 5);
@@ -806,7 +806,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("arp").arpeggiate(&chord, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Verify ascending order
@@ -823,7 +823,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("arp").arpeggiate_reverse(&chord, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Verify descending order
@@ -840,7 +840,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("arp").arpeggiate_updown(&chord, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should be: C4, E4, G4 (up), then E4, C4 (down, skipping G4)
         // Total = 5 notes
         assert_eq!(track.events.len(), 5);
@@ -859,7 +859,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("arp").arpeggiate_downup(&chord, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should be: G4, E4, C4 (down), then E4, G4 (up, skipping C4)
         // Total = 5 notes
         assert_eq!(track.events.len(), 5);
@@ -877,7 +877,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("thick").octaves(&[C4, E4], 1, 0.5); // Octave above
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         // First note should have 2 frequencies (C4 + C5)
@@ -894,7 +894,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("thick").octaves(&[C4], -1, 0.5); // Octave below
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.num_freqs, 2);
@@ -909,7 +909,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("harmony").harmonize(&[C4], 7, 0.5); // Perfect fifth (7 semitones)
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.num_freqs, 2);
@@ -925,7 +925,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("harmony").harmonize(&[C4, D4, E4], 4, 0.25); // Major third
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Each note should be doubled with harmony
@@ -941,7 +941,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("pedal").pedal(C4, &[E4, G4, B4], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should have 1 pedal note + 3 melody notes = 4 events
         assert_eq!(track.events.len(), 4);
 
@@ -979,7 +979,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4];
         comp.track("seq").sequence_from(&sequence, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // Should map directly: sequence[i] -> scale[i]
@@ -997,7 +997,7 @@ mod tests {
         let scale = [C4, D4, E4]; // Length 3
         comp.track("seq").sequence_from(&sequence, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Values should wrap: 0->C4, 3->C4, 6->C4, 9->C4
@@ -1015,7 +1015,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4];
         comp.track("fib").sequence_from(&fib, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 6);
 
         // Verify mapping: 1->D4, 1->D4, 2->E4, 3->F4, 5->C4(wrapped), 8->F4(wrapped)
@@ -1035,7 +1035,7 @@ mod tests {
             .arpeggiate(&[C4, E4, G4], 0.1)
             .scale_reverse(&[C4, D4, E4], 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 3 scale + 3 arp + 3 reverse = 9 total
         assert_eq!(track.events.len(), 9);
     }
@@ -1054,7 +1054,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("single").scale_updown(&[C4], 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Single note: up (1 note), down (skip first = 0 notes) = 1 total
         assert_eq!(track.events.len(), 1);
     }
@@ -1065,7 +1065,7 @@ mod tests {
         comp.track("prog")
             .progression(C4, &crate::theory::core::ScalePattern::MAJOR, &[1, 4, 5, 1], 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should have 4 chords (I-IV-V-I)
         assert_eq!(track.events.len(), 4);
 
@@ -1087,7 +1087,7 @@ mod tests {
             2.0,
         );
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should have 3 chords (ii7-V7-Imaj7)
         assert_eq!(track.events.len(), 3);
 
@@ -1119,7 +1119,7 @@ mod tests {
         comp.track("minor")
             .progression(A3, &crate::theory::core::ScalePattern::MINOR, &[1, 4, 5], 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
     }
 
@@ -1131,7 +1131,7 @@ mod tests {
             .progression(C4, &crate::theory::core::ScalePattern::MAJOR, &[1, 5], 1.0)
             .note(&[G4], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 1 note + 2 chords + 1 note = 4 events
         assert_eq!(track.events.len(), 4);
     }

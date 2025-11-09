@@ -149,7 +149,7 @@ mod tests {
         comp.instrument("piano", &Instrument::electric_piano())
             .chord(C4, &ChordPattern::MAJOR, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -166,7 +166,7 @@ mod tests {
         comp.instrument("piano", &Instrument::electric_piano())
             .chord_inverted(C4, &ChordPattern::MAJOR, 1, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -181,7 +181,7 @@ mod tests {
         comp.instrument("piano", &Instrument::electric_piano())
             .chord_voice_lead(C4, &ChordPattern::MAJOR, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
     }
 
@@ -192,7 +192,7 @@ mod tests {
             .chord(C4, &ChordPattern::MAJOR, 1.0)
             .chord_voice_lead(G4, &ChordPattern::MAJOR, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
     }
 
@@ -202,7 +202,7 @@ mod tests {
         comp.instrument("piano", &Instrument::electric_piano())
             .chord_over_bass(C4, &ChordPattern::MAJOR, E3, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -220,7 +220,7 @@ mod tests {
             .chord(A4, &ChordPattern::MINOR, 1.0)
             .chord(F4, &ChordPattern::MAJOR, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
     }
 
@@ -233,7 +233,7 @@ mod tests {
             .chord_voice_lead(G4, &ChordPattern::MAJOR, 1.0)
             .chord_over_bass(F4, &ChordPattern::MAJOR, A3, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
     }
 }

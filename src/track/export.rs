@@ -3,7 +3,6 @@
 //! This module contains methods for exporting audio to WAV and FLAC files,
 //! including stems (individual track exports).
 
-use super::events::AudioEvent;
 use super::mixer::Mixer;
 
 impl Mixer {
@@ -242,13 +241,14 @@ impl Mixer {
         // Create output directory if it doesn't exist
         fs::create_dir_all(output_dir)?;
 
-        let total_tracks = self.tracks.len();
+        let total_tracks = self.all_tracks().len();
 
         println!("Exporting {} stems to: {}", total_tracks, output_dir);
 
         // Export each track individually
         for index in 0..total_tracks {
-            let track_name = self.tracks[index]
+            let all_tracks = self.all_tracks();
+            let track_name = all_tracks[index]
                 .name
                 .clone()
                 .unwrap_or_else(|| format!("untitled_{}", index));
@@ -333,7 +333,8 @@ impl Mixer {
         let mut writer = hound::WavWriter::create(path, spec)?;
 
         // Determine duration for this track
-        let duration = self.tracks[track_index].total_duration();
+        let all_tracks = self.all_tracks();
+        let duration = all_tracks[track_index].total_duration();
         let total_samples = (duration * sample_rate as f32).ceil() as usize;
         let sample_rate_f32 = sample_rate as f32;
         let mut sample_clock = 0.0;
@@ -370,261 +371,19 @@ impl Mixer {
         sample_rate: f32,
         _sample_clock: f32,
     ) -> (f32, f32) {
-        let track = &mut self.tracks[track_index];
-
-        // Ensure events are sorted
-        track.ensure_sorted();
-
-        let track_start = track.start_time();
-        let track_end = track.end_time();
-
-        // Skip if outside track's time bounds (unless delay/reverb)
-        if (time < track_start || time > track_end)
-            && track.effects.delay.is_none()
-            && track.effects.reverb.is_none()
-        {
-            return (0.0, 0.0);
-        }
-
-        let mut track_value = 0.0;
-        let mut has_active_event = false;
-        let mut filter_env_cutoff = track.filter.cutoff;
-        let mut filter_env_found = false;
-
-        let (start_idx, end_idx) = track.find_active_range(time);
-
-        // Render all events in this track (same logic as Mixer::sample_at)
-        for event in &track.events[start_idx..end_idx] {
-            match event {
-                AudioEvent::Sample(sample_event) => {
-                    let time_in_sample = time - sample_event.start_time;
-                    let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
-
-                    if time_in_sample >= 0.0 && time_in_sample < sample_duration {
-                        has_active_event = true;
-                        let (sample_left, sample_right) = sample_event
-                            .sample
-                            .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
-                        track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
-                    }
+        // Find the track by iterating through buses
+        let sample_count = self.sample_count;
+        let mut current_index = 0;
+        for bus in self.buses.values_mut() {
+            for track in &mut bus.tracks {
+                if current_index == track_index {
+                    // Found the track! Use the static process_track helper from Mixer
+                    return Mixer::process_track_static(track, time, sample_rate, sample_count);
                 }
-                AudioEvent::Note(note_event) => {
-                    let total_duration = note_event.envelope.total_duration(note_event.duration);
-                    let note_end_with_release = note_event.start_time + total_duration;
-
-                    if time >= note_event.start_time && time < note_end_with_release {
-                        has_active_event = true;
-                        let time_in_note = time - note_event.start_time;
-
-                        // Filter envelope
-                        if !filter_env_found && note_event.filter_envelope.amount > 0.0 {
-                            let filter_total_duration = note_event
-                                .filter_envelope
-                                .total_duration(note_event.duration);
-                            let filter_end = note_event.start_time + filter_total_duration;
-                            if time >= note_event.start_time && time < filter_end {
-                                filter_env_cutoff = note_event
-                                    .filter_envelope
-                                    .cutoff_at(time_in_note, note_event.duration);
-                                filter_env_found = true;
-                            }
-                        }
-
-                        let envelope_amp = note_event
-                            .envelope
-                            .amplitude_at(time_in_note, note_event.duration);
-
-                        for i in 0..note_event.num_freqs {
-                            let base_freq = note_event.frequencies[i];
-
-                            let freq = if note_event.pitch_bend_semitones != 0.0 {
-                                let bend_progress = (time_in_note / note_event.duration).min(1.0);
-                                let bend_multiplier =
-                                    2.0f32.powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
-                                base_freq * bend_multiplier
-                            } else {
-                                base_freq
-                            };
-
-                            let sample = if note_event.fm_params.mod_index > 0.0 {
-                                // Use FM synthesis
-                                note_event.fm_params.sample(freq, time_in_note, note_event.duration)
-                            } else if let Some(ref wavetable) = note_event.custom_wavetable {
-                                // Use custom wavetable
-                                let phase = (time_in_note * freq) % 1.0;
-                                wavetable.sample(phase)
-                            } else {
-                                // Use standard waveform
-                                let phase = (time_in_note * freq) % 1.0;
-                                note_event.waveform.sample(phase)
-                            };
-
-                            track_value += sample * envelope_amp;
-                        }
-                    }
-                }
-                AudioEvent::Drum(drum_event) => {
-                    let drum_duration = drum_event.drum_type.duration();
-                    if time >= drum_event.start_time && time < drum_event.start_time + drum_duration {
-                        has_active_event = true;
-                        let time_in_drum = time - drum_event.start_time;
-                        let sample_index = (time_in_drum * sample_rate) as usize;
-                        track_value += drum_event.drum_type.sample(sample_index, sample_rate);
-                    }
-                }
-                _ => {} // Skip non-audio events
+                current_index += 1;
             }
         }
-
-        // Apply effects chain (same as in Mixer::sample_at)
-        if has_active_event || track.effects.delay.is_some() || track.effects.reverb.is_some() {
-            track_value *= track.volume;
-
-            // Apply filter
-            if filter_env_found {
-                track.filter.cutoff = filter_env_cutoff;
-            }
-            if track.filter.filter_type != crate::synthesis::filter::FilterType::None {
-                track_value = track.filter.process(track_value, sample_rate);
-            }
-
-            // Increment sample count for effects that need it
-            self.sample_count = self.sample_count.wrapping_add(1);
-
-            // Build and apply effects chain (same logic as in sample_at)
-            let mut effect_order: Vec<(u8, u8)> = Vec::with_capacity(14);
-
-            if let Some(ref eq) = track.effects.eq {
-                effect_order.push((eq.priority, 0));
-            }
-            if let Some(ref compressor) = track.effects.compressor {
-                effect_order.push((compressor.priority, 1));
-            }
-            if let Some(ref gate) = track.effects.gate {
-                effect_order.push((gate.priority, 2));
-            }
-            if let Some(ref saturation) = track.effects.saturation {
-                effect_order.push((saturation.priority, 3));
-            }
-            if let Some(ref bitcrusher) = track.effects.bitcrusher {
-                effect_order.push((bitcrusher.priority, 4));
-            }
-            if let Some(ref distortion) = track.effects.distortion {
-                effect_order.push((distortion.priority, 5));
-            }
-            if let Some(ref chorus) = track.effects.chorus {
-                effect_order.push((chorus.priority, 6));
-            }
-            if let Some(ref phaser) = track.effects.phaser {
-                effect_order.push((phaser.priority, 7));
-            }
-            if let Some(ref flanger) = track.effects.flanger {
-                effect_order.push((flanger.priority, 8));
-            }
-            if let Some(ref ring_mod) = track.effects.ring_mod {
-                effect_order.push((ring_mod.priority, 9));
-            }
-            if let Some(ref tremolo) = track.effects.tremolo {
-                effect_order.push((tremolo.priority, 10));
-            }
-            if let Some(ref delay) = track.effects.delay {
-                effect_order.push((delay.priority, 11));
-            }
-            if let Some(ref reverb) = track.effects.reverb {
-                effect_order.push((reverb.priority, 12));
-            }
-            if let Some(ref limiter) = track.effects.limiter {
-                effect_order.push((limiter.priority, 13));
-            }
-
-            effect_order.sort_by_key(|&(priority, _)| priority);
-
-            // Apply effects in priority order
-            for (_, effect_id) in effect_order {
-                match effect_id {
-                    0 => {
-                        if let Some(ref mut eq) = track.effects.eq {
-                            track_value = eq.process(track_value, sample_rate, time, self.sample_count);
-                        }
-                    }
-                    1 => {
-                        if let Some(ref mut compressor) = track.effects.compressor {
-                            track_value = compressor.process(track_value, sample_rate, time, self.sample_count);
-                        }
-                    }
-                    2 => {
-                        if let Some(ref mut gate) = track.effects.gate {
-                            track_value = gate.process(track_value, sample_rate, time, self.sample_count);
-                        }
-                    }
-                    3 => {
-                        if let Some(ref mut saturation) = track.effects.saturation {
-                            track_value = saturation.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    4 => {
-                        if let Some(ref mut bitcrusher) = track.effects.bitcrusher {
-                            track_value = bitcrusher.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    5 => {
-                        if let Some(ref mut distortion) = track.effects.distortion {
-                            track_value = distortion.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    6 => {
-                        if let Some(ref mut chorus) = track.effects.chorus {
-                            track_value = chorus.process(track_value, sample_rate, time, self.sample_count);
-                        }
-                    }
-                    7 => {
-                        if let Some(ref mut phaser) = track.effects.phaser {
-                            track_value = phaser.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    8 => {
-                        if let Some(ref mut flanger) = track.effects.flanger {
-                            track_value = flanger.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    9 => {
-                        if let Some(ref mut ring_mod) = track.effects.ring_mod {
-                            track_value = ring_mod.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    10 => {
-                        if let Some(ref mut tremolo) = track.effects.tremolo {
-                            track_value = tremolo.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    11 => {
-                        if let Some(ref mut delay) = track.effects.delay {
-                            track_value = delay.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    12 => {
-                        if let Some(ref mut reverb) = track.effects.reverb {
-                            track_value = reverb.process(track_value, time, self.sample_count);
-                        }
-                    }
-                    13 => {
-                        if let Some(ref mut limiter) = track.effects.limiter {
-                            track_value = limiter.process(track_value, sample_rate, time, self.sample_count);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            // Apply panning
-            let pan = track.pan.clamp(-1.0, 1.0);
-            let left_gain = ((1.0 - pan) * 0.5).sqrt();
-            let right_gain = ((1.0 + pan) * 0.5).sqrt();
-
-            return (track_value * left_gain, track_value * right_gain);
-        }
-
-        (0.0, 0.0)
+        (0.0, 0.0) // Track not found
     }
 }
 

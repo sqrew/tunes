@@ -6,13 +6,14 @@ fn main() -> anyhow::Result<()> {
     // Import the MIDI file we just exported
     println!("1. Importing 'output.mid'...");
     let mut mixer = Mixer::import_midi("output.mid")?;
+    let tracks = mixer.all_tracks();
     println!("   ✓ Imported successfully");
-    println!("   - Tracks: {}", mixer.tracks.len());
+    println!("   - Tracks: {}", tracks.len());
     println!("   - Duration: {:.2}s", mixer.total_duration());
     println!("   - Tempo: {:.1} BPM\n", mixer.tempo.bpm);
 
     // Show track details
-    for (i, track) in mixer.tracks.iter().enumerate() {
+    for (i, track) in tracks.iter().enumerate() {
         println!("   Track {}: {} ({} events)",
             i + 1,
             track.name.as_deref().unwrap_or("Untitled"),

@@ -363,7 +363,7 @@ mod tests {
         comp.track("test").filter(filter);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(matches!(track.filter.filter_type, FilterType::LowPass));
         assert_eq!(track.filter.cutoff, 1000.0);
         assert_eq!(track.filter.resonance, 0.7);
@@ -376,7 +376,7 @@ mod tests {
         comp.track("test").delay(delay);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.delay.is_some());
         let track_delay = track.effects.delay.as_ref().unwrap();
         assert_eq!(track_delay.delay_time, 0.5);
@@ -391,7 +391,7 @@ mod tests {
         comp.track("test").reverb(reverb);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.reverb.is_some());
         let track_reverb = track.effects.reverb.as_ref().unwrap();
         assert_eq!(track_reverb.room_size, 0.8);
@@ -406,7 +406,7 @@ mod tests {
         comp.track("test").distortion(distortion);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.distortion.is_some());
         let track_dist = track.effects.distortion.as_ref().unwrap();
         assert_eq!(track_dist.drive, 2.0);
@@ -420,7 +420,7 @@ mod tests {
         comp.track("test").bitcrusher(bitcrusher);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.bitcrusher.is_some());
         let track_bc = track.effects.bitcrusher.as_ref().unwrap();
         assert_eq!(track_bc.bit_depth, 4.0);
@@ -435,7 +435,7 @@ mod tests {
         comp.track("test").compressor(compressor);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.compressor.is_some());
         let track_comp = track.effects.compressor.as_ref().unwrap();
         assert_eq!(track_comp.threshold, 0.3);
@@ -452,7 +452,7 @@ mod tests {
         comp.track("test").chorus(chorus);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.chorus.is_some());
         let track_chorus = track.effects.chorus.as_ref().unwrap();
         assert_eq!(track_chorus.rate, 0.5);
@@ -467,7 +467,7 @@ mod tests {
         comp.track("test").eq(eq);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.eq.is_some());
         let track_eq = track.effects.eq.as_ref().unwrap();
         assert_eq!(track_eq.low_gain, 2.0);
@@ -484,7 +484,7 @@ mod tests {
         comp.track("test").saturation(saturation);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.saturation.is_some());
         let track_sat = track.effects.saturation.as_ref().unwrap();
         assert_eq!(track_sat.drive, 2.0);
@@ -499,7 +499,7 @@ mod tests {
         comp.track("test").phaser(phaser);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.phaser.is_some());
         let track_phaser = track.effects.phaser.as_ref().unwrap();
         assert_eq!(track_phaser.rate, 0.5);
@@ -516,7 +516,7 @@ mod tests {
         comp.track("test").flanger(flanger);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.flanger.is_some());
         let track_flanger = track.effects.flanger.as_ref().unwrap();
         assert_eq!(track_flanger.rate, 0.5);
@@ -532,7 +532,7 @@ mod tests {
         comp.track("test").ring_mod(ring_mod);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.ring_mod.is_some());
         let track_ring = track.effects.ring_mod.as_ref().unwrap();
         assert_eq!(track_ring.carrier_freq, 440.0);
@@ -547,7 +547,7 @@ mod tests {
         comp.track("test").modulate(mod_route);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.modulation.len(), 1);
     }
 
@@ -561,7 +561,7 @@ mod tests {
             .modulate(ModRoute::new(lfo2, ModTarget::FilterCutoff, 0.5));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.modulation.len(), 2);
     }
 
@@ -575,7 +575,7 @@ mod tests {
             .distortion(Distortion::new(1.5, 0.6));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(matches!(track.filter.filter_type, FilterType::LowPass));
         assert!(track.effects.delay.is_some());
         assert!(track.effects.reverb.is_some());
@@ -600,7 +600,7 @@ mod tests {
             .ring_mod(RingModulator::new(550.0, 0.3));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         // Verify all effects are set
         assert!(matches!(track.filter.filter_type, FilterType::BandPass));
         assert!(track.effects.delay.is_some());
@@ -625,9 +625,9 @@ mod tests {
             .note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        assert!(mixer.tracks[0].effects.delay.is_some());
-        assert!(mixer.tracks[0].effects.reverb.is_some());
-        assert_eq!(mixer.tracks[0].events.len(), 1);
+        assert!(mixer.tracks()[0].effects.delay.is_some());
+        assert!(mixer.tracks()[0].effects.reverb.is_some());
+        assert_eq!(mixer.tracks()[0].events.len(), 1);
     }
 
     #[test]
@@ -642,19 +642,19 @@ mod tests {
             .filter(Filter::new(FilterType::BandPass, 800.0, 0.6));
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 3);
+        assert_eq!(mixer.tracks().len(), 3);
 
         // Check that all three filter types exist (HashMap order not guaranteed)
         let has_lowpass = mixer
-            .tracks
+.tracks()
             .iter()
             .any(|t| matches!(t.filter.filter_type, FilterType::LowPass));
         let has_highpass = mixer
-            .tracks
+.tracks()
             .iter()
             .any(|t| matches!(t.filter.filter_type, FilterType::HighPass));
         let has_bandpass = mixer
-            .tracks
+.tracks()
             .iter()
             .any(|t| matches!(t.filter.filter_type, FilterType::BandPass));
 
@@ -671,7 +671,7 @@ mod tests {
             .delay(Delay::new(0.25, 0.6, 0.7));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.delay.is_some());
         let delay = track.effects.delay.as_ref().unwrap();
         assert_eq!(delay.delay_time, 0.25);
@@ -687,7 +687,7 @@ mod tests {
             .reverb(Reverb::new(0.3, 0.2, 0.4));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert!(track.effects.reverb.is_some());
         let reverb = track.effects.reverb.as_ref().unwrap();
         assert_eq!(reverb.room_size, 0.3);
@@ -704,7 +704,7 @@ mod tests {
             .distortion(Distortion::new(2.0, 0.5));
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         // Just verify that effects were set successfully
         assert!(track.effects.delay.is_some());
         assert!(track.effects.reverb.is_some());
@@ -718,7 +718,7 @@ mod tests {
         comp.track("crushed").bitcrusher(bc);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_bc = track.effects.bitcrusher.as_ref().unwrap();
         assert_eq!(track_bc.bit_depth, 6.0);
         assert_eq!(track_bc.sample_rate_reduction, 10.0);
@@ -732,7 +732,7 @@ mod tests {
         comp.track("compressed").compressor(comp_fx);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_comp = track.effects.compressor.as_ref().unwrap();
         assert_eq!(track_comp.threshold, 0.25);
         assert_eq!(track_comp.ratio, 6.0);
@@ -748,7 +748,7 @@ mod tests {
         comp.track("chorus").chorus(chorus);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_chorus = track.effects.chorus.as_ref().unwrap();
         assert_eq!(track_chorus.rate, 1.2);
         assert_eq!(track_chorus.depth, 4.0);
@@ -763,7 +763,7 @@ mod tests {
         comp.track("eq").eq(eq);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_eq = track.effects.eq.as_ref().unwrap();
         assert_eq!(track_eq.low_gain, 1.5);
         assert_eq!(track_eq.mid_gain, 0.5);
@@ -777,7 +777,7 @@ mod tests {
         comp.track("saturated").saturation(sat);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_sat = track.effects.saturation.as_ref().unwrap();
         assert_eq!(track_sat.drive, 3.0);
         assert_eq!(track_sat.character, 0.8);
@@ -791,7 +791,7 @@ mod tests {
         comp.track("phased").phaser(phaser);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         let track_phaser = track.effects.phaser.as_ref().unwrap();
         assert_eq!(track_phaser.stages, 8);
         assert_eq!(track_phaser.rate, 0.3);
@@ -810,15 +810,15 @@ mod tests {
         comp.track("chorus").chorus(chorus);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Check that both effects exist with correct depths (HashMap order not guaranteed)
         let has_flanger_5 = mixer
-            .tracks
+.tracks()
             .iter()
             .any(|t| t.effects.flanger.as_ref().map_or(false, |f| f.depth == 5.0));
         let has_chorus_3 = mixer
-            .tracks
+.tracks()
             .iter()
             .any(|t| t.effects.chorus.as_ref().map_or(false, |c| c.depth == 3.0));
 
@@ -838,15 +838,15 @@ mod tests {
         comp.track("ring2").ring_mod(ring2);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Check that both ring modulators exist with correct frequencies (HashMap order not guaranteed)
-        let has_200hz = mixer.tracks.iter().any(|t| {
+        let has_200hz = mixer.tracks().iter().any(|t| {
             t.effects.ring_mod
                 .as_ref()
                 .map_or(false, |rm| rm.carrier_freq == 200.0)
         });
-        let has_880hz = mixer.tracks.iter().any(|t| {
+        let has_880hz = mixer.tracks().iter().any(|t| {
             t.effects.ring_mod
                 .as_ref()
                 .map_or(false, |rm| rm.carrier_freq == 880.0)

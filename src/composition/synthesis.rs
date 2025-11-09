@@ -250,7 +250,7 @@ mod tests {
 
         // Verify the note has the custom wavetable
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             assert!(
@@ -274,7 +274,7 @@ mod tests {
             .notes(&[C4, E4, G4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // All three notes should have the custom wavetable
         assert_eq!(track.events.len(), 3);
@@ -302,7 +302,7 @@ mod tests {
             .note(&[440.0], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             assert!(note.custom_wavetable.is_some());
@@ -326,7 +326,7 @@ mod tests {
             .note(&[440.0], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             // When FM is active, it takes precedence in rendering
@@ -353,7 +353,7 @@ mod tests {
         comp.track("test").note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // First note has custom wavetable
         if let AudioEvent::Note(note) = &track.events[0] {

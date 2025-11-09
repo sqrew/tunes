@@ -134,6 +134,7 @@ impl Composition {
             composition: self,
             context: BuilderContext::Direct,
             track_name: name.to_string(),
+            bus_name: "default".to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: Waveform::Sine,      // Default to sine wave
@@ -220,6 +221,7 @@ impl Composition {
             composition: self,
             context: BuilderContext::Direct,
             track_name: track_name.to_string(),
+            bus_name: "default".to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: template.waveform,
@@ -269,6 +271,7 @@ impl Composition {
             composition: self,
             context: BuilderContext::Direct,
             track_name: name.to_string(),
+            bus_name: "default".to_string(),
             cursor: 0.0,
             pattern_start: 0.0,
             waveform: instrument.waveform,
@@ -306,7 +309,10 @@ impl Composition {
             Self::validate_track_spatial_positions(&name, &track);
 
             track.name = Some(name.clone());
-            mixer.add_track(track);
+
+            // Add track to its assigned bus
+            let bus_name = track.bus_name.clone();
+            mixer.get_or_create_bus(&bus_name).add_track(track);
         }
         mixer
     }
@@ -609,6 +615,7 @@ pub struct TrackBuilder<'a> {
     pub(crate) composition: &'a mut Composition,
     pub(crate) context: BuilderContext,
     pub(crate) track_name: String,
+    pub(crate) bus_name: String,   // Which bus this track belongs to
     pub(crate) cursor: f32,        // Current time position in the track
     pub(crate) pattern_start: f32, // Start position of current pattern (for looping)
     pub(crate) waveform: Waveform, // Current waveform for notes
@@ -640,6 +647,41 @@ impl<'a> TrackBuilder<'a> {
                 .composition
                 .get_or_create_section_track(section_name, &self.track_name),
         }
+    }
+
+    /// Assign this track to a specific bus
+    ///
+    /// Buses allow you to group tracks together and apply shared effects.
+    /// All tracks assigned to the same bus will be mixed together before
+    /// the master output.
+    ///
+    /// # Arguments
+    /// * `bus_name` - Name of the bus (e.g., "drums", "vocals", "synths")
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("kick", &Instrument::kick())
+    ///     .bus("drums")
+    ///     .notes(&[C4], 0.25);
+    ///
+    /// comp.instrument("snare", &Instrument::snare())
+    ///     .bus("drums")
+    ///     .notes(&[C4], 0.25);
+    ///
+    /// // Both tracks will be on the "drums" bus
+    /// let mut mixer = comp.into_mixer();
+    /// // You can then apply effects to the entire drums bus
+    /// if let Some(drums) = mixer.buses.get_mut("drums") {
+    ///     drums.effects.reverb = Some(tunes::synthesis::effects::Reverb::new(0.3, 0.5));
+    /// }
+    /// ```
+    pub fn bus(mut self, bus_name: &str) -> Self {
+        self.bus_name = bus_name.to_string();
+        let track = self.get_track_mut();
+        track.bus_name = bus_name.to_string();
+        self
     }
 
     /// Update section duration if in section context
@@ -851,13 +893,13 @@ mod tests {
         comp.from_template("lead_sound", "lead2").note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Both tracks should have the same reverb settings
-        assert!(mixer.tracks[0].effects.reverb.is_some());
-        assert!(mixer.tracks[1].effects.reverb.is_some());
-        assert_eq!(mixer.tracks[0].volume, 0.7);
-        assert_eq!(mixer.tracks[1].volume, 0.7);
+        assert!(mixer.tracks()[0].effects.reverb.is_some());
+        assert!(mixer.tracks()[1].effects.reverb.is_some());
+        assert_eq!(mixer.tracks()[0].volume, 0.7);
+        assert_eq!(mixer.tracks()[1].volume, 0.7);
     }
 
     #[test]
@@ -880,16 +922,16 @@ mod tests {
         let mixer = comp.into_mixer();
 
         // Both tracks should have the same effects
-        assert!(mixer.tracks[0].effects.reverb.is_some());
-        assert!(mixer.tracks[1].effects.reverb.is_some());
-        assert!(mixer.tracks[0].effects.delay.is_some());
-        assert!(mixer.tracks[1].effects.delay.is_some());
-        assert!(mixer.tracks[0].effects.chorus.is_some());
-        assert!(mixer.tracks[1].effects.chorus.is_some());
-        assert_eq!(mixer.tracks[0].volume, 0.6);
-        assert_eq!(mixer.tracks[1].volume, 0.6);
-        assert_eq!(mixer.tracks[0].pan, -0.3);
-        assert_eq!(mixer.tracks[1].pan, -0.3);
+        assert!(mixer.tracks()[0].effects.reverb.is_some());
+        assert!(mixer.tracks()[1].effects.reverb.is_some());
+        assert!(mixer.tracks()[0].effects.delay.is_some());
+        assert!(mixer.tracks()[1].effects.delay.is_some());
+        assert!(mixer.tracks()[0].effects.chorus.is_some());
+        assert!(mixer.tracks()[1].effects.chorus.is_some());
+        assert_eq!(mixer.tracks()[0].volume, 0.6);
+        assert_eq!(mixer.tracks()[1].volume, 0.6);
+        assert_eq!(mixer.tracks()[0].pan, -0.3);
+        assert_eq!(mixer.tracks()[1].pan, -0.3);
     }
 
     #[test]
@@ -910,7 +952,7 @@ mod tests {
         // Template should have captured the waveform and envelope
         // (Can't directly test builder state after into_mixer, but we can verify it doesn't panic)
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
     }
 
     #[test]
@@ -929,12 +971,12 @@ mod tests {
         comp.from_template("pad_sound", "pad3").note(&[G4], 1.0);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 3);
+        assert_eq!(mixer.tracks().len(), 3);
 
         // All should have reverb
-        assert!(mixer.tracks[0].effects.reverb.is_some());
-        assert!(mixer.tracks[1].effects.reverb.is_some());
-        assert!(mixer.tracks[2].effects.reverb.is_some());
+        assert!(mixer.tracks()[0].effects.reverb.is_some());
+        assert!(mixer.tracks()[1].effects.reverb.is_some());
+        assert!(mixer.tracks()[2].effects.reverb.is_some());
     }
 
     #[test]
@@ -955,16 +997,15 @@ mod tests {
             .note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        let tracks = mixer.tracks();
+        assert_eq!(tracks.len(), 2);
 
         // Find tracks by name
-        let base_track = mixer
-            .tracks
+        let base_track = tracks
             .iter()
             .find(|t| t.name.as_ref().unwrap() == "base")
             .unwrap();
-        let modified_track = mixer
-            .tracks
+        let modified_track = tracks
             .iter()
             .find(|t| t.name.as_ref().unwrap() == "modified")
             .unwrap();
@@ -990,7 +1031,7 @@ mod tests {
         comp.from_template("nonexistent", "track1").note(&[C4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // Should have default settings
         assert_eq!(track.volume, 1.0);
@@ -1014,11 +1055,11 @@ mod tests {
             .note(&[G4], 0.5);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Both should have delay from template
-        assert!(mixer.tracks[0].effects.delay.is_some());
-        assert!(mixer.tracks[1].effects.delay.is_some());
+        assert!(mixer.tracks()[0].effects.delay.is_some());
+        assert!(mixer.tracks()[1].effects.delay.is_some());
     }
 
     #[test]
@@ -1050,7 +1091,7 @@ mod tests {
 
         // Should not panic
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 1);
+        assert_eq!(mixer.tracks().len(), 1);
     }
 
     #[test]
@@ -1063,7 +1104,7 @@ mod tests {
 
         // Should not panic
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 1);
+        assert_eq!(mixer.tracks().len(), 1);
     }
 
     #[test]
@@ -1081,6 +1122,6 @@ mod tests {
 
         // Should not panic
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
     }
 }

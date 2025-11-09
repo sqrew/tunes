@@ -77,7 +77,9 @@ pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
     next_id: Arc<AtomicU64>,
     active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>>,
+    #[allow(dead_code)] // Reserved for future spatial audio runtime control
     listener_config: Arc<Mutex<ListenerConfig>>,
+    #[allow(dead_code)] // Reserved for future spatial audio runtime control
     spatial_params: Arc<Mutex<SpatialParams>>,
     sample_rate: f32,
     _stream: cpal::Stream, // Persistent stream, kept alive

@@ -700,7 +700,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").wholes(&[C4, D4, E4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Each whole note = 2.0 seconds at 120 BPM
@@ -716,7 +716,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").halves(&[C4, E4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         for event in &track.events {
@@ -731,7 +731,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").quarters(&[C4, D4, E4, F4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         for event in &track.events {
@@ -746,7 +746,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").eighths(&[C4, D4, E4, F4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         for event in &track.events {
@@ -762,7 +762,7 @@ mod tests {
         comp.track("test")
             .sixteenths(&[C4, D4, E4, F4, G4, A4, B4, C5]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 8);
 
         for event in &track.events {
@@ -777,7 +777,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").dotted_quarters(&[C4, E4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         for event in &track.events {
@@ -792,7 +792,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").dotted_eighths(&[C4, E4, G4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         for event in &track.events {
@@ -818,7 +818,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").quarter(&[C4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -832,7 +832,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").quarter(&[C4, E4, G4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -848,7 +848,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").half(&[C4, E4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -861,7 +861,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").whole(&[C4, E4, G4, C5]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -874,7 +874,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").eighth(&[C4, E4, G4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -887,7 +887,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").sixteenth(&[C4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -904,7 +904,7 @@ mod tests {
             .at_bar(3) // Bar 3 = 4.0 seconds
             .quarters(&[C4, D4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         // First note should start at bar 3
@@ -940,7 +940,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").wholes(&[C4, E4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // First note at 0.0, second at 2.0
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -972,7 +972,7 @@ mod tests {
             .at_beat(5) // Beat 5 = 2.0 seconds
             .quarter(&[C4]);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.start_time, 2.0);
@@ -998,7 +998,7 @@ mod tests {
             .dotted_quarters(&[C4, E4]) // 0.75 each
             .dotted_eighths(&[G4, B4]); // 0.375 each
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Verify the progression

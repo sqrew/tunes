@@ -157,7 +157,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4, A4, B4, C5];
         comp.track("port").portamento(D4, A4, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should play: D4, E4, F4, G4, A4 (notes in range)
         assert_eq!(track.events.len(), 5);
 
@@ -176,7 +176,7 @@ mod tests {
         let scale = [C4, D4, E4, F4, G4];
         comp.track("port").portamento(G4, C4, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should play notes in reverse: G4, F4, E4, D4, C4
         assert_eq!(track.events.len(), 5);
 
@@ -195,7 +195,7 @@ mod tests {
         let scale = [C4, D4, E4]; // All below the range
         comp.track("port").portamento(F4, G4, &scale, 0.2);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should just play start and end
         assert_eq!(track.events.len(), 2);
 
@@ -212,7 +212,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("port").portamento(C4, E4, &[], 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should play start and end
         assert_eq!(track.events.len(), 2);
     }
@@ -223,7 +223,7 @@ mod tests {
         let scale = [C4, E4, G4];
         comp.track("port").portamento(D4, F4, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Only E4 is in range [D4, F4]
         assert_eq!(track.events.len(), 1);
 
@@ -237,7 +237,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("slide").slide(C4, G4, 0.4);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 0.4 / 0.05 = 8 segments minimum, max with 4
         assert!(track.events.len() >= 4);
 
@@ -258,7 +258,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("slide").slide(100.0, 200.0, 0.2);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // First note should be 100
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -307,7 +307,7 @@ mod tests {
             .portamento(C4, E4, &scale, 0.1)
             .slide(G4, C5, 0.3);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should have events from both portamento and slide
         assert!(track.events.len() > 3);
     }
@@ -317,7 +317,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("down").slide(G4, C4, 0.3);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // First should be near G4
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -337,7 +337,7 @@ mod tests {
         let scale = [C4, D4, E4];
         comp.track("port").portamento(C4, E4, &scale, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should include both C4 and E4
         assert_eq!(track.events.len(), 3);
     }
@@ -348,7 +348,7 @@ mod tests {
         // Very short duration should still use minimum 4 segments
         comp.track("short").slide(C4, D4, 0.01);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert!(track.events.len() >= 4, "Should use minimum 4 segments");
     }
 }

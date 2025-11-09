@@ -274,18 +274,93 @@ fn main() -> anyhow::Result<()> {
 
 ## How It Works
 
-The `Mixer` renders audio through these steps:
+The `Mixer` uses a professional bus architecture with three-stage processing:
 
-1. **Track Collection** - Holds multiple tracks, each with their own events and effects
-2. **Sample Generation** - For each audio frame, synthesizes sound for all active notes/drums
-3. **Effects Processing** - Applies filters, reverb, delay, etc. to each track
-4. **Stereo Mixing** - Combines all tracks with panning into a stereo output
-5. **Soft Clipping** - Prevents harsh distortion using smooth saturation
+### Signal Flow
 
-**Performance optimizations:**
-- Binary search for event lookups (fast with many events)
-- Time-bounds caching (skips inactive tracks)
-- Pre-computed effect ordering
+```
+1. Tracks (individual instruments)
+   ├─ Sample Generation (synthesize notes/drums)
+   ├─ Track Effects (EffectChain: EQ, compression, delay, etc.)
+   └─ Output: Mono signal
+
+2. Buses (groups of tracks)
+   ├─ Sum all tracks in the bus
+   ├─ Bus Effects (EffectChain: shared reverb, compression, etc.)
+   ├─ Bus Volume & Pan
+   └─ Output: Stereo signal
+
+3. Master (final mix)
+   ├─ Sum all buses
+   ├─ Master Effects (EffectChain: mastering EQ, compression, limiter)
+   └─ Output: Stereo signal
+
+4. Soft Clipping (smooth saturation to prevent distortion)
+```
+
+### EffectChain System
+
+Each track, bus, and master has an `EffectChain` containing all 16 available effects:
+- **Priority-based ordering** - Effects automatically sorted (EQ → Dynamics → Modulation → Time-based)
+- **Dual-mode processing:**
+  - Tracks: `process_mono()` - Mono in, mono out with effects
+  - Buses/Master: `process_stereo()` - Stereo in, stereo out with effects
+- **16 effects:** EQ, Compressor, Gate, Saturation, Bitcrusher, Distortion, Chorus, Phaser, Flanger, Ring Mod, Tremolo, AutoPan, Delay, Reverb, Limiter, Parametric EQ
+
+### Bus System
+
+**Default behavior:** All tracks go to a "default" bus automatically.
+
+**Custom buses:** Organize tracks into groups:
+```rust
+let mut mixer = Mixer::new(Tempo::new(120.0));
+
+// Add tracks to named buses
+mixer.add_track("kick", kick_track, "drums");
+mixer.add_track("snare", snare_track, "drums");
+mixer.add_track("bass", bass_track, "bass");
+
+// Apply effects to entire bus
+if let Some(drums) = mixer.buses.get_mut("drums") {
+    drums.effects.reverb = Some(Reverb::new(0.2, 0.3));
+    drums.effects.compressor = Some(Compressor::new(0.6, 4.0, 0.005, 0.05, 44100.0));
+    drums.volume = 0.9;
+}
+```
+
+**Benefits:**
+- Apply one reverb to all drums instead of per-track
+- Solo/mute entire instrument groups
+- Efficient CPU usage (fewer effect instances)
+- Professional mixing workflows
+
+### Master Effects
+
+Apply effects to the final stereo mix:
+```rust
+// Mastering chain
+mixer.master_parametric_eq(ParametricEQ::new()
+    .band(60.0, -3.0, 0.7)     // Cut rumble
+    .band(3000.0, 2.0, 1.5));  // Presence boost
+
+mixer.master_compressor(Compressor::new(0.5, 2.0, 0.01, 0.1, 44100.0));
+mixer.master_limiter(Limiter::new(0.95));  // Prevent clipping
+```
+
+All 16 master effect methods available: `master_eq()`, `master_compressor()`, `master_reverb()`, `master_delay()`, `master_limiter()`, etc.
+
+**Use cases:**
+- **Mastering:** Gentle compression, EQ, and limiting on final output
+- **Creative effects:** Tape saturation, bitcrushing, reverb wash
+- **Mix glue:** Subtle compression to make tracks sit together
+- **Protection:** Limiting to prevent digital clipping
+
+### Performance Optimizations
+
+- **Binary search** for event lookups (fast with many events)
+- **Time-bounds caching** (skips inactive tracks)
+- **Pre-computed effect ordering** (priority-sorted once per effect chain)
+- **Static helpers** (avoids borrow checker overhead)
 
 The `Mixer` is sample-rate agnostic - you specify the sample rate at render/export time.
 

@@ -19,6 +19,7 @@ use crate::synthesis::waveform::Waveform;
 pub struct Track {
     pub events: Vec<AudioEvent>,
     pub name: Option<String>,     // Track name (used in MIDI export)
+    pub bus_name: String,         // Which bus this track belongs to (default: "default")
     pub midi_program: Option<u8>, // MIDI program number (0-127) for this track
     pub volume: f32,              // 0.0 to 1.0
     pub pan: f32,                 // -1.0 (left) to 1.0 (right), 0.0 = center
@@ -46,6 +47,7 @@ impl Track {
         Self {
             events: Vec::new(),
             name: None,
+            bus_name: "default".to_string(),
             midi_program: None,
             volume: 1.0,
             pan: 0.0, // Center by default

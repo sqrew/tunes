@@ -19,13 +19,14 @@ fn main() -> anyhow::Result<()> {
     println!("✅ MIDI file imported successfully!\n");
 
     // Display information about the imported MIDI
+    let tracks = mixer.all_tracks();
     println!("MIDI Import Details:");
     println!("  • Tempo: {:.1} BPM", mixer.tempo.bpm);
-    println!("  • Number of tracks: {}", mixer.tracks.len());
+    println!("  • Number of tracks: {}", tracks.len());
     println!("  • Total duration: {:.2} seconds\n", mixer.total_duration());
 
     // Show track details
-    for (i, track) in mixer.tracks.iter().enumerate() {
+    for (i, track) in tracks.iter().enumerate() {
         let track_name = track.name.as_deref().unwrap_or("Untitled");
         let num_events = track.events.len();
         println!(

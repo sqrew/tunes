@@ -430,7 +430,7 @@ impl Mixer {
         tempo_changes.push((0.0, bpm));
 
         // Collect tempo changes from all tracks
-        for track in &self.tracks {
+        for track in self.all_tracks() {
             for event in &track.events {
                 if let AudioEvent::TempoChange(tempo_event) = event {
                     tempo_changes.push((tempo_event.start_time, tempo_event.bpm));
@@ -449,7 +449,7 @@ impl Mixer {
         time_sig_changes.push((0.0, 4, 4));
 
         // Collect time signature changes from all tracks
-        for track in &self.tracks {
+        for track in self.all_tracks() {
             for event in &track.events {
                 if let AudioEvent::TimeSignature(time_sig_event) = event {
                     time_sig_changes.push((
@@ -555,7 +555,7 @@ impl Mixer {
         tracks.push(tempo_track);
 
         // Convert each audio track to a MIDI track
-        for track in self.tracks.iter() {
+        for track in self.all_tracks().iter() {
             let mut midi_track = Vec::new();
             let mut events = Vec::new();
 

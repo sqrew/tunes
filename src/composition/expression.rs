@@ -259,7 +259,7 @@ mod tests {
         comp.track("test").volume(0.7);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 0.7);
     }
 
@@ -269,7 +269,7 @@ mod tests {
         comp.track("test").volume(-0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 0.0);
     }
 
@@ -279,7 +279,7 @@ mod tests {
         comp.track("test").volume(3.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 2.0);
     }
 
@@ -291,11 +291,11 @@ mod tests {
         comp.track("max").volume(2.0);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Check that both boundary volumes exist (HashMap order not guaranteed)
-        let has_min = mixer.tracks.iter().any(|t| t.volume == 0.0);
-        let has_max = mixer.tracks.iter().any(|t| t.volume == 2.0);
+        let has_min = mixer.tracks().iter().any(|t| t.volume == 0.0);
+        let has_max = mixer.tracks().iter().any(|t| t.volume == 2.0);
 
         assert!(has_min, "Should have a track with volume 0.0");
         assert!(has_max, "Should have a track with volume 2.0");
@@ -307,7 +307,7 @@ mod tests {
         comp.track("test").pan(0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.pan, 0.5);
     }
 
@@ -317,7 +317,7 @@ mod tests {
         comp.track("test").pan(-1.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.pan, -1.0);
     }
 
@@ -327,7 +327,7 @@ mod tests {
         comp.track("test").pan(1.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.pan, 1.0);
     }
 
@@ -337,7 +337,7 @@ mod tests {
         comp.track("test").pan(0.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.pan, 0.0);
     }
 
@@ -347,7 +347,7 @@ mod tests {
         comp.track("test").bend(2.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.pitch_bend_semitones, 2.0);
         } else {
@@ -361,7 +361,7 @@ mod tests {
         comp.track("test").bend(-30.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.pitch_bend_semitones, -24.0);
         } else {
@@ -375,7 +375,7 @@ mod tests {
         comp.track("test").bend(30.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.pitch_bend_semitones, 24.0);
         } else {
@@ -391,7 +391,7 @@ mod tests {
             .note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert!(matches!(note.waveform, Waveform::Square));
         } else {
@@ -406,7 +406,7 @@ mod tests {
         comp.track("test").envelope(env).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.envelope.attack, 0.1);
             assert_eq!(note.envelope.decay, 0.2);
@@ -423,7 +423,7 @@ mod tests {
         comp.track("test").vibrato(5.0, 0.3);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         // Vibrato should add a modulation route
         assert_eq!(track.modulation.len(), 1);
     }
@@ -434,7 +434,7 @@ mod tests {
         comp.track("test").vibrato(5.0, 0.3).vibrato(3.0, 0.1);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         // Should have 2 modulation routes
         assert_eq!(track.modulation.len(), 2);
     }
@@ -445,7 +445,7 @@ mod tests {
         comp.track("test").volume(1.0).fade_to(0.0, 2.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 0.0);
     }
 
@@ -455,7 +455,7 @@ mod tests {
         comp.track("test").fade_to(0.5, 3.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             // Note should start at 3.0 (after the fade duration)
             assert_eq!(note.start_time, 3.0);
@@ -470,7 +470,7 @@ mod tests {
         comp.track("test").fade_to(3.0, 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 2.0);
     }
 
@@ -488,7 +488,7 @@ mod tests {
             .note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         assert_eq!(track.volume, 0.8);
         assert_eq!(track.pan, -0.3);
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
@@ -507,7 +507,7 @@ mod tests {
         comp.track("test").volume(0.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks[0].volume, 0.5);
+        assert_eq!(mixer.tracks()[0].volume, 0.5);
     }
 
     #[test]
@@ -518,11 +518,11 @@ mod tests {
         comp.track("right").pan(1.0);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
         // Check that both pan extremes exist (HashMap order not guaranteed)
-        let has_left = mixer.tracks.iter().any(|t| t.pan == -1.0);
-        let has_right = mixer.tracks.iter().any(|t| t.pan == 1.0);
+        let has_left = mixer.tracks().iter().any(|t| t.pan == -1.0);
+        let has_right = mixer.tracks().iter().any(|t| t.pan == 1.0);
 
         assert!(has_left, "Should have a track panned hard left (-1.0)");
         assert!(has_right, "Should have a track panned hard right (1.0)");
@@ -534,7 +534,7 @@ mod tests {
         comp.track("test").bend(0.0).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.pitch_bend_semitones, 0.0);
         } else {
@@ -548,7 +548,7 @@ mod tests {
         comp.track("test").velocity(0.6).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.velocity, 0.6);
         } else {
@@ -562,7 +562,7 @@ mod tests {
         comp.track("test").velocity(-0.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.velocity, 0.0);
         } else {
@@ -576,7 +576,7 @@ mod tests {
         comp.track("test").velocity(1.5).note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.velocity, 1.0);
         } else {
@@ -590,7 +590,7 @@ mod tests {
         comp.track("test").velocity(0.9).notes(&[C4, E4, G4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // All notes should have the set velocity
         for event in &track.events {
@@ -610,7 +610,7 @@ mod tests {
             .note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
             assert_eq!(note.velocity, 0.9);
@@ -629,7 +629,7 @@ mod tests {
             .note(&[C4], 1.0);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
         // Should set volume immediately
         assert_eq!(track.volume, 0.0);
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {

@@ -7,6 +7,18 @@ Composition  →  Mixer  →  AudioEngine
   (Musical)    (Audio)    (Playback)
 ```
 
+Within the Mixer, audio flows through a professional bus architecture:
+
+```
+Tracks (individual instruments/parts)
+   ↓ (with track-level effects)
+Buses (groups of tracks)
+   ↓ (with bus-level effects)
+Master (final mix)
+   ↓ (with master-level effects)
+Output
+```
+
 ---
 
 ## The Three Layers
@@ -34,8 +46,9 @@ comp.instrument("piano", &Instrument::electric_piano())
 ### 2. Mixer – The Audio Rendering Layer
 
 `Mixer` doesn't know about tempo or music theory. It's pure audio:
-- Renders all tracks to audio samples
-- Applies effects and mixing
+- Organizes tracks into buses (groups)
+- Applies effects at three levels: track, bus, and master
+- Renders all audio to stereo output
 - Handles sample-accurate timing
 - Can be exported or played
 
@@ -43,9 +56,15 @@ comp.instrument("piano", &Instrument::electric_piano())
 let mixer = comp.into_mixer();  // Convert musical -> audio
 ```
 
-The `Mixer` is where your musical ideas become audio data. It's the rendering engine.
+The `Mixer` is where your musical ideas become audio data. It's the rendering engine with professional bus architecture.
 
-**Use Mixer directly when:** You need low-level audio control, custom sample rates, or offline rendering without an AudioEngine.
+**Signal flow inside Mixer:**
+1. **Tracks** - Individual instruments with track-level effects
+2. **Buses** - Groups of tracks (e.g., "drums", "vocals") with bus-level effects
+3. **Master** - Final stereo mix with master-level effects (EQ, compression, limiting)
+4. **Output** - Soft-clipped audio ready for playback or export
+
+**Use Mixer directly when:** You need low-level audio control, custom sample rates, master effects, or offline rendering without an AudioEngine.
 
 ---
 
@@ -200,15 +219,18 @@ This architecture enables:
 
 ## Mental Model
 
-Think of Tunes like a recording studio:
+Think of Tunes like a professional recording studio:
 
 - **Composition** = The sheet music and musical ideas
-- **Mixer** = The mixing console rendering tracks to audio
-- **AudioEngine** = The speakers and playback system
+- **Track** = Individual instrument recordings
+- **Bus** = Channel strips grouping related instruments (drum bus, vocal bus, etc.)
+- **Master** = The master fader with final processing (EQ, compression, limiting)
+- **Mixer** = The entire mixing console with its bus architecture
+- **AudioEngine** = The speakers and monitoring system
 
-You write music in `Composition`, render it through the `Mixer`, and hear it via `AudioEngine`.
+You write music in `Composition`, it flows through the `Mixer`'s bus architecture (tracks → buses → master), and you hear it via `AudioEngine`.
 
-For most use cases, you'll work primarily with `Composition` and `AudioEngine`, letting the `Mixer` handle the audio rendering behind the scenes.
+For most use cases, you'll work primarily with `Composition` and `AudioEngine`, letting the `Mixer` handle the audio rendering and routing behind the scenes. The bus system becomes important when you want professional mixing workflows or need to apply effects to groups of tracks.
 
 ---
 

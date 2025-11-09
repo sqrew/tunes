@@ -454,7 +454,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("trill").trill(C4, D4, 6, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 6);
 
         // Should alternate: C4, D4, C4, D4, C4, D4
@@ -488,7 +488,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         // With zero count, no track is created since loop doesn't execute
-        assert_eq!(mixer.tracks.len(), 0, "Zero count should create no track");
+        assert_eq!(mixer.tracks().len(), 0, "Zero count should create no track");
     }
 
     #[test]
@@ -497,7 +497,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("cascade").cascade(&chord, 2.0, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Notes should start at 0.0, 0.1, 0.2 but all sustain 2.0s
@@ -529,7 +529,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("tremolo").tremolo_note(C4, 5, 0.05);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // All should be same note
@@ -555,7 +555,7 @@ mod tests {
         let chord = [C4, E4, G4];
         comp.track("strum").strum(&chord, 1.0, 0.05);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Should behave like cascade with small stagger
@@ -572,7 +572,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("grace").grace(C4, B3, 0.05, 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         // Grace note first
@@ -604,7 +604,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("mord").mordent(C4, 0.3);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Pattern: Main → Upper → Main
@@ -637,7 +637,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("inv_mord").inverted_mordent(C4, 0.3);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Pattern: Main → Lower → Main
@@ -659,7 +659,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("turn").turn(C4, 0.4);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern: Upper → Main → Lower → Main
@@ -686,7 +686,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("inv_turn").inverted_turn(C4, 0.4);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern: Lower → Main → Upper → Main
@@ -715,7 +715,7 @@ mod tests {
             .trill(D4, E4, 4, 0.1)
             .tremolo_note(G4, 3, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 2 (grace) + 4 (trill) + 3 (tremolo_note) = 9 total
         assert_eq!(track.events.len(), 9);
     }

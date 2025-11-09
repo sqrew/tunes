@@ -370,7 +370,7 @@ mod tests {
             .wait(1.0) // Cursor advances to 1.5
             .note(&[550.0], 0.5); // Note at 1.5
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         if let crate::track::AudioEvent::Note(note1) = &track.events[0] {
@@ -386,7 +386,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").tempo(90.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let crate::track::AudioEvent::TempoChange(tempo) = &track.events[0] {
@@ -402,7 +402,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").at(5.0).tempo(140.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         if let crate::track::AudioEvent::TempoChange(tempo) = &track.events[0] {
             assert_eq!(tempo.bpm, 140.0);
             assert_eq!(tempo.start_time, 5.0);
@@ -419,7 +419,7 @@ mod tests {
             .wait(2.0)
             .tempo(140.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         if let crate::track::AudioEvent::TempoChange(tempo1) = &track.events[0] {
@@ -446,7 +446,7 @@ mod tests {
             .tempo(90.0)
             .note(&[E4], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3); // 2 notes + 1 tempo change
 
         // First note
@@ -471,7 +471,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").time_signature(3, 4);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let crate::track::AudioEvent::TimeSignature(time_sig) = &track.events[0] {
@@ -488,7 +488,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").at(8.0).time_signature(6, 8);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         if let crate::track::AudioEvent::TimeSignature(time_sig) = &track.events[0] {
             assert_eq!(time_sig.numerator, 6);
             assert_eq!(time_sig.denominator, 8);
@@ -506,7 +506,7 @@ mod tests {
             .wait(3.0)
             .time_signature(7, 8);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         if let crate::track::AudioEvent::TimeSignature(time_sig1) = &track.events[0] {
@@ -538,7 +538,7 @@ mod tests {
             .time_signature(3, 4)
             .note(&[G4], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5); // 2 time sigs + 3 notes
 
         // First time signature
@@ -576,7 +576,7 @@ mod tests {
         let mut comp1 = Composition::new(Tempo::new(120.0));
         comp1.track("test").time_signature(4, 4);
         let mixer1 = comp1.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer1.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer1.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 4);
             assert_eq!(time_sig.denominator, 4);
         }
@@ -584,7 +584,7 @@ mod tests {
         let mut comp2 = Composition::new(Tempo::new(120.0));
         comp2.track("test").time_signature(3, 4);
         let mixer2 = comp2.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer2.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer2.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 3);
             assert_eq!(time_sig.denominator, 4);
         }
@@ -592,7 +592,7 @@ mod tests {
         let mut comp3 = Composition::new(Tempo::new(120.0));
         comp3.track("test").time_signature(6, 8);
         let mixer3 = comp3.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer3.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer3.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 6);
             assert_eq!(time_sig.denominator, 8);
         }
@@ -600,7 +600,7 @@ mod tests {
         let mut comp4 = Composition::new(Tempo::new(120.0));
         comp4.track("test").time_signature(5, 4);
         let mixer4 = comp4.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer4.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer4.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 5);
             assert_eq!(time_sig.denominator, 4);
         }
@@ -608,7 +608,7 @@ mod tests {
         let mut comp5 = Composition::new(Tempo::new(120.0));
         comp5.track("test").time_signature(7, 8);
         let mixer5 = comp5.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer5.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer5.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 7);
             assert_eq!(time_sig.denominator, 8);
         }
@@ -616,7 +616,7 @@ mod tests {
         let mut comp6 = Composition::new(Tempo::new(120.0));
         comp6.track("test").time_signature(12, 8);
         let mixer6 = comp6.into_mixer();
-        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer6.tracks[0].events[0] {
+        if let crate::track::AudioEvent::TimeSignature(time_sig) = &mixer6.tracks()[0].events[0] {
             assert_eq!(time_sig.numerator, 12);
             assert_eq!(time_sig.denominator, 8);
         }
@@ -651,7 +651,7 @@ mod tests {
             .note(&[C4], 0.5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // Note should still be at 1.0 (cursor unchanged by missing marker)
         if let crate::track::AudioEvent::Note(note) = &track.events[0] {
@@ -747,7 +747,7 @@ mod tests {
 
         // Find tracks with notes (structure track has no notes, so only lead and pad)
         let mut note_times = vec![];
-        for track in &mixer.tracks {
+        for track in &mixer.tracks() {
             if let Some(crate::track::AudioEvent::Note(note)) = track.events.first() {
                 note_times.push(note.start_time);
             }

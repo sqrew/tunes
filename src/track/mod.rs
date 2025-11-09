@@ -82,12 +82,14 @@ pub const PRIORITY_LAST: u8 = 255;
 // Module declarations
 mod events;
 mod track;
+mod bus;
 mod mixer;
 mod export;
 
 // Re-export public types
 pub use events::*;
 pub use track::Track;
+pub use bus::{Bus, BusBuilder};
 pub use mixer::Mixer;
 
 #[cfg(test)]
@@ -245,7 +247,7 @@ mod tests {
     #[test]
     fn test_mixer_creation() {
         let mixer = Mixer::new(Tempo::new(120.0));
-        assert_eq!(mixer.tracks.len(), 0);
+        assert_eq!(mixer.tracks().len(), 0);
     }
 
     #[test]
@@ -260,7 +262,7 @@ mod tests {
         mixer.add_track(track1);
         mixer.add_track(track2);
 
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
     }
 
     #[test]
@@ -299,19 +301,19 @@ mod tests {
         let repeated_mixer = mixer.repeat(2); // Repeat 2 MORE times
 
         // Should still have 1 track (repeats events within the track)
-        assert_eq!(repeated_mixer.tracks.len(), 1);
+        assert_eq!(repeated_mixer.tracks().len(), 1);
 
         // Track should now have 3 events total (original + 2 repeats)
-        assert_eq!(repeated_mixer.tracks[0].events.len(), 3);
+        assert_eq!(repeated_mixer.tracks()[0].events.len(), 3);
 
         // Verify timing offsets
-        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[0] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks()[0].events[0] {
             assert_eq!(note.start_time, 0.0);
         }
-        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[1] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks()[0].events[1] {
             assert_eq!(note.start_time, 1.0); // Original duration offset
         }
-        if let AudioEvent::Note(note) = &repeated_mixer.tracks[0].events[2] {
+        if let AudioEvent::Note(note) = &repeated_mixer.tracks()[0].events[2] {
             assert_eq!(note.start_time, 2.0); // 2x original duration
         }
     }
@@ -326,8 +328,8 @@ mod tests {
         let repeated_mixer = mixer.repeat(0);
 
         // Repeating 0 times returns the mixer unchanged
-        assert_eq!(repeated_mixer.tracks.len(), 1);
-        assert_eq!(repeated_mixer.tracks[0].events.len(), 1);
+        assert_eq!(repeated_mixer.tracks().len(), 1);
+        assert_eq!(repeated_mixer.tracks()[0].events.len(), 1);
     }
 
     #[test]

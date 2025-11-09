@@ -444,7 +444,7 @@ mod tests {
             .sequence_from(&walk, &C4_MAJOR_SCALE, 0.25);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks[0].events.len(), 16);
+        assert_eq!(mixer.tracks()[0].events.len(), 16);
     }
 
     // TrackBuilder method tests
@@ -456,7 +456,7 @@ mod tests {
             .random_walk(C4, 16, 0.25, &C4_MAJOR_SCALE);
 
         let mixer = comp.into_mixer();
-        assert_eq!(mixer.tracks[0].events.len(), 16);
+        assert_eq!(mixer.tracks()[0].events.len(), 16);
     }
 
     #[test]
@@ -468,7 +468,7 @@ mod tests {
         let mixer = comp.into_mixer();
 
         // Check that all generated notes are in the scale
-        for event in &mixer.tracks[0].events {
+        for event in &mixer.tracks()[0].events {
             if let AudioEvent::Note(note) = event {
                 let freq = note.frequencies[0];
                 let in_scale = C4_MAJOR_SCALE
@@ -486,7 +486,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         // Should create no track with empty scale
-        assert_eq!(mixer.tracks.len(), 0);
+        assert_eq!(mixer.tracks().len(), 0);
     }
 
     #[test]
@@ -499,7 +499,7 @@ mod tests {
             .invert(C4);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         assert_eq!(track.events.len(), 3);
 
@@ -524,7 +524,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         // Should create no track
-        assert_eq!(mixer.tracks.len(), 0);
+        assert_eq!(mixer.tracks().len(), 0);
     }
 
     #[test]
@@ -537,7 +537,7 @@ mod tests {
             .invert_constrained(C4, C3, C5);
 
         let mixer = comp.into_mixer();
-        let track = &mixer.tracks[0];
+        let track = &mixer.tracks()[0];
 
         // All notes should be between C3 and C5
         for event in &track.events {

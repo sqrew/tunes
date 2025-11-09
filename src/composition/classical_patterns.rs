@@ -444,7 +444,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").alberti_bass(&[C3, E3, G3], 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern should be: lowest (0), highest (2), middle (1), highest (2)
@@ -467,7 +467,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").alberti_bass(&[C3, E3], 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Falls back to arpeggiate with 2 notes
         assert_eq!(track.events.len(), 2);
     }
@@ -486,7 +486,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").waltz_bass(C2, &[C3, E3, G3], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Beat 1: Root alone
@@ -516,7 +516,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").waltz_bass(C2, &[C3, E3, G3], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Verify timing: 0.0, 0.5, 1.0
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -535,7 +535,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").stride_bass(C2, &[C3, E3, G3], 0.5, 1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 1 measure * 4 beats per measure (2 bass-chord pairs) = 4 notes
         assert_eq!(track.events.len(), 4);
 
@@ -567,7 +567,7 @@ mod tests {
         // Total time: 8 * 0.25 = 2.0
         assert!((builder.cursor - 2.0).abs() < 0.01);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 2 measures * 2 pairs * 2 notes = 8 notes
         assert_eq!(track.events.len(), 8);
     }
@@ -577,7 +577,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").broken_chord(&[C4, E4, G4], 0, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern 0: Up and back - 0, 1, 2, 1
@@ -600,7 +600,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").broken_chord(&[C4, E4, G4], 1, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern 1: Down and back - 2, 1, 0, 1
@@ -623,7 +623,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").broken_chord(&[C4, E4, G4], 2, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Pattern 2: Up twice - 0, 1, 2, 0, 1, 2
         assert_eq!(track.events.len(), 6);
     }
@@ -633,7 +633,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").broken_chord(&[C4, E4, G4], 3, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Pattern 3: Ascending pairs - 0, 0, 1, 1, 2, 2
         assert_eq!(track.events.len(), 6);
 
@@ -665,7 +665,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").walking_bass(&[C2, D2, E2, F2], 0.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Verify notes in order
@@ -682,7 +682,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").tremolo_strings(&[C4, E4, G4], 0.3, 0.05);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 0.3 / 0.05 = 6 repetitions
         assert_eq!(track.events.len(), 6);
 
@@ -719,7 +719,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").ostinato(&[C4, E4, G4], 0.125, 3);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 3 notes * 3 repeats = 9 notes
         assert_eq!(track.events.len(), 9);
 
@@ -758,7 +758,7 @@ mod tests {
         let chords = vec![vec![C3, E3, G3], vec![F3, A3, C4], vec![G3, B3, D4]];
         comp.track("test").pedal_point(C2, &chords, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 1 pedal note + 3 chords = 4 events
         assert_eq!(track.events.len(), 4);
 
@@ -784,7 +784,7 @@ mod tests {
         let chords = vec![vec![C3, E3, G3], vec![F3, A3, C4]];
         comp.track("test").pedal_point(C2, &chords, 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Check chord timing
         if let AudioEvent::Note(note) = &track.events[1] {
@@ -810,7 +810,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").alberti_bass(&[C3, E3, G3, C4], 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Pattern: lowest (0), highest (3), middle (1), highest (3)
@@ -841,7 +841,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").broken_chord(&[C4, E4, G4], 99, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should default to simple ascending
         assert_eq!(track.events.len(), 3);
     }
@@ -863,7 +863,7 @@ mod tests {
         // Cursor should not advance
         assert_eq!(builder.cursor, 0.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should only have the pedal note with 0 duration
         assert_eq!(track.events.len(), 1);
     }

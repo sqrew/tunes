@@ -241,7 +241,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").note(&[440.0], 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -270,7 +270,7 @@ mod tests {
             .note(&[550.0], 0.5)
             .note(&[660.0], 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Verify timing
@@ -290,7 +290,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").note(&[440.0, 554.37, 659.25], 1.0); // A major chord
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -306,7 +306,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums").drum(DrumType::Kick);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Drum(drum) = &track.events[0] {
@@ -334,7 +334,7 @@ mod tests {
             .drum(DrumType::Snare)
             .drum(DrumType::HiHatClosed);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Verify different drum types
@@ -354,7 +354,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").interpolated(440.0, 880.0, 5, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // Verify frequencies interpolate smoothly
@@ -378,7 +378,7 @@ mod tests {
         let mixer = comp.into_mixer();
         // With zero segments, no track is created since interpolated returns early
         assert_eq!(
-            mixer.tracks.len(),
+            mixer.tracks().len(),
             0,
             "Zero segments should create no track"
         );
@@ -389,7 +389,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").interpolated(440.0, 880.0, 1, 0.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -404,7 +404,7 @@ mod tests {
         let freqs = [C4, E4, G4, C5]; // C major arpeggio
         comp.track("melody").notes(&freqs, 0.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         for (i, &expected_freq) in freqs.iter().enumerate() {
@@ -429,7 +429,7 @@ mod tests {
 
         let mixer = comp.into_mixer();
         // With empty array, no track is created since loop doesn't execute
-        assert_eq!(mixer.tracks.len(), 0, "Empty array should create no track");
+        assert_eq!(mixer.tracks().len(), 0, "Empty array should create no track");
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
             .note(&[550.0], 0.5)
             .drum(DrumType::Snare);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Verify alternating pattern

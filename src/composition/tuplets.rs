@@ -157,7 +157,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").tuplet(&[C4, D4, E4], 3, 1.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Each note should have duration 1.5 / 3 = 0.5
@@ -209,7 +209,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").triplet(&[C4, E4, G4], 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Each should be 1.0 / 3 ≈ 0.333...
@@ -225,7 +225,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").triplet(&[C4, E4, G4], 1.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Notes should start at 0.0, 0.5, 1.0
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -244,7 +244,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").quintuplet(&[C4, D4, E4, F4, G4], 2.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // Each should be 2.0 / 5 = 0.4
@@ -260,7 +260,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").sextuplet(&[C4, D4, E4, F4, G4, A4], 3.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 6);
 
         // Each should be 3.0 / 6 = 0.5
@@ -277,7 +277,7 @@ mod tests {
         comp.track("test")
             .septuplet(&[C4, D4, E4, F4, G4, A4, B4], 1.4);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 7);
 
         // Each should be 1.4 / 7 = 0.2
@@ -294,7 +294,7 @@ mod tests {
         // 5 notes but count=3 means each gets 1.5/3 = 0.5s duration
         comp.track("test").tuplet(&[C4, D4, E4, F4, G4], 3, 1.5);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 5);
 
         // All notes should have the calculated duration
@@ -311,7 +311,7 @@ mod tests {
         // 2 notes but count=5 means each gets 2.0/5 = 0.4s duration
         comp.track("test").tuplet(&[C4, D4], 5, 2.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2);
 
         for event in &track.events {
@@ -328,7 +328,7 @@ mod tests {
             .triplet(&[C4, E4, G4], 1.0)
             .quintuplet(&[D4, F4, A4, C5, E5], 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 3 + 5 = 8 notes
         assert_eq!(track.events.len(), 8);
     }
@@ -346,7 +346,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("test").tuplet(&[C4, D4, E4, F4], 4, 1.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Verify exact start times: 0, 0.25, 0.5, 0.75
         if let AudioEvent::Note(note) = &track.events[0] {

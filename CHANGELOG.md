@@ -9,6 +9,127 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Professional Bus Architecture and Master Effects Chain
+- **Major architectural refactor** - Complete bus-based mixing system with master effects chain
+- **`Bus` struct** - Intermediate mixing layer between tracks and master output
+- **Signal flow:** `Tracks → Bus (with effects) → Master (with effects) → Output`
+- **Full backward compatibility** - Automatic "default" bus for existing code, no migration needed
+
+**EffectChain - Unified Effect System:**
+- **`EffectChain` struct** - Centralized container for all 16 effects with priority-based ordering
+- **Dual-mode processing:**
+  - `process_mono()` - For individual tracks (mono → mono with effects)
+  - `process_stereo()` - For buses and master (stereo → stereo with effects)
+- **Priority-based effect ordering** - Effects automatically sorted by priority (lower = earlier in chain)
+- **Refactored Track** - Now uses `EffectChain` instead of 16 individual effect fields
+- **Consistent API** - Same effect methods work on tracks, buses, and master
+
+**Bus System:**
+- **`Bus`** - Groups tracks together with dedicated effects, volume, pan, and solo/mute
+- **Flexible routing** - Each track belongs to a named bus (e.g., "drums", "vocals", "synths")
+- **Bus-level effects** - Apply reverb, compression, EQ to entire groups of tracks
+- **Bus-level mixing** - Volume and pan controls affect all tracks in the bus
+- **Solo/mute** - Toggle entire buses on/off for mixing workflows
+- **API:**
+  ```rust
+  // Buses created automatically when adding tracks
+  let mut mixer = Mixer::new(Tempo::new(120.0));
+  mixer.add_track("kick", track1, "drums");    // Add to "drums" bus
+  mixer.add_track("snare", track2, "drums");   // Same bus
+  mixer.add_track("bass", track3, "bass");     // Different bus
+
+  // Access buses for configuration
+  if let Some(drums_bus) = mixer.buses.get_mut("drums") {
+      drums_bus.volume = 0.8;
+      drums_bus.pan = 0.1;  // Slight right
+      drums_bus.effects.reverb = Some(Reverb::new(0.3, 0.5));
+  }
+  ```
+
+**Master Effects Chain (16 effects available on Mixer):**
+- **Master-level processing** - Apply effects to the final stereo mix before output
+- **All 16 effects supported:** EQ, Compressor, Gate, Saturation, Bitcrusher, Distortion, Chorus, Phaser, Flanger, Ring Modulator, Tremolo, AutoPan, Delay, Reverb, Limiter, Parametric EQ
+- **Stereo processing** - Master effects process left and right channels independently
+- **Stereo-linked compression** - Master compressor uses max(L, R) for natural stereo image preservation
+- **Master methods on Mixer:**
+  - `.master_eq(eq)` - 3-band EQ for frequency balancing
+  - `.master_compressor(compressor)` - Stereo-linked dynamics control
+  - `.master_reverb(reverb)` - Global ambience and space
+  - `.master_limiter(limiter)` - Prevent clipping on final output
+  - `.master_delay(delay)` - Stereo delay effects
+  - `.master_parametric_eq(eq)` - Surgical frequency shaping
+  - ... (all 16 effects available)
+- **Use cases:**
+  - Mastering: Apply gentle compression, EQ, and limiting to final mix
+  - Creative effects: Reverb wash, tape saturation, bitcrushed lo-fi
+  - Mix glue: Subtle compression to "glue" tracks together
+  - Protection: Limiter to prevent clipping on final output
+- **Example:**
+  ```rust
+  mixer.master_compressor(Compressor::new(0.5, 3.0, 0.01, 0.1, 44100.0));
+  mixer.master_eq(EQ::new(1.0, 0.9, 1.1, 250.0, 4000.0));
+  mixer.master_limiter(Limiter::new(0.95));
+  ```
+
+**Signal Flow Architecture:**
+```
+Composition
+    ↓
+Multiple Tracks (each with EffectChain)
+    ↓
+Buses (grouped tracks, each with EffectChain)
+    ↓
+Master (final mix with EffectChain)
+    ↓
+Output (soft clipped to prevent distortion)
+```
+
+**Key Features:**
+- **Effect priority system** - Automatic ordering: EQ → Dynamics → Saturation → Modulation → Time/Space → Limiting
+- **Per-stage effects** - Different effects at track, bus, and master levels
+- **Professional workflows** - Matches industry-standard DAW architecture (ProTools, Logic, Ableton)
+- **Backward compatible** - Existing code works unchanged via automatic "default" bus
+- **Flexible routing** - Easy to reorganize tracks into different buses
+- **Performance** - Minimal overhead from effect ordering and priority system
+
+**Technical Implementation:**
+- `Mixer::buses: HashMap<String, Bus>` - Named buses for flexible organization
+- `Bus::effects: EffectChain` - Bus-level effect processing
+- `Mixer::master: EffectChain` - Master-level effect processing
+- `EffectChain::effect_order: Vec<u8>` - Cached priority-sorted effect indices
+- Static `process_track_static()` - Avoids borrow checker issues during mixing
+- Helper methods `all_tracks()` and `tracks()` - Backward compatibility for tests/examples
+
+**Migration Guide:**
+- **No changes required** - All tracks go to "default" bus automatically
+- **To use buses:**
+  ```rust
+  // Old way (still works):
+  mixer.add_track("kick", kick_track);
+
+  // New way (with buses):
+  mixer.add_track("kick", kick_track, "drums");
+  mixer.add_track("bass", bass_track, "bass");
+  ```
+- **Direct field access:** `.tracks` field removed, use `.all_tracks()` method instead
+
+**Benefits:**
+- **Industry standard** - Matches professional DAW workflows
+- **Better organization** - Group related tracks (drums, vocals, synths)
+- **Efficient effects** - Apply one reverb to a bus instead of per-track
+- **Mastering ready** - Professional master chain for final output
+- **Flexible mixing** - Solo/mute entire instrument groups
+- **Future-proof** - Ready for sidechaining, aux sends, and advanced routing
+
+**Breaking Changes:**
+- `Mixer.tracks` field removed - use `.all_tracks()` method to access all tracks
+- Track struct: Individual effect fields replaced with `effects: EffectChain`
+- Internal: `Track` field access patterns changed from `track.delay` to `track.effects.delay`
+
+**Tests:** All 967 tests passing with new architecture
+**Examples:** All 73 examples updated and working
+**Documentation:** Architecture, mixer, and effects docs updated
+
 #### Karplus-Strong Physical Modeling Synthesis
 - **New synthesis technique** - Physical modeling for realistic plucked string sounds
 - **`KarplusStrong`** - Simulates plucked strings using delay line with feedback filtering

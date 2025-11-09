@@ -1,16 +1,67 @@
 //! Mixer implementation
 //!
-//! The mixer combines multiple tracks together and handles the core audio rendering.
+//! The mixer combines multiple buses together and handles the core audio rendering.
+//! Each bus contains tracks, and buses are mixed through the master chain.
 
+use super::bus::{Bus, BusBuilder};
 use super::events::*;
 use super::track::Track;
 use crate::composition::rhythm::Tempo;
 use crate::synthesis::effects::EffectChain;
+use std::collections::HashMap;
 
-/// Mix multiple tracks together
+/// Envelope cache for sidechaining
+///
+/// Stores RMS envelope values for tracks and buses during a single sample_at() call.
+/// This allows sidechained effects to access the envelope of their source signal.
+#[derive(Debug, Clone, Default)]
+struct EnvelopeCache {
+    tracks: HashMap<String, f32>,  // Track name -> RMS envelope
+    buses: HashMap<String, f32>,   // Bus name -> RMS envelope
+}
+
+impl EnvelopeCache {
+    fn new() -> Self {
+        Self {
+            tracks: HashMap::new(),
+            buses: HashMap::new(),
+        }
+    }
+
+    /// Store a track's envelope
+    fn cache_track(&mut self, track_name: &str, envelope: f32) {
+        self.tracks.insert(track_name.to_string(), envelope);
+    }
+
+    /// Store a bus's envelope
+    fn cache_bus(&mut self, bus_name: &str, envelope: f32) {
+        self.buses.insert(bus_name.to_string(), envelope);
+    }
+
+    /// Get a track's envelope (returns 0.0 if not found)
+    fn get_track(&self, track_name: &str) -> f32 {
+        self.tracks.get(track_name).copied().unwrap_or(0.0)
+    }
+
+    /// Get a bus's envelope (returns 0.0 if not found)
+    fn get_bus(&self, bus_name: &str) -> f32 {
+        self.buses.get(bus_name).copied().unwrap_or(0.0)
+    }
+
+    /// Clear all cached envelopes (called at start of each sample)
+    fn clear(&mut self) {
+        self.tracks.clear();
+        self.buses.clear();
+    }
+}
+
+/// Mix multiple buses together
+///
+/// The Mixer organizes audio into buses, where each bus contains one or more tracks.
+/// Signal flow: Tracks → Buses → Master → Output
 #[derive(Debug, Clone)]
 pub struct Mixer {
-    pub tracks: Vec<Track>,
+    pub buses: HashMap<String, Bus>,
     pub tempo: Tempo,
     pub(super) sample_count: u64, // For quantized automation lookups
     pub master: EffectChain,      // Master effects chain (stereo processing)
@@ -23,37 +74,105 @@ impl Mixer {
     /// * `tempo` - Tempo for the composition (used for MIDI export)
     pub fn new(tempo: Tempo) -> Self {
         Self {
-            tracks: Vec::new(),
+            buses: HashMap::new(),
             tempo,
             sample_count: 0,
             master: EffectChain::new(),
         }
     }
 
-    /// Add a track to the mixer
+    /// Add a bus to the mixer
     ///
-    /// Tracks are played simultaneously when the mixer is rendered or played.
+    /// # Arguments
+    /// * `bus` - The bus to add
+    pub fn add_bus(&mut self, bus: Bus) {
+        self.buses.insert(bus.name.clone(), bus);
+    }
+
+    /// Add a track to the default bus for backward compatibility
+    ///
+    /// This maintains compatibility with existing code that adds tracks directly.
+    /// Tracks are added to a bus named "default".
     ///
     /// # Arguments
     /// * `track` - The track to add
     pub fn add_track(&mut self, track: Track) {
-        self.tracks.push(track);
+        self.buses
+            .entry("default".to_string())
+            .or_insert_with(|| Bus::new("default".to_string()))
+            .add_track(track);
     }
 
-    /// Get the total duration across all tracks in seconds
+    /// Get or create a bus by name
     ///
-    /// Returns the end time of the longest track.
-    /// Returns 0.0 if the mixer has no tracks.
+    /// # Arguments
+    /// * `name` - Name of the bus
+    pub fn get_or_create_bus(&mut self, name: &str) -> &mut Bus {
+        self.buses
+            .entry(name.to_string())
+            .or_insert_with(|| Bus::new(name.to_string()))
+    }
+
+    /// Get a bus by name
+    ///
+    /// # Arguments
+    /// * `name` - Name of the bus
+    pub fn get_bus(&self, name: &str) -> Option<&Bus> {
+        self.buses.get(name)
+    }
+
+    /// Get a mutable bus by name
+    ///
+    /// # Arguments
+    /// * `name` - Name of the bus
+    pub fn get_bus_mut(&mut self, name: &str) -> Option<&mut Bus> {
+        self.buses.get_mut(name)
+    }
+
+    /// Get a builder for applying effects to a bus
+    ///
+    /// Creates or gets an existing bus and returns a builder for applying effects,
+    /// volume, and pan settings in a fluent API.
+    ///
+    /// # Arguments
+    /// * `name` - Name of the bus
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::{Reverb, Compressor};
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("kick", &Instrument::kick())
+    ///     .bus("drums")
+    ///     .notes(&[C4], 0.25);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    ///
+    /// // Apply effects to the drums bus
+    /// mixer.bus("drums")
+    ///     .reverb(Reverb::new(0.3, 0.4))
+    ///     .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 44100.0))
+    ///     .volume(0.9);
+    /// ```
+    pub fn bus(&mut self, name: &str) -> BusBuilder<'_> {
+        let bus = self.get_or_create_bus(name);
+        BusBuilder::new(bus)
+    }
+
+    /// Get the total duration across all buses in seconds
+    ///
+    /// Returns the end time of the longest bus.
+    /// Returns 0.0 if the mixer has no buses.
     pub fn total_duration(&self) -> f32 {
-        self.tracks
-            .iter()
-            .map(|t| t.total_duration())
+        self.buses
+            .values()
+            .map(|b| b.total_duration())
             .fold(0.0, f32::max)
     }
 
     /// Check if the mixer has any audio events
     ///
-    /// Returns `true` if all tracks are empty (no notes, drums, or samples).
+    /// Returns `true` if all buses/tracks are empty (no notes, drums, or samples).
     /// Useful for detecting empty compositions before playback.
     ///
     /// # Example
@@ -70,7 +189,49 @@ impl Mixer {
     /// assert!(!mixer2.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.tracks.iter().all(|t| t.events.is_empty())
+        self.buses
+            .values()
+            .all(|b| b.tracks.iter().all(|t| t.events.is_empty()))
+    }
+
+    /// Get all tracks across all buses as a flat vector
+    ///
+    /// This is useful for export functions that need to iterate over all tracks.
+    /// Note: This creates a new vector, so use sparingly.
+    pub fn all_tracks(&self) -> Vec<&Track> {
+        self.buses
+            .values()
+            .flat_map(|bus| bus.tracks.iter())
+            .collect()
+    }
+
+    /// Get all tracks across all buses as a mutable flat vector
+    ///
+    /// This is useful for export functions that need to iterate over all tracks.
+    /// Note: This creates a new vector, so use sparingly.
+    pub fn all_tracks_mut(&mut self) -> Vec<&mut Track> {
+        self.buses
+            .values_mut()
+            .flat_map(|bus| bus.tracks.iter_mut())
+            .collect()
+    }
+
+    /// Get the tracks field for backward compatibility with tests
+    ///
+    /// Returns a cloned Vec of tracks from the default bus.
+    /// This works around lifetime issues in tests where `comp.into_mixer().tracks()`
+    /// would create a temporary.
+    #[cfg(test)]
+    pub fn tracks(&self) -> Vec<Track> {
+        self.buses.get("default")
+            .map(|b| b.tracks.clone())
+            .unwrap_or_default()
+    }
+
+    /// Get mutable access to the tracks field for backward compatibility with tests
+    #[cfg(test)]
+    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
+        &mut self.get_or_create_bus("default").tracks
     }
 
     /// Repeat all tracks in the mixer N times
@@ -98,71 +259,73 @@ impl Mixer {
 
         let total_duration = self.total_duration();
 
-        // For each track, repeat its events
-        for track in &mut self.tracks {
-            let original_events: Vec<_> = track.events.clone();
+        // For each bus, repeat all its track events
+        for bus in self.buses.values_mut() {
+            for track in &mut bus.tracks {
+                let original_events: Vec<_> = track.events.clone();
 
-            for i in 0..times {
-                let offset = total_duration * (i + 1) as f32;
+                for i in 0..times {
+                    let offset = total_duration * (i + 1) as f32;
 
-                for event in &original_events {
-                    match event {
-                        AudioEvent::Note(note) => {
-                            track.add_note_with_waveform_envelope_and_bend(
-                                &note.frequencies[..note.num_freqs],
-                                note.start_time + offset,
-                                note.duration,
-                                note.waveform,
-                                note.envelope,
-                                note.pitch_bend_semitones,
-                            );
-                        }
-                        AudioEvent::Drum(drum) => {
-                            track.add_drum(
-                                drum.drum_type,
-                                drum.start_time + offset,
-                                drum.spatial_position,
-                            );
-                        }
-                        AudioEvent::Sample(sample) => {
-                            track
-                                .events
-                                .push(AudioEvent::Sample(crate::track::SampleEvent {
-                                    sample: sample.sample.clone(),
-                                    start_time: sample.start_time + offset,
-                                    playback_rate: sample.playback_rate,
-                                    volume: sample.volume,
-                                    spatial_position: sample.spatial_position,
-                                }));
-                            track.invalidate_time_cache();
-                        }
-                        AudioEvent::TempoChange(tempo) => {
-                            track.events.push(AudioEvent::TempoChange(
-                                crate::track::TempoChangeEvent {
-                                    start_time: tempo.start_time + offset,
-                                    bpm: tempo.bpm,
-                                },
-                            ));
-                            track.invalidate_time_cache();
-                        }
-                        AudioEvent::TimeSignature(time_sig) => {
-                            track.events.push(AudioEvent::TimeSignature(
-                                crate::track::TimeSignatureEvent {
-                                    start_time: time_sig.start_time + offset,
-                                    numerator: time_sig.numerator,
-                                    denominator: time_sig.denominator,
-                                },
-                            ));
-                            track.invalidate_time_cache();
-                        }
-                        AudioEvent::KeySignature(key_sig) => {
-                            track
-                                .events
-                                .push(AudioEvent::KeySignature(KeySignatureEvent {
-                                    start_time: key_sig.start_time + offset,
-                                    key_signature: key_sig.key_signature,
-                                }));
-                            track.invalidate_time_cache();
+                    for event in &original_events {
+                        match event {
+                            AudioEvent::Note(note) => {
+                                track.add_note_with_waveform_envelope_and_bend(
+                                    &note.frequencies[..note.num_freqs],
+                                    note.start_time + offset,
+                                    note.duration,
+                                    note.waveform,
+                                    note.envelope,
+                                    note.pitch_bend_semitones,
+                                );
+                            }
+                            AudioEvent::Drum(drum) => {
+                                track.add_drum(
+                                    drum.drum_type,
+                                    drum.start_time + offset,
+                                    drum.spatial_position,
+                                );
+                            }
+                            AudioEvent::Sample(sample) => {
+                                track
+                                    .events
+                                    .push(AudioEvent::Sample(crate::track::SampleEvent {
+                                        sample: sample.sample.clone(),
+                                        start_time: sample.start_time + offset,
+                                        playback_rate: sample.playback_rate,
+                                        volume: sample.volume,
+                                        spatial_position: sample.spatial_position,
+                                    }));
+                                track.invalidate_time_cache();
+                            }
+                            AudioEvent::TempoChange(tempo) => {
+                                track.events.push(AudioEvent::TempoChange(
+                                    crate::track::TempoChangeEvent {
+                                        start_time: tempo.start_time + offset,
+                                        bpm: tempo.bpm,
+                                    },
+                                ));
+                                track.invalidate_time_cache();
+                            }
+                            AudioEvent::TimeSignature(time_sig) => {
+                                track.events.push(AudioEvent::TimeSignature(
+                                    crate::track::TimeSignatureEvent {
+                                        start_time: time_sig.start_time + offset,
+                                        numerator: time_sig.numerator,
+                                        denominator: time_sig.denominator,
+                                    },
+                                ));
+                                track.invalidate_time_cache();
+                            }
+                            AudioEvent::KeySignature(key_sig) => {
+                                track
+                                    .events
+                                    .push(AudioEvent::KeySignature(KeySignatureEvent {
+                                        start_time: key_sig.start_time + offset,
+                                        key_signature: key_sig.key_signature,
+                                    }));
+                                track.invalidate_time_cache();
+                            }
                         }
                     }
                 }
@@ -172,21 +335,19 @@ impl Mixer {
         self
     }
 
-    /// Generate a stereo sample at a given time by mixing all active tracks
+    /// Generate a stereo sample at a given time by mixing all buses
     ///
     /// This is the core rendering method that generates audio samples by:
-    /// 1. Finding active events on all tracks at the given time
-    /// 2. Synthesizing audio for each event
-    /// 3. Applying event-level spatial audio (if spatial_position is set on events)
-    /// 4. Applying track-level effects (filter, reverb, delay, etc.)
-    /// 5. Mixing tracks with stereo panning
+    /// 1. Processing each bus (which mixes its tracks and applies bus effects)
+    /// 2. Summing all bus outputs
+    /// 3. Applying master effects to the final mix
     ///
     /// # Arguments
     /// * `time` - The time position in seconds
     /// * `sample_rate` - Sample rate in Hz (e.g., 44100)
     /// * `_sample_clock` - Reserved for future use
-    /// * `listener` - Optional listener configuration for spatial audio
-    /// * `spatial_params` - Optional spatial audio parameters
+    /// * `_listener` - Reserved for spatial audio (handled at track level)
+    /// * `_spatial_params` - Reserved for spatial audio (handled at track level)
     ///
     /// # Returns
     /// A tuple of (left_channel, right_channel) audio samples in range -1.0 to 1.0
@@ -195,255 +356,97 @@ impl Mixer {
         time: f32,
         sample_rate: f32,
         _sample_clock: f32,
-        listener: Option<&crate::synthesis::spatial::ListenerConfig>,
-        spatial_params: Option<&crate::synthesis::spatial::SpatialParams>,
+        _listener: Option<&crate::synthesis::spatial::ListenerConfig>,
+        _spatial_params: Option<&crate::synthesis::spatial::SpatialParams>,
     ) -> (f32, f32) {
         // Increment sample count for quantized automation lookups
         self.sample_count = self.sample_count.wrapping_add(1);
 
+        // Create envelope cache for sidechaining
+        let mut envelope_cache = EnvelopeCache::new();
+
         let mut mixed_left = 0.0;
         let mut mixed_right = 0.0;
 
-        for track in &mut self.tracks {
-            // Ensure events are sorted by start_time for binary search
-            track.ensure_sorted();
+        // PASS 1: Process tracks and cache their envelopes
+        // We need to process all tracks first to build the envelope cache
+        // before applying bus effects (which may use sidechaining)
+        let mut track_outputs: Vec<(String, f32, f32, f32)> = Vec::new(); // (bus_name, left, right, envelope)
 
-            // Quick time-bounds check: skip entire track if current time is outside its active range
-            // This avoids iterating through all events on inactive tracks
-            let track_start = track.start_time();
-            let track_end = track.end_time();
-
-            // Skip track entirely if we're before it starts or after it ends
-            // (unless it has delay/reverb which can extend beyond the events)
-            if (time < track_start || time > track_end)
-                && track.effects.delay.is_none()
-                && track.effects.reverb.is_none()
-            {
+        for bus in self.buses.values_mut() {
+            if bus.muted {
                 continue;
             }
 
-            // Check if any event in this track has a spatial position
-            // If so, we'll use it for spatial audio for the whole track
-            let track_spatial_position = if listener.is_some() && spatial_params.is_some() {
-                track.events.iter().find_map(|event| match event {
-                    AudioEvent::Note(note) => note.spatial_position,
-                    AudioEvent::Drum(drum) => drum.spatial_position,
-                    AudioEvent::Sample(sample) => sample.spatial_position,
-                    _ => None,
-                })
-            } else {
-                None
-            };
+            let sample_count = self.sample_count;
+            for track in &mut bus.tracks {
+                let (track_left, track_right) = Self::process_track_static(track, time, sample_rate, sample_count);
 
-            let mut track_value = 0.0;
-            let mut has_active_event = false;
-            // Store the base filter parameters for proper modulation (don't use potentially modulated values)
-            let base_filter_cutoff = track.filter.cutoff;
-            let base_filter_resonance = track.filter.resonance;
-            let mut filter_env_cutoff = base_filter_cutoff;
-            let mut filter_env_found = false;
+                // Calculate RMS envelope for this track
+                let envelope = ((track_left * track_left + track_right * track_right) / 2.0).sqrt();
 
-            // Binary search to find potentially active events (O(log n) instead of O(n))
-            let (start_idx, end_idx) = track.find_active_range(time);
-
-            // Only iterate through events that could possibly be active
-            for event in &track.events[start_idx..end_idx] {
-                match event {
-                    AudioEvent::Sample(sample_event) => {
-                        let time_in_sample = time - sample_event.start_time;
-                        let sample_duration =
-                            sample_event.sample.duration / sample_event.playback_rate;
-
-                        if time_in_sample >= 0.0 && time_in_sample < sample_duration {
-                            has_active_event = true;
-                            let (sample_left, sample_right) = sample_event
-                                .sample
-                                .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
-                            track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
-                        }
-                    }
-                    AudioEvent::Note(note_event) => {
-                        let total_duration =
-                            note_event.envelope.total_duration(note_event.duration);
-                        let note_end_with_release = note_event.start_time + total_duration;
-
-                        // Check if this note event is active (including release phase)
-                        if time >= note_event.start_time && time < note_end_with_release {
-                            has_active_event = true;
-
-                            // Calculate time within the note
-                            let time_in_note = time - note_event.start_time;
-
-                            // Get filter envelope from this note (if it has one)
-                            // Use the first active note's filter envelope we encounter
-                            if !filter_env_found && note_event.filter_envelope.amount > 0.0 {
-                                let filter_total_duration = note_event
-                                    .filter_envelope
-                                    .total_duration(note_event.duration);
-                                let filter_end = note_event.start_time + filter_total_duration;
-                                if time >= note_event.start_time && time < filter_end {
-                                    filter_env_cutoff = note_event
-                                        .filter_envelope
-                                        .cutoff_at(time_in_note, note_event.duration);
-                                    filter_env_found = true;
-                                }
-                            }
-
-                            // Get envelope amplitude at this point in time
-                            let envelope_amp = note_event
-                                .envelope
-                                .amplitude_at(time_in_note, note_event.duration);
-
-                            // Generate waves for all frequencies in this event
-                            for i in 0..note_event.num_freqs {
-                                let base_freq = note_event.frequencies[i];
-
-                                // Apply pitch bend (linear over note duration)
-                                // Skip expensive math if no pitch bend
-                                let freq = if note_event.pitch_bend_semitones != 0.0 {
-                                    let bend_progress =
-                                        (time_in_note / note_event.duration).min(1.0);
-                                    let bend_multiplier = 2.0f32.powf(
-                                        (note_event.pitch_bend_semitones * bend_progress) / 12.0,
-                                    );
-                                    base_freq * bend_multiplier
-                                } else {
-                                    base_freq
-                                };
-
-                                let sample = if note_event.fm_params.mod_index > 0.0 {
-                                    // Use FM synthesis
-                                    note_event.fm_params.sample(
-                                        freq,
-                                        time_in_note,
-                                        note_event.duration,
-                                    )
-                                } else if let Some(ref wavetable) = note_event.custom_wavetable {
-                                    // Use custom wavetable
-                                    let phase = (time_in_note * freq) % 1.0;
-                                    wavetable.sample(phase)
-                                } else {
-                                    // Use standard waveform
-                                    let phase = (time_in_note * freq) % 1.0;
-                                    note_event.waveform.sample(phase)
-                                };
-
-                                track_value += sample * envelope_amp;
-                            }
-                        }
-                    }
-                    AudioEvent::Drum(drum_event) => {
-                        let drum_duration = drum_event.drum_type.duration();
-                        // Check if this drum event is active at the current time
-                        if time >= drum_event.start_time
-                            && time < drum_event.start_time + drum_duration
-                        {
-                            has_active_event = true;
-
-                            // Calculate sample index relative to drum start
-                            let time_in_drum = time - drum_event.start_time;
-                            let sample_index = (time_in_drum * sample_rate) as usize;
-                            track_value += drum_event.drum_type.sample(sample_index, sample_rate);
-                        }
-                    }
-                    AudioEvent::TempoChange(_) => {
-                        // Tempo changes don't generate audio, they're metadata for MIDI export
-                    }
-                    AudioEvent::TimeSignature(_) => {
-                        // Time signatures don't generate audio, they're metadata for MIDI export
-                    }
-                    AudioEvent::KeySignature(_) => {
-                        // Key signatures don't generate audio, they're metadata for MIDI export
-                    }
+                // Cache track envelope if track has a name
+                if let Some(ref track_name) = track.name {
+                    envelope_cache.cache_track(track_name, envelope);
                 }
-            }
 
-            // Skip all effect processing if track has no active events
-            if !has_active_event && track.effects.delay.is_none() && track.effects.reverb.is_none()
-            {
+                track_outputs.push((bus.name.clone(), track_left, track_right, envelope));
+            }
+        }
+
+        // PASS 2: Mix tracks into buses and apply bus effects with sidechain support
+        let mut bus_outputs: Vec<(String, f32, f32)> = Vec::new(); // (bus_name, left, right)
+
+        for bus in self.buses.values_mut() {
+            if bus.muted {
                 continue;
             }
 
-            // Filter envelope was already collected in the event loop above
-
-            // Apply LFO modulation on top of filter envelope
-            let mut modulated_volume = track.volume;
-            let mut modulated_cutoff = filter_env_cutoff;
-            let mut modulated_resonance = base_filter_resonance;
-
-            for mod_route in &mut track.modulation {
-                // Tick the LFO to advance its phase
-                mod_route.lfo.tick();
-
-                match mod_route.target {
-                    crate::synthesis::lfo::ModTarget::Volume => {
-                        modulated_volume = mod_route.apply(modulated_volume);
-                    }
-                    crate::synthesis::lfo::ModTarget::FilterCutoff => {
-                        modulated_cutoff = mod_route.apply(modulated_cutoff);
-                    }
-                    crate::synthesis::lfo::ModTarget::FilterResonance => {
-                        modulated_resonance = mod_route.apply(modulated_resonance);
-                    }
-                    _ => {} // Other modulation targets handled elsewhere
+            // Sum tracks belonging to this bus
+            let mut bus_left = 0.0;
+            let mut bus_right = 0.0;
+            for (bus_name, track_left, track_right, _) in &track_outputs {
+                if bus_name == &bus.name {
+                    bus_left += track_left;
+                    bus_right += track_right;
                 }
             }
 
-            // Only process effects if there's actual audio
-            if track_value.abs() > 0.0001
-                || track.effects.delay.is_some()
-                || track.effects.reverb.is_some()
-            {
-                // Apply track volume (with modulation)
-                track_value *= modulated_volume;
+            // Calculate bus envelope BEFORE effects
+            let bus_envelope = ((bus_left * bus_left + bus_right * bus_right) / 2.0).sqrt();
+            envelope_cache.cache_bus(&bus.name, bus_envelope);
 
-                // Apply filter (with modulation)
-                // Temporarily set modulated values, process, then restore base values
-                track.filter.cutoff = modulated_cutoff;
-                track.filter.resonance = modulated_resonance;
-                track_value = track.filter.process(track_value, sample_rate);
-                // Restore base values to prevent compounding modulation on next sample
-                track.filter.cutoff = base_filter_cutoff;
-                track.filter.resonance = base_filter_resonance;
+            // Apply bus effects (stereo processing) - effects can now access envelope_cache
+            let (effected_left, effected_right) = bus.effects.process_stereo(
+                bus_left,
+                bus_right,
+                sample_rate,
+                time,
+                self.sample_count,
+            );
 
-                // Apply effects through the unified effect chain
-                track_value =
-                    track
-                        .effects
-                        .process_mono(track_value, sample_rate, time, self.sample_count);
-            }
-
-            // Apply spatial audio or stereo panning
-            let (final_volume, final_pan) = if let Some(pos) = track_spatial_position {
-                // Apply spatial audio for this track
-                let listener_cfg = listener.unwrap();
-                let spatial_cfg = spatial_params.unwrap();
-                let result =
-                    crate::synthesis::spatial::calculate_spatial(&pos, listener_cfg, spatial_cfg);
-                (result.volume, result.pan)
+            // Apply bus volume and pan
+            let pan_left = if bus.pan <= 0.0 {
+                1.0
             } else {
-                // Use normal panning
-                // Add AutoPan offset if present
-                let pan_offset = if let Some(ref mut autopan) = track.effects.autopan {
-                    autopan.get_pan_offset(time, self.sample_count)
-                } else {
-                    0.0
-                };
-                (1.0, (track.pan + pan_offset).clamp(-1.0, 1.0))
+                1.0 - bus.pan
+            };
+            let pan_right = if bus.pan >= 0.0 {
+                1.0
+            } else {
+                1.0 + bus.pan
             };
 
-            // Apply volume attenuation
-            let attenuated_value = track_value * final_volume;
+            let final_bus_left = effected_left * bus.volume * pan_left;
+            let final_bus_right = effected_right * bus.volume * pan_right;
 
-            // Apply stereo panning using constant power panning
-            // pan: -1.0 (full left), 0.0 (center), 1.0 (full right)
-            let pan_angle = (final_pan + 1.0) * 0.25 * std::f32::consts::PI; // 0 to PI/2
-            let left_gain = pan_angle.cos();
-            let right_gain = pan_angle.sin();
+            bus_outputs.push((bus.name.clone(), final_bus_left, final_bus_right));
+        }
 
-            // Add to stereo mix
-            mixed_left += attenuated_value * left_gain;
-            mixed_right += attenuated_value * right_gain;
+        // Sum all bus outputs
+        for (_, bus_left, bus_right) in bus_outputs {
+            mixed_left += bus_left;
+            mixed_right += bus_right;
         }
 
         // Apply master effects (stereo processing)
@@ -457,9 +460,122 @@ impl Mixer {
 
         // Apply soft clipping to prevent harsh distortion
         // tanh provides smooth saturation - maintains dynamics while preventing clipping
-        // This is much better than dividing by track count, which unnecessarily
-        // reduces volume even when tracks don't play simultaneously
         (master_left.tanh(), master_right.tanh())
+    }
+
+    /// Process a single track and return its stereo output (static version)
+    ///
+    /// This is a helper method extracted from the main mixing loop.
+    /// It handles event synthesis, filtering, effects, and panning for one track.
+    pub(crate) fn process_track_static(track: &mut Track, time: f32, sample_rate: f32, sample_count: u64) -> (f32, f32) {
+        // Ensure events are sorted by start_time for binary search
+        track.ensure_sorted();
+
+        // Quick time-bounds check: skip entire track if current time is outside its active range
+        let track_start = track.start_time();
+        let track_end = track.end_time();
+
+        // Skip track entirely if we're before it starts or after it ends
+        if (time < track_start || time > track_end)
+            && track.effects.delay.is_none()
+            && track.effects.reverb.is_none()
+        {
+            return (0.0, 0.0);
+        }
+
+        let mut track_value = 0.0;
+        let mut has_active_event = false;
+
+        // Binary search to find potentially active events
+        let (start_idx, end_idx) = track.find_active_range(time);
+
+        // Process events
+        for event in &track.events[start_idx..end_idx] {
+            match event {
+                AudioEvent::Note(note_event) => {
+                    let total_duration = note_event.envelope.total_duration(note_event.duration);
+                    let note_end_with_release = note_event.start_time + total_duration;
+
+                    if time >= note_event.start_time && time < note_end_with_release {
+                        has_active_event = true;
+                        let time_in_note = time - note_event.start_time;
+                        let envelope_amp =
+                            note_event.envelope.amplitude_at(time_in_note, note_event.duration);
+
+                        for i in 0..note_event.num_freqs {
+                            let base_freq = note_event.frequencies[i];
+
+                            let freq = if note_event.pitch_bend_semitones != 0.0 {
+                                let bend_progress = (time_in_note / note_event.duration).min(1.0);
+                                let bend_multiplier = 2.0f32
+                                    .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
+                                base_freq * bend_multiplier
+                            } else {
+                                base_freq
+                            };
+
+                            let sample = if note_event.fm_params.mod_index > 0.0 {
+                                note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                            } else if let Some(ref wavetable) = note_event.custom_wavetable {
+                                let phase = (time_in_note * freq) % 1.0;
+                                wavetable.sample(phase)
+                            } else {
+                                let phase = (time_in_note * freq) % 1.0;
+                                note_event.waveform.sample(phase)
+                            };
+
+                            track_value += sample * envelope_amp;
+                        }
+                    }
+                }
+                AudioEvent::Drum(drum_event) => {
+                    let drum_duration = drum_event.drum_type.duration();
+                    if time >= drum_event.start_time && time < drum_event.start_time + drum_duration
+                    {
+                        has_active_event = true;
+                        let time_in_drum = time - drum_event.start_time;
+                        let sample_index = (time_in_drum * sample_rate) as usize;
+                        track_value += drum_event.drum_type.sample(sample_index, sample_rate);
+                    }
+                }
+                AudioEvent::Sample(sample_event) => {
+                    let time_in_sample = time - sample_event.start_time;
+                    let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
+
+                    if time_in_sample >= 0.0 && time_in_sample < sample_duration {
+                        has_active_event = true;
+                        let (sample_left, sample_right) = sample_event
+                            .sample
+                            .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
+                        track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
+                    }
+                }
+                _ => {} // Tempo/time/key signatures don't generate audio
+            }
+        }
+
+        // Skip effect processing if track has no active events and no tail effects
+        if !has_active_event && track.effects.delay.is_none() && track.effects.reverb.is_none() {
+            return (0.0, 0.0);
+        }
+
+        // Apply track volume
+        track_value *= track.volume;
+
+        // Apply filter
+        track_value = track.filter.process(track_value, sample_rate);
+
+        // Apply effects through the unified effect chain
+        track_value = track
+            .effects
+            .process_mono(track_value, sample_rate, time, sample_count);
+
+        // Apply stereo panning using constant power panning
+        let pan_angle = (track.pan + 1.0) * 0.25 * std::f32::consts::PI;
+        let left_gain = pan_angle.cos();
+        let right_gain = pan_angle.sin();
+
+        (track_value * left_gain, track_value * right_gain)
     }
 
     /// Render the mixer to an in-memory stereo buffer

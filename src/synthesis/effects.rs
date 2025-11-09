@@ -7,6 +7,27 @@ use crate::track::{
 /// Standard audio sample rate
 const DEFAULT_SAMPLE_RATE: f32 = 44100.0;
 
+/// Sidechain source for dynamic effects
+///
+/// Specifies which external signal should control a dynamic effect (e.g., compressor).
+/// The sidechain source's envelope is monitored to trigger compression/gating on the
+/// target signal.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{Compressor, SidechainSource};
+/// // Bass compressor ducks when kick hits
+/// let compressor = Compressor::new(0.6, 4.0, 0.01, 0.1, 44100.0)
+///     .with_sidechain_track("kick");
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum SidechainSource {
+    /// Sidechain from a specific track by name
+    Track(String),
+    /// Sidechain from an entire bus by name
+    Bus(String),
+}
+
 /// Delay effect with feedback
 #[derive(Debug, Clone)]
 pub struct Delay {
@@ -467,6 +488,9 @@ pub struct Compressor {
     pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     envelope: f32,
 
+    // Sidechaining support
+    pub sidechain_source: Option<SidechainSource>, // External signal to trigger compression
+
     // Automation (optional)
     threshold_automation: Option<Automation>,
     ratio_automation: Option<Automation>,
@@ -494,6 +518,7 @@ impl Compressor {
             makeup_gain: makeup_gain.max(0.1),
             priority: PRIORITY_EARLY, // Compressor typically early in chain
             envelope: 0.0,
+            sidechain_source: None,
             threshold_automation: None,
             ratio_automation: None,
             attack_automation: None,
@@ -538,6 +563,69 @@ impl Compressor {
         self
     }
 
+    /// Configure sidechain from a specific track
+    ///
+    /// Duck this signal when the specified track is loud. The compressor will
+    /// monitor the sidechain track's envelope instead of its own signal to
+    /// decide when to compress.
+    ///
+    /// Common use: Duck bass when kick hits.
+    ///
+    /// # Arguments
+    /// * `track_name` - Name of the track to use as sidechain source
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::Compressor;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("kick", &Instrument::kick())
+    ///     .bus("drums")
+    ///     .notes(&[C4], 0.25);
+    ///
+    /// comp.instrument("bass", &Instrument::sub_bass())
+    ///     .bus("bass")
+    ///     .notes(&[C2], 0.5);
+    ///
+    /// let mut mixer = comp.into_mixer();
+    ///
+    /// // Bass ducks when kick hits
+    /// mixer.bus("bass")
+    ///     .compressor(
+    ///         Compressor::new(0.6, 4.0, 0.01, 0.1, 1.0)
+    ///             .with_sidechain_track("kick")
+    ///     );
+    /// ```
+    pub fn with_sidechain_track(mut self, track_name: &str) -> Self {
+        self.sidechain_source = Some(SidechainSource::Track(track_name.to_string()));
+        self
+    }
+
+    /// Configure sidechain from an entire bus
+    ///
+    /// Duck this signal when the specified bus is loud. Useful for ducking
+    /// a bus based on another bus (e.g., duck synths when drums bus is active).
+    ///
+    /// # Arguments
+    /// * `bus_name` - Name of the bus to use as sidechain source
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::Compressor;
+    /// # let mut mixer = tunes::track::Mixer::new(Tempo::new(120.0));
+    /// // Synths duck when entire drums bus is loud
+    /// mixer.bus("synths")
+    ///     .compressor(
+    ///         Compressor::new(0.5, 3.0, 0.005, 0.05, 1.0)
+    ///             .with_sidechain_bus("drums")
+    ///     );
+    /// ```
+    pub fn with_sidechain_bus(mut self, bus_name: &str) -> Self {
+        self.sidechain_source = Some(SidechainSource::Bus(bus_name.to_string()));
+        self
+    }
+
     /// Process a single sample at given sample rate
     ///
     /// # Arguments
@@ -545,8 +633,9 @@ impl Compressor {
     /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional external envelope for sidechaining (overrides input level detection)
     #[inline]
-    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64, sidechain_envelope: Option<f32>) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         // Use bitwise AND instead of modulo for power-of-2
         if sample_count & 63 == 0 {
@@ -567,7 +656,8 @@ impl Compressor {
             }
         }
 
-        let input_level = input.abs();
+        // Use sidechain envelope if provided, otherwise use input level
+        let input_level = sidechain_envelope.unwrap_or_else(|| input.abs());
 
         // Envelope follower with pre-computed coefficients
         let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
@@ -709,7 +799,7 @@ impl Chorus {
         // Calculate modulated delay time using sine LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
         let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0);
-        let delay_samples = (delay_ms * sample_rate / 1000.0) as usize;
+        let delay_samples = ((delay_ms * sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
 
         // Read from delayed position
         let read_pos = (self.write_pos + self.buffer.len() - delay_samples) % self.buffer.len();
@@ -2300,7 +2390,7 @@ impl EffectChain {
                 1 => {
                     // Compressor
                     if let Some(ref mut compressor) = self.compressor {
-                        compressor.process(signal, sample_rate, time, sample_count)
+                        compressor.process(signal, sample_rate, time, sample_count, None)
                     } else {
                         signal
                     }

@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     println!("  • Format: Standard MIDI File (Type 1)");
     println!(
         "  • Tracks: {} (including tempo track)",
-        mixer.tracks.len() + 1
+        mixer.all_tracks().len() + 1
     );
     println!("  • Resolution: 480 PPQ (Pulses Per Quarter Note)\n");
 

@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     println!("=== Step 3: Import MIDI File ===\n");
     let mut imported_mixer = Mixer::import_midi("demo.mid")?;
     println!("✓ Imported 'demo.mid'");
-    println!("  - Tracks: {}", imported_mixer.tracks.len());
+    println!("  - Tracks: {}", imported_mixer.all_tracks().len());
     println!("  - Duration: {:.2}s", imported_mixer.total_duration());
     println!("  - Tempo: {:.1} BPM\n", imported_mixer.tempo.bpm);
 

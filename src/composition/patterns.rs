@@ -892,7 +892,7 @@ mod tests {
             .note(&[E4], 0.5)
             .repeat(2); // Repeat pattern 2 more times
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Original 2 notes + 2 repeats * 2 notes = 6 total
         assert_eq!(track.events.len(), 6);
     }
@@ -906,7 +906,7 @@ mod tests {
             .note(&[550.0], 0.25)
             .repeat(1); // Repeat once
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
 
         // Original pattern
@@ -953,7 +953,7 @@ mod tests {
             .note(&[440.0], 0.5)
             .repeat(0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should only have original note
         assert_eq!(track.events.len(), 1);
     }
@@ -967,7 +967,7 @@ mod tests {
             .drum(DrumType::Snare)
             .repeat(1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4); // 2 original + 2 repeated
     }
 
@@ -981,7 +981,7 @@ mod tests {
             .note(&[G4], 0.5) // In pattern
             .repeat(1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // Should have 1 note before pattern + 2 in pattern + 2 repeated = 5
         assert_eq!(track.events.len(), 5);
     }
@@ -996,7 +996,7 @@ mod tests {
             .note(&[G4], 0.25)
             .reverse();
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Timing should stay the same, but notes reversed
@@ -1031,7 +1031,7 @@ mod tests {
             .note(&[440.0], 0.5)
             .reverse();
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
 
         // Single note should be unchanged
@@ -1063,7 +1063,7 @@ mod tests {
             .note(&[E4], 0.5)
             .repeat_last(1.0, 2); // Repeat last 1 second, 2 times
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 2 original + 2 repeated twice = 6 total
         assert_eq!(track.events.len(), 6);
     }
@@ -1073,7 +1073,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody").note(&[440.0], 0.5).repeat_last(0.5, 0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1); // Only original note
     }
 
@@ -1085,7 +1085,7 @@ mod tests {
         // Check cursor first before moving comp
         assert_eq!(builder.cursor, 0.5); // Cursor unchanged
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1); // No repeat should happen
     }
 
@@ -1107,7 +1107,7 @@ mod tests {
             .note(&[G4], 0.5) // Starts at 1.0
             .repeat_last(0.6, 1); // Repeat last 0.6s (1.5 - 0.6 = 0.9, so captures G4 starting at 1.0)
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         // 3 original + 1 repeated (G4) = 4 total
         assert_eq!(track.events.len(), 4);
     }
@@ -1122,7 +1122,7 @@ mod tests {
             .repeat(1) // Now have 4 notes
             .reverse(); // Reverse all 4
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
     }
 
@@ -1135,7 +1135,7 @@ mod tests {
             .drum(DrumType::Kick)
             .repeat(1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4); // 1 note + 1 drum, repeated = 4 total
 
         // Verify mix of types
@@ -1167,7 +1167,7 @@ mod tests {
         // Final = 3.25
         assert_eq!(builder.cursor, 3.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 11); // 9 + 2 = 11
     }
 
@@ -1180,7 +1180,7 @@ mod tests {
             .note(&[660.0], 0.25) // Single note
             .reverse();
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // First note should now be the single note (was second)
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -1208,7 +1208,7 @@ mod tests {
             .note(&[G4], 0.5)
             .speed(2.0); // Double speed
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
 
         // Durations should be halved
@@ -1235,7 +1235,7 @@ mod tests {
             .note(&[E4], 0.5)
             .speed(0.5); // Half speed (slower)
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Durations should be doubled
         if let AudioEvent::Note(note) = &track.events[0] {
@@ -1297,7 +1297,7 @@ mod tests {
             .note(&[C4, E4, G4], 0.5) // Chord
             .speed(2.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         if let AudioEvent::Note(note) = &track.events[0] {
             // Chord should still be a chord
@@ -1319,7 +1319,7 @@ mod tests {
             .repeat(31) // 32 total notes
             .probability(0.5); // 50% chance each
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // With 50% probability and 32 notes, we expect roughly 16 notes
         // Allow for variance (between 8 and 24 should be reasonable)
@@ -1337,7 +1337,7 @@ mod tests {
             .note(&[G4], 0.5)
             .probability(0.0); // 0% chance = silence
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 0);
     }
 
@@ -1351,7 +1351,7 @@ mod tests {
             .note(&[G4], 0.5)
             .probability(1.0); // 100% chance = all notes
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
     }
 
@@ -1380,7 +1380,7 @@ mod tests {
             .note(&[G4], 0.5) // In pattern - probabilistic
             .probability(0.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Should still have the note before pattern_start
         assert_eq!(track.events.len(), 1);
@@ -1401,7 +1401,7 @@ mod tests {
             .speed(2.0) // First double the speed
             .probability(1.0); // Then keep all (no filtering)
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Should have all 4 notes with halved durations
         assert_eq!(track.events.len(), 4);
@@ -1421,7 +1421,7 @@ mod tests {
             .at(1.0)
             .speed(2.0);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Check timing compression
         if let AudioEvent::Drum(drum) = &track.events[0] {
@@ -1443,7 +1443,7 @@ mod tests {
             .drum(DrumType::Kick)
             .probability(1.0); // All should stay
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
     }
 
@@ -1457,7 +1457,7 @@ mod tests {
             .speed(1.5) // Make it faster
             .probability(0.8); // Remove ~20% of notes
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Should have some notes (probabilistic, so can't be exact)
         assert!(track.events.len() > 0);
@@ -1476,7 +1476,7 @@ mod tests {
         comp.track("drums")
             .rhythm("x-x- x-x-", DrumType::Kick, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Pattern has 9 chars (including space), hits at positions 0, 2, 5, 7
         assert_eq!(track.events.len(), 4);
@@ -1502,7 +1502,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums").rhythm("xX1*", DrumType::Snare, 0.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // All 4 characters are hit markers
         assert_eq!(track.events.len(), 4);
@@ -1521,7 +1521,7 @@ mod tests {
         comp.track("drums")
             .rhythm("x-x_x.x~x0x x", DrumType::HiHatClosed, 0.1);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Hits at positions 0, 2, 4, 6, 8, 10, 12 (7 total)
         assert_eq!(track.events.len(), 7);
@@ -1535,7 +1535,7 @@ mod tests {
             .rhythm("--x- --x-", DrumType::Snare, 0.125)
             .rhythm("xxxx xxxx", DrumType::HiHatClosed, 0.0625);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 2 kicks + 2 snares + 8 hihats = 12 events
         assert_eq!(track.events.len(), 12);
@@ -1566,7 +1566,7 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums").rhythm("xxxx", DrumType::Kick, 0.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);
     }
 
@@ -1578,7 +1578,7 @@ mod tests {
         // Empty patterns create no events, so the track won't be in the mixer
         let mixer = comp.into_mixer();
         // A pattern with all rests simply creates no drum hits - valid but produces no output
-        assert!(mixer.tracks.is_empty() || mixer.tracks[0].events.is_empty());
+        assert!(mixer.tracks().is_empty() || mixer.tracks()[0].events.is_empty());
     }
 
     #[test]
@@ -1588,7 +1588,7 @@ mod tests {
 
         // Empty pattern creates no events, so the track won't be in the mixer
         let mixer = comp.into_mixer();
-        assert!(mixer.tracks.is_empty() || mixer.tracks[0].events.is_empty());
+        assert!(mixer.tracks().is_empty() || mixer.tracks()[0].events.is_empty());
     }
 
     #[test]
@@ -1609,7 +1609,7 @@ mod tests {
         comp.track("drums")
             .rhythm("x.x.x.x.", DrumType::HiHatClosed, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 4 hits (at positions 0, 2, 4, 6)
         assert_eq!(track.events.len(), 4);
@@ -1635,7 +1635,7 @@ mod tests {
         comp.track("perc")
             .rhythm("1001 1001", DrumType::Cowbell, 0.125);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Hits at positions 0, 3, 5, 8 (4 total)
         assert_eq!(track.events.len(), 4);
@@ -1648,7 +1648,7 @@ mod tests {
             .at(2.0)
             .rhythm("x-x-", DrumType::Kick, 0.25);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // First hit should start at 2.0
         if let AudioEvent::Drum(drum) = &track.events[0] {
@@ -1675,13 +1675,13 @@ mod tests {
         let mixer = comp.into_mixer();
 
         // Verify both patterns were created (don't assume track ordering)
-        assert_eq!(mixer.tracks.len(), 2);
+        assert_eq!(mixer.tracks().len(), 2);
 
-        let total_events: usize = mixer.tracks.iter().map(|t| t.events.len()).sum();
+        let total_events: usize = mixer.tracks().iter().map(|t| t.events.len()).sum();
         assert_eq!(total_events, 6); // 4 kicks + 2 snares
 
         // Verify one track has 4 events and one has 2
-        let event_counts: Vec<usize> = mixer.tracks.iter().map(|t| t.events.len()).collect();
+        let event_counts: Vec<usize> = mixer.tracks().iter().map(|t| t.events.len()).collect();
         assert!(event_counts.contains(&4));
         assert!(event_counts.contains(&2));
     }
@@ -1697,7 +1697,7 @@ mod tests {
             .note(&[C5], 0.25)
             .every_n(2, DrumType::Crash); // Add crash on 2nd, 4th
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 4 original notes + 2 crashes = 6 events
         assert_eq!(track.events.len(), 6);
@@ -1720,7 +1720,7 @@ mod tests {
             .repeat(15) // 16 total notes
             .every_n(4, DrumType::Crash);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 16 notes + 4 crashes (on 4th, 8th, 12th, 16th) = 20 events
         assert_eq!(track.events.len(), 20);
@@ -1744,7 +1744,7 @@ mod tests {
             .drum(DrumType::Kick)
             .every_n(2, DrumType::Snare);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 4 kicks + 2 snares (on 2nd, 4th) = 6 events
         assert_eq!(track.events.len(), 6);
@@ -1766,7 +1766,7 @@ mod tests {
             .note(&[550.0], 0.5)
             .every_n(0, DrumType::Crash); // n=0 should be no-op
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 2); // Only original notes
     }
 
@@ -1780,7 +1780,7 @@ mod tests {
             .note(&[G4], 0.25)
             .every_n(1, DrumType::Crash); // Every event gets a crash
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 3 notes + 3 crashes = 6 events
         assert_eq!(track.events.len(), 6);
@@ -1802,7 +1802,7 @@ mod tests {
             .note(&[E4], 0.5)
             .every_n(10, DrumType::Crash); // n > pattern length
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // 2 notes, no crashes added (10th event doesn't exist)
         assert_eq!(track.events.len(), 2);
@@ -1819,7 +1819,7 @@ mod tests {
             .note(&[C5], 0.25)
             .every_n(2, DrumType::Crash);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Find the crash events and verify timing
         let crashes: Vec<f32> = track
@@ -1846,7 +1846,7 @@ mod tests {
             .repeat(3) // 2 * 4 = 8 kicks total
             .every_n(4, DrumType::Crash);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Should have 2 crashes (on 4th and 8th kick)
         let crash_count = track
@@ -1867,7 +1867,7 @@ mod tests {
             .every_n(4, DrumType::Crash) // Crash every 4
             .every_n(8, DrumType::Ride); // Ride every 8
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         let crash_count = track
             .events
@@ -1894,7 +1894,7 @@ mod tests {
             .note(&[G4], 0.25) // In pattern
             .every_n(1, DrumType::Crash);
 
-        let track = &comp.into_mixer().tracks[0];
+        let track = &comp.into_mixer().tracks()[0];
 
         // Should only add crashes for the 2 notes in pattern (not the first one)
         let crash_count = track
