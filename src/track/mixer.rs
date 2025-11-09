@@ -47,12 +47,6 @@ impl EnvelopeCache {
     fn get_bus(&self, bus_name: &str) -> f32 {
         self.buses.get(bus_name).copied().unwrap_or(0.0)
     }
-
-    /// Clear all cached envelopes (called at start of each sample)
-    fn clear(&mut self) {
-        self.tracks.clear();
-        self.buses.clear();
-    }
 }
 
 /// Mix multiple buses together
@@ -142,16 +136,16 @@ impl Mixer {
     /// # use tunes::prelude::*;
     /// # use tunes::synthesis::effects::{Reverb, Compressor};
     /// let mut comp = Composition::new(Tempo::new(120.0));
-    /// comp.instrument("kick", &Instrument::kick())
+    /// comp.track("kick")
     ///     .bus("drums")
-    ///     .notes(&[C4], 0.25);
+    ///     .drum(DrumType::Kick);
     ///
     /// let mut mixer = comp.into_mixer();
     ///
     /// // Apply effects to the drums bus
     /// mixer.bus("drums")
-    ///     .reverb(Reverb::new(0.3, 0.4))
-    ///     .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 44100.0))
+    ///     .reverb(Reverb::new(0.3, 0.4, 0.3))
+    ///     .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 1.0))
     ///     .volume(0.9);
     /// ```
     pub fn bus(&mut self, name: &str) -> BusBuilder<'_> {

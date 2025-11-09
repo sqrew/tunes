@@ -579,11 +579,11 @@ impl Compressor {
     /// # use tunes::prelude::*;
     /// # use tunes::synthesis::effects::Compressor;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// comp.instrument("kick", &Instrument::kick())
+    /// comp.track("kick")
     ///     .bus("drums")
-    ///     .notes(&[C4], 0.25);
+    ///     .drum(DrumType::Kick);
     ///
-    /// comp.instrument("bass", &Instrument::sub_bass())
+    /// comp.track("bass")
     ///     .bus("bass")
     ///     .notes(&[C2], 0.5);
     ///
@@ -2238,7 +2238,7 @@ pub enum EQPreset {
 /// let output = chain.process_mono(0.5, 44100.0, 0.0, 0);
 ///
 /// // Or process stereo signal (for master/buses)
-/// let (left, right) = chain.process_stereo(0.3, 0.4, 44100.0, 0.0, 0);
+/// let (left, right) = chain.process_stereo(0.3, 0.4, 44100.0, 0.0, 0, None);
 /// ```
 #[derive(Debug, Clone)]
 pub struct EffectChain {

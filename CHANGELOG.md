@@ -71,6 +71,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mixer.master_limiter(Limiter::new(0.95));
   ```
 
+**BusBuilder - Fluent API for Bus Configuration:**
+- **`BusBuilder`** - Ergonomic fluent interface for bus-level effects and mixing
+- **Easy bus access** - `mixer.bus("drums")` returns BusBuilder for chaining
+- **All 16 effects supported** - Same fluent API as tracks (`.reverb()`, `.compressor()`, etc.)
+- **Example:**
+  ```rust
+  mixer.bus("drums")
+      .reverb(Reverb::new(0.3, 0.4, 0.3))
+      .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 1.0))
+      .volume(0.85)
+      .pan(-0.1);
+  ```
+
+**Sidechaining / Ducking:**
+- **Track-to-bus sidechaining** - Compress one track based on another track's level
+- **Bus-to-bus sidechaining** - Compress entire bus based on another bus's level
+- **`.with_sidechain_track(name)`** - Configure compressor to duck when specific track plays
+- **`.with_sidechain_bus(name)`** - Configure compressor to duck when bus plays
+- **Two-pass rendering** - Envelope caching system for efficient sidechain processing
+- **Common uses:**
+  - EDM kick ducking bass (classic pumping effect)
+  - Vocal ducking background music (podcasts, voiceovers)
+  - Drums ducking pads (rhythmic breathing)
+  - Creative rhythmic pumping effects
+- **Example:**
+  ```rust
+  // Bass ducks when kick drum hits (classic EDM)
+  mixer.bus("bass").compressor(
+      Compressor::new(0.6, 8.0, 0.001, 0.15, 1.2)
+          .with_sidechain_track("kick")
+  );
+  ```
+- **See:** `examples/sidechaining.rs` for complete examples
+
 **Signal Flow Architecture:**
 ```
 Composition

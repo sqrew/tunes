@@ -57,22 +57,29 @@ comp.instrument("guitar", &Instrument::electric_guitar_clean())
 
 ### Bus-Level Effects
 
-Apply effects to groups of tracks:
+Apply effects to groups of tracks using the `BusBuilder` API:
 
 ```rust
 let mut mixer = comp.into_mixer();
 
-// Access the drums bus and add effects
-if let Some(drums_bus) = mixer.buses.get_mut("drums") {
-    drums_bus.effects.reverb = Some(Reverb::new(0.3, 0.4));
-    drums_bus.effects.compressor = Some(Compressor::new(0.65, 4.0, 0.01, 0.08, 44100.0));
-    drums_bus.volume = 0.85;
-}
+// Fluent API for bus effects
+mixer.bus("drums")
+    .reverb(Reverb::new(0.3, 0.4, 0.3))
+    .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 1.0))
+    .volume(0.85);
+
+// Sidechaining: Bass ducks when kick hits
+mixer.bus("bass")
+    .compressor(
+        Compressor::new(0.6, 8.0, 0.001, 0.15, 1.2)
+            .with_sidechain_track("kick")
+    );
 ```
 
 **Use cases:**
 - Shared ambience (one reverb for all drums)
 - Group processing (compress all vocals together)
+- Sidechaining / ducking effects (see Compressor section)
 - Efficient CPU usage (fewer effect instances)
 - Professional mixing workflows
 
@@ -171,6 +178,59 @@ comp.track("bass")
 - Even out dynamics (vocals, bass)
 - Add punch (fast attack/release on drums)
 - Glue tracks together (gentle 2:1 ratio on master)
+
+#### Sidechaining / Ducking
+
+The compressor supports **sidechaining** - using one signal to control compression of another. This is essential for EDM "pumping" effects and professional mixing.
+
+```rust
+let mut comp = Composition::new(Tempo::new(128.0));
+
+// Create kick drum
+comp.track("kick")
+    .bus("drums")
+    .drum(DrumType::Kick);
+
+// Create bass that will duck
+comp.track("bass")
+    .bus("bass")
+    .notes(&[C2, C2, G2, A2], 1.0);
+
+let mut mixer = comp.into_mixer();
+
+// Bass compresses when kick hits
+mixer.bus("bass").compressor(
+    Compressor::new(0.6, 8.0, 0.001, 0.15, 1.2)
+        .with_sidechain_track("kick")  // Duck when "kick" plays
+);
+```
+
+**How it works:**
+- The compressor on the "bass" bus monitors the "kick" track's level
+- When the kick hits (high level), the bass gets compressed (reduced in volume)
+- Creates space for the kick and adds rhythmic pumping
+
+**Two sidechaining modes:**
+```rust
+// Track-to-bus: Bass ducks when specific kick track plays
+.with_sidechain_track("kick")
+
+// Bus-to-bus: Entire synth bus ducks when entire drums bus plays
+.with_sidechain_bus("drums")
+```
+
+**Parameter tuning:**
+- **Aggressive pump** (EDM): Fast attack (0.001), slow release (0.3-0.5), high ratio (8.0+)
+- **Subtle duck** (mixing): Slower attack (0.01), faster release (0.15), moderate ratio (3.0-4.0)
+- **Threshold**: 0.5-0.7 (lower = more sensitive, more ducking)
+
+**Common uses:**
+- Kick ducking bass (EDM staple)
+- Vocal ducking background music (podcasts, voiceovers)
+- Drums ducking pads (creates rhythmic breathing)
+- Creative rhythmic pumping effects
+
+See the `examples/sidechaining.rs` for complete examples of different sidechaining styles.
 
 ### 4. Gate
 

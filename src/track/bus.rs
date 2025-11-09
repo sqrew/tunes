@@ -31,12 +31,12 @@
 //! let mut comp = Composition::new(Tempo::new(120.0));
 //!
 //! // Create tracks on different buses
-//! comp.bus("drums")
-//!     .track("kick")
+//! comp.track("kick")
+//!     .bus("drums")
 //!     .drum(DrumType::Kick);
 //!
-//! comp.bus("melody")
-//!     .track("lead")
+//! comp.track("lead")
+//!     .bus("melody")
 //!     .notes(&[C4, E4, G4], 0.5);
 //! ```
 

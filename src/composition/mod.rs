@@ -662,20 +662,19 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::prelude::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
-    /// comp.instrument("kick", &Instrument::kick())
+    /// comp.track("kick")
     ///     .bus("drums")
-    ///     .notes(&[C4], 0.25);
+    ///     .drum(DrumType::Kick);
     ///
-    /// comp.instrument("snare", &Instrument::snare())
+    /// comp.track("snare")
     ///     .bus("drums")
-    ///     .notes(&[C4], 0.25);
+    ///     .drum(DrumType::Snare);
     ///
     /// // Both tracks will be on the "drums" bus
     /// let mut mixer = comp.into_mixer();
-    /// // You can then apply effects to the entire drums bus
-    /// if let Some(drums) = mixer.buses.get_mut("drums") {
-    ///     drums.effects.reverb = Some(tunes::synthesis::effects::Reverb::new(0.3, 0.5));
-    /// }
+    /// // You can then apply effects to the entire drums bus using BusBuilder
+    /// mixer.bus("drums")
+    ///     .reverb(Reverb::new(0.3, 0.5, 0.3));
     /// ```
     pub fn bus(mut self, bus_name: &str) -> Self {
         self.bus_name = bus_name.to_string();

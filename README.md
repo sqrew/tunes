@@ -31,7 +31,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.10.0"
+tunes = "0.11.0"
 ```
 
 ### Platform Requirements
@@ -279,7 +279,7 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **961 comprehensive tests and 320 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **967 comprehensive tests and 326 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
