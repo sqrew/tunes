@@ -7,7 +7,7 @@ use super::bus::{Bus, BusBuilder};
 use super::events::*;
 use super::track::Track;
 use crate::composition::rhythm::Tempo;
-use crate::synthesis::effects::EffectChain;
+use crate::synthesis::effects::{EffectChain, SidechainSource};
 use std::collections::HashMap;
 
 /// Envelope cache for sidechaining
@@ -416,13 +416,28 @@ impl Mixer {
             let bus_envelope = ((bus_left * bus_left + bus_right * bus_right) / 2.0).sqrt();
             envelope_cache.cache_bus(&bus.name, bus_envelope);
 
-            // Apply bus effects (stereo processing) - effects can now access envelope_cache
+            // Look up sidechain envelope if compressor has sidechain configured
+            let sidechain_env = if let Some(ref compressor) = bus.effects.compressor {
+                if let Some(ref source) = compressor.sidechain_source {
+                    match source {
+                        SidechainSource::Track(name) => Some(envelope_cache.get_track(name)),
+                        SidechainSource::Bus(name) => Some(envelope_cache.get_bus(name)),
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Apply bus effects (stereo processing) with sidechain support
             let (effected_left, effected_right) = bus.effects.process_stereo(
                 bus_left,
                 bus_right,
                 sample_rate,
                 time,
                 self.sample_count,
+                sidechain_env,
             );
 
             // Apply bus volume and pan
@@ -449,13 +464,14 @@ impl Mixer {
             mixed_right += bus_right;
         }
 
-        // Apply master effects (stereo processing)
+        // Apply master effects (stereo processing) - no sidechaining on master
         let (master_left, master_right) = self.master.process_stereo(
             mixed_left,
             mixed_right,
             sample_rate,
             time,
             self.sample_count,
+            None,
         );
 
         // Apply soft clipping to prevent harsh distortion

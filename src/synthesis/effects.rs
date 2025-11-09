@@ -2518,6 +2518,7 @@ impl EffectChain {
     /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional sidechain envelope for compressor (looked up by mixer)
     ///
     /// # Returns
     /// Processed stereo sample as (left, right)
@@ -2529,6 +2530,7 @@ impl EffectChain {
         sample_rate: f32,
         time: f32,
         sample_count: u64,
+        sidechain_envelope: Option<f32>,
     ) -> (f32, f32) {
         let mut left_signal = left;
         let mut right_signal = right;
@@ -2549,8 +2551,9 @@ impl EffectChain {
                     // Compressor (stereo-linked - use max of both channels for detection)
                     if let Some(ref mut compressor) = self.compressor {
                         let max_input = left_signal.abs().max(right_signal.abs());
-                        left_signal = compressor.process(max_input.copysign(left_signal), sample_rate, time, sample_count);
-                        right_signal = compressor.process(max_input.copysign(right_signal), sample_rate, time, sample_count);
+                        // Use sidechain envelope if provided, otherwise use the signal level
+                        left_signal = compressor.process(max_input.copysign(left_signal), sample_rate, time, sample_count, sidechain_envelope);
+                        right_signal = compressor.process(max_input.copysign(right_signal), sample_rate, time, sample_count, sidechain_envelope);
                     }
                 }
                 2 => {
