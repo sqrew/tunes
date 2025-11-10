@@ -278,4 +278,106 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Muted trumpet - trumpet with mute (darker, closed, distant sound)
+    pub fn muted_trumpet() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.8, 0.22); // Subtle vibrato
+        Self {
+            name: "Muted Trumpet".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.04, 0.15, 0.75, 0.35), // Slightly muffled attack
+            filter: Filter::low_pass(2400.0, 0.38),          // Darker, muted tone
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.1)],
+            delay: None,
+            reverb: Some(Reverb::new(0.3, 0.38, 0.22)),
+            distortion: Some(Distortion::new(1.15, 0.12)), // Subtle brass texture
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Flugelhorn - darker, mellower than trumpet, warm and lyrical
+    pub fn flugelhorn() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.2, 0.3); // Expressive vibrato
+        Self {
+            name: "Flugelhorn".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.06, 0.18, 0.82, 0.45), // Smooth, warm attack
+            filter: Filter::low_pass(3200.0, 0.35),          // Warm, dark brass
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.42, 0.52, 0.35)),
+            distortion: Some(Distortion::new(1.2, 0.15)), // Warm brass character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Euphonium - darker than trombone, brighter than tuba, rich tenor brass
+    pub fn euphonium() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.8, 0.25);
+        Self {
+            name: "Euphonium".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.07, 0.2, 0.85, 0.5), // Smooth, rich attack
+            filter: Filter::low_pass(2000.0, 0.4),         // Warm tenor range
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.1)],
+            delay: None,
+            reverb: Some(Reverb::new(0.45, 0.52, 0.38)),
+            distortion: Some(Distortion::new(1.18, 0.14)), // Rich brass warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Brass section - full orchestral brass ensemble (trumpets, trombones, horns)
+    pub fn brass_section() -> Self {
+        let ensemble_vibrato = LFO::new(Waveform::Sine, 5.5, 0.28); // Ensemble vibrato
+        Self {
+            name: "Brass Section".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.08, 0.2, 0.85, 0.5), // Powerful section attack
+            filter: Filter::low_pass(4500.0, 0.48),        // Full, powerful brass
+            modulation: vec![ModRoute::new(ensemble_vibrato, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.55, 0.62, 0.45)), // Large hall
+            distortion: Some(Distortion::new(1.35, 0.22)), // Full brass character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Solo trumpet - bright, soloistic trumpet (more articulate than section)
+    pub fn solo_trumpet() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 6.2, 0.35); // Expressive solo vibrato
+        Self {
+            name: "Solo Trumpet".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.03, 0.15, 0.8, 0.38), // Clear, articulate attack
+            filter: Filter::low_pass(5200.0, 0.52),         // Bright, cutting
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.18)],
+            delay: None,
+            reverb: Some(Reverb::new(0.32, 0.42, 0.28)),
+            distortion: Some(Distortion::new(1.28, 0.2)), // Solo brass presence
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Muted trombone - trombone with mute (darker, jazzy, intimate)
+    pub fn muted_trombone() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 5.0, 0.25);
+        Self {
+            name: "Muted Trombone".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.05, 0.18, 0.78, 0.42), // Smooth, muted attack
+            filter: Filter::low_pass(2200.0, 0.4),           // Dark, jazzy mute
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.12)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.3)),
+            distortion: Some(Distortion::new(1.22, 0.16)), // Subtle brass texture
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

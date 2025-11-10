@@ -12,10 +12,10 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Instruments**: 100+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
+- **Instruments**: 150+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
 - **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
-- **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
+- **Algorithmic Sequences**: 50+ algorithms, including Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control

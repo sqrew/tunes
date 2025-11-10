@@ -203,4 +203,87 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// CP-70 electric grand - Yamaha CP-70 (brighter and more percussive than Rhodes)
+    pub fn cp70() -> Self {
+        Self {
+            name: "CP-70 Electric Grand".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.45, 0.5, 0.85), // Bright attack, piano-like decay
+            filter: Filter::low_pass(5500.0, 0.25),          // Brighter than Rhodes
+            modulation: Vec::new(),
+            delay: Some(Delay::new(0.2, 0.18, 0.12)),
+            reverb: Some(Reverb::new(0.32, 0.42, 0.25)),
+            distortion: Some(Distortion::new(1.1, 0.08)), // Slight electric character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Pianet - Hohner Pianet (thin, plucky, vintage electric piano)
+    pub fn pianet() -> Self {
+        Self {
+            name: "Pianet".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.25, 0.25, 0.4), // Quick, plucky attack
+            filter: Filter::low_pass(4500.0, 0.4),           // Thin, bright character
+            modulation: Vec::new(),
+            delay: Some(Delay::new(0.18, 0.2, 0.15)),
+            reverb: Some(Reverb::new(0.25, 0.35, 0.2)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Stage 73 - Fender Rhodes Stage 73 (classic suitcase Rhodes sound)
+    pub fn stage_73() -> Self {
+        let tremolo = LFO::new(Waveform::Sine, 5.0, 0.18); // Classic Rhodes tremolo
+        Self {
+            name: "Stage 73".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.003, 0.5, 0.5, 0.9), // Warm, sustained Rhodes attack
+            filter: Filter::low_pass(3800.0, 0.22),        // Classic Rhodes warmth
+            modulation: vec![ModRoute::new(tremolo, ModTarget::Volume, 0.15)],
+            delay: Some(Delay::new(0.25, 0.22, 0.18)),
+            reverb: Some(Reverb::new(0.38, 0.48, 0.28)),
+            distortion: Some(Distortion::new(1.15, 0.1)), // Subtle tube warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Mark I Rhodes - Vintage Rhodes Mark I (darker, warmer than Stage 73)
+    pub fn mark_i_rhodes() -> Self {
+        let tremolo = LFO::new(Waveform::Sine, 4.8, 0.2); // Slower vintage tremolo
+        Self {
+            name: "Mark I Rhodes".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.004, 0.6, 0.55, 1.0), // Slower, warmer attack
+            filter: Filter::low_pass(3200.0, 0.2),          // Darker, vintage tone
+            modulation: vec![ModRoute::new(tremolo, ModTarget::Volume, 0.18)],
+            delay: Some(Delay::new(0.28, 0.25, 0.2)),
+            reverb: Some(Reverb::new(0.42, 0.52, 0.32)),
+            distortion: Some(Distortion::new(1.2, 0.12)), // Vintage tube character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Honky tonk piano - detuned upright piano (saloon/ragtime sound)
+    pub fn honky_tonk_piano() -> Self {
+        let detune = LFO::new(Waveform::Sine, 0.6, 0.35); // Out-of-tune character
+        Self {
+            name: "Honky Tonk Piano".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.35, 0.5, 0.75), // Percussive piano attack
+            filter: Filter::low_pass(5500.0, 0.3),           // Bright, honky character
+            modulation: vec![ModRoute::new(detune, ModTarget::FilterCutoff, 0.25)],
+            delay: None,
+            reverb: Some(Reverb::new(0.2, 0.3, 0.18)), // Dry, saloon ambience
+            distortion: Some(Distortion::new(1.25, 0.15)), // Vintage character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

@@ -773,6 +773,84 @@ impl Compressor {
         output.clamp(-2.0, 2.0)
     }
 
+    /// Process a stereo sample with properly linked compression
+    ///
+    /// Uses the maximum level of both channels for gain detection, then applies
+    /// the same gain reduction to both channels. This prevents stereo image shifts.
+    ///
+    /// # Arguments
+    /// * `left` - Left channel input
+    /// * `right` - Right channel input
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional external envelope for sidechaining
+    ///
+    /// # Returns
+    /// Tuple of (left_output, right_output)
+    #[inline]
+    pub fn process_stereo_linked(
+        &mut self,
+        left: f32,
+        right: f32,
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+        sidechain_envelope: Option<f32>,
+    ) -> (f32, f32) {
+        // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+            if let Some(auto) = &self.attack_automation {
+                self.attack = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.release_automation {
+                self.release = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.makeup_gain_automation {
+                self.makeup_gain = auto.value_at(time).max(0.1);
+            }
+        }
+
+        // Use sidechain envelope if provided, otherwise use max of both channels for detection
+        let input_level = sidechain_envelope.unwrap_or_else(|| left.abs().max(right.abs()));
+
+        // Envelope follower with pre-computed coefficients
+        let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+
+        // Use FMA for envelope calculation
+        let coeff = if input_level > self.envelope {
+            attack_coeff
+        } else {
+            release_coeff
+        };
+        self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
+
+        // Clamp envelope to prevent runaway values
+        self.envelope = self.envelope.clamp(0.0, 2.0);
+
+        // Calculate gain reduction (same for both channels)
+        let gain = if self.envelope > self.threshold {
+            let over_threshold = self.envelope / self.threshold.max(0.001);
+            let compressed = over_threshold.powf(1.0 / self.ratio);
+            (compressed * self.threshold / self.envelope).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+
+        // Apply same gain to both channels with makeup gain
+        let left_out = (left * gain * self.makeup_gain).clamp(-2.0, 2.0);
+        let right_out = (right * gain * self.makeup_gain).clamp(-2.0, 2.0);
+
+        (left_out, right_out)
+    }
+
     /// Process a block of samples
     ///
     /// # Arguments
@@ -2165,6 +2243,62 @@ impl Limiter {
         input * self.gain_reduction
     }
 
+    /// Process a stereo sample with properly linked limiting
+    ///
+    /// Uses the maximum level of both channels for peak detection, then applies
+    /// the same gain reduction to both channels. This prevents stereo image shifts.
+    ///
+    /// # Arguments
+    /// * `left` - Left channel input
+    /// * `right` - Right channel input
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Current time in seconds (for automation)
+    /// * `sample_count` - Global sample counter (for quantized automation lookups)
+    ///
+    /// # Returns
+    /// Tuple of (left_output, right_output)
+    #[inline]
+    pub fn process_stereo_linked(
+        &mut self,
+        left: f32,
+        right: f32,
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) -> (f32, f32) {
+        // Quantized automation lookups (every 64 samples)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+        }
+
+        // Convert threshold from dB to linear
+        let threshold_linear = 10.0_f32.powf(self.threshold / 20.0);
+
+        // Detect peak from both channels
+        let peak = left.abs().max(right.abs());
+
+        // Calculate required gain reduction
+        let target_gain = if peak > threshold_linear {
+            threshold_linear / peak
+        } else {
+            1.0
+        };
+
+        // Apply gain reduction with instant attack and release envelope
+        if target_gain < self.gain_reduction {
+            self.gain_reduction = target_gain;
+        } else {
+            // Smooth release
+            let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.gain_reduction = target_gain + release_coeff * (self.gain_reduction - target_gain);
+        }
+
+        // Apply same limiting gain to both channels
+        (left * self.gain_reduction, right * self.gain_reduction)
+    }
+
     /// Process a block of samples
     ///
     /// # Arguments
@@ -2930,8 +3064,7 @@ impl EffectChain {
         let mut right_signal = right;
 
         // Process effects in pre-computed priority order
-        // For now, process each channel independently
-        // TODO: Add stereo-linked processing for compressor/limiter
+        // Compressor and limiter use stereo-linked processing to prevent image shift
         for &effect_id in &self.effect_order {
             match effect_id {
                 0 => {
@@ -2942,12 +3075,18 @@ impl EffectChain {
                     }
                 }
                 1 => {
-                    // Compressor (stereo-linked - use max of both channels for detection)
+                    // Compressor (stereo-linked - detects from max, applies same gain to both channels)
                     if let Some(ref mut compressor) = self.compressor {
-                        let max_input = left_signal.abs().max(right_signal.abs());
-                        // Use sidechain envelope if provided, otherwise use the signal level
-                        left_signal = compressor.process(max_input.copysign(left_signal), sample_rate, time, sample_count, sidechain_envelope);
-                        right_signal = compressor.process(max_input.copysign(right_signal), sample_rate, time, sample_count, sidechain_envelope);
+                        let (left_out, right_out) = compressor.process_stereo_linked(
+                            left_signal,
+                            right_signal,
+                            sample_rate,
+                            time,
+                            sample_count,
+                            sidechain_envelope,
+                        );
+                        left_signal = left_out;
+                        right_signal = right_out;
                     }
                 }
                 2 => {
@@ -3028,11 +3167,17 @@ impl EffectChain {
                     }
                 }
                 13 => {
-                    // Limiter (stereo-linked - use max of both channels for detection)
+                    // Limiter (stereo-linked - detects from max, applies same gain to both channels)
                     if let Some(ref mut limiter) = self.limiter {
-                        let max_input = left_signal.abs().max(right_signal.abs());
-                        left_signal = limiter.process(max_input.copysign(left_signal), sample_rate, time, sample_count);
-                        right_signal = limiter.process(max_input.copysign(right_signal), sample_rate, time, sample_count);
+                        let (left_out, right_out) = limiter.process_stereo_linked(
+                            left_signal,
+                            right_signal,
+                            sample_rate,
+                            time,
+                            sample_count,
+                        );
+                        left_signal = left_out;
+                        right_signal = right_out;
                     }
                 }
                 14 => {

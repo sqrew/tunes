@@ -1,7 +1,7 @@
 //! Bass instrument presets
 
 use super::Instrument;
-use crate::synthesis::effects::{Distortion, Reverb};
+use crate::synthesis::effects::{Delay, Distortion, Reverb};
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::{LFO, ModRoute, ModTarget};
@@ -183,6 +183,106 @@ impl Instrument {
             delay: None,
             reverb: None,
             distortion: Some(Distortion::new(1.4, 0.25)),
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Growl bass - aggressive, distorted bass with attitude
+    pub fn growl_bass() -> Self {
+        let growl_lfo = LFO::new(Waveform::Sine, 2.5, 0.9); // Fast aggressive modulation
+        Self {
+            name: "Growl Bass".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.002, 0.12, 0.7, 0.25), // Aggressive attack
+            filter: Filter::low_pass(900.0, 0.75),           // Resonant growl
+            modulation: vec![ModRoute::new(growl_lfo, ModTarget::FilterCutoff, 0.6)],
+            delay: None,
+            reverb: None,
+            distortion: Some(Distortion::new(3.2, 0.7)), // Heavy, aggressive distortion
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Fretless bass - smooth, sliding, singing fretless tone
+    pub fn fretless_bass() -> Self {
+        let vibrato = LFO::new(Waveform::Sine, 4.5, 0.25); // Expressive vibrato
+        Self {
+            name: "Fretless Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.005, 0.25, 0.7, 0.45), // Smooth, singing attack
+            filter: Filter::low_pass(1200.0, 0.35),          // Warm, smooth
+            modulation: vec![ModRoute::new(vibrato, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.25, 0.35, 0.2)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Picked bass - bright, percussive attack with pick sound
+    pub fn picked_bass() -> Self {
+        Self {
+            name: "Picked Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.001, 0.12, 0.45, 0.25), // Sharp, percussive attack
+            filter: Filter::low_pass(1800.0, 0.55),           // Bright, cutting
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.18, 0.28, 0.15)),
+            distortion: Some(Distortion::new(1.4, 0.25)), // Slight edge
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Chorus bass - detuned bass with lush chorus effect
+    pub fn chorus_bass() -> Self {
+        let chorus_lfo = LFO::new(Waveform::Sine, 0.6, 0.5); // Chorus detuning
+        Self {
+            name: "Chorus Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.008, 0.2, 0.75, 0.4), // Smooth, warm attack
+            filter: Filter::low_pass(1000.0, 0.4),          // Warm, chorused
+            modulation: vec![ModRoute::new(chorus_lfo, ModTarget::FilterCutoff, 0.2)],
+            delay: Some(Delay::new(0.3, 0.25, 0.2)),
+            reverb: Some(Reverb::new(0.3, 0.4, 0.25)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Fingerstyle bass - warm, rounded fingerstyle tone
+    pub fn fingerstyle_bass() -> Self {
+        Self {
+            name: "Fingerstyle Bass".to_string(),
+            waveform: Waveform::Triangle,
+            envelope: Envelope::new(0.006, 0.18, 0.65, 0.35), // Warm, rounded attack
+            filter: Filter::low_pass(900.0, 0.35),            // Warm, smooth low end
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.2, 0.3, 0.18)),
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Dark bass - deep, mysterious, ominous low end
+    pub fn dark_bass() -> Self {
+        let rumble = LFO::new(Waveform::Sine, 0.2, 0.3); // Slow rumble movement
+        Self {
+            name: "Dark Bass".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.05, 0.25, 0.9, 0.6), // Slow, ominous attack
+            filter: Filter::low_pass(120.0, 0.25),         // Very deep, dark
+            modulation: vec![ModRoute::new(rumble, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.5, 0.6, 0.4)), // Deep, cavernous reverb
+            distortion: Some(Distortion::new(1.3, 0.2)), // Subtle depth
             volume: 1.0,
             pan: 0.0,
         }

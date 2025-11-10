@@ -194,4 +194,106 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Juno pad - classic Roland Juno-106 chorus pad (lush, detuned, warm)
+    pub fn juno_pad() -> Self {
+        let chorus_lfo = LFO::new(Waveform::Sine, 0.4, 0.5); // Slow chorus movement
+        Self {
+            name: "Juno Pad".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.3, 0.4, 0.9, 0.8), // Very slow attack, long sustain
+            filter: Filter::low_pass(3000.0, 0.35),      // Warm, not too bright
+            modulation: vec![ModRoute::new(chorus_lfo, ModTarget::FilterCutoff, 0.2)],
+            delay: None,
+            reverb: Some(Reverb::new(0.6, 0.65, 0.5)), // Lush, spacious
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// DX7 electric piano - classic Yamaha DX7 FM electric piano (bright, metallic, bell-like)
+    pub fn dx7_electric_piano() -> Self {
+        let metallic = LFO::new(Waveform::Sine, 4.0, 0.2); // Slight metallic shimmer
+        Self {
+            name: "DX7 Electric Piano".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.001, 0.5, 0.4, 0.9), // Fast attack, bell-like decay
+            filter: Filter::low_pass(6000.0, 0.3),         // Bright, metallic
+            modulation: vec![ModRoute::new(metallic, ModTarget::FilterCutoff, 0.15)],
+            delay: None,
+            reverb: Some(Reverb::new(0.35, 0.45, 0.28)),
+            distortion: Some(Distortion::new(1.2, 0.15)), // FM-style character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Prophet brass - Sequential Prophet-5 brass stab (punchy, analog, classic)
+    pub fn prophet_brass() -> Self {
+        let pwm = LFO::new(Waveform::Sine, 0.6, 0.6); // PWM movement
+        Self {
+            name: "Prophet Brass".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.02, 0.2, 0.85, 0.35), // Punchy brass attack
+            filter: Filter::low_pass(4200.0, 0.55),         // Bright, cutting brass
+            modulation: vec![ModRoute::new(pwm, ModTarget::FilterCutoff, 0.25)],
+            delay: None,
+            reverb: Some(Reverb::new(0.3, 0.4, 0.25)),
+            distortion: Some(Distortion::new(1.5, 0.25)), // Analog warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Minimoog bass - thick, powerful analog bass (multiple oscillators, fat low end)
+    pub fn minimoog_bass() -> Self {
+        let filter_sweep = LFO::new(Waveform::Sine, 0.3, 0.4); // Slow filter movement
+        Self {
+            name: "Minimoog Bass".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.001, 0.15, 0.8, 0.3), // Tight, punchy attack
+            filter: Filter::low_pass(600.0, 0.7),           // Deep, resonant bass
+            modulation: vec![ModRoute::new(filter_sweep, ModTarget::FilterCutoff, 0.3)],
+            delay: None,
+            reverb: None, // Dry bass
+            distortion: Some(Distortion::new(2.0, 0.35)), // Analog saturation
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// OB-X strings - Oberheim OB-X string sound (detuned saws, lush, vintage)
+    pub fn obx_strings() -> Self {
+        let detune_lfo = LFO::new(Waveform::Sine, 0.5, 0.45); // Detuned oscillators
+        Self {
+            name: "OB-X Strings".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.25, 0.35, 0.88, 0.7), // Slow, sweeping attack
+            filter: Filter::low_pass(3500.0, 0.32),         // Warm strings
+            modulation: vec![ModRoute::new(detune_lfo, ModTarget::FilterCutoff, 0.18)],
+            delay: None,
+            reverb: Some(Reverb::new(0.65, 0.7, 0.52)), // Lush, vintage reverb
+            distortion: Some(Distortion::new(1.15, 0.12)), // Subtle analog warmth
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// SH-101 lead - Roland SH-101 style lead (square wave + sub, punchy, acidic)
+    pub fn sh101_lead() -> Self {
+        let resonant_sweep = LFO::new(Waveform::Sine, 0.8, 0.7); // Resonant filter sweep
+        Self {
+            name: "SH-101 Lead".to_string(),
+            waveform: Waveform::Square,
+            envelope: Envelope::new(0.001, 0.2, 0.6, 0.25), // Snappy, aggressive
+            filter: Filter::low_pass(1800.0, 0.72),         // Resonant, aggressive
+            modulation: vec![ModRoute::new(resonant_sweep, ModTarget::FilterCutoff, 0.5)],
+            delay: Some(Delay::new(0.25, 0.3, 0.2)),
+            reverb: Some(Reverb::new(0.25, 0.35, 0.2)),
+            distortion: Some(Distortion::new(2.2, 0.4)), // Aggressive character
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

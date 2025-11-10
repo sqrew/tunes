@@ -12,6 +12,7 @@ pub mod percussion;
 pub mod guitars;
 pub mod strings;
 pub mod vocal;
+pub mod experimental;
 
 use crate::synthesis::effects::{Delay, Distortion, Reverb};
 use crate::synthesis::envelope::Envelope;

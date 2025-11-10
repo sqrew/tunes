@@ -73,4 +73,37 @@ impl Instrument {
             pan: 0.0,
         }
     }
+
+    /// Palm muted guitar - tight, percussive metal rhythm guitar
+    pub fn guitar_palm_muted() -> Self {
+        Self {
+            name: "Palm Muted Guitar".to_string(),
+            waveform: Waveform::Sawtooth,
+            envelope: Envelope::new(0.001, 0.05, 0.15, 0.08), // Very short, tight attack
+            filter: Filter::low_pass(1200.0, 0.55),           // Dark, chunky mid-range
+            modulation: Vec::new(),
+            delay: None,
+            reverb: Some(Reverb::new(0.15, 0.25, 0.12)), // Minimal reverb for tightness
+            distortion: Some(Distortion::new(3.0, 0.65)), // Heavy metal distortion
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
+
+    /// Guitar harmonics - bell-like natural and artificial harmonics
+    pub fn guitar_harmonics() -> Self {
+        let shimmer = LFO::new(Waveform::Sine, 0.3, 0.2); // Subtle shimmer
+        Self {
+            name: "Guitar Harmonics".to_string(),
+            waveform: Waveform::Sine,
+            envelope: Envelope::new(0.001, 0.5, 0.2, 0.8), // Bell-like attack, long decay
+            filter: Filter::low_pass(7000.0, 0.2),         // Very bright, bell-like tone
+            modulation: vec![ModRoute::new(shimmer, ModTarget::FilterCutoff, 0.15)],
+            delay: Some(Delay::new(0.4, 0.3, 0.25)),
+            reverb: Some(Reverb::new(0.6, 0.65, 0.45)), // Spacious, ethereal reverb
+            distortion: None,
+            volume: 1.0,
+            pan: 0.0,
+        }
+    }
 }

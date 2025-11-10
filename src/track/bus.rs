@@ -41,7 +41,7 @@
 //! ```
 
 use crate::synthesis::effects::{
-    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EffectChain, EQ, Flanger, Gate,
+    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
     Limiter, ParametricEQ, Phaser, Reverb, RingModulator, Saturation, Tremolo,
 };
 use crate::track::Track;
@@ -138,7 +138,12 @@ impl Bus {
     /// Note: This method is not currently used - track processing happens in Mixer::process_track().
     /// This is kept for potential future use when Track gets its own sample_at() method.
     #[allow(dead_code)]
-    pub(crate) fn sample_at_future(&mut self, _time: f32, _sample_rate: f32, _sample_count: u64) -> (f32, f32) {
+    pub(crate) fn sample_at_future(
+        &mut self,
+        _time: f32,
+        _sample_rate: f32,
+        _sample_count: u64,
+    ) -> (f32, f32) {
         // Placeholder for future when Track has sample_at()
         // For now, all track processing happens in Mixer::process_track()
         (0.0, 0.0)
@@ -155,7 +160,6 @@ impl Default for Bus {
 mod tests {
     use super::*;
     use crate::consts::notes::*;
-    use crate::composition::drums::DrumType;
 
     #[test]
     fn test_bus_creation() {

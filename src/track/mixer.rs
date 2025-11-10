@@ -750,6 +750,9 @@ impl Mixer {
         let start_sample_count = self.sample_count;
         self.sample_count = self.sample_count.wrapping_add(num_frames as u64);
 
+        // Clear envelope cache for this block
+        self.envelope_cache.clear();
+
         // Temporary mono buffer for track processing (will be reused)
         let mut track_buffer = vec![0.0f32; num_frames];
 
@@ -767,11 +770,15 @@ impl Mixer {
                 continue;
             }
 
+            let bus_id = bus.id;
+
             // Clear bus buffer
             bus_buffer.fill(0.0);
 
             // Process each track in this bus
             for track in &mut bus.tracks {
+                let track_id = track.id;
+
                 // Generate mono track audio using block processing
                 Self::process_track_block(
                     track,
@@ -780,6 +787,16 @@ impl Mixer {
                     start_time,
                     start_sample_count,
                 );
+
+                // Calculate RMS envelope for this track (average across block)
+                let mut sum_squares = 0.0;
+                for &sample in track_buffer.iter() {
+                    sum_squares += sample * sample;
+                }
+                let track_envelope = (sum_squares / num_frames as f32).sqrt();
+
+                // Cache track envelope
+                self.envelope_cache.cache_track(track_id, track_envelope);
 
                 // Apply stereo panning and mix into bus buffer
                 let pan_angle = (track.pan + 1.0) * 0.25 * std::f32::consts::PI;
@@ -793,13 +810,43 @@ impl Mixer {
                 }
             }
 
-            // Apply bus effects (block processing)
+            // Calculate RMS envelope for this bus (average across block, before effects)
+            let mut bus_sum_squares = 0.0;
+            for chunk in bus_buffer.chunks_exact(2) {
+                let left = chunk[0];
+                let right = chunk[1];
+                bus_sum_squares += (left * left + right * right) / 2.0;
+            }
+            let bus_envelope = (bus_sum_squares / num_frames as f32).sqrt();
+
+            // Cache bus envelope
+            self.envelope_cache.cache_bus(bus_id, bus_envelope);
+
+            // Look up sidechain envelope using resolved IDs
+            let sidechain_env = if let Some(ref compressor) = bus.effects.compressor {
+                if let Some(ref resolved_source) = compressor.resolved_sidechain_source {
+                    match resolved_source {
+                        ResolvedSidechainSource::Track(track_id) => {
+                            Some(self.envelope_cache.get_track(*track_id))
+                        }
+                        ResolvedSidechainSource::Bus(sidechain_bus_id) => {
+                            Some(self.envelope_cache.get_bus(*sidechain_bus_id))
+                        }
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Apply bus effects (block processing) with sidechain support
             bus.effects.process_stereo_block(
                 &mut bus_buffer,
                 sample_rate,
                 start_time,
                 start_sample_count,
-                None, // TODO: sidechain envelope
+                sidechain_env,
             );
 
             // Apply bus volume and pan, then mix into output
@@ -818,13 +865,31 @@ impl Mixer {
             }
         }
 
-        // Apply master effects (block processing)
+        // Look up master sidechain envelope if configured
+        let master_sidechain_env = if let Some(ref compressor) = self.master.compressor {
+            if let Some(ref resolved_source) = compressor.resolved_sidechain_source {
+                match resolved_source {
+                    ResolvedSidechainSource::Track(track_id) => {
+                        Some(self.envelope_cache.get_track(*track_id))
+                    }
+                    ResolvedSidechainSource::Bus(bus_id) => {
+                        Some(self.envelope_cache.get_bus(*bus_id))
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Apply master effects (block processing) with sidechain support
         self.master.process_stereo_block(
             buffer,
             sample_rate,
             start_time,
             start_sample_count,
-            None, // TODO: sidechain envelope
+            master_sidechain_env,
         );
     }
 

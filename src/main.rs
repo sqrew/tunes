@@ -22,13 +22,11 @@ use composition::{Composition, Tempo};
 use consts::*;
 use engine::AudioEngine;
 use instruments::Instrument;
+use synthesis::{BitCrusher, Compressor};
 
 fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
     let eighth = comp.tempo().eighth_note();
-
-    comp.instrument("lead", &Instrument::baritone_sax())
-        .note(&[C4], 1.0);
 
     let engine = AudioEngine::new()?;
     engine.play_mixer(&comp.into_mixer())?;
