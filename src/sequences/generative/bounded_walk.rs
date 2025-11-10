@@ -8,33 +8,68 @@
 /// or normalized 0.0-1.0 values for parameters).
 ///
 /// # Arguments
-/// * `start` - Initial value (should be within min..max)
-/// * `step` - Maximum step size (positive or negative)
-/// * `min` - Minimum allowed value
-/// * `max` - Maximum allowed value
+/// * `start` - Initial value (will be clamped to min..max if outside)
+/// * `step` - Maximum step size per iteration (controls variation speed)
+/// * `min` - Minimum allowed value (hard floor)
+/// * `max` - Maximum allowed value (hard ceiling)
 /// * `steps` - Number of steps to generate
 ///
 /// # Returns
 /// Vector of values forming a bounded random walk (all values in min..=max)
 ///
-/// # Examples
+/// # Typical Parameters
+///
+/// **step size** (relative to range):
+/// - **Small (5-10% of range)**: Slow, smooth exploration
+/// - **Medium (15-25% of range)**: Natural variation
+/// - **Large (30-50% of range)**: Jumpy, energetic movement
+///
+/// **Common ranges:**
+/// - One octave: min=220, max=440, step=20-40
+/// - Two octaves: min=220, max=880, step=40-80
+/// - Normalized (0-1): min=0.0, max=1.0, step=0.05-0.15
+///
+/// # Recipe: Melody in Range
+///
 /// ```
+/// use tunes::prelude::*;
 /// use tunes::sequences;
 ///
-/// // Random walk constrained to one octave
-/// let melody = sequences::bounded_walk(440.0, 30.0, 220.0, 880.0, 32);
-/// // Wanders around 440Hz but stays in 220-880 range
+/// let mut comp = Composition::new(Tempo::new(120.0));
 ///
-/// // Random filter cutoff (normalized 0-1)
-/// let cutoff_walk = sequences::bounded_walk(0.5, 0.1, 0.0, 1.0, 64);
-/// // Smooth filter movement staying in 0-1 range
+/// // Wandering melody in 2-octave range
+/// let melody = sequences::bounded_walk(
+///     440.0,   // Start at A4
+///     35.0,    // Steps of up to 35 Hz
+///     220.0,   // Min: A3
+///     880.0,   // Max: A5
+///     32       // 32 notes
+/// );
 ///
-/// // Use for bass line that stays in key
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(140.0));
-/// let bass_notes = sequences::bounded_walk(110.0, 10.0, 80.0, 150.0, 16);
+/// comp.instrument("lead", &Instrument::synth_lead())
+///     .delay(Delay::new(0.375, 0.3, 0.5))
+///     .notes(&melody, 0.25);
+/// ```
+///
+/// # Recipe: Bass Line in Octave
+///
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(140.0));
+///
+/// // Bass that stays in one octave
+/// let bass = sequences::bounded_walk(
+///     110.0,  // A2
+///     8.0,    // Small steps for smooth bass
+///     82.4,   // E2 (low end)
+///     164.8,  // E3 (high end)
+///     16
+/// );
+///
 /// comp.instrument("bass", &Instrument::sub_bass())
-///     .notes(&bass_notes, 0.25);
+///     .notes(&bass, 0.5);
 /// ```
 ///
 /// # Musical Applications

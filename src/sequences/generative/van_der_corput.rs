@@ -19,6 +19,36 @@
 /// # Returns
 /// Vector of values in range [0.0, 1.0) with quasi-random distribution
 ///
+/// # Typical Parameters
+/// - **base = 2**: Binary (most common, best distribution)
+/// - **base = 3**: Ternary (different distribution pattern)
+/// - **base = 5**: Pentary (yet another pattern)
+/// - **n = 16-64**: Good for melodic/rhythmic use
+/// - **n = 100+**: For sampling large parameter spaces
+///
+/// # Recipe: Well-Distributed Melody
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(120.0));
+///
+/// // Generate quasi-random values
+/// let quasi = sequences::van_der_corput(32, 2);
+///
+/// // Map to C minor pentatonic
+/// let melody = sequences::map_to_scale_f32(
+///     &quasi,
+///     &sequences::Scale::minor_pentatonic(),
+///     C5,
+///     2
+/// );
+///
+/// comp.instrument("quasi_melody", &Instrument::synth_lead())
+///     .delay(Delay::new(0.375, 0.3, 0.5))
+///     .notes(&melody, 0.25);
+/// ```
+///
 /// # Examples
 /// ```
 /// use tunes::sequences;

@@ -1,8 +1,8 @@
 //! Compilation and execution runner for live coding
 
+use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::fs;
 
 /// Find the tunes project root by looking for Cargo.toml
 fn find_tunes_root() -> anyhow::Result<PathBuf> {

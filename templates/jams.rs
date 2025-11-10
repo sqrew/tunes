@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
 
     // Add bass
-    comp.instrument("bass", &Instrument::sub_bass())
+    comp.instrument("bass", &Instrument::wobble_bass())
         .at(0.0)
         .notes(&[C2, C2, G1, G2], 0.5);
 

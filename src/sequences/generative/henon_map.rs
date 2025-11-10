@@ -56,6 +56,45 @@
 /// # Returns
 /// Tuple of (x_values, y_values), each containing n points
 ///
+/// # Typical Parameters
+/// - **a = 1.4, b = 0.3**: Classic Hénon attractor (strongly recommended)
+/// - **a = 1.2, b = 0.25**: Less chaotic, more periodic
+/// - **a = 1.3, b = 0.3**: Moderate chaos
+/// - **x0, y0**: Usually 0.1, 0.1 (avoid 0.0, 0.0)
+///
+/// # Recipe: Dual-Stream Melody
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(130.0));
+///
+/// // Generate classic Hénon attractor
+/// let (x_vals, y_vals) = sequences::henon_map(1.4, 0.3, 0.1, 0.1, 32);
+///
+/// // Use x for melody
+/// let melody = sequences::map_to_scale_f32(
+///     &x_vals,
+///     &sequences::Scale::minor_pentatonic(),
+///     D4,
+///     2
+/// );
+///
+/// // Use y for counter-melody (different scale position)
+/// let counter = sequences::map_to_scale_f32(
+///     &y_vals,
+///     &sequences::Scale::minor_pentatonic(),
+///     A4,
+///     2
+/// );
+///
+/// comp.instrument("henon_lead", &Instrument::synth_lead())
+///     .notes(&melody, 0.25);
+///
+/// comp.instrument("henon_counter", &Instrument::pluck())
+///     .notes(&counter, 0.25);
+/// ```
+///
 /// # Example
 /// ```
 /// use tunes::sequences::henon_map;

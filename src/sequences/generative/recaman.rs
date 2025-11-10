@@ -18,6 +18,29 @@
 /// # Returns
 /// Vector of values forming Recamán's sequence
 ///
+/// # Typical Values
+/// - **n = 10-20**: Good for melodic phrases (interesting contours)
+/// - **n = 20-30**: Medium patterns (complete melodies)
+/// - **n = 50+**: Long evolving sequences (structural use)
+/// - Values grow large (n=100 → 1000s), always normalize!
+///
+/// # Recipe: Spiraling Bass Line
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(110.0));
+///
+/// // Generate Recamán spiral
+/// let recaman = sequences::recaman(24);
+///
+/// // Map to bass range (E2 to E3)
+/// let bass_line = sequences::normalize(&recaman, 82.4, 164.8);
+///
+/// comp.instrument("recaman_bass", &Instrument::sub_bass())
+///     .notes(&bass_line, 0.5);
+/// ```
+///
 /// # Examples
 /// ```
 /// use tunes::sequences;

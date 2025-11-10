@@ -11,27 +11,53 @@
 /// - Bass line variation
 ///
 /// # Arguments
-/// * `start` - Initial value
-/// * `step_size` - Maximum step size (positive or negative)
+/// * `start` - Initial value (typically a frequency like 440.0 or musical parameter)
+/// * `step_size` - Maximum step size per iteration (controls smoothness)
 /// * `steps` - Number of steps to generate
 ///
 /// # Returns
 /// Vector of values forming a random walk (unbounded - can go anywhere)
 ///
-/// # Examples
+/// # Typical Parameters
+///
+/// **step_size** (relative to start value):
+/// - **Small (5-10 Hz)**: Subtle variation, stays close to start (bass lines, pads)
+/// - **Medium (20-50 Hz)**: Noticeable wandering (melodic variation)
+/// - **Large (100+ Hz)**: Wide exploration (experimental, dramatic changes)
+///
+/// **For non-frequency parameters:**
+/// - Volume: 0.05-0.1 (subtle breathing)
+/// - Filter cutoff (0-1): 0.05-0.15 (smooth sweeps)
+/// - Pan (-1 to 1): 0.1-0.3 (gentle movement)
+///
+/// # Recipe: Organic Bass Line
+///
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(120.0));
+///
+/// // Wandering bass around 110 Hz (A2)
+/// let bass_walk = sequences::random_walk(110.0, 8.0, 16);
+///
+/// comp.instrument("bass", &Instrument::sub_bass())
+///     .notes(&bass_walk, 0.5);
+/// ```
+///
+/// # Recipe: Evolving Filter Cutoff
+///
 /// ```
 /// use tunes::sequences;
 ///
-/// // Simple random walk
-/// let walk = sequences::random_walk(440.0, 20.0, 20);
-/// // Starts at 440, each step changes by up to ±20
+/// // Generate smooth filter automation
+/// let start_cutoff = 500.0;  // Hz
+/// let walk = sequences::random_walk(start_cutoff, 40.0, 64);
 ///
-/// // Use for bass line variation
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let bass_line = sequences::random_walk(110.0, 5.0, 16);
-/// comp.instrument("bass", &Instrument::sub_bass())
-///     .notes(&bass_line, 0.25);
+/// // Clamp to reasonable filter range
+/// let filter_curve: Vec<f32> = walk.iter()
+///     .map(|&f| f.clamp(200.0, 2000.0))
+///     .collect();
 /// ```
 ///
 /// # Musical Applications

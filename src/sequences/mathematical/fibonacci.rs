@@ -21,6 +21,28 @@
 /// # Returns
 /// Vector of the first n Fibonacci numbers: [1, 1, 2, 3, 5, 8, 13, ...]
 ///
+/// # Typical Values
+/// - **n = 5-8**: Good for short phrases and melodic fragments
+/// - **n = 10-12**: Medium-length sequences, complete melodies
+/// - **n = 16-20**: Long evolving patterns, song structure
+/// - **n > 20**: Watch out for huge numbers (F(20)=6765), normalize to usable ranges
+///
+/// # Recipe: Fibonacci Melody in Key
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(120.0));
+///
+/// // Generate Fibonacci and map to C major scale
+/// let fib = sequences::fibonacci(12);
+/// let melody = sequences::map_to_scale(&fib, &sequences::Scale::major(), C4, 2);
+///
+/// comp.instrument("fib_melody", &Instrument::pluck())
+///     .delay(Delay::new(0.375, 0.3, 0.5))
+///     .notes(&melody, 0.25);
+/// ```
+///
 /// # Examples
 /// ```
 /// use tunes::sequences;

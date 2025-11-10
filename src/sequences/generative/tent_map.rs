@@ -50,6 +50,35 @@
 /// # Returns
 /// Vector of values from the tent map iteration
 ///
+/// # Typical Parameters
+/// - **μ (mu) = 2.0**: Full chaos - most musical (strongly recommended)
+/// - **μ = 1.5-1.9**: Interesting periodic/chaotic mix
+/// - **μ < 1.0**: Too stable, converges to zero
+/// - **x0**: Any value in 0.1-0.9 works well (avoid 0.0, 0.5, 1.0)
+///
+/// # Recipe: Chaotic Melody
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(130.0));
+///
+/// // Generate chaotic sequence
+/// let chaos = sequences::tent_map(2.0, 0.3, 32);
+///
+/// // Map to E minor scale
+/// let melody = sequences::map_to_scale_f32(
+///     &chaos,
+///     &sequences::Scale::minor(),
+///     E4,
+///     2
+/// );
+///
+/// comp.instrument("tent_lead", &Instrument::synth_lead())
+///     .reverb(Reverb::new(0.4, 0.5, 0.3))
+///     .notes(&melody, 0.2);
+/// ```
+///
 /// # Example
 /// ```
 /// use tunes::sequences::tent_map;

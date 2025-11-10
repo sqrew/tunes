@@ -62,6 +62,43 @@
 /// - **Natural climax**: Often spikes high before descending to 1
 /// - **Mathematical mystery**: Adds conceptual depth to algorithmic compositions
 ///
+/// # Typical Parameters
+///
+/// **start (interesting starting values):**
+/// - **27**: Dramatic (111 steps, reaches 9232!) - great for intense sections
+/// - **19**: Medium (20 steps) - good all-purpose melodic contour
+/// - **15**: Short (17 steps) - quick musical gestures
+/// - **31**: Very dramatic (106 steps) - epic journeys
+/// - **7**: Classic (16 steps) - nice ups and downs
+///
+/// **max_terms:**
+/// - **30-50**: Short melodic phrases
+/// - **50-100**: Complete melodies
+/// - **150+**: For dramatic starts like 27 or 31
+///
+/// # Recipe: Dramatic Collatz Melody
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(110.0));
+///
+/// // Use 27 for dramatic journey
+/// let collatz = sequences::collatz(27, 120);
+///
+/// // Map to A minor pentatonic
+/// let melody = sequences::map_to_scale(
+///     &collatz,
+///     &sequences::Scale::minor_pentatonic(),
+///     A4,
+///     2
+/// );
+///
+/// comp.instrument("collatz_lead", &Instrument::synth_lead())
+///     .reverb(Reverb::new(0.5, 0.5, 0.4))
+///     .notes(&melody, 0.2);
+/// ```
+///
 /// # Famous Starting Values
 /// - **27**: Reaches 9,232 before descending (takes 111 steps)
 /// - **31**: Also goes very high (9,232) before reaching 1

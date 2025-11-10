@@ -63,6 +63,39 @@
 /// - **Modulation sources**: Drive LFOs, tremolo, vibrato depth
 /// - **Spatial movement**: Map to stereo pan + reverb send
 ///
+/// # Typical Parameters
+/// - **Classic chaos**: σ=10.0, ρ=28.0, β=8.0/3.0, dt=0.01 (strongly recommended)
+/// - **Mild chaos**: σ=10.0, ρ=25.0, β=8.0/3.0, dt=0.01
+/// - **Complex**: σ=10.0, ρ=35.0, β=8.0/3.0, dt=0.01
+/// - **initial**: (1.0, 1.0, 1.0) works well, try (0.1, 0.0, 0.0) for different path
+///
+/// # Recipe: Flowing Melody in Scale
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(100.0));
+///
+/// // Generate butterfly attractor (skip first 100 for transient)
+/// let path = sequences::lorenz_butterfly(132);  // 32 notes + 100 skip
+/// let path_stable = &path[100..];  // Use settled portion
+///
+/// // Extract x coordinates
+/// let x_vals: Vec<f32> = path_stable.iter().map(|(x, _, _)| *x).collect();
+///
+/// // Map to minor pentatonic
+/// let melody = sequences::map_to_scale_f32(
+///     &x_vals,
+///     &sequences::Scale::minor_pentatonic(),
+///     A4,
+///     2
+/// );
+///
+/// comp.instrument("lorenz_melody", &Instrument::synth_lead())
+///     .reverb(Reverb::new(0.6, 0.6, 0.5))
+///     .notes(&melody, 0.3);
+/// ```
+///
 /// # Parameter Exploration
 /// - **σ < 10**: Less chaotic, more predictable orbits
 /// - **10 < ρ < 24.74**: Stable fixed points

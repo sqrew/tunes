@@ -21,31 +21,66 @@
 /// # Returns
 /// Vector of values in range 0.0 to 1.0 (except edge cases where it may converge to 0)
 ///
-/// # Examples
+/// # Typical Parameters
+///
+/// **r (chaos parameter):**
+/// - **r = 2.5**: Stable, converges to fixed point (calm background music)
+/// - **r = 3.0**: Barely stable (subtle variation)
+/// - **r = 3.2**: Period-2 oscillation (moderate tension)
+/// - **r = 3.5**: Period-4 oscillation (increasing complexity)
+/// - **r = 3.6**: Complex oscillation (dramatic music)
+/// - **r = 3.7**: Onset of chaos (boss fight intro)
+/// - **r = 3.9**: Full chaos (intense action, combat)
+/// - **r = 4.0**: Maximum chaos (extreme situations)
+///
+/// **initial:** Usually 0.5 (mid-range), but any value in (0, 1) works
+///
+/// # Recipe: Chaotic Melody in Scale
+///
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(140.0));
+///
+/// // Generate chaotic values
+/// let chaos = sequences::logistic_map(3.9, 0.5, 32);
+///
+/// // Map to D minor pentatonic scale
+/// let melody = sequences::map_to_scale_f32(
+///     &chaos,
+///     &sequences::Scale::minor_pentatonic(),
+///     D4,
+///     2  // 2 octaves
+/// );
+///
+/// comp.instrument("chaos_lead", &Instrument::synth_lead())
+///     .delay(Delay::new(0.375, 0.3, 0.5))
+///     .notes(&melody, 0.25);
+/// ```
+///
+/// # Recipe: Dynamic Intensity Control
+///
 /// ```
 /// use tunes::sequences;
 ///
-/// // Stable behavior (r=2.5)
-/// let stable = sequences::logistic_map(2.5, 0.5, 20);
-/// // Converges to a fixed point around 0.6
+/// // Map game state to music intensity
+/// fn generate_for_intensity(intensity: f32, n: usize) -> Vec<f32> {
+///     // intensity: 0.0 (calm) to 1.0 (chaotic)
+///     let r = 2.5 + intensity * 1.5;  // Maps to r=2.5-4.0
+///     let chaos = sequences::logistic_map(r, 0.5, n);
+///     sequences::normalize(
+///         &chaos.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
+///         220.0,
+///         880.0
+///     )
+/// }
 ///
-/// // Oscillating behavior (r=3.2)
-/// let oscillating = sequences::logistic_map(3.2, 0.5, 50);
-/// // Alternates between two values
+/// // Calm exploration
+/// let calm_melody = generate_for_intensity(0.0, 16);  // r=2.5, stable
 ///
-/// // Chaotic behavior (r=3.9) - great for generative music!
-/// let chaotic = sequences::logistic_map(3.9, 0.5, 100);
-/// let freqs = sequences::normalize(
-///     &chaotic.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
-///     200.0, 800.0
-/// );
-///
-/// // Use for game intensity scaling
-/// # use tunes::prelude::*;
-/// # let mut comp = Composition::new(Tempo::new(160.0));
-/// let enemy_count = 50;
-/// let chaos_param = 2.5 + (enemy_count as f32 / 100.0) * 1.5; // 2.5 to 4.0
-/// let intensity = sequences::logistic_map(chaos_param, 0.5, 16);
+/// // Boss fight
+/// let intense_melody = generate_for_intensity(1.0, 32);  // r=4.0, chaos!
 /// ```
 ///
 /// # Musical Applications

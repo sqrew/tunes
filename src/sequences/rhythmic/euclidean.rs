@@ -10,6 +10,39 @@
 /// # Returns
 /// Vector of step indices (0-indexed) where hits occur
 ///
+/// # Common Patterns
+///
+/// **Traditional World Music:**
+/// - **(3, 8)**: Cuban tresillo - [0, 3, 6] or [0, 2, 5] depending on rotation
+/// - **(5, 8)**: Cuban cinquillo - [0, 2, 3, 5, 7]
+/// - **(5, 12)**: York-Samai pattern (Middle East)
+/// - **(7, 16)**: Bossa nova clave variation
+///
+/// **Electronic/Dance:**
+/// - **(4, 16)**: Four-on-floor kick - [0, 4, 8, 12]
+/// - **(8, 16)**: Eighth note hi-hats - [0, 2, 4, 6, 8, 10, 12, 14]
+/// - **(3, 16)**: Syncopated snare - [0, 5, 11]
+/// - **(7, 16)**: Complex hi-hat - creates shifting pattern
+///
+/// **Try these combinations:**
+/// - Kick (4,16) + Snare (3,16) + Hihat (7,16) = Interesting groove
+/// - Kick (5,16) + Snare (3,16) + Hihat (13,16) = Complex polyrhythm
+///
+/// # Recipe: Complete Euclidean Drum Pattern
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(120.0));
+///
+/// comp.track("euclidean_drums")
+///     .drum_grid(16, 0.125)
+///     .kick(&sequences::euclidean(4, 16))     // Four-on-floor
+///     .snare(&sequences::euclidean(3, 16))    // Syncopated
+///     .hihat(&sequences::euclidean(7, 16))    // Complex
+///     .clap(&sequences::euclidean(2, 16));    // Backbeat feel
+/// ```
+///
 /// # Examples
 /// ```
 /// # use tunes::composition::Composition;

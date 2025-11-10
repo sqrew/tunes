@@ -22,6 +22,33 @@
 /// # Returns
 /// Vector of 0s and 1s forming the Thue-Morse sequence
 ///
+/// # Typical Values
+/// - **n = 8-16**: Short patterns (accent patterns, simple alternation)
+/// - **n = 16-32**: Medium patterns (drum programming, rhythm)
+/// - **n = 32-64**: Long patterns (extended sequences, formal structure)
+/// - Powers of 2 (8, 16, 32, 64) align with the sequence's natural structure
+///
+/// # Recipe: Non-Repetitive Drum Pattern
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(128.0));
+///
+/// // Extract hit positions from Thue-Morse
+/// let tm = sequences::thue_morse(32);
+/// let hits: Vec<usize> = tm.iter()
+///     .enumerate()
+///     .filter(|(_, &v)| v == 1)
+///     .map(|(i, _)| i)
+///     .collect();
+///
+/// comp.track("tm_drums")
+///     .drum_grid(32, 0.125)
+///     .kick(&hits)
+///     .hihat(&sequences::euclidean(16, 32));  // Layer with Euclidean
+/// ```
+///
 /// # Examples
 /// ```
 /// use tunes::sequences;

@@ -55,6 +55,36 @@ use std::f32::consts::PI;
 /// # Returns
 /// Vector of values from the sine map iteration
 ///
+/// # Typical Parameters
+/// - **r = 2.5-2.9**: Musical sweet spot - chaotic but smooth (recommended)
+/// - **r = π (3.14159)**: Onset of chaos - classic parameter
+/// - **r = 2.0**: More stable, periodic behavior
+/// - **x0**: Usually 0.4-0.6 for good variation
+///
+/// # Recipe: Smooth Chaotic Lead
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(120.0));
+///
+/// // Sine map creates smoother chaos than logistic map
+/// let smooth_chaos = sequences::sine_map(2.7, 0.5, 32);
+///
+/// // Map to major pentatonic
+/// let melody = sequences::map_to_scale_f32(
+///     &smooth_chaos,
+///     &sequences::Scale::major_pentatonic(),
+///     C5,
+///     2
+/// );
+///
+/// comp.instrument("smooth_lead", &Instrument::synth_lead())
+///     .delay(Delay::new(0.375, 0.3, 0.5))
+///     .reverb(Reverb::new(0.5, 0.5, 0.3))
+///     .notes(&melody, 0.25);
+/// ```
+///
 /// # Example
 /// ```
 /// use tunes::sequences::sine_map;

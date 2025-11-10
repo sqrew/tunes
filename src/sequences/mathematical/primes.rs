@@ -20,6 +20,27 @@
 /// # Returns
 /// Vector containing the first n prime numbers: [2, 3, 5, 7, 11, 13, 17, ...]
 ///
+/// # Typical Values
+/// - **n = 5-10**: Short irregular patterns (good for rhythmic hits)
+/// - **n = 10-15**: Medium complexity (melodic sequences)
+/// - **n = 20-30**: Long evolving patterns (structural organization)
+///
+/// # Recipe: Non-Repetitive Rhythm
+/// ```
+/// use tunes::prelude::*;
+/// use tunes::sequences;
+///
+/// let mut comp = Composition::new(Tempo::new(140.0));
+///
+/// // Use primes for irregular but deterministic hit pattern
+/// let primes = sequences::primes(10);
+/// let rhythm: Vec<usize> = primes.iter().map(|&p| (p % 16) as usize).collect();
+///
+/// comp.track("prime_perc")
+///     .drum_grid(16, 0.125)
+///     .kick(&rhythm);
+/// ```
+///
 /// # Examples
 /// ```
 /// use tunes::sequences;
