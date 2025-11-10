@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
     // Example 5: Phaser depth sweep (16-20s)
     comp.instrument("phaser_demo", &Instrument::synth_lead())
         .phaser(
-            Phaser::new(0.5, 0.0, 0.6, 0.8, 4).with_depth_automation(Automation::smooth(&[
+            Phaser::new(0.5, 0.0, 0.6, 4, 0.8).with_depth_automation(Automation::smooth(&[
                 (16.0, 0.0), // No effect
                 (18.0, 1.0), // Full depth
                 (20.0, 0.0), // Fade out

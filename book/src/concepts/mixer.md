@@ -311,21 +311,37 @@ Each track, bus, and master has an `EffectChain` containing all 16 available eff
 
 **Default behavior:** All tracks go to a "default" bus automatically.
 
-**Custom buses:** Organize tracks into groups:
+**Custom buses:** Organize tracks into groups using the composition API:
 ```rust
-let mut mixer = Mixer::new(Tempo::new(120.0));
+// During composition, assign tracks to buses
+comp.track("kick")
+    .bus("drums")
+    .drum(DrumType::Kick);
 
-// Add tracks to named buses
-mixer.add_track("kick", kick_track, "drums");
-mixer.add_track("snare", snare_track, "drums");
-mixer.add_track("bass", bass_track, "bass");
+comp.track("snare")
+    .bus("drums")
+    .drum(DrumType::Snare);
 
-// Apply effects to entire bus
-if let Some(drums) = mixer.buses.get_mut("drums") {
-    drums.effects.reverb = Some(Reverb::new(0.2, 0.3));
-    drums.effects.compressor = Some(Compressor::new(0.6, 4.0, 0.005, 0.05, 44100.0));
-    drums.volume = 0.9;
-}
+comp.track("bass")
+    .bus("bass")
+    .notes(&[C2, G2], 0.5);
+```
+
+**Bus-level effects** using BusBuilder:
+```rust
+let mut mixer = comp.into_mixer();
+
+// Apply effects to entire drum bus
+mixer.bus("drums")
+    .reverb(Reverb::new(0.2, 0.3, 0.4))
+    .compressor(Compressor::new(-20.0, 4.0, 0.005, 0.05, 3.0))
+    .volume(0.9);
+
+// Apply effects to bass bus
+mixer.bus("bass")
+    .compressor(Compressor::new(-15.0, 3.0, 0.01, 0.1, 2.0))
+    .eq(EQ::new(80.0, 1.2, 0.8))  // Boost low end
+    .saturation(Saturation::new(0.3, 0.5, 0.5));
 ```
 
 **Benefits:**

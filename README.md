@@ -13,7 +13,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Sample Playback**: Load and play WAV files with pitch shifting
 - **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: 100+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
-- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, various filters
+- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
 - **Algorithmic Sequences**: Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
@@ -24,6 +24,9 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
+
+
+
 
 ## Installation
 

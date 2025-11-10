@@ -188,7 +188,7 @@ Both end up in the same `Mixer`, but the API reflects their different purposes.
 
 ---
 
-### Concurrent Mixing (v0.7.0+)
+### Concurrent Mixing
 
 The `AudioEngine` uses a persistent audio stream with lock-free command channels:
 

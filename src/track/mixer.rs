@@ -867,7 +867,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::Phaser;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// mixer.master_phaser(Phaser::new(0.5, 0.7, 0.5, 0.5, 4));
+    /// mixer.master_phaser(Phaser::new(0.5, 0.7, 0.5, 4, 0.5));
     /// ```
     pub fn master_phaser(&mut self, phaser: crate::synthesis::effects::Phaser) {
         self.master.phaser = Some(phaser);

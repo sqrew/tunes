@@ -9,7 +9,8 @@ fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(120.0));
 
-    comp.instrument("tone", &Instrument::sine_wave())
+    comp.track("tone")
+        .waveform(Waveform::Sine)
         .note(&[440.0], 1.0);  // 440Hz for 1 second
 
     engine.play_mixer(&comp.into_mixer())?;
@@ -23,7 +24,8 @@ Run it with `cargo run`. You should hear a pure tone for one second.
 
 - **`AudioEngine::new()`** – Creates your audio output
 - **`Composition`** – The container for your musical ideas
-- **`.instrument()`** – Defines what sound to use (a simple sine wave)
+- **`.track()`** – Creates a track to hold audio events
+- **`.waveform()`** – Sets the oscillator type (sine wave for pure tone)
 - **`.note()`** – Plays a frequency (440Hz) for a duration (1 second)
 - **`.play_mixer()`** – Renders and plays the audio
 

@@ -362,8 +362,7 @@ comp.track("electric_piano")
         0.7,      // Depth (0.0-1.0, intensity)
         0.5,      // Feedback (0.0-0.95, resonance)
         6,        // Stages (2-12, more = more notches)
-        0.5,      // Mix
-        44100.0   // Sample rate
+        0.5       // Mix
     ));
 ```
 

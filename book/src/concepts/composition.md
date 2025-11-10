@@ -161,7 +161,9 @@ comp.track("melody")
     .notes(&[C4, E4, G4, C5], 0.5);  // C major arpeggio
 ```
 
-**Available:** `C0` through `B8` with sharps (`Cs4`, `Ds4`, etc.)
+**Available:** `C0` through `B8` with sharps (`CS4`, `DS4`, etc.) and flats (`DB4`, `EB4`, `AB4`, `BB4`, etc.)
+
+Note constants use uppercase for consistency (e.g., `CS4` for C#4, `BB4` for Bb4).
 
 ---
 
@@ -394,6 +396,37 @@ comp.track("texture")
         5.0  // duration
     );
 ```
+
+### Additive Synthesis
+
+Build sounds from harmonic components:
+
+```rust
+// Sawtooth-like sound (harmonic series)
+comp.track("saw")
+    .additive_synth(&[1.0, 0.5, 0.33, 0.25, 0.2])
+    .notes(&[C4, E4, G4], 0.5);
+
+// Organ sound (odd harmonics only)
+comp.track("organ")
+    .additive_synth(&[1.0, 0.0, 0.5, 0.0, 0.3])
+    .notes(&[C3], 1.0);
+```
+
+**Parameters:** Array of harmonic amplitudes (1st, 2nd, 3rd, etc.). Zero values are skipped for efficiency.
+
+### Wavetable Synthesis
+
+Rich, harmonically complex waveforms:
+
+```rust
+// Rich wavetable preset (8 harmonics)
+comp.track("lead")
+    .wavetable()
+    .notes(&[C4, D4, E4, G4], 0.5);
+```
+
+For custom wavetables, use `.custom_waveform()` with `Wavetable::from_harmonics()`.
 
 ---
 

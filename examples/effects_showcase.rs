@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
 
     // Phaser - Swoosh effect
     comp.instrument("phaser_demo", &Instrument::warm_pad())
-        .phaser(Phaser::new(0.5, 0.7, 0.5, 0.7, 4)) // rate, depth, feedback, mix, stages
+        .phaser(Phaser::new(0.5, 0.7, 0.5, 4, 0.7)) // rate, depth, feedback, stages, mix
         .at(17.7)
         .note(&[E4, G4, B4], 2.5);
 
@@ -229,7 +229,7 @@ fn main() -> anyhow::Result<()> {
 
     // Thick modulation: Phaser + Flanger + Tremolo
     comp.instrument("mod_combo", &Instrument::warm_pad())
-        .phaser(Phaser::new(0.3, 0.6, 0.4, 0.5, 4))
+        .phaser(Phaser::new(0.3, 0.6, 0.4, 4, 0.5))
         .flanger(Flanger::new(0.4, 2.5, 0.5, 0.4))
         .tremolo(Tremolo::new(4.0, 0.5))
         .at(62.0)
@@ -264,7 +264,7 @@ fn main() -> anyhow::Result<()> {
 
     // Phaser progression
     comp.instrument("phaser_progression", &Instrument::warm_pad())
-        .phaser(Phaser::new(0.6, 0.7, 0.5, 0.6, 4))
+        .phaser(Phaser::new(0.6, 0.7, 0.5, 4, 0.6))
         .at(72.5)
         .note(&[C4, E4, G4], 2.0)
         .note(&[F3, A3, C4], 2.0);
@@ -295,7 +295,7 @@ fn main() -> anyhow::Result<()> {
     // Final chord with all modulation effects
     comp.instrument("finale", &Instrument::warm_pad())
         .chorus(Chorus::new(0.4, 0.003, 0.3))
-        .phaser(Phaser::new(0.4, 0.6, 0.4, 0.4, 4))
+        .phaser(Phaser::new(0.4, 0.6, 0.4, 4, 0.4))
         .flanger(Flanger::new(0.3, 2.0, 0.5, 0.3))
         .tremolo(Tremolo::new(3.0, 0.4))
         .autopan(AutoPan::new(0.25, 0.5))

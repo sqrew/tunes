@@ -109,6 +109,79 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
+    /// Use additive synthesis with specified harmonic amplitudes
+    ///
+    /// Creates a custom waveform by summing harmonics with the given amplitudes.
+    /// Each value in the array represents the amplitude of that harmonic (1st, 2nd, 3rd, etc.).
+    ///
+    /// # Arguments
+    /// * `harmonic_amps` - Array of harmonic amplitudes (e.g., `&[1.0, 0.5, 0.25]`)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Sawtooth-like sound (harmonic series with decreasing amplitudes)
+    /// comp.track("saw")
+    ///     .additive_synth(&[1.0, 0.5, 0.33, 0.25, 0.2])
+    ///     .notes(&[C4, E4, G4], 0.5);
+    ///
+    /// // Organ sound (odd harmonics only)
+    /// comp.track("organ")
+    ///     .additive_synth(&[1.0, 0.0, 0.5, 0.0, 0.3])
+    ///     .notes(&[C3], 1.0);
+    /// ```
+    pub fn additive_synth(self, harmonic_amps: &[f32]) -> Self {
+        use crate::synthesis::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+
+        // Convert harmonic amplitudes to (harmonic_number, amplitude) pairs
+        let harmonics: Vec<(usize, f32)> = harmonic_amps
+            .iter()
+            .enumerate()
+            .filter(|(_, &amp)| amp > 0.0)  // Skip zero-amplitude harmonics
+            .map(|(i, &amp)| (i + 1, amp))
+            .collect();
+
+        // Create wavetable from harmonics
+        let wavetable = Wavetable::from_harmonics(DEFAULT_TABLE_SIZE, &harmonics);
+
+        self.custom_waveform(wavetable)
+    }
+
+    /// Use wavetable synthesis with a rich, harmonically complex waveform
+    ///
+    /// Convenience method that creates a wavetable with a rich harmonic spectrum,
+    /// good for synth leads and pads. For custom wavetables, use `.custom_waveform()`.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Rich wavetable lead
+    /// comp.track("lead")
+    ///     .wavetable()
+    ///     .notes(&[C4, D4, E4, G4], 0.5);
+    /// ```
+    pub fn wavetable(self) -> Self {
+        use crate::synthesis::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+
+        // Create a rich wavetable with multiple harmonics for a complex timbre
+        // Similar to a sawtooth but with more controlled harmonics
+        let harmonics = vec![
+            (1, 1.0),   // Fundamental
+            (2, 0.6),   // Octave
+            (3, 0.4),   // Fifth above octave
+            (4, 0.3),   // Two octaves
+            (5, 0.25),  // Major third above that
+            (6, 0.2),   // Fifth above two octaves
+            (7, 0.15),  // Minor seventh
+            (8, 0.1),   // Three octaves
+        ];
+
+        let wavetable = Wavetable::from_harmonics(DEFAULT_TABLE_SIZE, &harmonics);
+        self.custom_waveform(wavetable)
+    }
+
     /// Add noise to the track
     ///
     /// Generates noise of the specified type and adds it as a sample at the current cursor position.

@@ -174,7 +174,7 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
-    ///     .phaser(Phaser::new(0.5, 0.7, 0.5, 0.5, 4))
+    ///     .phaser(Phaser::new(0.5, 0.7, 0.5, 4, 0.5))
     ///     .note(&[A4], 2.0);
     /// ```
     pub fn phaser(mut self, phaser: Phaser) -> Self {
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn test_phaser_sets_track_phaser() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let phaser = Phaser::new(0.5, 0.7, 0.5, 0.5, 4);
+        let phaser = Phaser::new(0.5, 0.7, 0.5, 4, 0.5);
         comp.track("test").phaser(phaser);
 
         let mixer = comp.into_mixer();
@@ -595,7 +595,7 @@ mod tests {
             .chorus(Chorus::new(0.8, 3.0, 0.4))
             .eq(EQ::new(1.5, 1.0, 0.8, 250.0, 3000.0))
             .saturation(Saturation::new(1.8, 0.6, 0.5))
-            .phaser(Phaser::new(0.4, 0.6, 0.7, 0.5, 6))
+            .phaser(Phaser::new(0.4, 0.6, 0.7, 6, 0.5))
             .flanger(Flanger::new(0.6, 2.5, 0.7, 0.4))
             .ring_mod(RingModulator::new(550.0, 0.3));
 
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     fn test_phaser_stages() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let phaser = Phaser::new(0.3, 0.8, 0.6, 0.7, 8);
+        let phaser = Phaser::new(0.3, 0.8, 0.6, 8, 0.7);
         comp.track("phased").phaser(phaser);
 
         let mixer = comp.into_mixer();

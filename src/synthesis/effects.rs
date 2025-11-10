@@ -1072,7 +1072,6 @@ pub struct Phaser {
     pub priority: u8,  // Processing priority (lower = earlier in signal chain)
     allpass_states: Vec<AllPassFilter>,
     lfo_phase: f32,
-    sample_rate: f32,
 
     // Automation (optional)
     rate_automation: Option<Automation>,
@@ -1106,20 +1105,23 @@ impl Phaser {
     /// * `rate` - LFO speed in Hz (0.1 to 5.0, typical: 0.5)
     /// * `depth` - Modulation depth (0.0 to 1.0, typical: 0.7)
     /// * `feedback` - Feedback amount (0.0 to 0.95, typical: 0.5)
-    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet, typical: 0.5)
     /// * `stages` - Number of stages (2, 4, 6, or 8, typical: 4)
-    pub fn new(rate: f32, depth: f32, feedback: f32, mix: f32, stages: usize) -> Self {
-        Self::with_sample_rate(rate, depth, feedback, mix, stages, DEFAULT_SAMPLE_RATE)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet, typical: 0.5)
+    pub fn new(rate: f32, depth: f32, feedback: f32, stages: usize, mix: f32) -> Self {
+        Self::with_sample_rate(rate, depth, feedback, stages, mix, DEFAULT_SAMPLE_RATE)
     }
 
-    /// Create a new phaser effect with custom sample rate
+    /// Create a new phaser effect
+    ///
+    /// Note: sample_rate parameter is ignored (kept for API compatibility).
+    /// The actual sample rate is provided during processing.
     pub fn with_sample_rate(
         rate: f32,
         depth: f32,
         feedback: f32,
-        mix: f32,
         stages: usize,
-        sample_rate: f32,
+        mix: f32,
+        _sample_rate: f32,
     ) -> Self {
         let stages = stages.clamp(2, 8);
         Self {
@@ -1131,7 +1133,6 @@ impl Phaser {
             priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             allpass_states: vec![AllPassFilter::new(); stages],
             lfo_phase: 0.0,
-            sample_rate,
             rate_automation: None,
             depth_automation: None,
             feedback_automation: None,
@@ -1173,10 +1174,11 @@ impl Phaser {
     ///
     /// # Arguments
     /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
@@ -1216,7 +1218,7 @@ impl Phaser {
         output = input + feedback_sample;
 
         // Advance LFO phase
-        self.lfo_phase += self.rate / self.sample_rate;
+        self.lfo_phase += self.rate / sample_rate;
         if self.lfo_phase >= 1.0 {
             self.lfo_phase -= 1.0;
         }
@@ -1243,7 +1245,6 @@ pub struct Flanger {
     buffer: Vec<f32>,
     write_pos: usize,
     lfo_phase: f32,
-    sample_rate: f32,
 
     // Automation (optional)
     rate_automation: Option<Automation>,
@@ -1264,7 +1265,10 @@ impl Flanger {
         Self::with_sample_rate(rate, depth, feedback, mix, DEFAULT_SAMPLE_RATE)
     }
 
-    /// Create a new flanger effect with custom sample rate
+    /// Create a new flanger effect
+    ///
+    /// Note: sample_rate parameter is used only to estimate buffer size.
+    /// The actual sample rate for processing is provided during process().
     pub fn with_sample_rate(
         rate: f32,
         depth: f32,
@@ -1273,6 +1277,7 @@ impl Flanger {
         sample_rate: f32,
     ) -> Self {
         // Buffer size needs to accommodate maximum delay (in samples)
+        // Use provided sample_rate for initial buffer sizing
         let max_delay_samples = ((depth * 2.0) * sample_rate / 1000.0) as usize;
         let buffer_size = max_delay_samples.max(1);
 
@@ -1285,7 +1290,6 @@ impl Flanger {
             buffer: vec![0.0; buffer_size],
             write_pos: 0,
             lfo_phase: 0.0,
-            sample_rate,
             rate_automation: None,
             depth_automation: None,
             feedback_automation: None,
@@ -1327,10 +1331,11 @@ impl Flanger {
     ///
     /// # Arguments
     /// * `input` - Input sample
+    /// * `sample_rate` - Sample rate in Hz
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
@@ -1356,7 +1361,7 @@ impl Flanger {
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
         let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0); // 0 to depth milliseconds
         let delay_samples =
-            ((delay_ms * self.sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
+            ((delay_ms * sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
 
         // Read from delayed position
         let read_pos = if self.write_pos >= delay_samples {
@@ -1370,7 +1375,7 @@ impl Flanger {
         self.buffer[self.write_pos] = delayed.mul_add(self.feedback, input);
 
         // Advance LFO phase
-        self.lfo_phase += self.rate / self.sample_rate;
+        self.lfo_phase += self.rate / sample_rate;
         if self.lfo_phase >= 1.0 {
             self.lfo_phase -= 1.0;
         }
@@ -1397,7 +1402,6 @@ pub struct RingModulator {
     pub mix: f32,          // Wet/dry mix (0.0 = dry, 1.0 = wet)
     pub priority: u8,      // Processing priority (lower = earlier in signal chain)
     phase: f32,
-    sample_rate: f32,
 
     // Automation (optional)
     carrier_freq_automation: Option<Automation>,
@@ -1415,13 +1419,14 @@ impl RingModulator {
     }
 
     /// Create a new ring modulator effect with custom sample rate
-    pub fn with_sample_rate(carrier_freq: f32, mix: f32, sample_rate: f32) -> Self {
+    /// Note: sample_rate parameter is kept for API compatibility but ignored.
+    /// The actual sample rate is provided at runtime during processing.
+    pub fn with_sample_rate(carrier_freq: f32, mix: f32, _sample_rate: f32) -> Self {
         Self {
             carrier_freq,
             mix: mix.clamp(0.0, 1.0),
             priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             phase: 0.0,
-            sample_rate,
             carrier_freq_automation: None,
             mix_automation: None,
         }
@@ -1449,10 +1454,11 @@ impl RingModulator {
     ///
     /// # Arguments
     /// * `input` - Input sample
+    /// * `sample_rate` - Audio sample rate in Hz (provided by the engine at runtime)
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
@@ -1474,7 +1480,7 @@ impl RingModulator {
         let modulated = input * carrier;
 
         // Advance phase
-        self.phase += self.carrier_freq / self.sample_rate;
+        self.phase += self.carrier_freq / sample_rate;
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
@@ -1500,7 +1506,6 @@ pub struct Tremolo {
     pub depth: f32,   // Modulation depth 0.0 to 1.0
     pub priority: u8, // Processing priority
     phase: f32,       // LFO phase (0.0 to 1.0)
-    sample_rate: f32,
 
     // Automation (optional)
     rate_automation: Option<Automation>,
@@ -1513,14 +1518,14 @@ impl Tremolo {
     /// # Arguments
     /// * `rate` - LFO frequency in Hz (typically 1-20 Hz)
     /// * `depth` - Modulation depth 0.0 (no effect) to 1.0 (full tremolo)
-    /// * `sample_rate` - Audio sample rate in Hz
-    pub fn with_sample_rate(rate: f32, depth: f32, sample_rate: f32) -> Self {
+    /// * `sample_rate` - Audio sample rate in Hz (kept for API compatibility but ignored)
+    /// Note: The actual sample rate is provided at runtime during processing.
+    pub fn with_sample_rate(rate: f32, depth: f32, _sample_rate: f32) -> Self {
         Self {
             rate: rate.max(0.01),
             depth: depth.clamp(0.0, 1.0),
             priority: PRIORITY_MODULATION,
             phase: 0.0,
-            sample_rate,
             rate_automation: None,
             depth_automation: None,
         }
@@ -1553,10 +1558,11 @@ impl Tremolo {
     ///
     /// # Arguments
     /// * `input` - Input sample
+    /// * `sample_rate` - Audio sample rate in Hz (provided by the engine at runtime)
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process(&mut self, input: f32, time: f32, sample_count: u64) -> f32 {
+    pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.rate_automation {
@@ -1580,7 +1586,7 @@ impl Tremolo {
         let modulation = 1.0 - (self.depth * (1.0 - lfo) * 0.5);
 
         // Advance phase
-        self.phase += self.rate / self.sample_rate;
+        self.phase += self.rate / sample_rate;
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
@@ -1604,7 +1610,6 @@ pub struct AutoPan {
     pub depth: f32,   // Panning depth 0.0 to 1.0 (0.5 = full L-R sweep)
     pub priority: u8, // Processing priority (processed at stereo stage)
     phase: f32,       // LFO phase (0.0 to 1.0)
-    sample_rate: f32,
 
     // Automation (optional)
     rate_automation: Option<Automation>,
@@ -1617,14 +1622,14 @@ impl AutoPan {
     /// # Arguments
     /// * `rate` - LFO frequency in Hz (typically 0.1-10 Hz)
     /// * `depth` - Pan modulation depth 0.0 to 1.0 (0.5 pans full left-right)
-    /// * `sample_rate` - Audio sample rate in Hz
-    pub fn with_sample_rate(rate: f32, depth: f32, sample_rate: f32) -> Self {
+    /// * `sample_rate` - Audio sample rate in Hz (kept for API compatibility but ignored)
+    /// Note: The actual sample rate is provided at runtime during processing.
+    pub fn with_sample_rate(rate: f32, depth: f32, _sample_rate: f32) -> Self {
         Self {
             rate: rate.max(0.01),
             depth: depth.clamp(0.0, 1.0),
             priority: PRIORITY_MODULATION,
             phase: 0.0,
-            sample_rate,
             rate_automation: None,
             depth_automation: None,
         }
@@ -1659,10 +1664,11 @@ impl AutoPan {
     /// The returned value is added to the track's base pan.
     ///
     /// # Arguments
+    /// * `sample_rate` - Audio sample rate in Hz (provided by the engine at runtime)
     /// * `time` - Current time in seconds (for automation)
     /// * `sample_count` - Global sample counter (for quantized automation lookups)
     #[inline]
-    pub fn get_pan_offset(&mut self, time: f32, sample_count: u64) -> f32 {
+    pub fn get_pan_offset(&mut self, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
         // Quantized automation lookups (every 64 samples)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.rate_automation {
@@ -1682,7 +1688,7 @@ impl AutoPan {
         let lfo = (self.phase * 2.0 * std::f32::consts::PI).sin();
 
         // Advance phase
-        self.phase += self.rate / self.sample_rate;
+        self.phase += self.rate / sample_rate;
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
@@ -2438,7 +2444,7 @@ impl EffectChain {
                 7 => {
                     // Phaser
                     if let Some(ref mut phaser) = self.phaser {
-                        phaser.process(signal, time, sample_count)
+                        phaser.process(signal, sample_rate, time, sample_count)
                     } else {
                         signal
                     }
@@ -2446,7 +2452,7 @@ impl EffectChain {
                 8 => {
                     // Flanger
                     if let Some(ref mut flanger) = self.flanger {
-                        flanger.process(signal, time, sample_count)
+                        flanger.process(signal, sample_rate, time, sample_count)
                     } else {
                         signal
                     }
@@ -2454,7 +2460,7 @@ impl EffectChain {
                 9 => {
                     // Ring Modulator
                     if let Some(ref mut ring_mod) = self.ring_mod {
-                        ring_mod.process(signal, time, sample_count)
+                        ring_mod.process(signal, sample_rate, time, sample_count)
                     } else {
                         signal
                     }
@@ -2462,7 +2468,7 @@ impl EffectChain {
                 10 => {
                     // Tremolo
                     if let Some(ref mut tremolo) = self.tremolo {
-                        tremolo.process(signal, time, sample_count)
+                        tremolo.process(signal, sample_rate, time, sample_count)
                     } else {
                         signal
                     }
@@ -2594,29 +2600,29 @@ impl EffectChain {
                 7 => {
                     // Phaser (process each channel)
                     if let Some(ref mut phaser) = self.phaser {
-                        left_signal = phaser.process(left_signal, time, sample_count);
-                        right_signal = phaser.process(right_signal, time, sample_count);
+                        left_signal = phaser.process(left_signal, sample_rate, time, sample_count);
+                        right_signal = phaser.process(right_signal, sample_rate, time, sample_count);
                     }
                 }
                 8 => {
                     // Flanger (process each channel)
                     if let Some(ref mut flanger) = self.flanger {
-                        left_signal = flanger.process(left_signal, time, sample_count);
-                        right_signal = flanger.process(right_signal, time, sample_count);
+                        left_signal = flanger.process(left_signal, sample_rate, time, sample_count);
+                        right_signal = flanger.process(right_signal, sample_rate, time, sample_count);
                     }
                 }
                 9 => {
                     // Ring Modulator (process each channel)
                     if let Some(ref mut ring_mod) = self.ring_mod {
-                        left_signal = ring_mod.process(left_signal, time, sample_count);
-                        right_signal = ring_mod.process(right_signal, time, sample_count);
+                        left_signal = ring_mod.process(left_signal, sample_rate, time, sample_count);
+                        right_signal = ring_mod.process(right_signal, sample_rate, time, sample_count);
                     }
                 }
                 10 => {
                     // Tremolo (process each channel)
                     if let Some(ref mut tremolo) = self.tremolo {
-                        left_signal = tremolo.process(left_signal, time, sample_count);
-                        right_signal = tremolo.process(right_signal, time, sample_count);
+                        left_signal = tremolo.process(left_signal, sample_rate, time, sample_count);
+                        right_signal = tremolo.process(right_signal, sample_rate, time, sample_count);
                     }
                 }
                 11 => {

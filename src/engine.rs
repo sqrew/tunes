@@ -40,6 +40,18 @@ enum AudioCommand {
     Resume {
         id: SoundId,
     },
+    PauseAll,
+    ResumeAll,
+    StopAll,
+    FadeOut {
+        id: SoundId,
+        duration: f32, // Duration in seconds
+    },
+    FadeIn {
+        id: SoundId,
+        duration: f32,      // Duration in seconds
+        target_volume: f32, // Target volume (0.0-1.0)
+    },
     SetSoundPosition {
         id: SoundId,
         position: SpatialPosition,
@@ -70,6 +82,11 @@ struct ActiveSound {
     paused: bool,
     looping: bool,
     spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
+    // Fade state
+    fade_start_time: Option<f32>,
+    fade_duration: f32,
+    fade_start_volume: f32,
+    fade_target_volume: f32,
 }
 
 /// Central audio engine that manages playback with concurrent mixing
@@ -222,6 +239,10 @@ impl AudioEngine {
                         paused: false,
                         looping,
                         spatial_position: None,
+                        fade_start_time: None,
+                        fade_duration: 0.0,
+                        fade_start_volume: 1.0,
+                        fade_target_volume: 1.0,
                     },
                 );
             }
@@ -270,6 +291,39 @@ impl AudioEngine {
             }
             AudioCommand::SetSpatialParams { params } => {
                 *spatial = params;
+            }
+            AudioCommand::PauseAll => {
+                for sound in active_sounds.values_mut() {
+                    sound.paused = true;
+                }
+            }
+            AudioCommand::ResumeAll => {
+                for sound in active_sounds.values_mut() {
+                    sound.paused = false;
+                }
+            }
+            AudioCommand::StopAll => {
+                active_sounds.clear();
+            }
+            AudioCommand::FadeOut { id, duration } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.fade_start_time = Some(sound.elapsed_time);
+                    sound.fade_duration = duration;
+                    sound.fade_start_volume = sound.volume;
+                    sound.fade_target_volume = 0.0;
+                }
+            }
+            AudioCommand::FadeIn {
+                id,
+                duration,
+                target_volume,
+            } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.fade_start_time = Some(sound.elapsed_time);
+                    sound.fade_duration = duration;
+                    sound.fade_start_volume = sound.volume;
+                    sound.fade_target_volume = target_volume.clamp(0.0, 1.0);
+                }
             }
         }
     }
@@ -336,9 +390,26 @@ impl AudioEngine {
                     (1.0, sound.pan)
                 };
 
-                // Apply volume (sound volume * spatial attenuation)
-                left *= sound.volume * spatial_volume;
-                right *= sound.volume * spatial_volume;
+                // Apply fade if active
+                let effective_volume = if let Some(fade_start) = sound.fade_start_time {
+                    let fade_elapsed = sound.elapsed_time - fade_start;
+                    if fade_elapsed >= sound.fade_duration {
+                        // Fade complete
+                        sound.volume = sound.fade_target_volume;
+                        sound.fade_start_time = None; // Clear fade state
+                        sound.volume
+                    } else {
+                        // Interpolate between start and target
+                        let t = fade_elapsed / sound.fade_duration;
+                        sound.fade_start_volume + (sound.fade_target_volume - sound.fade_start_volume) * t
+                    }
+                } else {
+                    sound.volume
+                };
+
+                // Apply volume (effective volume * spatial attenuation)
+                left *= effective_volume * spatial_volume;
+                right *= effective_volume * spatial_volume;
 
                 // Apply pan (spatial pan overrides manual pan when spatial position is set)
                 if spatial_pan < 0.0 {
@@ -428,6 +499,71 @@ impl AudioEngine {
                 looping: false,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(id)
+    }
+
+    /// Play a mixer at a custom playback rate and block until finished
+    ///
+    /// This is a convenience method that combines `play_mixer_realtime()` and
+    /// `set_playback_rate()` for the common case of playing at a different speed.
+    ///
+    /// # Arguments
+    /// * `mixer` - The mixer to play
+    /// * `rate` - Playback rate multiplier (1.0 = normal, 2.0 = double speed, 0.5 = half speed)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// let engine = AudioEngine::new()?;
+    /// let mixer = comp.into_mixer();
+    ///
+    /// // Play at 2x speed (chipmunk effect)
+    /// engine.play_mixer_at_rate(&mixer, 2.0)?;
+    ///
+    /// // Play at half speed (slow motion)
+    /// engine.play_mixer_at_rate(&mixer, 0.5)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_mixer_at_rate(&self, mixer: &Mixer, rate: f32) -> Result<()> {
+        let id = self.play_mixer_realtime(mixer)?;
+        self.set_playback_rate(id, rate)?;
+        self.wait_for(id, mixer.is_empty())
+    }
+
+    /// Play a mixer at a custom playback rate and return immediately
+    ///
+    /// Returns a `SoundId` for controlling the playing instance. The playback rate
+    /// is set immediately after starting playback.
+    ///
+    /// # Arguments
+    /// * `mixer` - The mixer to play
+    /// * `rate` - Playback rate multiplier (1.0 = normal, 2.0 = double speed, 0.5 = half speed)
+    ///
+    /// # Returns
+    /// `SoundId` - Unique identifier for this sound, use with control methods
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// let engine = AudioEngine::new()?;
+    /// let mixer = comp.into_mixer();
+    ///
+    /// // Start playing at 1.5x speed, non-blocking
+    /// let id = engine.play_mixer_realtime_at_rate(&mixer, 1.5)?;
+    ///
+    /// // Can still control it further
+    /// engine.set_volume(id, 0.7)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_mixer_realtime_at_rate(&self, mixer: &Mixer, rate: f32) -> Result<SoundId> {
+        let id = self.play_mixer_realtime(mixer)?;
+        self.set_playback_rate(id, rate)?;
         Ok(id)
     }
 
@@ -553,6 +689,134 @@ impl AudioEngine {
     pub fn resume(&self, id: SoundId) -> Result<()> {
         self.command_tx
             .send(AudioCommand::Resume { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Pause all currently playing sounds
+    ///
+    /// Useful for game pause menus or when the application loses focus.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let engine = AudioEngine::new()?;
+    /// // Pause all audio when game pauses
+    /// engine.pause_all()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pause_all(&self) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::PauseAll)
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Resume all paused sounds
+    ///
+    /// Useful for resuming from a pause menu.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let engine = AudioEngine::new()?;
+    /// // Resume all audio when game unpauses
+    /// engine.resume_all()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn resume_all(&self) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::ResumeAll)
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Stop all currently playing sounds
+    ///
+    /// Immediately stops and removes all active sounds. Useful for level transitions
+    /// or when you need to clear all audio.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let engine = AudioEngine::new()?;
+    /// // Clear all audio when transitioning levels
+    /// engine.stop_all()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn stop_all(&self) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::StopAll)
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Fade out a playing sound to silence
+    ///
+    /// Gradually reduces the volume to 0 over the specified duration, creating a
+    /// smooth fade out effect. The sound will stop automatically when the fade completes.
+    ///
+    /// # Arguments
+    /// * `id` - The sound to fade
+    /// * `duration` - Fade duration in seconds
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # let engine = AudioEngine::new()?;
+    /// let id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Fade out over 2 seconds
+    /// engine.fade_out(id, 2.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn fade_out(&self, id: SoundId, duration: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::FadeOut { id, duration })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Fade in a playing sound from current volume to target volume
+    ///
+    /// Gradually increases the volume from its current level to the target volume,
+    /// creating a smooth fade in effect.
+    ///
+    /// # Arguments
+    /// * `id` - The sound to fade
+    /// * `duration` - Fade duration in seconds
+    /// * `target_volume` - Target volume (0.0-1.0)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # let engine = AudioEngine::new()?;
+    /// let id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    /// engine.set_volume(id, 0.0)?; // Start silent
+    ///
+    /// // Fade in to 80% volume over 3 seconds
+    /// engine.fade_in(id, 3.0, 0.8)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn fade_in(&self, id: SoundId, duration: f32, target_volume: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::FadeIn {
+                id,
+                duration,
+                target_volume,
+            })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
         Ok(())
     }

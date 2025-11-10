@@ -184,3 +184,100 @@ pub const GS11: f32 = 53159.01;
 pub const A11: f32 = 56320.00;
 pub const AS11: f32 = 59668.95;
 pub const B11: f32 = 63217.07;
+
+// =============================================================================
+// FLAT NOTE ALIASES
+// =============================================================================
+// Enharmonic equivalents for flats (Db = C#, Eb = D#, etc.)
+// These make chord progressions and music theory code more readable
+
+// Octave -1
+pub const DB_1: f32 = CS_1;
+pub const EB_1: f32 = DS_1;
+pub const GB_1: f32 = FS_1;
+pub const AB_1: f32 = GS_1;
+pub const BB_1: f32 = AS_1;
+
+// Octave 0
+pub const DB0: f32 = CS0;
+pub const EB0: f32 = DS0;
+pub const GB0: f32 = FS0;
+pub const AB0: f32 = GS0;
+pub const BB0: f32 = AS0;
+
+// Octave 1
+pub const DB1: f32 = CS1;
+pub const EB1: f32 = DS1;
+pub const GB1: f32 = FS1;
+pub const AB1: f32 = GS1;
+pub const BB1: f32 = AS1;
+
+// Octave 2
+pub const DB2: f32 = CS2;
+pub const EB2: f32 = DS2;
+pub const GB2: f32 = FS2;
+pub const AB2: f32 = GS2;
+pub const BB2: f32 = AS2;
+
+// Octave 3
+pub const DB3: f32 = CS3;
+pub const EB3: f32 = DS3;
+pub const GB3: f32 = FS3;
+pub const AB3: f32 = GS3;
+pub const BB3: f32 = AS3;
+
+// Octave 4
+pub const DB4: f32 = CS4;
+pub const EB4: f32 = DS4;
+pub const GB4: f32 = FS4;
+pub const AB4: f32 = GS4;
+pub const BB4: f32 = AS4;
+
+// Octave 5
+pub const DB5: f32 = CS5;
+pub const EB5: f32 = DS5;
+pub const GB5: f32 = FS5;
+pub const AB5: f32 = GS5;
+pub const BB5: f32 = AS5;
+
+// Octave 6
+pub const DB6: f32 = CS6;
+pub const EB6: f32 = DS6;
+pub const GB6: f32 = FS6;
+pub const AB6: f32 = GS6;
+pub const BB6: f32 = AS6;
+
+// Octave 7
+pub const DB7: f32 = CS7;
+pub const EB7: f32 = DS7;
+pub const GB7: f32 = FS7;
+pub const AB7: f32 = GS7;
+pub const BB7: f32 = AS7;
+
+// Octave 8
+pub const DB8: f32 = CS8;
+pub const EB8: f32 = DS8;
+pub const GB8: f32 = FS8;
+pub const AB8: f32 = GS8;
+pub const BB8: f32 = AS8;
+
+// Octave 9
+pub const DB9: f32 = CS9;
+pub const EB9: f32 = DS9;
+pub const GB9: f32 = FS9;
+pub const AB9: f32 = GS9;
+pub const BB9: f32 = AS9;
+
+// Octave 10
+pub const DB10: f32 = CS10;
+pub const EB10: f32 = DS10;
+pub const GB10: f32 = FS10;
+pub const AB10: f32 = GS10;
+pub const BB10: f32 = AS10;
+
+// Octave 11
+pub const DB11: f32 = CS11;
+pub const EB11: f32 = DS11;
+pub const GB11: f32 = FS11;
+pub const AB11: f32 = GS11;
+pub const BB11: f32 = AS11;
