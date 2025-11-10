@@ -305,6 +305,7 @@ Each track, bus, and master has an `EffectChain` containing all 16 available eff
 - **Dual-mode processing:**
   - Tracks: `process_mono()` - Mono in, mono out with effects
   - Buses/Master: `process_stereo()` - Stereo in, stereo out with effects
+  - **Stereo-linked dynamics:** Compressor and limiter use max(L,R) detection with identical gain reduction on both channels, preventing stereo image shifts
 - **16 effects:** EQ, Compressor, Gate, Saturation, Bitcrusher, Distortion, Chorus, Phaser, Flanger, Ring Mod, Tremolo, AutoPan, Delay, Reverb, Limiter, Parametric EQ
 
 ### Bus System
@@ -334,14 +335,14 @@ let mut mixer = comp.into_mixer();
 // Apply effects to entire drum bus
 mixer.bus("drums")
     .reverb(Reverb::new(0.2, 0.3, 0.4))
-    .compressor(Compressor::new(-20.0, 4.0, 0.005, 0.05, 3.0))
+    .compressor(Compressor::new(0.65, 4.0, 0.005, 0.05, 1.2))
     .volume(0.9);
 
 // Apply effects to bass bus
 mixer.bus("bass")
-    .compressor(Compressor::new(-15.0, 3.0, 0.01, 0.1, 2.0))
-    .eq(EQ::new(80.0, 1.2, 0.8))  // Boost low end
-    .saturation(Saturation::new(0.3, 0.5, 0.5));
+    .compressor(Compressor::new(0.5, 3.0, 0.01, 0.1, 1.5))
+    .eq(EQ::new(1.3, 1.0, 0.8, 200.0, 3000.0))  // Boost low end
+    .saturation(Saturation::new(1.5, 0.3, 0.5));
 ```
 
 **Benefits:**
@@ -359,8 +360,8 @@ mixer.master_parametric_eq(ParametricEQ::new()
     .band(60.0, -3.0, 0.7)     // Cut rumble
     .band(3000.0, 2.0, 1.5));  // Presence boost
 
-mixer.master_compressor(Compressor::new(0.5, 2.0, 0.01, 0.1, 44100.0));
-mixer.master_limiter(Limiter::new(0.95));  // Prevent clipping
+mixer.master_compressor(Compressor::new(0.55, 2.5, 0.01, 0.12, 1.0));
+mixer.master_limiter(Limiter::new(0.95, 0.05));  // Prevent clipping
 ```
 
 All 16 master effect methods available: `master_eq()`, `master_compressor()`, `master_reverb()`, `master_delay()`, `master_limiter()`, etc.

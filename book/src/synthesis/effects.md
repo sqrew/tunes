@@ -44,8 +44,8 @@ Apply effects to individual instruments:
 
 ```rust
 comp.instrument("guitar", &Instrument::electric_guitar_clean())
-    .reverb(Reverb::new(0.2, 0.4))           // Add space
-    .compressor(Compressor::new(0.6, 3.0, 0.005, 0.05, 44100.0))  // Tighten dynamics
+    .reverb(Reverb::new(0.2, 0.4, 0.3))      // Add space
+    .compressor(Compressor::new(0.6, 3.0, 0.005, 0.05, 1.2))  // Tighten dynamics
     .delay(Delay::new(0.375, 0.3, 0.5))      // Slapback delay
     .notes(&[E3, A3, B3], 0.5);
 ```
@@ -65,7 +65,7 @@ let mut mixer = comp.into_mixer();
 // Fluent API for bus effects
 mixer.bus("drums")
     .reverb(Reverb::new(0.3, 0.4, 0.3))
-    .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 1.0))
+    .compressor(Compressor::new(0.65, 4.0, 0.01, 0.08, 1.1))
     .volume(0.85);
 
 // Sidechaining: Bass ducks when kick hits
@@ -93,9 +93,9 @@ mixer.master_parametric_eq(ParametricEQ::new()
     .band(60.0, -3.0, 0.7)      // Cut rumble
     .band(3000.0, 2.0, 1.5));   // Presence boost
 
-mixer.master_compressor(Compressor::new(0.5, 2.0, 0.01, 0.1, 44100.0));  // Glue
-mixer.master_saturation(Saturation::new(0.1));                           // Warmth
-mixer.master_limiter(Limiter::new(0.95));                                // Protection
+mixer.master_compressor(Compressor::new(0.55, 2.5, 0.01, 0.12, 1.0));  // Glue
+mixer.master_saturation(Saturation::new(1.5, 0.15, 0.3));              // Warmth
+mixer.master_limiter(Limiter::new(0.95, 0.05));                        // Protection
 ```
 
 **Use cases:**
@@ -160,19 +160,20 @@ Dynamic range control - makes loud parts quieter and can make quiet parts louder
 ```rust
 comp.track("bass")
     .compressor(Compressor::new(
-        0.5,      // Threshold (0.0-1.0, lower = more compression)
+        0.5,      // Threshold (0.0-1.0 amplitude, lower = more compression)
         4.0,      // Ratio (2.0 = gentle, 4.0 = medium, 10.0 = aggressive)
         0.01,     // Attack time (seconds, fast = 0.001, slow = 0.1)
         0.1,      // Release time (seconds)
-        44100.0   // Sample rate
+        1.5       // Makeup gain (1.0 = unity, higher = louder output)
     ));
 ```
 
-**How it works:**
-- Reduces volume of signals above threshold
-- Ratio determines how much reduction (4:1 = 4dB input becomes 1dB output)
-- Attack: How quickly compression kicks in (fast = snappy, slow = natural)
-- Release: How quickly compression lets go
+**Parameters:**
+- **Threshold**: 0.0-1.0 amplitude (0.3 = aggressive, 0.5 = moderate, 0.7 = gentle)
+- **Ratio**: Compression amount (2.0 = gentle, 4.0 = medium, 10.0 = limiting)
+- **Attack**: How quickly compression kicks in (fast = snappy, slow = natural)
+- **Release**: How quickly compression lets go
+- **Makeup gain**: Output boost to compensate for compression (1.0-3.0 typical)
 
 **Use cases:**
 - Even out dynamics (vocals, bass)
@@ -232,6 +233,39 @@ mixer.bus("bass").compressor(
 
 See the `examples/sidechaining.rs` for complete examples of different sidechaining styles.
 
+#### Stereo-Linked Compression
+
+When processing stereo signals (buses and master), the compressor uses **stereo-linked** detection to prevent stereo image shifts. This is a professional technique used in all high-quality mixing software.
+
+**How it works:**
+```
+1. Detect peak from MAX(left, right) - use the louder channel
+2. Calculate gain reduction once based on this peak
+3. Apply the SAME gain to both left and right channels
+```
+
+**Why this matters:**
+- **Without linking**: Left and right channels compress independently, causing the stereo image to "wobble" or shift when compression kicks in
+- **With linking**: Both channels get identical gain reduction, preserving the stereo image perfectly
+
+**Automatic behavior:**
+- **Track-level effects**: Process mono signal (no linking needed)
+- **Bus-level effects**: Automatically stereo-linked
+- **Master-level effects**: Automatically stereo-linked
+
+```rust
+// This compressor on a bus automatically uses stereo linking
+mixer.bus("drums")
+    .compressor(Compressor::new(0.65, 4.0, 0.005, 0.05, 1.2));
+    // Detects from max(L, R), applies same gain to both channels
+```
+
+**Technical details:**
+The implementation uses `process_stereo_linked()` internally for all bus and master compressors, ensuring professional-grade stereo image preservation. This is especially important for:
+- Master bus compression (mix glue)
+- Drum bus compression (maintains stereo width of overheads/rooms)
+- Sidechained compression (EDM pump stays centered)
+
 ### 4. Gate
 
 Noise gate - silences audio below a threshold.
@@ -241,8 +275,7 @@ comp.track("guitar")
     .gate(Gate::new(
         0.05,     // Threshold (signals below this are silenced)
         0.002,    // Attack (how fast gate opens)
-        0.05,     // Release (how fast gate closes)
-        44100.0   // Sample rate
+        0.05      // Release (how fast gate closes)
     ));
 ```
 
@@ -254,8 +287,18 @@ Brick-wall limiting - prevents audio from exceeding a ceiling.
 
 ```rust
 // Prevent clipping on master
-mixer.master_limiter(Limiter::new(0.95));  // Max level = 0.95 (-0.4dB)
+mixer.master_limiter(Limiter::new(
+    0.95,   // Threshold in dB (max level = 0.95 = -0.4dB)
+    0.05    // Release time in seconds
+));
 ```
+
+**Parameters:**
+- **Threshold**: Maximum output level (0.95 = safe headroom, 1.0 = absolute max)
+- **Release**: How quickly limiter recovers (0.05 = fast, 0.2 = slow)
+
+**Stereo-Linked Limiting:**
+Like the compressor, the limiter uses stereo-linked detection on buses and master. It detects peaks from max(left, right) and applies identical gain reduction to both channels, preventing stereo image distortion during limiting.
 
 **Use cases:** Prevent digital clipping, maximize loudness, protect speakers
 
@@ -265,7 +308,11 @@ Analog-style harmonic saturation.
 
 ```rust
 comp.track("synth")
-    .saturation(Saturation::new(0.3));  // Drive amount (0.0-1.0)
+    .saturation(Saturation::new(
+        1.5,   // Drive (1.0 = unity, higher = more saturation)
+        0.3,   // Character (0.0-1.0, harmonic coloration)
+        0.5    // Mix (0.0 = dry, 1.0 = fully saturated)
+    ));
 ```
 
 **Use cases:** Add warmth, analog character, subtle harmonics
@@ -378,8 +425,7 @@ comp.track("synth")
         0.3,      // Rate (Hz)
         3.0,      // Depth (ms)
         0.7,      // Feedback (creates metallic resonance)
-        0.5,      // Mix
-        44100.0   // Sample rate
+        0.5       // Mix
     ));
 ```
 
@@ -435,8 +481,8 @@ comp.track("synth")
 ```rust
 comp.instrument("vocal", &Instrument::sine())
     .eq(EQ::new(0.8, 1.0, 1.1, 200.0, 4000.0))  // Cut lows, boost highs
-    .compressor(Compressor::new(0.6, 3.0, 0.005, 0.08, 44100.0))  // Even dynamics
-    .reverb(Reverb::new(0.3, 0.5))              // Add space
+    .compressor(Compressor::new(0.6, 3.0, 0.005, 0.08, 1.3))  // Even dynamics
+    .reverb(Reverb::new(0.3, 0.5, 0.3))         // Add space
     .delay(Delay::new(0.375, 0.25, 0.15));      // Subtle delay
 ```
 
@@ -444,9 +490,9 @@ comp.instrument("vocal", &Instrument::sine())
 
 ```rust
 comp.instrument("bass", &Instrument::sub_bass())
-    .compressor(Compressor::new(0.5, 4.0, 0.01, 0.1, 44100.0))  // Tight and consistent
-    .saturation(Saturation::new(0.2))           // Add harmonics
-    .eq(EQ::new(1.2, 1.0, 0.9, 250.0, 4000.0)); // Boost lows
+    .compressor(Compressor::new(0.5, 4.0, 0.01, 0.1, 1.4))  // Tight and consistent
+    .saturation(Saturation::new(1.3, 0.2, 0.4))  // Add harmonics
+    .eq(EQ::new(1.2, 1.0, 0.9, 250.0, 4000.0));  // Boost lows
 ```
 
 ### Mastering Chain
@@ -459,28 +505,28 @@ mixer.master_parametric_eq(ParametricEQ::new()
     .band(60.0, -3.0, 0.7)      // Cut sub rumble
     .band(3000.0, 2.0, 1.5));   // Presence boost
 
-mixer.master_compressor(Compressor::new(0.5, 2.0, 0.01, 0.1, 44100.0));  // Gentle glue
-mixer.master_saturation(Saturation::new(0.05));                          // Analog warmth
-mixer.master_limiter(Limiter::new(0.95));                                // Prevent clipping
+mixer.master_compressor(Compressor::new(0.55, 2.5, 0.01, 0.12, 1.0));  // Gentle glue
+mixer.master_saturation(Saturation::new(1.2, 0.1, 0.2));               // Analog warmth
+mixer.master_limiter(Limiter::new(0.95, 0.05));                        // Prevent clipping
 ```
 
 ### Drum Bus
 
 ```rust
-if let Some(drums) = mixer.buses.get_mut("drums") {
-    drums.effects.compressor = Some(Compressor::new(0.65, 4.0, 0.005, 0.05, 44100.0));  // Punch
-    drums.effects.saturation = Some(Saturation::new(0.1));   // Warmth
-    drums.effects.reverb = Some(Reverb::new(0.2, 0.4));     // Shared room
-}
+// Using the bus builder API (preferred)
+mixer.bus("drums")
+    .compressor(Compressor::new(0.65, 4.0, 0.005, 0.05, 1.2))  // Punch
+    .saturation(Saturation::new(1.3, 0.15, 0.3))               // Warmth
+    .reverb(Reverb::new(0.2, 0.4, 0.3));                       // Shared room
 ```
 
 ### Lo-Fi Effect
 
 ```rust
 comp.track("melody")
-    .bitcrusher(BitCrusher::new(8.0, 0.7))      // Digital degradation
-    .saturation(Saturation::new(0.3))           // Analog warmth
-    .eq(EQ::new(0.7, 1.0, 0.6, 300.0, 5000.0)); // Remove extremes
+    .bitcrusher(BitCrusher::new(8.0, 0.7))         // Digital degradation
+    .saturation(Saturation::new(1.4, 0.3, 0.5))    // Analog warmth
+    .eq(EQ::new(0.7, 1.0, 0.6, 300.0, 5000.0));    // Remove extremes
 ```
 
 ---
@@ -518,8 +564,8 @@ comp.track("bass")
 The automatic priority system handles most cases, but you can override priorities:
 
 ```rust
-let mut compressor = Compressor::new(0.6, 3.0, 0.01, 0.1, 44100.0);
-compressor.priority = 15;  // Run before default EQ (priority 10)
+let compressor = Compressor::new(0.6, 3.0, 0.01, 0.1, 1.2)
+    .with_priority(15);  // Run before default EQ (priority 10)
 ```
 
 **General rules:**
