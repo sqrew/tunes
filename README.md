@@ -27,12 +27,28 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 
 
 ## Who this is and isn't for:
-    For: learners, tinkerers, experimental music, game jammers, rust coders looking to play with Digital Signal Processing without having to re-implement everything from scratch
-    Not for: professional producers, DAW dwellers, performance-first applications 
+    For: learners, tinkerers, algorithmic/generative/procedural music, experimental musicians, game jammers, rust coders looking to play with Digital Signal Processing without having to re-implement everything from scratch
+    Not for: professional producers, DAW dwellers, DSP engineers, live-repl-first musicians, complete beginners to rust
 
 ## What this is and isn't for:
-    Is: A fun domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences that will change and grow with breaking changes.
-    Isn't: A professional grade implementation of DSP or AAA quality audio playback engine. This does pre-rendered and real-time synthesis and spatial audio but it is NOT the most efficient implementation of "play x at y when z" styled audio playback for heavily optimized systems or truly high performance requirements. The crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware however whether or not that's good enough depends on your use case.
+    Is: A fun, batteries-included domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences. 
+        tunes is also under active development.
+    Isn't: A truly professional grade implementation of DSP or a AAA quality audio sample playback engine. 
+        Tunes does pre-rendered and real-time synthesis and spatial audio but it is NOT the most efficient implementation of "play x at y when z" audio playback needs.
+        However, the crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware. Whether or not that's good enough depends on your use case.
+## PROS
+    rust
+    music theory integration
+    composition first
+    code first environment (rust's ide integration and your choice of ide is everything here)
+    sufficient performance for 99% of use cases
+## CONS
+    no gui or graphical elements
+    no "instant feedback" outside of hot-reloading segments
+    no external control or input (no live line recording, midi in, osc or network controls) or hardware control
+    no plugin system
+    not multithreaded audio (and no simd)
+    rust (not as beginner friendly as something like sonic pi)
 
 ## Installation
 
