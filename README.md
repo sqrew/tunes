@@ -27,8 +27,18 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 
 
 ## Who this is and isn't for:
-    For: learners, tinkerers, algorithmic/generative/procedural music, experimental musicians, game jammers, rust coders looking to play with Digital Signal Processing without having to re-implement everything from scratch
-    Not for: professional producers, DAW dwellers, DSP engineers, live-repl-first musicians, complete beginners to rust
+    For: learners
+        tinkerers
+        algorithmic/generative/procedural music
+        experimental musicians
+        game jammers and indie devs,
+        rust coders looking to play with Digital Signal Processing without having to re-implement everything from scratch
+    Not for: 
+        professional producers
+        DAW dwellers
+        DSP engineers
+        live-repl-first musicians
+        beginners to programming
 
 ## What this is and isn't for:
     Is: A fun, batteries-included domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences. 
