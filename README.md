@@ -27,7 +27,8 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 
 
 ## Who this is and isn't for:
-    For: learners
+    For:
+        learners
         tinkerers
         algorithmic/generative/procedural music
         experimental musicians
@@ -41,11 +42,15 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
         beginners to programming
 
 ## What this is and isn't for:
-    Is: A fun, batteries-included domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences. 
-        tunes is also under active development.
-    Isn't: A truly professional grade implementation of DSP or a AAA quality audio sample playback engine. 
-        Tunes does pre-rendered and real-time synthesis and spatial audio but it is NOT the most efficient implementation of "play x at y when z" audio playback needs.
-        However, the crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware. Whether or not that's good enough depends on your use case.
+    Is:
+        A fun, batteries-included domain specific language for digital signal processing
+        Aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences accessible
+        tunes is also under active development
+    Isn't:
+        A truly professional grade implementation of DSP or a AAA quality audio sample playback engine.
+        Tunes does pre-rendered and real-time synthesis, sample playback and spatial audio but it is NOT the most efficient implementation of "play x at y when z" audio playback needs
+        However, the crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware. 
+        Whether or not that's good enough depends on your use case
 ## PROS
     rust
     music theory integration
