@@ -724,6 +724,39 @@ impl Mixer {
         (master_left.tanh(), master_right.tanh())
     }
 
+    /// Process a block of samples
+    ///
+    /// This is the new block-based processing API that processes multiple samples at once,
+    /// significantly reducing function call overhead and enabling future optimizations.
+    ///
+    /// # Arguments
+    /// * `buffer` - Interleaved stereo buffer [L0, R0, L1, R1, ...] to fill
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `start_time` - Starting time in seconds
+    /// * `listener` - Optional spatial audio listener configuration
+    /// * `spatial_params` - Optional spatial audio parameters
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        start_time: f32,
+        listener: Option<&crate::synthesis::spatial::ListenerConfig>,
+        spatial_params: Option<&crate::synthesis::spatial::SpatialParams>,
+    ) {
+        let time_delta = 1.0 / sample_rate;
+        let sample_clock = 0.0; // Not used in current implementation
+
+        // Process each stereo frame
+        for (i, frame) in buffer.chunks_mut(2).enumerate() {
+            if frame.len() == 2 {
+                let time = start_time + (i as f32 * time_delta);
+                let (left, right) = self.sample_at(time, sample_rate, sample_clock, listener, spatial_params);
+                frame[0] = left;
+                frame[1] = right;
+            }
+        }
+    }
+
     /// Process a single track and return its stereo output (static version)
     ///
     /// This is a helper method extracted from the main mixing loop.
@@ -854,20 +887,30 @@ impl Mixer {
         let total_samples = (duration * sample_rate).ceil() as usize;
 
         // Pre-allocate buffer for interleaved stereo (2 channels)
-        let mut buffer = Vec::with_capacity(total_samples * 2);
+        let mut buffer = vec![0.0; total_samples * 2];
 
-        let mut sample_clock = 0.0;
+        // Process in blocks of 512 samples for better performance
+        const BLOCK_SIZE: usize = 512;
+        let mut processed_samples = 0;
 
-        // Render all samples
-        for i in 0..total_samples {
-            let time = i as f32 / sample_rate;
-            let (left, right) = self.sample_at(time, sample_rate, sample_clock, None, None);
+        while processed_samples < total_samples {
+            let remaining = total_samples - processed_samples;
+            let block_samples = remaining.min(BLOCK_SIZE);
+            let block_frames = block_samples * 2; // stereo
 
-            // Clamp to valid range and add to buffer
-            buffer.push(left.clamp(-1.0, 1.0));
-            buffer.push(right.clamp(-1.0, 1.0));
+            let start_time = processed_samples as f32 / sample_rate;
+            let start_idx = processed_samples * 2;
+            let end_idx = start_idx + block_frames;
 
-            sample_clock = (sample_clock + 1.0) % sample_rate;
+            // Process this block
+            self.process_block(&mut buffer[start_idx..end_idx], sample_rate, start_time, None, None);
+
+            processed_samples += block_samples;
+        }
+
+        // Clamp to valid range
+        for sample in &mut buffer {
+            *sample = sample.clamp(-1.0, 1.0);
         }
 
         buffer

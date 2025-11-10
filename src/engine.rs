@@ -89,11 +89,43 @@ struct ActiveSound {
     fade_target_volume: f32,
 }
 
+/// Audio callback state (allocation-free mixing)
+///
+/// Holds pre-allocated buffers to avoid allocations in the real-time audio thread.
+/// All buffers are reused across callback invocations.
+struct AudioCallbackState {
+    /// Active sounds being mixed
+    active_sounds: HashMap<SoundId, ActiveSound>,
+    /// Pre-allocated temp buffer for mixing (stereo interleaved)
+    /// Size is determined by the maximum buffer size we expect
+    temp_buffer: Vec<f32>,
+    /// Pre-allocated list for tracking finished sounds (avoids allocation during cleanup)
+    finished_sounds: Vec<SoundId>,
+}
+
+impl AudioCallbackState {
+    fn new() -> Self {
+        Self {
+            active_sounds: HashMap::new(),
+            // Pre-allocate for a reasonably large buffer (2048 frames stereo = 4096 samples)
+            temp_buffer: vec![0.0; 4096],
+            finished_sounds: Vec::with_capacity(16),
+        }
+    }
+
+    /// Ensure temp buffer is large enough for the given size
+    fn ensure_temp_buffer_size(&mut self, required_size: usize) {
+        if self.temp_buffer.len() < required_size {
+            self.temp_buffer.resize(required_size, 0.0);
+        }
+    }
+}
+
 /// Central audio engine that manages playback with concurrent mixing
 pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
     next_id: Arc<AtomicU64>,
-    active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>>,
+    callback_state: Arc<Mutex<AudioCallbackState>>,
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
     listener_config: Arc<Mutex<ListenerConfig>>,
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
@@ -149,10 +181,10 @@ impl AudioEngine {
         // Create command channel for communication with audio thread
         let (command_tx, command_rx): (Sender<AudioCommand>, Receiver<AudioCommand>) = unbounded();
 
-        // Shared state for active sounds
-        let active_sounds: Arc<Mutex<HashMap<SoundId, ActiveSound>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let active_sounds_for_stream = Arc::clone(&active_sounds);
+        // Shared state for audio callback (includes pre-allocated buffers)
+        let callback_state: Arc<Mutex<AudioCallbackState>> =
+            Arc::new(Mutex::new(AudioCallbackState::new()));
+        let callback_state_for_stream = Arc::clone(&callback_state);
 
         // Shared state for spatial audio
         let listener_config = Arc::new(Mutex::new(ListenerConfig::new()));
@@ -173,20 +205,29 @@ impl AudioEngine {
             .build_output_stream(
                 &stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    // Lock once for entire audio callback (better granularity)
-                    let mut active_sounds = active_sounds_for_stream.lock().unwrap();
+                    // Lock once for entire audio callback
+                    let mut state = callback_state_for_stream.lock().unwrap();
                     let mut listener = listener_config_for_stream.lock().unwrap();
                     let mut spatial = spatial_params_for_stream.lock().unwrap();
 
                     // Process all pending commands (non-blocking)
                     while let Ok(cmd) = command_rx.try_recv() {
-                        Self::handle_command(cmd, &mut active_sounds, &mut listener, &mut spatial);
+                        Self::handle_command(cmd, &mut state.active_sounds, &mut listener, &mut spatial);
                     }
 
-                    // Mix all active sounds into the output buffer
+                    // Destructure state to get separate mutable references (satisfies borrow checker)
+                    let AudioCallbackState {
+                        ref mut active_sounds,
+                        ref mut temp_buffer,
+                        ref mut finished_sounds,
+                    } = *state;
+
+                    // Mix all active sounds into the output buffer (allocation-free)
                     Self::mix_sounds(
                         data,
-                        &mut active_sounds,
+                        active_sounds,
+                        temp_buffer,
+                        finished_sounds,
                         &listener,
                         &spatial,
                         sample_rate,
@@ -210,7 +251,7 @@ impl AudioEngine {
         Ok(Self {
             command_tx,
             next_id: Arc::new(AtomicU64::new(1)),
-            active_sounds,
+            callback_state,
             listener_config,
             spatial_params,
             sample_rate,
@@ -329,22 +370,32 @@ impl AudioEngine {
     }
 
     /// Mix all active sounds into the output buffer (called from audio thread)
+    ///
+    /// This function is ALLOCATION-FREE - all buffers are pre-allocated and reused.
     fn mix_sounds(
         output: &mut [f32],
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        temp_buffer: &mut Vec<f32>,
+        finished_sounds: &mut Vec<SoundId>,
         listener: &ListenerConfig,
         spatial_params: &SpatialParams,
         sample_rate: f32,
         channels: usize,
     ) {
         // Clear output buffer
-        for sample in output.iter_mut() {
-            *sample = 0.0;
+        output.fill(0.0);
+
+        // Clear finished sounds list (reuse allocation)
+        finished_sounds.clear();
+
+        // Ensure temp buffer is large enough (may resize on first call, then reuses)
+        let num_frames = output.len() / channels;
+        let required_size = num_frames * 2;
+        if temp_buffer.len() < required_size {
+            temp_buffer.resize(required_size, 0.0);
         }
 
-        let mut finished_sounds = Vec::new();
-
-        // Mix each active sound
+        // Mix each active sound using block processing
         for (id, sound) in active_sounds.iter_mut() {
             if sound.paused {
                 continue;
@@ -352,92 +403,97 @@ impl AudioEngine {
 
             let duration = sound.mixer.total_duration();
 
-            for frame in output.chunks_mut(channels) {
-                // Check if sound has finished
-                if sound.elapsed_time >= duration {
-                    if sound.looping {
-                        sound.elapsed_time = 0.0;
-                        sound.sample_clock = 0.0;
-                    } else {
-                        finished_sounds.push(*id);
-                        break;
-                    }
+            // Check if sound will finish during this block
+            let time_delta = 1.0 / sample_rate;
+            let block_duration = num_frames as f32 * time_delta * sound.playback_rate;
+
+            if sound.elapsed_time >= duration {
+                if sound.looping {
+                    sound.elapsed_time = 0.0;
+                    sound.sample_clock = 0.0;
+                } else {
+                    finished_sounds.push(*id);
+                    continue;
                 }
+            }
 
-                // Only apply composition-time spatial audio if NO runtime position is set
-                // Runtime position (set_sound_position) overrides composition-time position
-                let (listener_for_mixer, params_for_mixer) = if sound.spatial_position.is_some() {
-                    (None, None) // Runtime position will handle spatial audio
-                } else {
-                    (Some(listener), Some(spatial_params)) // Use composition-time position
-                };
+            // Only apply composition-time spatial audio if NO runtime position is set
+            let (listener_for_mixer, params_for_mixer) = if sound.spatial_position.is_some() {
+                (None, None) // Runtime position will handle spatial audio
+            } else {
+                (Some(listener), Some(spatial_params)) // Use composition-time position
+            };
 
-                // Get stereo sample from mixer (with spatial audio support for events)
-                let (mut left, mut right) = sound.mixer.sample_at(
-                    sound.elapsed_time,
-                    sample_rate,
-                    sound.sample_clock,
-                    listener_for_mixer,
-                    params_for_mixer,
-                );
+            // Process entire block at once
+            temp_buffer.fill(0.0);
+            sound.mixer.process_block(
+                &mut temp_buffer[..required_size],
+                sample_rate,
+                sound.elapsed_time,
+                listener_for_mixer,
+                params_for_mixer,
+            );
 
-                // Calculate spatial audio if runtime position is set
-                let (spatial_volume, spatial_pan) = if let Some(pos) = &sound.spatial_position {
-                    let result = calculate_spatial(pos, listener, spatial_params);
-                    (result.volume, result.pan)
-                    // Note: Doppler (result.pitch) would require resampling - not implemented yet
-                } else {
-                    (1.0, sound.pan)
-                };
+            // Calculate spatial audio if runtime position is set
+            let (spatial_volume, spatial_pan) = if let Some(pos) = &sound.spatial_position {
+                let result = calculate_spatial(pos, listener, spatial_params);
+                (result.volume, result.pan)
+            } else {
+                (1.0, sound.pan)
+            };
+
+            // Mix temp buffer into output with volume/pan/fade applied per-sample
+            for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
+                let frame_time = sound.elapsed_time + (frame_idx as f32 * time_delta * sound.playback_rate);
 
                 // Apply fade if active
                 let effective_volume = if let Some(fade_start) = sound.fade_start_time {
-                    let fade_elapsed = sound.elapsed_time - fade_start;
+                    let fade_elapsed = frame_time - fade_start;
                     if fade_elapsed >= sound.fade_duration {
                         // Fade complete
-                        sound.volume = sound.fade_target_volume;
-                        sound.fade_start_time = None; // Clear fade state
-                        sound.volume
+                        if frame_idx == 0 {
+                            sound.volume = sound.fade_target_volume;
+                            sound.fade_start_time = None;
+                        }
+                        sound.fade_target_volume
                     } else {
-                        // Interpolate between start and target
-                        let t = fade_elapsed / sound.fade_duration;
+                        // Interpolate
+                        let t = (fade_elapsed / sound.fade_duration).clamp(0.0, 1.0);
                         sound.fade_start_volume + (sound.fade_target_volume - sound.fade_start_volume) * t
                     }
                 } else {
                     sound.volume
                 };
 
-                // Apply volume (effective volume * spatial attenuation)
+                let mut left = temp_frame[0];
+                let mut right = temp_frame[1];
+
+                // Apply volume
                 left *= effective_volume * spatial_volume;
                 right *= effective_volume * spatial_volume;
 
-                // Apply pan (spatial pan overrides manual pan when spatial position is set)
+                // Apply pan
                 if spatial_pan < 0.0 {
-                    // Pan left: reduce right channel
                     right *= 1.0 + spatial_pan;
                 } else if spatial_pan > 0.0 {
-                    // Pan right: reduce left channel
                     left *= 1.0 - spatial_pan;
                 }
 
-                // Mix into output (additive mixing)
-                if channels == 1 {
-                    // Mono: average left and right
-                    frame[0] += (left + right) * 0.5;
-                } else if channels == 2 {
-                    // Stereo
-                    frame[0] += left;
-                    frame[1] += right;
-                } else {
-                    // Multi-channel: use first two channels for stereo, silence others
-                    frame[0] += left;
-                    frame[1] += right;
+                // Mix into output
+                let out_idx = frame_idx * channels;
+                if out_idx + 1 < output.len() {
+                    if channels == 1 {
+                        output[out_idx] += (left + right) * 0.5;
+                    } else {
+                        output[out_idx] += left;
+                        output[out_idx + 1] += right;
+                    }
                 }
-
-                // Advance time (affected by playback rate)
-                sound.elapsed_time += (1.0 / sample_rate) * sound.playback_rate;
-                sound.sample_clock = (sound.sample_clock + sound.playback_rate) % sample_rate;
             }
+
+            // Advance time
+            sound.elapsed_time += block_duration;
+            sound.sample_clock = (sound.sample_clock + (num_frames as f32 * sound.playback_rate)) % sample_rate;
         }
 
         // Remove finished sounds
@@ -445,7 +501,7 @@ impl AudioEngine {
             active_sounds.remove(&id);
         }
 
-        // Clamp output to prevent distortion from overlapping sounds
+        // Clamp output to prevent distortion
         for sample in output.iter_mut() {
             *sample = sample.clamp(-1.0, 1.0);
         }
@@ -823,7 +879,7 @@ impl AudioEngine {
 
     /// Check if a sound is still playing
     pub fn is_playing(&self, id: SoundId) -> bool {
-        self.active_sounds.lock().unwrap().contains_key(&id)
+        self.callback_state.lock().unwrap().active_sounds.contains_key(&id)
     }
 
     // ============================================================================

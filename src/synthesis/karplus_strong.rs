@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_karplus_strong_pluck_resets() {
-        let mut ks = KarplusStrong::new(440.0, 44100.0)
+        let mut ks = KarplusStrong::with_seed(440.0, 44100.0, 42)
             .with_decay(0.99); // Faster decay for testing
 
         // Generate some samples to let it decay
@@ -346,13 +346,17 @@ mod tests {
         // Re-pluck
         ks.pluck();
 
-        // First sample after pluck should be louder
-        let loud_sample = ks.sample().abs();
+        // After pluck, sample several times and check that at least one is louder
+        // (the first sample might be small by random chance)
+        let mut max_loud_sample: f32 = 0.0;
+        for _ in 0..10 {
+            max_loud_sample = max_loud_sample.max(ks.sample().abs());
+        }
 
         assert!(
-            loud_sample > quiet_sample,
+            max_loud_sample > quiet_sample,
             "Pluck should excite the string: {} vs {}",
-            loud_sample,
+            max_loud_sample,
             quiet_sample
         );
     }

@@ -144,6 +144,23 @@ impl Delay {
         input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the delay buffer
     pub fn reset(&mut self) {
         self.buffer.fill(0.0);
@@ -295,6 +312,23 @@ impl Reverb {
         input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the reverb state
     pub fn reset(&mut self) {
         for buffer in &mut self.comb_buffers {
@@ -380,6 +414,23 @@ impl Distortion {
 
         // Mix dry and wet using FMA
         input.mul_add(1.0 - self.mix, normalized * self.mix)
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, current_time, current_sample_count);
+        }
     }
 }
 
@@ -481,6 +532,23 @@ impl BitCrusher {
         // Mix dry and wet using FMA, clamp output
         let output = input.mul_add(1.0 - self.mix, quantized * self.mix);
         output.clamp(-2.0, 2.0)
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, current_time, current_sample_count);
+        }
     }
 
     /// Reset the bit crusher state
@@ -705,6 +773,24 @@ impl Compressor {
         output.clamp(-2.0, 2.0)
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional external envelope for sidechaining
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64, sidechain_envelope: Option<f32>) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count, sidechain_envelope);
+        }
+    }
+
     /// Reset the compressor state
     pub fn reset(&mut self) {
         self.envelope = 0.0;
@@ -833,6 +919,23 @@ impl Chorus {
 
         // Mix dry and wet using FMA
         input.mul_add(1.0 - self.mix, delayed * self.mix)
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
     }
 
     /// Reset the chorus state
@@ -970,6 +1073,23 @@ impl EQ {
         low + mid + high
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the EQ state
     pub fn reset(&mut self) {
         self.low_state = [0.0; 2];
@@ -1077,7 +1197,25 @@ impl Saturation {
         let normalized = saturated / self.drive.sqrt();
         input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, current_time, current_sample_count);
+        }
+    }
 }
+
 /// Phaser - creates sweeping notches in the frequency spectrum
 #[derive(Debug, Clone)]
 pub struct Phaser {
@@ -1244,6 +1382,23 @@ impl Phaser {
         input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the phaser state
     pub fn reset(&mut self) {
         self.allpass_states = vec![AllPassFilter::new(); self.stages];
@@ -1404,6 +1559,23 @@ impl Flanger {
         input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the flanger state
     pub fn reset(&mut self) {
         self.buffer.fill(0.0);
@@ -1504,6 +1676,23 @@ impl RingModulator {
 
         // Mix dry and wet using FMA
         input.mul_add(1.0 - self.mix, modulated * self.mix)
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
     }
 
     /// Reset the ring modulator state
@@ -1609,6 +1798,23 @@ impl Tremolo {
         }
 
         input * modulation
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
     }
 
     /// Reset the tremolo state
@@ -1842,6 +2048,23 @@ impl Gate {
         input * self.envelope
     }
 
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
+    }
+
     /// Reset the gate state
     pub fn reset(&mut self) {
         self.envelope = 0.0;
@@ -1940,6 +2163,23 @@ impl Limiter {
 
         // Apply limiting
         input * self.gain_reduction
+    }
+
+    /// Process a block of samples
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_count = sample_count + i as u64;
+            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        }
     }
 
     /// Get the current gain reduction in dB
@@ -2216,6 +2456,23 @@ impl ParametricEQ {
         }
 
         output
+    }
+
+    /// Process a block of samples through all EQ bands
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `time` - Starting time in seconds (for compatibility, currently unused)
+    /// * `sample_index` - Starting sample index
+    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    #[inline]
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_index: usize, sample_rate: f32) {
+        let time_delta = 1.0 / sample_rate;
+        for (i, sample) in buffer.iter_mut().enumerate() {
+            let current_time = time + (i as f32 * time_delta);
+            let current_sample_index = sample_index + i;
+            *sample = self.process(*sample, current_time, current_sample_index);
+        }
     }
 }
 
@@ -2529,6 +2786,120 @@ impl EffectChain {
         signal
     }
 
+    /// Process a block of mono audio samples through the effect chain
+    ///
+    /// # Arguments
+    /// * `buffer` - Buffer of samples to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_mono_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
+        // Process effects in pre-computed priority order
+        // Each effect processes the entire buffer before moving to the next effect
+        for &effect_id in &self.effect_order {
+            match effect_id {
+                0 => {
+                    // EQ
+                    if let Some(ref mut eq) = self.eq {
+                        eq.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                1 => {
+                    // Compressor
+                    if let Some(ref mut compressor) = self.compressor {
+                        compressor.process_block(buffer, sample_rate, time, sample_count, None);
+                    }
+                }
+                2 => {
+                    // Gate
+                    if let Some(ref mut gate) = self.gate {
+                        gate.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                3 => {
+                    // Saturation
+                    if let Some(ref mut saturation) = self.saturation {
+                        saturation.process_block(buffer, time, sample_count, sample_rate);
+                    }
+                }
+                4 => {
+                    // BitCrusher
+                    if let Some(ref mut bitcrusher) = self.bitcrusher {
+                        bitcrusher.process_block(buffer, time, sample_count, sample_rate);
+                    }
+                }
+                5 => {
+                    // Distortion
+                    if let Some(ref mut distortion) = self.distortion {
+                        distortion.process_block(buffer, time, sample_count, sample_rate);
+                    }
+                }
+                6 => {
+                    // Chorus
+                    if let Some(ref mut chorus) = self.chorus {
+                        chorus.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                7 => {
+                    // Phaser
+                    if let Some(ref mut phaser) = self.phaser {
+                        phaser.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                8 => {
+                    // Flanger
+                    if let Some(ref mut flanger) = self.flanger {
+                        flanger.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                9 => {
+                    // Ring Modulator
+                    if let Some(ref mut ring_mod) = self.ring_mod {
+                        ring_mod.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                10 => {
+                    // Tremolo
+                    if let Some(ref mut tremolo) = self.tremolo {
+                        tremolo.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                11 => {
+                    // Delay
+                    if let Some(ref mut delay) = self.delay {
+                        delay.process_block(buffer, time, sample_count, sample_rate);
+                    }
+                }
+                12 => {
+                    // Reverb
+                    if let Some(ref mut reverb) = self.reverb {
+                        reverb.process_block(buffer, time, sample_count, sample_rate);
+                    }
+                }
+                13 => {
+                    // Limiter
+                    if let Some(ref mut limiter) = self.limiter {
+                        limiter.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                14 => {
+                    // ParametricEQ
+                    if let Some(ref mut parametric_eq) = self.parametric_eq {
+                        parametric_eq.process_block(buffer, time, sample_count as usize, sample_rate);
+                    }
+                }
+                _ => {}
+            };
+        }
+    }
+
     /// Process a stereo audio sample through the effect chain
     ///
     /// Used for master and bus-level effects. Processes stereo samples through all active
@@ -2676,6 +3047,46 @@ impl EffectChain {
         }
 
         (left_signal, right_signal)
+    }
+
+    /// Process a block of stereo audio samples through the effect chain
+    ///
+    /// # Arguments
+    /// * `buffer` - Interleaved stereo buffer [L0, R0, L1, R1, ...] to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional sidechain envelope for compressor
+    #[inline]
+    pub fn process_stereo_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+        sidechain_envelope: Option<f32>,
+    ) {
+        let time_delta = 1.0 / sample_rate;
+
+        // Process each stereo frame (2 samples: left + right)
+        for (i, frame) in buffer.chunks_mut(2).enumerate() {
+            if frame.len() == 2 {
+                let current_time = time + (i as f32 * time_delta);
+                let current_sample_count = sample_count + i as u64;
+
+                let (left, right) = self.process_stereo(
+                    frame[0],
+                    frame[1],
+                    sample_rate,
+                    current_time,
+                    current_sample_count,
+                    sidechain_envelope,
+                );
+
+                frame[0] = left;
+                frame[1] = right;
+            }
+        }
     }
 
     /// Add EQ effect (builder pattern)
