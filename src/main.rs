@@ -9,6 +9,7 @@ mod instruments;
 mod midi;
 mod sequences;
 mod synthesis;
+mod templates;
 mod theory;
 mod track;
 

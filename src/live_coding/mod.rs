@@ -5,17 +5,26 @@
 //!
 //! # Quick Start
 //!
+//! Option 1 - Edit templates directly with IDE support:
+//!    ```bash
+//!    cargo run --release --bin tunes-live src/templates/jams.rs
+//!    ```
+//!    Edit `src/templates/jams.rs` and save - hear changes instantly!
+//!
+//! Option 2 - Create your own file:
 //! 1. Copy the template:
 //!    ```bash
-//!    cp templates/live_template.rs my_live.rs
+//!    cp src/templates/live_template.rs my_live.rs
 //!    ```
 //!
-//! 2. Start live coding:
+//! 2. Update imports from `crate::` to `tunes::`
+//!
+//! 3. Start live coding:
 //!    ```bash
-//!    cargo run --bin tunes-live -- my_live.rs
+//!    cargo run --release --bin tunes-live my_live.rs
 //!    ```
 //!
-//! 3. Edit `my_live.rs` and save - hear your changes instantly!
+//! 4. Edit and save - hear your changes instantly!
 //!
 //! # How It Works
 //!

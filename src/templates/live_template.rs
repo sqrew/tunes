@@ -2,12 +2,20 @@
 //
 // Edit this file and save to hear your changes in real-time!
 //
-// To start live coding:
-//   1. Copy this file: cp templates/live_template.rs my_live.rs
-//   2. Run: cargo run --bin tunes-live -- my_live.rs
-//   3. Edit my_live.rs and save - you'll hear changes instantly!
+// Quick start:
+//   Run: cargo run --release --bin tunes-live src/templates/live_template.rs
+//   Edit this file and save - you'll hear changes instantly!
+//
+// For a new session:
+//   1. Copy this file: cp src/templates/live_template.rs my_live.rs
+//   2. Change imports from `crate::` to `tunes::`
+//   3. Run: cargo run --release --bin tunes-live my_live.rs
 
-use tunes::prelude::*;
+// Internal imports for IDE support (work when file is in src/templates/)
+use crate::composition::{Composition, Tempo};
+use crate::consts::*;
+use crate::engine::AudioEngine;
+use crate::instruments::Instrument;
 
 fn main() -> anyhow::Result<()> {
     // Create your composition here

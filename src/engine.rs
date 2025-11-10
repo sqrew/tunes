@@ -114,6 +114,7 @@ impl AudioCallbackState {
     }
 
     /// Ensure temp buffer is large enough for the given size
+    #[allow(dead_code)]
     fn ensure_temp_buffer_size(&mut self, required_size: usize) {
         if self.temp_buffer.len() < required_size {
             self.temp_buffer.resize(required_size, 0.0);
@@ -212,7 +213,12 @@ impl AudioEngine {
 
                     // Process all pending commands (non-blocking)
                     while let Ok(cmd) = command_rx.try_recv() {
-                        Self::handle_command(cmd, &mut state.active_sounds, &mut listener, &mut spatial);
+                        Self::handle_command(
+                            cmd,
+                            &mut state.active_sounds,
+                            &mut listener,
+                            &mut spatial,
+                        );
                     }
 
                     // Destructure state to get separate mutable references (satisfies borrow checker)
@@ -444,7 +450,8 @@ impl AudioEngine {
 
             // Mix temp buffer into output with volume/pan/fade applied per-sample
             for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
-                let frame_time = sound.elapsed_time + (frame_idx as f32 * time_delta * sound.playback_rate);
+                let frame_time =
+                    sound.elapsed_time + (frame_idx as f32 * time_delta * sound.playback_rate);
 
                 // Apply fade if active
                 let effective_volume = if let Some(fade_start) = sound.fade_start_time {
@@ -459,7 +466,8 @@ impl AudioEngine {
                     } else {
                         // Interpolate
                         let t = (fade_elapsed / sound.fade_duration).clamp(0.0, 1.0);
-                        sound.fade_start_volume + (sound.fade_target_volume - sound.fade_start_volume) * t
+                        sound.fade_start_volume
+                            + (sound.fade_target_volume - sound.fade_start_volume) * t
                     }
                 } else {
                     sound.volume
@@ -493,7 +501,8 @@ impl AudioEngine {
 
             // Advance time
             sound.elapsed_time += block_duration;
-            sound.sample_clock = (sound.sample_clock + (num_frames as f32 * sound.playback_rate)) % sample_rate;
+            sound.sample_clock =
+                (sound.sample_clock + (num_frames as f32 * sound.playback_rate)) % sample_rate;
         }
 
         // Remove finished sounds
@@ -879,7 +888,11 @@ impl AudioEngine {
 
     /// Check if a sound is still playing
     pub fn is_playing(&self, id: SoundId) -> bool {
-        self.callback_state.lock().unwrap().active_sounds.contains_key(&id)
+        self.callback_state
+            .lock()
+            .unwrap()
+            .active_sounds
+            .contains_key(&id)
     }
 
     // ============================================================================

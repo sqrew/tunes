@@ -80,7 +80,19 @@ anyhow = "1.0"
         // Create src directory and copy user's file
         let src_dir = project_dir.join("src");
         fs::create_dir_all(&src_dir)?;
-        fs::copy(&self.source_file, src_dir.join("main.rs"))?;
+
+        // Read the source file and convert crate:: imports to tunes::
+        // This allows editing with IDE support in src/templates/ while
+        // still working when run as a standalone binary
+        let mut source_content = fs::read_to_string(&self.source_file)?;
+        source_content = source_content
+            .replace("use crate::", "use tunes::")
+            .replace("use crate::composition", "use tunes::composition")
+            .replace("use crate::consts", "use tunes::consts")
+            .replace("use crate::engine", "use tunes::engine")
+            .replace("use crate::instruments", "use tunes::instruments")
+            .replace("use crate::prelude", "use tunes::prelude");
+        fs::write(src_dir.join("main.rs"), source_content)?;
 
         // Compile
         let compile_output = Command::new("cargo")

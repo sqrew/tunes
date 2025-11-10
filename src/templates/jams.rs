@@ -2,13 +2,22 @@
 //
 // Edit this file and save to hear your changes in real-time!
 //
-// To start live coding:
-//   1. Copy this file: cp templates/live_template.rs my_live.rs
-//   2. Run: cargo run --bin tunes-live -- my_live.rs
-//   3. Edit my_live.rs and save - you'll hear changes instantly!
+// Quick start:
+//   Run: cargo run --release --bin tunes-live src/templates/jams.rs
+//   Edit this file and save - you'll hear changes instantly!
+//
+// For a new session:
+//   1. Copy this file: cp src/templates/jams.rs my_live.rs
+//   2. Change imports from `crate::` to `tunes::`
+//   3. Run: cargo run --release --bin tunes-live my_live.rs
 
-use tunes::prelude::*;
+// Internal imports for IDE support (work when file is in src/templates/)
+use crate::composition::{Composition, Tempo};
+use crate::consts::*;
+use crate::engine::AudioEngine;
+use crate::instruments::Instrument;
 
+#[allow(dead_code)]
 fn main() -> anyhow::Result<()> {
     // Create your composition here
     let mut comp = Composition::new(Tempo::new(140.0));
@@ -36,7 +45,7 @@ fn main() -> anyhow::Result<()> {
     let engine = AudioEngine::with_buffer_size(4096)?;
 
     // Start looping playback
-    let loop_id = engine.play_looping(&mixer)?;
+    let _loop_id = engine.play_looping(&mixer)?;
 
     // Keep the program running
     // Live reload will stop this and restart with new code

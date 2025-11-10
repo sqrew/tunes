@@ -20,8 +20,8 @@ use std::collections::HashMap;
 /// This eliminates string hashing and allocation, providing O(1) direct access.
 #[derive(Debug, Clone)]
 struct EnvelopeCache {
-    tracks: Vec<f32>,  // Track ID -> RMS envelope (direct index)
-    buses: Vec<f32>,   // Bus ID -> RMS envelope (direct index)
+    tracks: Vec<f32>, // Track ID -> RMS envelope (direct index)
+    buses: Vec<f32>,  // Bus ID -> RMS envelope (direct index)
 }
 
 impl EnvelopeCache {
@@ -89,21 +89,23 @@ impl EnvelopeCache {
 /// Stores the output of a single track for later bus mixing.
 /// Uses integer bus_id instead of string bus_name for O(1) comparison.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 struct TrackOutput {
-    bus_id: BusId,     // Which bus this track belongs to (INTEGER!)
-    left: f32,         // Left channel output
-    right: f32,        // Right channel output
-    envelope: f32,     // RMS envelope for sidechaining
+    bus_id: BusId, // Which bus this track belongs to (INTEGER!)
+    left: f32,     // Left channel output
+    right: f32,    // Right channel output
+    envelope: f32, // RMS envelope for sidechaining
 }
 
 /// Pre-allocated bus output (avoids allocation in hot path)
 ///
 /// Stores the output of a single bus for later master mixing.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 struct BusOutput {
-    bus_id: BusId,     // Bus identifier (unused, kept for potential future use)
-    left: f32,         // Left channel output
-    right: f32,        // Right channel output
+    bus_id: BusId, // Bus identifier (unused, kept for potential future use)
+    left: f32,     // Left channel output
+    right: f32,    // Right channel output
 }
 
 /// Mix multiple buses together (OPTIMIZED: Vec-based with pre-allocated buffers)
@@ -118,8 +120,8 @@ struct BusOutput {
 #[derive(Debug, Clone)]
 pub struct Mixer {
     // Hot path: Integer-indexed buses for fast iteration
-    pub(super) buses: Vec<Option<Bus>>,  // Sparse Vec: Some(bus) at bus.id index, None otherwise
-    bus_order: Vec<BusId>,    // Order in which to process buses
+    pub(super) buses: Vec<Option<Bus>>, // Sparse Vec: Some(bus) at bus.id index, None otherwise
+    bus_order: Vec<BusId>,              // Order in which to process buses
 
     // Cold path: String lookup for user-facing API
     bus_name_to_id: HashMap<String, BusId>,
@@ -208,7 +210,7 @@ impl Mixer {
         }
 
         // Bus doesn't exist, create it
-        let new_bus_id = self.buses.len() as BusId;  // Use current length as new ID
+        let new_bus_id = self.buses.len() as BusId; // Use current length as new ID
         let new_bus = Bus::new(new_bus_id, name.to_string());
 
         self.add_bus(new_bus);
@@ -244,6 +246,7 @@ impl Mixer {
     ///
     /// # Arguments
     /// * `name` - Name of the bus
+    #[allow(dead_code)]
     pub(crate) fn get_bus_id(&self, name: &str) -> Option<BusId> {
         self.bus_name_to_id.get(name).copied()
     }
@@ -254,8 +257,6 @@ impl Mixer {
     /// by converting user-facing string-based sidechain references to efficient
     /// integer ID lookups.
     pub(crate) fn resolve_sidechains(&mut self) {
-        use crate::synthesis::effects::ResolvedSidechainSource;
-
         // Clone name mappings to avoid borrowing issues
         let bus_name_to_id = self.bus_name_to_id.clone();
 
@@ -281,11 +282,8 @@ impl Mixer {
             // Resolve bus-level compressor sidechain
             if let Some(ref mut compressor) = bus.effects.compressor {
                 if let Some(ref source) = compressor.sidechain_source {
-                    compressor.resolved_sidechain_source = Self::resolve_sidechain_source(
-                        source,
-                        &track_name_to_id,
-                        &bus_name_to_id,
-                    );
+                    compressor.resolved_sidechain_source =
+                        Self::resolve_sidechain_source(source, &track_name_to_id, &bus_name_to_id);
                 }
             }
 
@@ -315,7 +313,8 @@ impl Mixer {
         match source {
             SidechainSource::Track(name) => {
                 // Look up track by name
-                track_name_to_id.get(name)
+                track_name_to_id
+                    .get(name)
                     .copied()
                     .map(ResolvedSidechainSource::Track)
                     .or_else(|| {
@@ -325,7 +324,8 @@ impl Mixer {
             }
             SidechainSource::Bus(name) => {
                 // Look up bus by name
-                bus_name_to_id.get(name)
+                bus_name_to_id
+                    .get(name)
                     .copied()
                     .map(ResolvedSidechainSource::Bus)
                     .or_else(|| {
@@ -605,7 +605,8 @@ impl Mixer {
             let bus_id = bus.id;
 
             for track in &mut bus.tracks {
-                let (track_left, track_right) = Self::process_track_static(track, time, sample_rate, sample_count);
+                let (track_left, track_right) =
+                    Self::process_track_static(track, time, sample_rate, sample_count);
 
                 // Calculate RMS envelope for this track
                 let envelope = ((track_left * track_left + track_right * track_right) / 2.0).sqrt();
@@ -681,16 +682,8 @@ impl Mixer {
             );
 
             // Apply bus volume and pan
-            let pan_left = if bus.pan <= 0.0 {
-                1.0
-            } else {
-                1.0 - bus.pan
-            };
-            let pan_right = if bus.pan >= 0.0 {
-                1.0
-            } else {
-                1.0 + bus.pan
-            };
+            let pan_left = if bus.pan <= 0.0 { 1.0 } else { 1.0 - bus.pan };
+            let pan_right = if bus.pan >= 0.0 { 1.0 } else { 1.0 + bus.pan };
 
             let final_bus_left = effected_left * bus.volume * pan_left;
             let final_bus_right = effected_right * bus.volume * pan_right;
@@ -735,6 +728,7 @@ impl Mixer {
     /// * `start_time` - Starting time in seconds
     /// * `listener` - Optional spatial audio listener configuration
     /// * `spatial_params` - Optional spatial audio parameters
+    #[allow(unused_variables)]
     pub fn process_block(
         &mut self,
         buffer: &mut [f32],
@@ -944,28 +938,36 @@ impl Mixer {
             for event in &track.events[start_idx..end_idx] {
                 match event {
                     AudioEvent::Note(note_event) => {
-                        let total_duration = note_event.envelope.total_duration(note_event.duration);
+                        let total_duration =
+                            note_event.envelope.total_duration(note_event.duration);
                         let note_end_with_release = note_event.start_time + total_duration;
 
                         if time >= note_event.start_time && time < note_end_with_release {
                             let time_in_note = time - note_event.start_time;
-                            let envelope_amp =
-                                note_event.envelope.amplitude_at(time_in_note, note_event.duration);
+                            let envelope_amp = note_event
+                                .envelope
+                                .amplitude_at(time_in_note, note_event.duration);
 
                             for freq_idx in 0..note_event.num_freqs {
                                 let base_freq = note_event.frequencies[freq_idx];
 
                                 let freq = if note_event.pitch_bend_semitones != 0.0 {
-                                    let bend_progress = (time_in_note / note_event.duration).min(1.0);
-                                    let bend_multiplier = 2.0f32
-                                        .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
+                                    let bend_progress =
+                                        (time_in_note / note_event.duration).min(1.0);
+                                    let bend_multiplier = 2.0f32.powf(
+                                        (note_event.pitch_bend_semitones * bend_progress) / 12.0,
+                                    );
                                     base_freq * bend_multiplier
                                 } else {
                                     base_freq
                                 };
 
                                 let sample = if note_event.fm_params.mod_index > 0.0 {
-                                    note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                    note_event.fm_params.sample(
+                                        freq,
+                                        time_in_note,
+                                        note_event.duration,
+                                    )
                                 } else if let Some(ref wavetable) = note_event.custom_wavetable {
                                     let phase = (time_in_note * freq) % 1.0;
                                     wavetable.sample(phase)
@@ -990,7 +992,8 @@ impl Mixer {
                     }
                     AudioEvent::Sample(sample_event) => {
                         let time_in_sample = time - sample_event.start_time;
-                        let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
+                        let sample_duration =
+                            sample_event.sample.duration / sample_event.playback_rate;
 
                         if time_in_sample >= 0.0 && time_in_sample < sample_duration {
                             let (sample_left, sample_right) = sample_event
@@ -1013,19 +1016,21 @@ impl Mixer {
         }
 
         // Apply effects to entire buffer (block processing!)
-        track.effects.process_mono_block(
-            buffer,
-            sample_rate,
-            start_time,
-            start_sample_count,
-        );
+        track
+            .effects
+            .process_mono_block(buffer, sample_rate, start_time, start_sample_count);
     }
 
     /// Process a single track and return its stereo output (static version)
     ///
     /// This is a helper method extracted from the main mixing loop.
     /// It handles event synthesis, filtering, effects, and panning for one track.
-    pub(crate) fn process_track_static(track: &mut Track, time: f32, sample_rate: f32, sample_count: u64) -> (f32, f32) {
+    pub(crate) fn process_track_static(
+        track: &mut Track,
+        time: f32,
+        sample_rate: f32,
+        sample_count: u64,
+    ) -> (f32, f32) {
         // Ensure events are sorted by start_time for binary search
         track.ensure_sorted();
 
@@ -1057,8 +1062,9 @@ impl Mixer {
                     if time >= note_event.start_time && time < note_end_with_release {
                         has_active_event = true;
                         let time_in_note = time - note_event.start_time;
-                        let envelope_amp =
-                            note_event.envelope.amplitude_at(time_in_note, note_event.duration);
+                        let envelope_amp = note_event
+                            .envelope
+                            .amplitude_at(time_in_note, note_event.duration);
 
                         for i in 0..note_event.num_freqs {
                             let base_freq = note_event.frequencies[i];
@@ -1073,7 +1079,9 @@ impl Mixer {
                             };
 
                             let sample = if note_event.fm_params.mod_index > 0.0 {
-                                note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                note_event
+                                    .fm_params
+                                    .sample(freq, time_in_note, note_event.duration)
                             } else if let Some(ref wavetable) = note_event.custom_wavetable {
                                 let phase = (time_in_note * freq) % 1.0;
                                 wavetable.sample(phase)
@@ -1167,7 +1175,13 @@ impl Mixer {
             let end_idx = start_idx + block_frames;
 
             // Process this block
-            self.process_block(&mut buffer[start_idx..end_idx], sample_rate, start_time, None, None);
+            self.process_block(
+                &mut buffer[start_idx..end_idx],
+                sample_rate,
+                start_time,
+                None,
+                None,
+            );
 
             processed_samples += block_samples;
         }

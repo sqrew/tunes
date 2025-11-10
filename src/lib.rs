@@ -31,6 +31,7 @@ pub mod live_coding;
 pub mod midi;
 pub mod sequences;
 pub mod synthesis;
+pub mod templates;
 pub mod theory;
 pub mod track;
 
@@ -49,29 +50,34 @@ pub mod prelude {
 
     // Theory
     pub use crate::theory::{
-        ChordPattern, ProgressionType, ScalePattern, chord, progression, scale, transpose,
-        transpose_sequence, KeyMode, KeyRoot, KeySignature,
+        ChordPattern, KeyMode, KeyRoot, KeySignature, ProgressionType, ScalePattern, chord,
+        progression, scale, transpose, transpose_sequence,
     };
 
     // Instruments
     pub use crate::instruments::Instrument;
 
     // Effects and filters
-    pub use crate::synthesis::{Filter, FilterType};
     pub use crate::synthesis::effects::*;
+    pub use crate::synthesis::{Filter, FilterType};
 
     // Advanced synthesis
-    pub use crate::synthesis::{Envelope, FMParams, FilterEnvelope, GranularParams, NoiseType, Waveform, Wavetable, KarplusStrong, AdditiveSynth, Partial};
+    pub use crate::synthesis::{
+        AdditiveSynth, Envelope, FMParams, FilterEnvelope, GranularParams, KarplusStrong,
+        NoiseType, Partial, Waveform, Wavetable,
+    };
 
     // Noise generators
-    pub use crate::synthesis::{NoiseGenerator, WhiteNoise, BrownNoise, PinkNoise, BlueNoise, GreenNoise, PerlinNoise};
+    pub use crate::synthesis::{
+        BlueNoise, BrownNoise, GreenNoise, NoiseGenerator, PerlinNoise, PinkNoise, WhiteNoise,
+    };
 
     // Effects (Parametric EQ)
-    pub use crate::synthesis::{ParametricEQ, EQBand, EQPreset};
+    pub use crate::synthesis::{EQBand, EQPreset, ParametricEQ};
 
     // Spatial Audio
     pub use crate::synthesis::{
-        Vec3, SpatialPosition, ListenerConfig, SpatialParams, SpatialResult, AttenuationModel,
+        AttenuationModel, ListenerConfig, SpatialParams, SpatialPosition, SpatialResult, Vec3,
     };
 
     // LFO
@@ -95,7 +101,7 @@ pub mod prelude {
 
     // MIDI utilities
     pub use crate::midi::{
-        frequency_to_midi_note, midi_note_to_frequency, midi_note_to_drum_type,
-        drum_type_to_midi_note,
+        drum_type_to_midi_note, frequency_to_midi_note, midi_note_to_drum_type,
+        midi_note_to_frequency,
     };
 }
