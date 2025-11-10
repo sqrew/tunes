@@ -743,18 +743,217 @@ impl Mixer {
         listener: Option<&crate::synthesis::spatial::ListenerConfig>,
         spatial_params: Option<&crate::synthesis::spatial::SpatialParams>,
     ) {
-        let time_delta = 1.0 / sample_rate;
-        let sample_clock = 0.0; // Not used in current implementation
+        // Clear output buffer
+        buffer.fill(0.0);
 
-        // Process each stereo frame
-        for (i, frame) in buffer.chunks_mut(2).enumerate() {
-            if frame.len() == 2 {
-                let time = start_time + (i as f32 * time_delta);
-                let (left, right) = self.sample_at(time, sample_rate, sample_clock, listener, spatial_params);
-                frame[0] = left;
-                frame[1] = right;
+        let num_frames = buffer.len() / 2;
+        let start_sample_count = self.sample_count;
+        self.sample_count = self.sample_count.wrapping_add(num_frames as u64);
+
+        // Temporary mono buffer for track processing (will be reused)
+        let mut track_buffer = vec![0.0f32; num_frames];
+
+        // Temporary stereo buffers for bus outputs
+        let mut bus_buffer = vec![0.0f32; buffer.len()];
+
+        // Process each bus
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
+            if bus.muted {
+                continue;
+            }
+
+            // Clear bus buffer
+            bus_buffer.fill(0.0);
+
+            // Process each track in this bus
+            for track in &mut bus.tracks {
+                // Generate mono track audio using block processing
+                Self::process_track_block(
+                    track,
+                    &mut track_buffer,
+                    sample_rate,
+                    start_time,
+                    start_sample_count,
+                );
+
+                // Apply stereo panning and mix into bus buffer
+                let pan_angle = (track.pan + 1.0) * 0.25 * std::f32::consts::PI;
+                let left_gain = pan_angle.cos();
+                let right_gain = pan_angle.sin();
+
+                for (frame_idx, &mono_sample) in track_buffer.iter().enumerate() {
+                    let stereo_idx = frame_idx * 2;
+                    bus_buffer[stereo_idx] += mono_sample * left_gain;
+                    bus_buffer[stereo_idx + 1] += mono_sample * right_gain;
+                }
+            }
+
+            // Apply bus effects (block processing)
+            bus.effects.process_stereo_block(
+                &mut bus_buffer,
+                sample_rate,
+                start_time,
+                start_sample_count,
+                None, // TODO: sidechain envelope
+            );
+
+            // Apply bus volume and pan, then mix into output
+            let bus_pan_angle = (bus.pan + 1.0) * 0.25 * std::f32::consts::PI;
+            let bus_left_gain = bus_pan_angle.cos() * bus.volume;
+            let bus_right_gain = bus_pan_angle.sin() * bus.volume;
+
+            for (idx, sample) in bus_buffer.iter().enumerate() {
+                if idx % 2 == 0 {
+                    // Left channel
+                    buffer[idx] += sample * bus_left_gain;
+                } else {
+                    // Right channel
+                    buffer[idx] += sample * bus_right_gain;
+                }
             }
         }
+
+        // Apply master effects (block processing)
+        self.master.process_stereo_block(
+            buffer,
+            sample_rate,
+            start_time,
+            start_sample_count,
+            None, // TODO: sidechain envelope
+        );
+    }
+
+    /// Process a single track into a mono buffer (block-processing version)
+    ///
+    /// This is the high-performance version that generates multiple samples at once,
+    /// reducing function call overhead and enabling better cache locality.
+    ///
+    /// # Arguments
+    /// * `track` - The track to process
+    /// * `buffer` - Output mono buffer to fill
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `start_time` - Starting time for the block
+    /// * `start_sample_count` - Starting sample counter
+    pub(crate) fn process_track_block(
+        track: &mut Track,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        start_time: f32,
+        start_sample_count: u64,
+    ) {
+        // Clear output buffer
+        buffer.fill(0.0);
+
+        // Ensure events are sorted by start_time for binary search
+        track.ensure_sorted();
+
+        let track_start = track.start_time();
+        let track_end = track.end_time();
+        let time_delta = 1.0 / sample_rate;
+        let block_duration = buffer.len() as f32 * time_delta;
+        let block_end_time = start_time + block_duration;
+
+        // Skip track entirely if we're completely outside its active range
+        if (block_end_time < track_start || start_time > track_end)
+            && track.effects.delay.is_none()
+            && track.effects.reverb.is_none()
+        {
+            return;
+        }
+
+        // Binary search ONCE to find events that might be active during this block
+        // We need to search at the start of the block
+        let (start_idx, end_idx) = track.find_active_range(start_time);
+
+        // For each sample in the block
+        for (i, sample_out) in buffer.iter_mut().enumerate() {
+            let time = start_time + (i as f32 * time_delta);
+            let mut track_value = 0.0;
+
+            // Process events (reuse binary search result for entire block)
+            for event in &track.events[start_idx..end_idx] {
+                match event {
+                    AudioEvent::Note(note_event) => {
+                        let total_duration = note_event.envelope.total_duration(note_event.duration);
+                        let note_end_with_release = note_event.start_time + total_duration;
+
+                        if time >= note_event.start_time && time < note_end_with_release {
+                            let time_in_note = time - note_event.start_time;
+                            let envelope_amp =
+                                note_event.envelope.amplitude_at(time_in_note, note_event.duration);
+
+                            for freq_idx in 0..note_event.num_freqs {
+                                let base_freq = note_event.frequencies[freq_idx];
+
+                                let freq = if note_event.pitch_bend_semitones != 0.0 {
+                                    let bend_progress = (time_in_note / note_event.duration).min(1.0);
+                                    let bend_multiplier = 2.0f32
+                                        .powf((note_event.pitch_bend_semitones * bend_progress) / 12.0);
+                                    base_freq * bend_multiplier
+                                } else {
+                                    base_freq
+                                };
+
+                                let sample = if note_event.fm_params.mod_index > 0.0 {
+                                    note_event.fm_params.sample(freq, time_in_note, note_event.duration)
+                                } else if let Some(ref wavetable) = note_event.custom_wavetable {
+                                    let phase = (time_in_note * freq) % 1.0;
+                                    wavetable.sample(phase)
+                                } else {
+                                    let phase = (time_in_note * freq) % 1.0;
+                                    note_event.waveform.sample(phase)
+                                };
+
+                                track_value += sample * envelope_amp;
+                            }
+                        }
+                    }
+                    AudioEvent::Drum(drum_event) => {
+                        let drum_duration = drum_event.drum_type.duration();
+                        if time >= drum_event.start_time
+                            && time < drum_event.start_time + drum_duration
+                        {
+                            let time_in_drum = time - drum_event.start_time;
+                            let sample_index = (time_in_drum * sample_rate) as usize;
+                            track_value += drum_event.drum_type.sample(sample_index, sample_rate);
+                        }
+                    }
+                    AudioEvent::Sample(sample_event) => {
+                        let time_in_sample = time - sample_event.start_time;
+                        let sample_duration = sample_event.sample.duration / sample_event.playback_rate;
+
+                        if time_in_sample >= 0.0 && time_in_sample < sample_duration {
+                            let (sample_left, sample_right) = sample_event
+                                .sample
+                                .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
+                            track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
+                        }
+                    }
+                    _ => {} // Tempo/time/key signatures don't generate audio
+                }
+            }
+
+            // Apply track volume
+            track_value *= track.volume;
+
+            // Apply filter (per-sample, maintains state)
+            track_value = track.filter.process(track_value, sample_rate);
+
+            *sample_out = track_value;
+        }
+
+        // Apply effects to entire buffer (block processing!)
+        track.effects.process_mono_block(
+            buffer,
+            sample_rate,
+            start_time,
+            start_sample_count,
+        );
     }
 
     /// Process a single track and return its stereo output (static version)

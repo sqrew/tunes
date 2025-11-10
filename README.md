@@ -31,8 +31,8 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     Not for: professional producers, DAW dwellers, performance-first applications 
 
 ## What this is and isn't for:
-    Is: A fun domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences
-    Isn't: A professional grade implementation of DSP or AAA quality audio playback engine. This does pre-rendered and real-time synthesis and spatial audio but it is NOT the most efficient implementation of "play x at at y when z" styled audio utilization for heavily optimized systems or truly high performance requirements.
+    Is: A fun domain specific language for digital signal processing aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences that will change and grow with breaking changes.
+    Isn't: A professional grade implementation of DSP or AAA quality audio playback engine. This does pre-rendered and real-time synthesis and spatial audio but it is NOT the most efficient implementation of "play x at y when z" styled audio playback for heavily optimized systems or truly high performance requirements. The crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware however whether or not that's good enough depends on your use case.
 
 ## Installation
 
@@ -40,7 +40,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.11.0"
+tunes = "0.12.0"
 ```
 
 ### Platform Requirements

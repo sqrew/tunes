@@ -8,8 +8,8 @@ fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(140.0));
 
     // Way more aggressive
-    let num_tracks = 50;  // 2.5x more
-    let events_per_track = 50;  // 1.67x more
+    let num_tracks = 50;
+    let events_per_track = 80;
     println!("Creating composition with:");
     println!("  - {} tracks", num_tracks);
     println!("  - {} events per track", events_per_track);
@@ -36,9 +36,15 @@ fn main() -> anyhow::Result<()> {
         comp.instrument(&track_name, &instrument)
             .at(0.0)
             .filter(Filter::low_pass(1200.0, 0.7))
-            .reverb(Reverb::new(0.8, 0.5, 0.3))  // Large hall: high room size, medium damping
+            .reverb(Reverb::new(0.8, 0.5, 0.3)) // Large hall: high room size, medium damping
             .delay(Delay::new(0.2, 0.4, 0.3))
             .chorus(Chorus::new(0.7, 0.5, 0.3))
+            .bitcrusher(BitCrusher::new(4.0, 8.0, 1.0))
+            .distortion(Distortion::new(1.0, 1.0))
+            .limiter(Limiter::new(0.0, 0.0))
+            .ring_mod(RingModulator::new(440.0, 1.0))
+            .phaser(Phaser::new(1.0, 1.0, 0.5, 4, 1.0))
+            .flanger(Flanger::new(1.0, 3.0, 0.5, 1.0))
             .notes(&freqs, 0.1);
     }
 
@@ -47,7 +53,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("Composition ready:");
     println!("  Duration: {:.2}s", duration);
-    println!("  Polyphony: {} simultaneous events (worst case)", num_tracks);
+    println!(
+        "  Polyphony: {} simultaneous events (worst case)",
+        num_tracks
+    );
     println!();
 
     println!("🎵 Playing... watch for ALSA underruns!\n");
