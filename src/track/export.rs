@@ -374,7 +374,12 @@ impl Mixer {
         // Find the track by iterating through buses
         let sample_count = self.sample_count;
         let mut current_index = 0;
-        for bus in self.buses.values_mut() {
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
             for track in &mut bus.tracks {
                 if current_index == track_index {
                     // Found the track! Use the static process_track helper from Mixer

@@ -85,12 +85,14 @@ mod track;
 mod bus;
 mod mixer;
 mod export;
+pub mod ids;
 
 // Re-export public types
 pub use events::*;
 pub use track::Track;
 pub use bus::{Bus, BusBuilder};
 pub use mixer::Mixer;
+pub use ids::{BusId, TrackId, BusIdGenerator, TrackIdGenerator};
 
 #[cfg(test)]
 mod tests {

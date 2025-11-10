@@ -7,55 +7,128 @@ use super::bus::{Bus, BusBuilder};
 use super::events::*;
 use super::track::Track;
 use crate::composition::rhythm::Tempo;
-use crate::synthesis::effects::{EffectChain, SidechainSource};
+use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource};
+use crate::track::ids::{BusId, TrackId};
 use std::collections::HashMap;
 
-/// Envelope cache for sidechaining
+/// Envelope cache for sidechaining (OPTIMIZED: Vec-based for O(1) access)
 ///
 /// Stores RMS envelope values for tracks and buses during a single sample_at() call.
 /// This allows sidechained effects to access the envelope of their source signal.
-#[derive(Debug, Clone, Default)]
+///
+/// **Performance:** Uses Vec indexed by ID instead of HashMap with String keys.
+/// This eliminates string hashing and allocation, providing O(1) direct access.
+#[derive(Debug, Clone)]
 struct EnvelopeCache {
-    tracks: HashMap<String, f32>,  // Track name -> RMS envelope
-    buses: HashMap<String, f32>,   // Bus name -> RMS envelope
+    tracks: Vec<f32>,  // Track ID -> RMS envelope (direct index)
+    buses: Vec<f32>,   // Bus ID -> RMS envelope (direct index)
 }
 
 impl EnvelopeCache {
-    fn new() -> Self {
+    /// Create a new envelope cache with pre-allocated capacity
+    ///
+    /// # Arguments
+    /// * `max_tracks` - Maximum number of tracks to support
+    /// * `max_buses` - Maximum number of buses to support
+    fn new(max_tracks: usize, max_buses: usize) -> Self {
         Self {
-            tracks: HashMap::new(),
-            buses: HashMap::new(),
+            tracks: vec![0.0; max_tracks],
+            buses: vec![0.0; max_buses],
         }
     }
 
-    /// Store a track's envelope
-    fn cache_track(&mut self, track_name: &str, envelope: f32) {
-        self.tracks.insert(track_name.to_string(), envelope);
+    /// Clear all cached envelope values (resets to 0.0)
+    ///
+    /// Called at the start of each sample_at() to reset state.
+    #[inline(always)]
+    fn clear(&mut self) {
+        // Fast memset-like operation
+        self.tracks.fill(0.0);
+        self.buses.fill(0.0);
     }
 
-    /// Store a bus's envelope
-    fn cache_bus(&mut self, bus_name: &str, envelope: f32) {
-        self.buses.insert(bus_name.to_string(), envelope);
+    /// Store a track's envelope by ID
+    ///
+    /// # Arguments
+    /// * `track_id` - Unique track identifier
+    /// * `envelope` - RMS envelope value
+    #[inline(always)]
+    fn cache_track(&mut self, track_id: TrackId, envelope: f32) {
+        if let Some(slot) = self.tracks.get_mut(track_id as usize) {
+            *slot = envelope;
+        }
     }
 
-    /// Get a track's envelope (returns 0.0 if not found)
-    fn get_track(&self, track_name: &str) -> f32 {
-        self.tracks.get(track_name).copied().unwrap_or(0.0)
+    /// Store a bus's envelope by ID
+    ///
+    /// # Arguments
+    /// * `bus_id` - Unique bus identifier
+    /// * `envelope` - RMS envelope value
+    #[inline(always)]
+    fn cache_bus(&mut self, bus_id: BusId, envelope: f32) {
+        if let Some(slot) = self.buses.get_mut(bus_id as usize) {
+            *slot = envelope;
+        }
     }
 
-    /// Get a bus's envelope (returns 0.0 if not found)
-    fn get_bus(&self, bus_name: &str) -> f32 {
-        self.buses.get(bus_name).copied().unwrap_or(0.0)
+    /// Get a track's envelope by ID (returns 0.0 if not found)
+    #[inline(always)]
+    fn get_track(&self, track_id: TrackId) -> f32 {
+        self.tracks.get(track_id as usize).copied().unwrap_or(0.0)
+    }
+
+    /// Get a bus's envelope by ID (returns 0.0 if not found)
+    #[inline(always)]
+    fn get_bus(&self, bus_id: BusId) -> f32 {
+        self.buses.get(bus_id as usize).copied().unwrap_or(0.0)
     }
 }
 
-/// Mix multiple buses together
+/// Pre-allocated track output (avoids allocation in hot path)
+///
+/// Stores the output of a single track for later bus mixing.
+/// Uses integer bus_id instead of string bus_name for O(1) comparison.
+#[derive(Debug, Clone, Copy)]
+struct TrackOutput {
+    bus_id: BusId,     // Which bus this track belongs to (INTEGER!)
+    left: f32,         // Left channel output
+    right: f32,        // Right channel output
+    envelope: f32,     // RMS envelope for sidechaining
+}
+
+/// Pre-allocated bus output (avoids allocation in hot path)
+///
+/// Stores the output of a single bus for later master mixing.
+#[derive(Debug, Clone, Copy)]
+struct BusOutput {
+    bus_id: BusId,     // Bus identifier (unused, kept for potential future use)
+    left: f32,         // Left channel output
+    right: f32,        // Right channel output
+}
+
+/// Mix multiple buses together (OPTIMIZED: Vec-based with pre-allocated buffers)
 ///
 /// The Mixer organizes audio into buses, where each bus contains one or more tracks.
 /// Signal flow: Tracks → Buses → Master → Output
+///
+/// **Performance optimizations:**
+/// - Buses stored in Vec<Bus> indexed by BusId (not HashMap<String, Bus>)
+/// - Pre-allocated buffers for track_outputs, bus_outputs, envelope_cache
+/// - Integer IDs instead of string comparisons in hot path
 #[derive(Debug, Clone)]
 pub struct Mixer {
-    pub buses: HashMap<String, Bus>,
+    // Hot path: Integer-indexed buses for fast iteration
+    pub(super) buses: Vec<Option<Bus>>,  // Sparse Vec: Some(bus) at bus.id index, None otherwise
+    bus_order: Vec<BusId>,    // Order in which to process buses
+
+    // Cold path: String lookup for user-facing API
+    bus_name_to_id: HashMap<String, BusId>,
+
+    // Pre-allocated buffers (reused every sample_at() call)
+    track_outputs: Vec<TrackOutput>,
+    bus_outputs: Vec<BusOutput>,
+    envelope_cache: EnvelopeCache,
+
     pub tempo: Tempo,
     pub(super) sample_count: u64, // For quantized automation lookups
     pub master: EffectChain,      // Master effects chain (stereo processing)
@@ -67,8 +140,17 @@ impl Mixer {
     /// # Arguments
     /// * `tempo` - Tempo for the composition (used for MIDI export)
     pub fn new(tempo: Tempo) -> Self {
+        // Pre-allocate reasonable capacities to avoid allocations during audio rendering
+        const INITIAL_BUS_CAPACITY: usize = 16;
+        const INITIAL_TRACK_CAPACITY: usize = 128;
+
         Self {
-            buses: HashMap::new(),
+            buses: Vec::with_capacity(INITIAL_BUS_CAPACITY),
+            bus_order: Vec::with_capacity(INITIAL_BUS_CAPACITY),
+            bus_name_to_id: HashMap::new(),
+            track_outputs: Vec::with_capacity(INITIAL_TRACK_CAPACITY),
+            bus_outputs: Vec::with_capacity(INITIAL_BUS_CAPACITY),
+            envelope_cache: EnvelopeCache::new(INITIAL_TRACK_CAPACITY, INITIAL_BUS_CAPACITY),
             tempo,
             sample_count: 0,
             master: EffectChain::new(),
@@ -80,7 +162,27 @@ impl Mixer {
     /// # Arguments
     /// * `bus` - The bus to add
     pub fn add_bus(&mut self, bus: Bus) {
-        self.buses.insert(bus.name.clone(), bus);
+        let bus_id = bus.id;
+        let bus_name = bus.name.clone();
+
+        // Ensure buses Vec is large enough to hold this bus ID
+        if bus_id as usize >= self.buses.len() {
+            self.buses.resize(bus_id as usize + 1, None);
+        }
+
+        // Store the bus at its ID index
+        self.buses[bus_id as usize] = Some(bus);
+
+        // Add to processing order
+        self.bus_order.push(bus_id);
+
+        // Map name to ID for user-facing API
+        self.bus_name_to_id.insert(bus_name, bus_id);
+
+        // Expand envelope cache if needed
+        if bus_id as usize >= self.envelope_cache.buses.len() {
+            self.envelope_cache.buses.resize(bus_id as usize + 1, 0.0);
+        }
     }
 
     /// Add a track to the default bus for backward compatibility
@@ -91,10 +193,7 @@ impl Mixer {
     /// # Arguments
     /// * `track` - The track to add
     pub fn add_track(&mut self, track: Track) {
-        self.buses
-            .entry("default".to_string())
-            .or_insert_with(|| Bus::new("default".to_string()))
-            .add_track(track);
+        self.get_or_create_bus("default").add_track(track);
     }
 
     /// Get or create a bus by name
@@ -102,9 +201,20 @@ impl Mixer {
     /// # Arguments
     /// * `name` - Name of the bus
     pub fn get_or_create_bus(&mut self, name: &str) -> &mut Bus {
-        self.buses
-            .entry(name.to_string())
-            .or_insert_with(|| Bus::new(name.to_string()))
+        // Check if bus already exists
+        if let Some(&bus_id) = self.bus_name_to_id.get(name) {
+            // Bus exists, return mutable reference
+            return self.buses[bus_id as usize].as_mut().unwrap();
+        }
+
+        // Bus doesn't exist, create it
+        let new_bus_id = self.buses.len() as BusId;  // Use current length as new ID
+        let new_bus = Bus::new(new_bus_id, name.to_string());
+
+        self.add_bus(new_bus);
+
+        // Return reference to the newly added bus
+        self.buses[new_bus_id as usize].as_mut().unwrap()
     }
 
     /// Get a bus by name
@@ -112,7 +222,9 @@ impl Mixer {
     /// # Arguments
     /// * `name` - Name of the bus
     pub fn get_bus(&self, name: &str) -> Option<&Bus> {
-        self.buses.get(name)
+        self.bus_name_to_id
+            .get(name)
+            .and_then(|&id| self.buses.get(id as usize).and_then(|opt| opt.as_ref()))
     }
 
     /// Get a mutable bus by name
@@ -120,7 +232,108 @@ impl Mixer {
     /// # Arguments
     /// * `name` - Name of the bus
     pub fn get_bus_mut(&mut self, name: &str) -> Option<&mut Bus> {
-        self.buses.get_mut(name)
+        self.bus_name_to_id
+            .get(name)
+            .copied()
+            .and_then(move |id| self.buses.get_mut(id as usize).and_then(|opt| opt.as_mut()))
+    }
+
+    /// Get the BusId for a bus by name
+    ///
+    /// Used internally for resolving sidechain sources.
+    ///
+    /// # Arguments
+    /// * `name` - Name of the bus
+    pub(crate) fn get_bus_id(&self, name: &str) -> Option<BusId> {
+        self.bus_name_to_id.get(name).copied()
+    }
+
+    /// Resolve all sidechain sources from string names to integer IDs
+    ///
+    /// This is called during Composition::into_mixer() to optimize the hot path
+    /// by converting user-facing string-based sidechain references to efficient
+    /// integer ID lookups.
+    pub(crate) fn resolve_sidechains(&mut self) {
+        use crate::synthesis::effects::ResolvedSidechainSource;
+
+        // Clone name mappings to avoid borrowing issues
+        let bus_name_to_id = self.bus_name_to_id.clone();
+
+        // First pass: collect all track names and IDs for resolution
+        let mut track_name_to_id: HashMap<String, TrackId> = HashMap::new();
+        for bus_opt in &self.buses {
+            if let Some(bus) = bus_opt {
+                for track in &bus.tracks {
+                    if let Some(ref track_name) = track.name {
+                        track_name_to_id.insert(track_name.clone(), track.id);
+                    }
+                }
+            }
+        }
+
+        // Second pass: resolve sidechains with mutable access
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
+            // Resolve bus-level compressor sidechain
+            if let Some(ref mut compressor) = bus.effects.compressor {
+                if let Some(ref source) = compressor.sidechain_source {
+                    compressor.resolved_sidechain_source = Self::resolve_sidechain_source(
+                        source,
+                        &track_name_to_id,
+                        &bus_name_to_id,
+                    );
+                }
+            }
+
+            // Resolve track-level compressor sidechains
+            for track in &mut bus.tracks {
+                if let Some(ref mut compressor) = track.effects.compressor {
+                    if let Some(ref source) = compressor.sidechain_source {
+                        compressor.resolved_sidechain_source = Self::resolve_sidechain_source(
+                            source,
+                            &track_name_to_id,
+                            &bus_name_to_id,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Resolve a single sidechain source to an integer ID
+    fn resolve_sidechain_source(
+        source: &crate::synthesis::effects::SidechainSource,
+        track_name_to_id: &HashMap<String, TrackId>,
+        bus_name_to_id: &HashMap<String, BusId>,
+    ) -> Option<ResolvedSidechainSource> {
+        use crate::synthesis::effects::{ResolvedSidechainSource, SidechainSource};
+
+        match source {
+            SidechainSource::Track(name) => {
+                // Look up track by name
+                track_name_to_id.get(name)
+                    .copied()
+                    .map(ResolvedSidechainSource::Track)
+                    .or_else(|| {
+                        eprintln!("Warning: Sidechain track '{}' not found", name);
+                        None
+                    })
+            }
+            SidechainSource::Bus(name) => {
+                // Look up bus by name
+                bus_name_to_id.get(name)
+                    .copied()
+                    .map(ResolvedSidechainSource::Bus)
+                    .or_else(|| {
+                        eprintln!("Warning: Sidechain bus '{}' not found", name);
+                        None
+                    })
+            }
+        }
     }
 
     /// Get a builder for applying effects to a bus
@@ -159,7 +372,8 @@ impl Mixer {
     /// Returns 0.0 if the mixer has no buses.
     pub fn total_duration(&self) -> f32 {
         self.buses
-            .values()
+            .iter()
+            .filter_map(|opt| opt.as_ref())
             .map(|b| b.total_duration())
             .fold(0.0, f32::max)
     }
@@ -184,7 +398,8 @@ impl Mixer {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.buses
-            .values()
+            .iter()
+            .filter_map(|opt| opt.as_ref())
             .all(|b| b.tracks.iter().all(|t| t.events.is_empty()))
     }
 
@@ -194,7 +409,8 @@ impl Mixer {
     /// Note: This creates a new vector, so use sparingly.
     pub fn all_tracks(&self) -> Vec<&Track> {
         self.buses
-            .values()
+            .iter()
+            .filter_map(|opt| opt.as_ref())
             .flat_map(|bus| bus.tracks.iter())
             .collect()
     }
@@ -205,7 +421,8 @@ impl Mixer {
     /// Note: This creates a new vector, so use sparingly.
     pub fn all_tracks_mut(&mut self) -> Vec<&mut Track> {
         self.buses
-            .values_mut()
+            .iter_mut()
+            .filter_map(|opt| opt.as_mut())
             .flat_map(|bus| bus.tracks.iter_mut())
             .collect()
     }
@@ -217,7 +434,7 @@ impl Mixer {
     /// would create a temporary.
     #[cfg(test)]
     pub fn tracks(&self) -> Vec<Track> {
-        self.buses.get("default")
+        self.get_bus("default")
             .map(|b| b.tracks.clone())
             .unwrap_or_default()
     }
@@ -254,7 +471,12 @@ impl Mixer {
         let total_duration = self.total_duration();
 
         // For each bus, repeat all its track events
-        for bus in self.buses.values_mut() {
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
             for track in &mut bus.tracks {
                 let original_events: Vec<_> = track.events.clone();
 
@@ -356,8 +578,10 @@ impl Mixer {
         // Increment sample count for quantized automation lookups
         self.sample_count = self.sample_count.wrapping_add(1);
 
-        // Create envelope cache for sidechaining
-        let mut envelope_cache = EnvelopeCache::new();
+        // Clear pre-allocated buffers (NO ALLOCATION!)
+        self.track_outputs.clear();
+        self.bus_outputs.clear();
+        self.envelope_cache.clear();
 
         let mut mixed_left = 0.0;
         let mut mixed_right = 0.0;
@@ -365,57 +589,79 @@ impl Mixer {
         // PASS 1: Process tracks and cache their envelopes
         // We need to process all tracks first to build the envelope cache
         // before applying bus effects (which may use sidechaining)
-        let mut track_outputs: Vec<(String, f32, f32, f32)> = Vec::new(); // (bus_name, left, right, envelope)
 
-        for bus in self.buses.values_mut() {
+        // Iterate over buses using Vec<Option<Bus>>
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
             if bus.muted {
                 continue;
             }
 
             let sample_count = self.sample_count;
+            let bus_id = bus.id;
+
             for track in &mut bus.tracks {
                 let (track_left, track_right) = Self::process_track_static(track, time, sample_rate, sample_count);
 
                 // Calculate RMS envelope for this track
                 let envelope = ((track_left * track_left + track_right * track_right) / 2.0).sqrt();
 
-                // Cache track envelope if track has a name
-                if let Some(ref track_name) = track.name {
-                    envelope_cache.cache_track(track_name, envelope);
-                }
+                // Cache track envelope using integer ID
+                self.envelope_cache.cache_track(track.id, envelope);
 
-                track_outputs.push((bus.name.clone(), track_left, track_right, envelope));
+                // Store output using integer bus ID (NO STRING CLONE!)
+                self.track_outputs.push(TrackOutput {
+                    bus_id,
+                    left: track_left,
+                    right: track_right,
+                    envelope,
+                });
             }
         }
 
         // PASS 2: Mix tracks into buses and apply bus effects with sidechain support
-        let mut bus_outputs: Vec<(String, f32, f32)> = Vec::new(); // (bus_name, left, right)
 
-        for bus in self.buses.values_mut() {
+        // Iterate over buses for processing
+        for bus_opt in self.buses.iter_mut() {
+            let bus = match bus_opt {
+                Some(b) => b,
+                None => continue,
+            };
+
             if bus.muted {
                 continue;
             }
 
-            // Sum tracks belonging to this bus
+            let bus_id = bus.id;
+
+            // Sum tracks belonging to this bus (INTEGER COMPARISON!)
             let mut bus_left = 0.0;
             let mut bus_right = 0.0;
-            for (bus_name, track_left, track_right, _) in &track_outputs {
-                if bus_name == &bus.name {
-                    bus_left += track_left;
-                    bus_right += track_right;
+            for track_output in &self.track_outputs {
+                if track_output.bus_id == bus_id {
+                    bus_left += track_output.left;
+                    bus_right += track_output.right;
                 }
             }
 
             // Calculate bus envelope BEFORE effects
             let bus_envelope = ((bus_left * bus_left + bus_right * bus_right) / 2.0).sqrt();
-            envelope_cache.cache_bus(&bus.name, bus_envelope);
+            self.envelope_cache.cache_bus(bus_id, bus_envelope);
 
-            // Look up sidechain envelope if compressor has sidechain configured
+            // Look up sidechain envelope using resolved IDs (OPTIMIZED: Integer lookup!)
             let sidechain_env = if let Some(ref compressor) = bus.effects.compressor {
-                if let Some(ref source) = compressor.sidechain_source {
-                    match source {
-                        SidechainSource::Track(name) => Some(envelope_cache.get_track(name)),
-                        SidechainSource::Bus(name) => Some(envelope_cache.get_bus(name)),
+                if let Some(ref resolved_source) = compressor.resolved_sidechain_source {
+                    match resolved_source {
+                        ResolvedSidechainSource::Track(track_id) => {
+                            Some(self.envelope_cache.get_track(*track_id))
+                        }
+                        ResolvedSidechainSource::Bus(sidechain_bus_id) => {
+                            Some(self.envelope_cache.get_bus(*sidechain_bus_id))
+                        }
                     }
                 } else {
                     None
@@ -449,13 +695,18 @@ impl Mixer {
             let final_bus_left = effected_left * bus.volume * pan_left;
             let final_bus_right = effected_right * bus.volume * pan_right;
 
-            bus_outputs.push((bus.name.clone(), final_bus_left, final_bus_right));
+            // Store output using integer bus ID (NO STRING CLONE!)
+            self.bus_outputs.push(BusOutput {
+                bus_id,
+                left: final_bus_left,
+                right: final_bus_right,
+            });
         }
 
         // Sum all bus outputs
-        for (_, bus_left, bus_right) in bus_outputs {
-            mixed_left += bus_left;
-            mixed_right += bus_right;
+        for bus_output in &self.bus_outputs {
+            mixed_left += bus_output.left;
+            mixed_right += bus_output.right;
         }
 
         // Apply master effects (stereo processing) - no sidechaining on master

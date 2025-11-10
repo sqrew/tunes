@@ -13,14 +13,25 @@ use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::synthesis::lfo::ModRoute;
 use crate::synthesis::waveform::Waveform;
+use crate::track::ids::{BusId, TrackId};
 
 /// A track contains a sequence of audio events (notes and drums)
 #[derive(Debug, Clone)]
 pub struct Track {
     pub events: Vec<AudioEvent>,
-    pub name: Option<String>,     // Track name (used in MIDI export)
-    pub bus_name: String,         // Which bus this track belongs to (default: "default")
-    pub midi_program: Option<u8>, // MIDI program number (0-127) for this track
+
+    /// Unique integer ID for fast lookups (used in real-time audio path)
+    pub id: TrackId,
+
+    /// Track name (used in MIDI export and user-facing API)
+    pub name: Option<String>,
+
+    /// Which bus this track belongs to (integer ID for performance)
+    pub bus_id: BusId,
+
+    /// MIDI program number (0-127) for this track
+    pub midi_program: Option<u8>,
+
     pub volume: f32,              // 0.0 to 1.0
     pub pan: f32,                 // -1.0 (left) to 1.0 (right), 0.0 = center
     pub filter: Filter,           // Filter applied to this track
@@ -43,11 +54,13 @@ impl Track {
     ///
     /// Creates a track with volume 1.0, center pan, no filter, and no effects.
     /// Events can be added using methods like `add_note()` and `add_drum()`.
+    /// Note: ID and bus_id will be assigned by Composition when the track is created.
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
+            id: 0,                // Will be assigned by Composition
             name: None,
-            bus_name: "default".to_string(),
+            bus_id: 0,            // Will be assigned when routing to bus (default bus has id 0)
             midi_program: None,
             volume: 1.0,
             pan: 0.0, // Center by default

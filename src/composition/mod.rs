@@ -2,6 +2,7 @@ use crate::synthesis::envelope::Envelope;
 use crate::instruments::Instrument;
 use crate::synthesis::sample::Sample;
 use crate::track::{Mixer, Track};
+use crate::track::ids::{BusId, BusIdGenerator, TrackIdGenerator};
 use crate::synthesis::waveform::Waveform;
 use std::collections::HashMap;
 
@@ -86,11 +87,26 @@ pub struct Composition {
     samples: HashMap<String, Sample>, // Cache of loaded samples
     markers: HashMap<String, f32>,    // Named time positions for easy navigation
     templates: HashMap<String, TrackTemplate>, // Named track templates for reuse
+
+    // ID generators and mappings for performance optimization
+    bus_id_gen: BusIdGenerator,           // Generate unique bus IDs
+    track_id_gen: TrackIdGenerator,       // Generate unique track IDs
+    bus_name_to_id: HashMap<String, BusId>, // Map bus names to IDs
+    bus_id_to_name: HashMap<BusId, String>, // Map bus IDs back to names
 }
 
 impl Composition {
     /// Create a new composition with a given tempo
     pub fn new(tempo: Tempo) -> Self {
+        let mut bus_id_gen = BusIdGenerator::new();
+        let mut bus_name_to_id = HashMap::new();
+        let mut bus_id_to_name = HashMap::new();
+
+        // Pre-register the "default" bus with id 0
+        let default_bus_id = bus_id_gen.next(); // This will be 0
+        bus_name_to_id.insert("default".to_string(), default_bus_id);
+        bus_id_to_name.insert(default_bus_id, "default".to_string());
+
         Self {
             tracks: HashMap::new(),
             sections: HashMap::new(),
@@ -98,6 +114,10 @@ impl Composition {
             samples: HashMap::new(),
             markers: HashMap::new(),
             templates: HashMap::new(),
+            bus_id_gen,
+            track_id_gen: TrackIdGenerator::new(),
+            bus_name_to_id,
+            bus_id_to_name,
         }
     }
 
@@ -310,10 +330,17 @@ impl Composition {
 
             track.name = Some(name.clone());
 
-            // Add track to its assigned bus
-            let bus_name = track.bus_name.clone();
+            // Look up bus name from track's bus_id
+            let bus_name = self.bus_id_to_name.get(&track.bus_id)
+                .cloned()
+                .unwrap_or_else(|| "default".to_string());
+
             mixer.get_or_create_bus(&bus_name).add_track(track);
         }
+
+        // Phase 6: Resolve sidechain sources from string names to integer IDs
+        mixer.resolve_sidechains();
+
         mixer
     }
 
@@ -637,7 +664,13 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// This handles both direct composition tracks and section tracks
     pub(crate) fn get_track_mut(&mut self) -> &mut Track {
-        match &self.context {
+        // Pre-allocate a track ID before we borrow the track
+        // If the track already exists with an ID, we'll waste this ID value,
+        // but that's acceptable for simplicity and avoiding borrow conflicts
+        let new_id = self.composition.track_id_gen.next();
+
+        // Get or create the track
+        let track = match &self.context {
             BuilderContext::Direct => self
                 .composition
                 .tracks
@@ -646,7 +679,14 @@ impl<'a> TrackBuilder<'a> {
             BuilderContext::Section(section_name) => self
                 .composition
                 .get_or_create_section_track(section_name, &self.track_name),
+        };
+
+        // Assign the ID if this track doesn't have one yet (id == 0 means unassigned)
+        if track.id == 0 {
+            track.id = new_id;
         }
+
+        track
     }
 
     /// Assign this track to a specific bus
@@ -678,8 +718,22 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn bus(mut self, bus_name: &str) -> Self {
         self.bus_name = bus_name.to_string();
+
+        // Get or create a bus ID for this bus name
+        let bus_id = if let Some(&id) = self.composition.bus_name_to_id.get(bus_name) {
+            id
+        } else {
+            // Create new bus ID
+            let id = self.composition.bus_id_gen.next();
+            self.composition.bus_name_to_id.insert(bus_name.to_string(), id);
+            self.composition.bus_id_to_name.insert(id, bus_name.to_string());
+            id
+        };
+
+        // Assign bus_id to the track
         let track = self.get_track_mut();
-        track.bus_name = bus_name.to_string();
+        track.bus_id = bus_id;
+
         self
     }
 

@@ -1,7 +1,7 @@
 use crate::synthesis::automation::Automation;
 use crate::track::{
     PRIORITY_EARLY, PRIORITY_LAST, PRIORITY_MODULATION, PRIORITY_NORMAL, PRIORITY_SPATIAL,
-    PRIORITY_TIME_BASED,
+    PRIORITY_TIME_BASED, TrackId, BusId,
 };
 
 /// Standard audio sample rate
@@ -26,6 +26,19 @@ pub enum SidechainSource {
     Track(String),
     /// Sidechain from an entire bus by name
     Bus(String),
+}
+
+/// Resolved sidechain source using integer IDs for performance
+///
+/// This is an internal type used during audio rendering. The user-facing API uses
+/// `SidechainSource` with string names, which are resolved to integer IDs when
+/// converting a Composition to a Mixer.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ResolvedSidechainSource {
+    /// Sidechain from a specific track by ID
+    Track(TrackId),
+    /// Sidechain from an entire bus by ID
+    Bus(BusId),
 }
 
 /// Delay effect with feedback
@@ -488,8 +501,11 @@ pub struct Compressor {
     pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     envelope: f32,
 
-    // Sidechaining support
-    pub sidechain_source: Option<SidechainSource>, // External signal to trigger compression
+    // Sidechaining support (user-facing API)
+    pub sidechain_source: Option<SidechainSource>, // External signal to trigger compression (by name)
+
+    // Resolved sidechain source (internal, used during rendering)
+    pub(crate) resolved_sidechain_source: Option<ResolvedSidechainSource>,
 
     // Automation (optional)
     threshold_automation: Option<Automation>,
@@ -519,6 +535,7 @@ impl Compressor {
             priority: PRIORITY_EARLY, // Compressor typically early in chain
             envelope: 0.0,
             sidechain_source: None,
+            resolved_sidechain_source: None,
             threshold_automation: None,
             ratio_automation: None,
             attack_automation: None,

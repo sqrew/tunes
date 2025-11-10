@@ -45,6 +45,7 @@ use crate::synthesis::effects::{
     Limiter, ParametricEQ, Phaser, Reverb, RingModulator, Saturation, Tremolo,
 };
 use crate::track::Track;
+use crate::track::ids::BusId;
 
 /// A bus groups multiple tracks together for processing
 ///
@@ -53,7 +54,10 @@ use crate::track::Track;
 /// layer between individual tracks and the final mix.
 #[derive(Debug, Clone)]
 pub struct Bus {
-    /// Name of this bus
+    /// Unique integer ID for fast lookups (used in real-time audio path)
+    pub id: BusId,
+
+    /// Name of this bus (used for user-facing API)
     pub name: String,
 
     /// Tracks routed to this bus
@@ -76,9 +80,14 @@ pub struct Bus {
 }
 
 impl Bus {
-    /// Create a new empty bus
-    pub fn new(name: String) -> Self {
+    /// Create a new empty bus with a unique ID
+    ///
+    /// # Arguments
+    /// * `id` - Unique bus identifier (assigned by BusIdGenerator)
+    /// * `name` - Human-readable name for the bus
+    pub fn new(id: BusId, name: String) -> Self {
         Self {
+            id,
             name,
             tracks: Vec::new(),
             effects: EffectChain::new(),
@@ -138,7 +147,7 @@ impl Bus {
 
 impl Default for Bus {
     fn default() -> Self {
-        Self::new("default".to_string())
+        Self::new(0, "default".to_string())
     }
 }
 
@@ -150,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_bus_creation() {
-        let bus = Bus::new("drums".to_string());
+        let bus = Bus::new(0, "drums".to_string());
         assert_eq!(bus.name, "drums");
         assert_eq!(bus.tracks.len(), 0);
         assert_eq!(bus.volume, 1.0);
@@ -161,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_bus_add_track() {
-        let mut bus = Bus::new("test".to_string());
+        let mut bus = Bus::new(0, "test".to_string());
         let mut track = Track::new();
         track.add_note(&[C4], 0.0, 1.0);
 
@@ -172,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_bus_total_duration() {
-        let mut bus = Bus::new("test".to_string());
+        let mut bus = Bus::new(0, "test".to_string());
 
         let mut track1 = Track::new();
         track1.add_note(&[C4], 0.0, 2.0); // Ends at 2.0
@@ -188,36 +197,36 @@ mod tests {
 
     #[test]
     fn test_bus_with_volume() {
-        let bus = Bus::new("test".to_string()).with_volume(0.5);
+        let bus = Bus::new(0, "test".to_string()).with_volume(0.5);
         assert_eq!(bus.volume, 0.5);
 
         // Test clamping
-        let loud_bus = Bus::new("loud".to_string()).with_volume(5.0);
+        let loud_bus = Bus::new(1, "loud".to_string()).with_volume(5.0);
         assert_eq!(loud_bus.volume, 2.0);
 
-        let silent_bus = Bus::new("silent".to_string()).with_volume(-1.0);
+        let silent_bus = Bus::new(2, "silent".to_string()).with_volume(-1.0);
         assert_eq!(silent_bus.volume, 0.0);
     }
 
     #[test]
     fn test_bus_with_pan() {
-        let left_bus = Bus::new("left".to_string()).with_pan(-0.5);
+        let left_bus = Bus::new(0, "left".to_string()).with_pan(-0.5);
         assert_eq!(left_bus.pan, -0.5);
 
-        let right_bus = Bus::new("right".to_string()).with_pan(0.8);
+        let right_bus = Bus::new(1, "right".to_string()).with_pan(0.8);
         assert_eq!(right_bus.pan, 0.8);
 
         // Test clamping
-        let far_left = Bus::new("far".to_string()).with_pan(-2.0);
+        let far_left = Bus::new(2, "far".to_string()).with_pan(-2.0);
         assert_eq!(far_left.pan, -1.0);
 
-        let far_right = Bus::new("far".to_string()).with_pan(2.0);
+        let far_right = Bus::new(2, "far".to_string()).with_pan(2.0);
         assert_eq!(far_right.pan, 1.0);
     }
 
     #[test]
     fn test_bus_is_empty() {
-        let mut bus = Bus::new("test".to_string());
+        let mut bus = Bus::new(0, "test".to_string());
         assert!(bus.is_empty());
 
         bus.add_track(Track::new());
