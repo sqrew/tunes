@@ -48,16 +48,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `AudioEngine::tween_pan(id, target_pan, duration)` - Smoothly pan sounds left/right
   - `AudioEngine::tween_playback_rate(id, target_rate, duration)` - Smoothly change pitch/speed
   - Extends existing volume tweening (`fade_in`, `fade_out`) with pan and playback rate
-  - Linear interpolation over specified duration (in seconds)
-  - Perfect for game audio: engine sounds ramping up, helicopter flyby effects, doppler simulation
-  - Multiple tweens can run simultaneously on the same sound
-  - Zero allocations - all state tracked in pre-allocated ActiveSound struct
+- **Streaming Audio** - Memory-efficient playback for long audio files:
+  - `AudioEngine::stream_file(path)` - Stream audio from disk without loading entire file into RAM
+  - `AudioEngine::stream_file_looping(path)` - Stream audio in continuous loop
+  - Full playback controls: `stop_stream()`, `pause_stream()`, `resume_stream()`
+  - Real-time parameter control: `set_stream_volume()`, `set_stream_pan()`
+  - Perfect for background music, ambient sounds, and voice-over narration (3-10+ minutes)
+  - Supports all audio formats (MP3, OGG, FLAC, WAV, AAC) via symphonia decoder
+  - Background decoding thread with lock-free ring buffer for smooth playback
+  - Multiple concurrent streams supported with independent control
+  - Automatic cleanup on stop (decoder thread terminates gracefully)
 - New examples:
   - `sample_slicing.rs` - Comprehensive demonstration of all slicing techniques
   - `slice_playback.rs` - Direct sample/slice playback in compositions
   - `time_pitch_manipulation.rs` - Time stretching and pitch shifting for game audio variations
   - `multiformat_import.rs` - Multi-format audio loading (MP3, OGG, FLAC, WAV, AAC)
   - `tweening_demo.rs` - Runtime parameter tweening for volume, pan, and playback rate
+  - `streaming_demo.rs` - Memory-efficient audio streaming for long files
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance

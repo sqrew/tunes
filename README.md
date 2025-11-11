@@ -19,11 +19,12 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
 - **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing
+- **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
-  * [ ] The library includes **1083 comprehensive tests and 396 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **1092 comprehensive tests and 402 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:

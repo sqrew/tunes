@@ -5,9 +5,21 @@ use crate::synthesis::spatial::{
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam::channel::{Receiver, Sender, unbounded};
+use ringbuf::{HeapRb, traits::{Split, Consumer, Producer, Observer}};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::fs::File;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use symphonia::core::audio::{AudioBufferRef, Signal};
+use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::conv::IntoSample;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+use symphonia::core::sample::Sample as SymphoniaSample;
 
 /// Unique identifier for playing sounds
 pub type SoundId = u64;
@@ -79,6 +91,31 @@ enum AudioCommand {
     SetSpatialParams {
         params: SpatialParams,
     },
+    // Streaming commands
+    StreamFile {
+        id: SoundId,
+        path: PathBuf,
+        looping: bool,
+        volume: f32,
+        pan: f32,
+    },
+    StopStream {
+        id: SoundId,
+    },
+    PauseStream {
+        id: SoundId,
+    },
+    ResumeStream {
+        id: SoundId,
+    },
+    SetStreamVolume {
+        id: SoundId,
+        volume: f32,
+    },
+    SetStreamPan {
+        id: SoundId,
+        pan: f32,
+    },
 }
 
 /// State for an actively playing sound
@@ -109,6 +146,38 @@ struct ActiveSound {
     rate_tween_target_value: f32,
 }
 
+/// State for a streaming audio source
+///
+/// Streams audio from disk using a background decoder thread and lock-free ring buffer.
+/// This allows playing long audio files (background music, ambience) without loading
+/// the entire file into memory.
+struct StreamingSound {
+    /// Ring buffer consumer (audio thread reads from this)
+    ring_consumer: ringbuf::HeapCons<f32>,
+    /// Decoder thread handle (for cleanup on stop)
+    decoder_thread: Option<JoinHandle<()>>,
+    /// Signal to stop the decoder thread
+    stop_signal: Arc<AtomicBool>,
+    /// Pause signal for decoder thread
+    pause_signal: Arc<AtomicBool>,
+    /// Current volume
+    volume: f32,
+    /// Current pan (-1.0 left, 0.0 center, 1.0 right)
+    pan: f32,
+    /// Whether the stream is looping
+    looping: bool,
+}
+
+impl Drop for StreamingSound {
+    fn drop(&mut self) {
+        // Signal thread to stop and wait for it to finish
+        self.stop_signal.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.decoder_thread.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
 /// Audio callback state (allocation-free mixing)
 ///
 /// Holds pre-allocated buffers to avoid allocations in the real-time audio thread.
@@ -116,20 +185,26 @@ struct ActiveSound {
 struct AudioCallbackState {
     /// Active sounds being mixed
     active_sounds: HashMap<SoundId, ActiveSound>,
+    /// Streaming sounds (separate from pre-rendered sounds)
+    streaming_sounds: HashMap<SoundId, StreamingSound>,
     /// Pre-allocated temp buffer for mixing (stereo interleaved)
     /// Size is determined by the maximum buffer size we expect
     temp_buffer: Vec<f32>,
     /// Pre-allocated list for tracking finished sounds (avoids allocation during cleanup)
     finished_sounds: Vec<SoundId>,
+    /// Pre-allocated list for tracking finished streams
+    finished_streams: Vec<SoundId>,
 }
 
 impl AudioCallbackState {
     fn new() -> Self {
         Self {
             active_sounds: HashMap::new(),
+            streaming_sounds: HashMap::new(),
             // Pre-allocate for a reasonably large buffer (2048 frames stereo = 4096 samples)
             temp_buffer: vec![0.0; 4096],
             finished_sounds: Vec::with_capacity(16),
+            finished_streams: Vec::with_capacity(16),
         }
     }
 
@@ -138,6 +213,178 @@ impl AudioCallbackState {
     fn ensure_temp_buffer_size(&mut self, required_size: usize) {
         if self.temp_buffer.len() < required_size {
             self.temp_buffer.resize(required_size, 0.0);
+        }
+    }
+}
+
+/// Decoder thread function for streaming audio
+///
+/// Runs in a background thread, decodes audio from file, and pushes samples to ring buffer.
+/// The audio callback reads from the ring buffer, creating a lock-free streaming pipeline.
+fn decoder_thread_func(
+    path: PathBuf,
+    mut ring_producer: ringbuf::HeapProd<f32>,
+    stop_signal: Arc<AtomicBool>,
+    pause_signal: Arc<AtomicBool>,
+    looping: bool,
+) {
+    // Helper function to convert symphonia audio buffer to f32 samples
+    fn convert_audio_buffer(decoded: &AudioBufferRef, samples: &mut Vec<f32>) {
+        fn convert_samples<S>(buf: &symphonia::core::audio::AudioBuffer<S>, samples: &mut Vec<f32>)
+        where
+            S: SymphoniaSample + IntoSample<f32>,
+        {
+            let num_channels = buf.spec().channels.count();
+            let num_frames = buf.frames();
+            samples.clear();
+            samples.reserve(num_frames * num_channels);
+
+            // Convert planar to interleaved
+            for frame_idx in 0..num_frames {
+                for ch in 0..num_channels {
+                    let sample: f32 = buf.chan(ch)[frame_idx].into_sample();
+                    samples.push(sample);
+                }
+            }
+        }
+
+        match decoded {
+            AudioBufferRef::U8(buf) => convert_samples(buf, samples),
+            AudioBufferRef::U16(buf) => convert_samples(buf, samples),
+            AudioBufferRef::U24(buf) => convert_samples(buf, samples),
+            AudioBufferRef::U32(buf) => convert_samples(buf, samples),
+            AudioBufferRef::S8(buf) => convert_samples(buf, samples),
+            AudioBufferRef::S16(buf) => convert_samples(buf, samples),
+            AudioBufferRef::S24(buf) => convert_samples(buf, samples),
+            AudioBufferRef::S32(buf) => convert_samples(buf, samples),
+            AudioBufferRef::F32(buf) => convert_samples(buf, samples),
+            AudioBufferRef::F64(buf) => convert_samples(buf, samples),
+        }
+    }
+
+    loop {
+        // Check stop signal
+        if stop_signal.load(Ordering::Relaxed) {
+            break;
+        }
+
+        // If paused, sleep briefly and continue
+        if pause_signal.load(Ordering::Relaxed) {
+            thread::sleep(std::time::Duration::from_millis(10));
+            continue;
+        }
+
+        // Open and decode file
+        let file = match File::open(&path) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Streaming: Failed to open file {:?}: {}", path, e);
+                break;
+            }
+        };
+
+        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+        let mut hint = Hint::new();
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            hint.with_extension(ext);
+        }
+
+        let format_opts = FormatOptions::default();
+        let metadata_opts = MetadataOptions::default();
+        let decoder_opts = DecoderOptions::default();
+
+        let probed = match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Streaming: Failed to probe file {:?}: {}", path, e);
+                break;
+            }
+        };
+
+        let mut format = probed.format;
+        let track = match format.default_track() {
+            Some(t) => t,
+            None => {
+                eprintln!("Streaming: No default track found in {:?}", path);
+                break;
+            }
+        };
+
+        let mut decoder = match symphonia::default::get_codecs().make(&track.codec_params, &decoder_opts) {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("Streaming: Failed to create decoder for {:?}: {}", path, e);
+                break;
+            }
+        };
+
+        let mut samples = Vec::new();
+
+        // Decode loop
+        loop {
+            // Check stop/pause signals
+            if stop_signal.load(Ordering::Relaxed) {
+                return; // Exit thread entirely
+            }
+
+            if pause_signal.load(Ordering::Relaxed) {
+                thread::sleep(std::time::Duration::from_millis(10));
+                continue;
+            }
+
+            // Get next packet
+            let packet = match format.next_packet() {
+                Ok(p) => p,
+                Err(symphonia::core::errors::Error::IoError(e))
+                    if e.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    // End of file
+                    if looping {
+                        break; // Break inner loop, restart outer loop
+                    } else {
+                        return; // Exit thread
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Streaming: Error reading packet: {}", e);
+                    return;
+                }
+            };
+
+            // Decode packet
+            let decoded = match decoder.decode(&packet) {
+                Ok(d) => d,
+                Err(e) => {
+                    eprintln!("Streaming: Decode error: {}", e);
+                    continue;
+                }
+            };
+
+            // Convert to f32 samples
+            convert_audio_buffer(&decoded, &mut samples);
+
+            // Push samples to ring buffer (blocking if buffer is full)
+            let mut offset = 0;
+            while offset < samples.len() {
+                // Check stop signal even while pushing
+                if stop_signal.load(Ordering::Relaxed) {
+                    return;
+                }
+
+                // Try to push as much as possible
+                let pushed = ring_producer.push_slice(&samples[offset..]);
+                offset += pushed;
+
+                // If we couldn't push everything, the buffer is full - sleep briefly
+                if pushed == 0 {
+                    thread::sleep(std::time::Duration::from_millis(1));
+                }
+            }
+        }
+
+        // If not looping, we exit after one playthrough
+        if !looping {
+            break;
         }
     }
 }
@@ -231,22 +478,26 @@ impl AudioEngine {
                     let mut listener = listener_config_for_stream.lock().unwrap();
                     let mut spatial = spatial_params_for_stream.lock().unwrap();
 
+                    // Destructure state FIRST to get separate mutable references (satisfies borrow checker)
+                    let AudioCallbackState {
+                        ref mut active_sounds,
+                        ref mut streaming_sounds,
+                        ref mut temp_buffer,
+                        ref mut finished_sounds,
+                        ref mut finished_streams,
+                    } = *state;
+
                     // Process all pending commands (non-blocking)
                     while let Ok(cmd) = command_rx.try_recv() {
                         Self::handle_command(
                             cmd,
-                            &mut state.active_sounds,
+                            active_sounds,
+                            streaming_sounds,
                             &mut listener,
                             &mut spatial,
+                            sample_rate,
                         );
                     }
-
-                    // Destructure state to get separate mutable references (satisfies borrow checker)
-                    let AudioCallbackState {
-                        ref mut active_sounds,
-                        ref mut temp_buffer,
-                        ref mut finished_sounds,
-                    } = *state;
 
                     // Mix all active sounds into the output buffer (allocation-free)
                     Self::mix_sounds(
@@ -257,6 +508,14 @@ impl AudioEngine {
                         &listener,
                         &spatial,
                         sample_rate,
+                        channels,
+                    );
+
+                    // Mix streaming sounds into the output buffer
+                    Self::mix_streaming_sounds(
+                        data,
+                        streaming_sounds,
+                        finished_streams,
                         channels,
                     );
 
@@ -289,8 +548,10 @@ impl AudioEngine {
     fn handle_command(
         cmd: AudioCommand,
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
         listener: &mut ListenerConfig,
         spatial: &mut SpatialParams,
+        sample_rate: f32,
     ) {
         match cmd {
             AudioCommand::Play { id, mixer, looping } => {
@@ -422,6 +683,68 @@ impl AudioEngine {
                     sound.rate_tween_duration = duration;
                     sound.rate_tween_start_value = sound.playback_rate;
                     sound.rate_tween_target_value = target_rate.max(0.1); // Prevent division by zero
+                }
+            }
+            // Streaming commands
+            AudioCommand::StreamFile {
+                id,
+                path,
+                looping,
+                volume,
+                pan,
+            } => {
+                // Create ring buffer (5 seconds of stereo audio at 44.1kHz = ~441000 samples)
+                let ring_buffer_size = (sample_rate * 5.0 * 2.0) as usize;
+                let ring_buffer = HeapRb::<f32>::new(ring_buffer_size);
+                let (ring_producer, ring_consumer) = ring_buffer.split();
+
+                // Create control signals
+                let stop_signal = Arc::new(AtomicBool::new(false));
+                let pause_signal = Arc::new(AtomicBool::new(false));
+
+                // Spawn decoder thread
+                let stop_signal_clone = Arc::clone(&stop_signal);
+                let pause_signal_clone = Arc::clone(&pause_signal);
+                let decoder_thread = thread::spawn(move || {
+                    decoder_thread_func(path, ring_producer, stop_signal_clone, pause_signal_clone, looping);
+                });
+
+                // Add to streaming sounds
+                streaming_sounds.insert(
+                    id,
+                    StreamingSound {
+                        ring_consumer,
+                        decoder_thread: Some(decoder_thread),
+                        stop_signal,
+                        pause_signal,
+                        volume,
+                        pan,
+                        looping,
+                    },
+                );
+            }
+            AudioCommand::StopStream { id } => {
+                // Removing from HashMap will trigger Drop, which signals thread to stop
+                streaming_sounds.remove(&id);
+            }
+            AudioCommand::PauseStream { id } => {
+                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                    stream.pause_signal.store(true, Ordering::Relaxed);
+                }
+            }
+            AudioCommand::ResumeStream { id } => {
+                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                    stream.pause_signal.store(false, Ordering::Relaxed);
+                }
+            }
+            AudioCommand::SetStreamVolume { id, volume } => {
+                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                    stream.volume = volume.clamp(0.0, 1.0);
+                }
+            }
+            AudioCommand::SetStreamPan { id, pan } => {
+                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                    stream.pan = pan.clamp(-1.0, 1.0);
                 }
             }
         }
@@ -595,6 +918,79 @@ impl AudioEngine {
         // Clamp output to prevent distortion
         for sample in output.iter_mut() {
             *sample = sample.clamp(-1.0, 1.0);
+        }
+    }
+
+    /// Mix streaming sounds into the output buffer (called from audio thread)
+    ///
+    /// Reads decoded samples from ring buffers and mixes them into the output.
+    /// This is ALLOCATION-FREE and lock-free (uses lockless ring buffer).
+    fn mix_streaming_sounds(
+        output: &mut [f32],
+        streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
+        finished_streams: &mut Vec<SoundId>,
+        channels: usize,
+    ) {
+        // Clear finished streams list
+        finished_streams.clear();
+
+        // Mix each streaming sound
+        for (id, stream) in streaming_sounds.iter_mut() {
+            // Check if the decoder thread has finished
+            if let Some(handle) = &stream.decoder_thread {
+                if handle.is_finished() {
+                    // Thread finished - mark for removal
+                    finished_streams.push(*id);
+                    continue;
+                }
+            }
+
+            // Read available samples from ring buffer
+            let available = stream.ring_consumer.occupied_len();
+            if available == 0 {
+                // Buffer underrun - could happen at start or if decoding is slow
+                continue;
+            }
+
+            // Calculate how many samples we need (limited by output buffer size)
+            let samples_needed = output.len().min(available);
+
+            // Mix samples into output
+            for i in (0..samples_needed).step_by(channels) {
+                // Pop samples from ring buffer
+                let left = stream.ring_consumer.try_pop().unwrap_or(0.0);
+                let right = if channels == 2 {
+                    stream.ring_consumer.try_pop().unwrap_or(0.0)
+                } else {
+                    left // Mono - use same sample for both channels
+                };
+
+                // Apply volume and pan
+                let pan = stream.pan;
+                let left_gain = if pan <= 0.0 {
+                    1.0
+                } else {
+                    1.0 - pan
+                } * stream.volume;
+                let right_gain = if pan >= 0.0 {
+                    1.0
+                } else {
+                    1.0 + pan
+                } * stream.volume;
+
+                // Mix into output (additively)
+                if i < output.len() {
+                    output[i] += left * left_gain;
+                }
+                if i + 1 < output.len() {
+                    output[i + 1] += right * right_gain;
+                }
+            }
+        }
+
+        // Remove finished streams
+        for id in finished_streams.iter() {
+            streaming_sounds.remove(id);
         }
     }
 
@@ -1182,6 +1578,161 @@ impl AudioEngine {
 
     // ============================================================================
     // End Spatial Audio Control Methods
+    // ============================================================================
+
+    // ============================================================================
+    // Streaming Audio Methods
+    // ============================================================================
+
+    /// Stream an audio file from disk without loading it entirely into memory
+    ///
+    /// Ideal for long background music, ambient sounds, or any audio where memory
+    /// usage is a concern. The file is decoded on-the-fly in a background thread
+    /// and streamed through a lock-free ring buffer.
+    ///
+    /// Supports MP3, OGG, FLAC, WAV, and AAC formats via symphonia.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the audio file to stream
+    ///
+    /// # Returns
+    /// `SoundId` - Unique identifier for controlling this stream
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Stream a long background music file
+    /// let music_id = engine.stream_file("assets/background_music.mp3")?;
+    ///
+    /// // Control the stream
+    /// engine.set_stream_volume(music_id, 0.5)?;
+    /// engine.pause_stream(music_id)?;
+    /// engine.resume_stream(music_id)?;
+    /// engine.stop_stream(music_id)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn stream_file<P: Into<PathBuf>>(&self, path: P) -> Result<SoundId> {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        self.command_tx
+            .send(AudioCommand::StreamFile {
+                id,
+                path: path.into(),
+                looping: false,
+                volume: 1.0,
+                pan: 0.0,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(id)
+    }
+
+    /// Stream an audio file in a loop
+    ///
+    /// Like `stream_file()`, but automatically restarts the file from the beginning
+    /// when it finishes. Perfect for looping background music.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the audio file to stream
+    ///
+    /// # Returns
+    /// `SoundId` - Unique identifier for controlling this stream
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Loop background music forever
+    /// let music_id = engine.stream_file_looping("assets/music_loop.mp3")?;
+    ///
+    /// // Stop when done
+    /// engine.stop_stream(music_id)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn stream_file_looping<P: Into<PathBuf>>(&self, path: P) -> Result<SoundId> {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        self.command_tx
+            .send(AudioCommand::StreamFile {
+                id,
+                path: path.into(),
+                looping: true,
+                volume: 1.0,
+                pan: 0.0,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(id)
+    }
+
+    /// Stop a streaming audio file
+    ///
+    /// Stops the decoder thread and removes the stream. The sound will stop immediately.
+    ///
+    /// # Arguments
+    /// * `id` - The stream ID returned by `stream_file()` or `stream_file_looping()`
+    pub fn stop_stream(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::StopStream { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Pause a streaming audio file
+    ///
+    /// Pauses playback without stopping the decoder thread. Use `resume_stream()` to continue.
+    ///
+    /// # Arguments
+    /// * `id` - The stream ID to pause
+    pub fn pause_stream(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::PauseStream { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Resume a paused streaming audio file
+    ///
+    /// Resumes playback of a stream that was paused with `pause_stream()`.
+    ///
+    /// # Arguments
+    /// * `id` - The stream ID to resume
+    pub fn resume_stream(&self, id: SoundId) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::ResumeStream { id })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Set the volume of a streaming audio file
+    ///
+    /// # Arguments
+    /// * `id` - The stream ID to modify
+    /// * `volume` - Volume level (0.0 = silence, 1.0 = full volume)
+    pub fn set_stream_volume(&self, id: SoundId, volume: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetStreamVolume { id, volume })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Set the stereo pan of a streaming audio file
+    ///
+    /// # Arguments
+    /// * `id` - The stream ID to modify
+    /// * `pan` - Pan position (-1.0 = full left, 0.0 = center, 1.0 = full right)
+    pub fn set_stream_pan(&self, id: SoundId, pan: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetStreamPan { id, pan })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    // ============================================================================
+    // End Streaming Audio Methods
     // ============================================================================
 
     /// Block until a sound finishes playing
