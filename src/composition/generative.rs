@@ -7,6 +7,8 @@ use super::TrackBuilder;
 use super::drums::DrumType;
 use crate::theory::core::ChordPattern;
 use crate::track::AudioEvent;
+use crate::synthesis::waveform::Waveform;
+use crate::synthesis::envelope::Envelope;
 use rand::Rng;
 
 /// Generate a random walk sequence that can be used with sequence_from()
@@ -251,6 +253,30 @@ impl<'a> TransformBuilder<'a> {
     /// Invert pitches around axis with range constraints
     pub fn invert_constrained(mut self, axis_freq: f32, min_freq: f32, max_freq: f32) -> Self {
         self.inner = self.inner.invert_constrained(axis_freq, min_freq, max_freq);
+        self
+    }
+
+    /// Filter to keep only notes within frequency range
+    pub fn sieve_inclusive(mut self, min_freq: f32, max_freq: f32) -> Self {
+        self.inner = self.inner.sieve_inclusive(min_freq, max_freq);
+        self
+    }
+
+    /// Filter to remove notes within frequency range
+    pub fn sieve_exclusive(mut self, min_freq: f32, max_freq: f32) -> Self {
+        self.inner = self.inner.sieve_exclusive(min_freq, max_freq);
+        self
+    }
+
+    /// Collapse sequential notes into a single chord
+    pub fn group(mut self, duration: f32) -> Self {
+        self.inner = self.inner.group(duration);
+        self
+    }
+
+    /// Duplicate all events in the pattern
+    pub fn duplicate(mut self) -> Self {
+        self.inner = self.inner.duplicate();
         self
     }
 
@@ -558,6 +584,42 @@ impl<'a> GeneratorBuilder<'a> {
     /// Generate sixteenth notes
     pub fn sixteenths(mut self, notes: &[f32]) -> Self {
         self.inner = self.inner.sixteenths(notes);
+        self
+    }
+
+    /// Generate notes in an orbital pattern around a center pitch
+    pub fn orbit(mut self, center: f32, radius_semitones: f32, steps_per_rotation: usize, step_duration: f32, rotations: f32, clockwise: bool) -> Self {
+        self.inner = self.inner.orbit(center, radius_semitones, steps_per_rotation, step_duration, rotations, clockwise);
+        self
+    }
+
+    /// Generate a bouncing pitch pattern with damping
+    pub fn bounce(mut self, start: f32, stop: f32, ratio: f32, bounces: usize, steps_per_segment: usize, step_duration: f32) -> Self {
+        self.inner = self.inner.bounce(start, stop, ratio, bounces, steps_per_segment, step_duration);
+        self
+    }
+
+    /// Generate random notes scattered across a frequency range
+    pub fn scatter(mut self, min: f32, max: f32, count: usize, duration: f32) -> Self {
+        self.inner = self.inner.scatter(min, max, count, duration);
+        self
+    }
+
+    /// Generate a stream of repeated notes at a single frequency
+    pub fn stream(mut self, freq: f32, count: usize, duration: f32) -> Self {
+        self.inner = self.inner.stream(freq, count, duration);
+        self
+    }
+
+    /// Generate random notes picked from a provided set
+    pub fn random_notes(mut self, notes: &[f32], count: usize, duration: f32) -> Self {
+        self.inner = self.inner.random_notes(notes, count, duration);
+        self
+    }
+
+    /// Generate completely random frequencies within a range
+    pub fn sprinkle(mut self, min: f32, max: f32, count: usize, duration: f32) -> Self {
+        self.inner = self.inner.sprinkle(min, max, count, duration);
         self
     }
 }
@@ -2210,6 +2272,266 @@ impl<'a> TrackBuilder<'a> {
 
         self
     }
+
+    /// Filter to keep only notes within frequency range
+    ///
+    /// Removes all notes whose frequencies fall outside [min_freq, max_freq].
+    /// Useful for isolating specific frequency bands or removing unwanted ranges.
+    ///
+    /// # Examples
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Keep only bass frequencies (20-200 Hz)
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C3, E3, G3, C4, E4, G4], 0.25)
+    ///     .sieve_inclusive(20.0, 200.0);  // Only bass notes remain
+    /// ```
+    pub fn sieve_inclusive(mut self, min_freq: f32, max_freq: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Filter notes to keep only those within frequency range
+        self.get_track_mut().events.retain(|event| {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        // Check if any frequency in the note is within range
+                        (0..note.num_freqs).any(|i| {
+                            let freq = note.frequencies[i];
+                            freq >= min_freq && freq <= max_freq
+                        })
+                    } else {
+                        true // Keep notes outside pattern
+                    }
+                }
+                _ => true, // Keep non-note events
+            }
+        });
+
+        self
+    }
+
+    /// Filter to remove notes within frequency range
+    ///
+    /// Removes all notes whose frequencies fall within [min_freq, max_freq].
+    /// Useful for removing specific frequency bands (e.g., muddy midrange).
+    ///
+    /// # Examples
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Remove midrange frequencies (200-800 Hz)
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C3, E3, G3, C4, E4, G4], 0.25)
+    ///     .sieve_exclusive(200.0, 800.0);  // Low and high notes remain
+    /// ```
+    pub fn sieve_exclusive(mut self, min_freq: f32, max_freq: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Filter notes to remove those within frequency range
+        self.get_track_mut().events.retain(|event| {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        // Keep note only if ALL frequencies are outside range
+                        (0..note.num_freqs).all(|i| {
+                            let freq = note.frequencies[i];
+                            freq < min_freq || freq > max_freq
+                        })
+                    } else {
+                        true // Keep notes outside pattern
+                    }
+                }
+                _ => true, // Keep non-note events
+            }
+        });
+
+        self
+    }
+
+    /// Collapse all notes in the pattern into a single chord
+    ///
+    /// Takes all notes from the pattern and plays them simultaneously as a chord.
+    /// Useful for converting melodies/arpeggios into harmonic blocks.
+    ///
+    /// # Examples
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Turn arpeggio into chord
+    /// comp.track("arp_to_chord")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .group(2.0);  // All notes play together for 2 seconds
+    /// ```
+    pub fn group(mut self, duration: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect all note frequencies from the pattern
+        let mut all_freqs = Vec::new();
+        let mut waveform = Waveform::Sine;
+        let mut envelope = Envelope::default();
+        let mut pitch_bend = 0.0;
+        let mut velocity = 1.0;
+
+        for event in &self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    // Collect all frequencies from this note
+                    for i in 0..note.num_freqs {
+                        all_freqs.push(note.frequencies[i]);
+                    }
+                    // Use properties from first note
+                    if all_freqs.len() <= note.num_freqs {
+                        waveform = note.waveform;
+                        envelope = note.envelope;
+                        pitch_bend = note.pitch_bend_semitones;
+                        velocity = note.velocity;
+                    }
+                }
+            }
+        }
+
+        if all_freqs.is_empty() {
+            return self;
+        }
+
+        // Remove all notes from the pattern
+        self.get_track_mut().events.retain(|event| {
+            match event {
+                AudioEvent::Note(note) => {
+                    note.start_time < pattern_start || note.start_time >= cursor
+                }
+                _ => true, // Keep non-note events
+            }
+        });
+
+        // Add a single chord with all frequencies
+        let mut freq_array = [0.0f32; 8];
+        let num_freqs = all_freqs.len().min(8);
+        for (i, &freq) in all_freqs.iter().take(8).enumerate() {
+            freq_array[i] = freq;
+        }
+
+        let chord_event = AudioEvent::Note(crate::track::NoteEvent {
+            frequencies: freq_array,
+            num_freqs,
+            start_time: pattern_start,
+            duration,
+            waveform,
+            envelope,
+            filter_envelope: crate::synthesis::filter_envelope::FilterEnvelope::default(),
+            fm_params: crate::synthesis::fm_synthesis::FMParams::default(),
+            pitch_bend_semitones: pitch_bend,
+            custom_wavetable: None,
+            velocity,
+            spatial_position: None,
+        });
+
+        self.get_track_mut().events.push(chord_event);
+
+        // Update cursor to after the chord
+        self.cursor = pattern_start + duration;
+
+        self
+    }
+
+    /// Duplicate all events in the pattern
+    ///
+    /// Creates a copy of all events and appends them after the pattern.
+    /// Unlike `.repeat()`, this allows transforms to be applied to the duplicated events.
+    ///
+    /// # Examples
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Create melody with octave doubling
+    /// comp.track("harmony")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .duplicate()
+    ///     .transform(|t| t.shift(12));  // Add octave above
+    /// ```
+    pub fn duplicate(mut self) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect all events in the pattern
+        let duplicated_events: Vec<_> = self
+            .get_track_mut()
+            .events
+            .iter()
+            .filter_map(|event| {
+                let event_time = event.start_time();
+                if event_time >= pattern_start && event_time < cursor {
+                    // Clone and shift to end of pattern
+                    let mut cloned = event.clone();
+                    match &mut cloned {
+                        AudioEvent::Note(note) => {
+                            note.start_time = note.start_time - pattern_start + cursor;
+                        }
+                        AudioEvent::Drum(drum) => {
+                            drum.start_time = drum.start_time - pattern_start + cursor;
+                        }
+                        AudioEvent::Sample(sample) => {
+                            sample.start_time = sample.start_time - pattern_start + cursor;
+                        }
+                        AudioEvent::TempoChange(tempo) => {
+                            tempo.start_time = tempo.start_time - pattern_start + cursor;
+                        }
+                        AudioEvent::TimeSignature(time_sig) => {
+                            time_sig.start_time = time_sig.start_time - pattern_start + cursor;
+                        }
+                        AudioEvent::KeySignature(key_sig) => {
+                            key_sig.start_time = key_sig.start_time - pattern_start + cursor;
+                        }
+                    }
+                    Some(cloned)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Add duplicated events
+        self.get_track_mut().events.extend(duplicated_events);
+
+        // Update cursor and pattern_start
+        // Set pattern_start to beginning of duplicated section so transforms only affect duplicated notes
+        self.pattern_start = cursor;
+        self.cursor = cursor + pattern_duration;
+
+        self
+    }
 }
 
 #[cfg(test)]
@@ -3584,6 +3906,321 @@ mod tests {
                 // Should be in the 5th octave (C5 and above)
                 assert!(note.frequencies[0] >= C5 - 1.0);
                 assert!(note.frequencies[0] <= E5 + 1.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_sieve_inclusive_keeps_only_range() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // C3 (~130Hz), E3 (~165Hz), G3 (~196Hz), C4 (~261Hz), E4 (~330Hz), G4 (~392Hz)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, E3, G3, C4, E4, G4], 0.25)
+            .sieve_inclusive(150.0, 300.0);  // Keep only E3, G3, C4
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 3 notes remaining (E3, G3, C4)
+        assert_eq!(events.len(), 3);
+
+        // Verify all remaining frequencies are in range
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                assert!(note.frequencies[0] >= 150.0);
+                assert!(note.frequencies[0] <= 300.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_sieve_inclusive_with_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .transform(|t| t.sieve_inclusive(250.0, 400.0));
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // C4 (~261Hz), E4 (~330Hz), and G4 (~392Hz) are in range
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_sieve_exclusive_removes_range() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Remove midrange frequencies
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, E3, G3, C4, E4, G4], 0.25)
+            .sieve_exclusive(150.0, 300.0);  // Remove E3, G3, C4
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 3 notes remaining (C3, E4, G4)
+        assert_eq!(events.len(), 3);
+
+        // Verify all remaining frequencies are outside range
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                assert!(note.frequencies[0] < 150.0 || note.frequencies[0] > 300.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_sieve_exclusive_with_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, E3, G3, C4, E4, G4], 0.25)
+            .transform(|t| t.sieve_exclusive(150.0, 300.0));
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_sieve_inclusive_empty_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Pattern start but no notes - should not crash
+        let builder = comp.track("empty")
+            .pattern_start()
+            .sieve_inclusive(100.0, 500.0);
+
+        assert_eq!(builder.cursor, 0.0);
+    }
+
+    #[test]
+    fn test_sieve_exclusive_empty_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let builder = comp.track("empty")
+            .pattern_start()
+            .sieve_exclusive(100.0, 500.0);
+
+        assert_eq!(builder.cursor, 0.0);
+    }
+
+    #[test]
+    fn test_sieve_chaining() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Chain both sieves
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, E3, G3, C4, E4, G4, C5], 0.25)
+            .transform(|t| t
+                .sieve_exclusive(100.0, 200.0)  // Remove low frequencies (C3, E3, G3)
+                .sieve_exclusive(380.0, 600.0)  // Remove high frequencies (G4, C5)
+            );
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should only have C4 and E4 remaining (G3 removed by first, G4+C5 removed by second)
+        assert_eq!(events.len(), 2);
+
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                let freq = note.frequencies[0];
+                // Should be between 200-380 Hz (C4 and E4)
+                assert!(freq > 200.0 && freq < 380.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_group_collapses_to_chord() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Sequential notes -> chord
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .group(2.0);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 1 chord instead of 4 notes
+        assert_eq!(events.len(), 1);
+
+        // Check it's a chord with 4 frequencies
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 4);
+            assert_eq!(note.duration, 2.0);
+        }
+    }
+
+    #[test]
+    fn test_group_with_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.5)
+            .transform(|t| t.group(1.5));
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn test_group_updates_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let builder = comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .group(3.0);
+
+        // Cursor should be at pattern_start + duration
+        assert_eq!(builder.cursor, 3.0);
+    }
+
+    #[test]
+    fn test_group_empty_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let builder = comp.track("empty")
+            .pattern_start()
+            .group(2.0);
+
+        assert_eq!(builder.cursor, 0.0);
+    }
+
+    #[test]
+    fn test_duplicate_doubles_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .duplicate();
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 6 notes (3 original + 3 duplicated)
+        assert_eq!(events.len(), 6);
+    }
+
+    #[test]
+    fn test_duplicate_with_transform() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("harmony")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .duplicate()
+            .transform(|t| t.shift(12));  // Shift duplicated notes
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 6 notes total
+        assert_eq!(events.len(), 6);
+
+        // Last 3 notes should be an octave higher
+        if let (AudioEvent::Note(original), AudioEvent::Note(shifted)) = (&events[0], &events[3]) {
+            let expected = original.frequencies[0] * 2.0; // One octave up
+            assert!((shifted.frequencies[0] - expected).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_duplicate_preserves_timing() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.5)
+            .duplicate();
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Check timing is preserved but shifted
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note3)) = (&events[0], &events[2]) {
+            assert_eq!(note1.start_time, 0.0);
+            assert_eq!(note3.start_time, 1.0); // After 2 notes of 0.5 duration each
+        }
+    }
+
+    #[test]
+    fn test_duplicate_with_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .transform(|t| t.duplicate());
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        assert_eq!(events.len(), 6);
+    }
+
+    #[test]
+    fn test_duplicate_updates_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let builder = comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .duplicate();
+
+        // Cursor should be doubled (3 notes * 0.25 * 2 = 1.5)
+        assert_eq!(builder.cursor, 1.5);
+    }
+
+    #[test]
+    fn test_duplicate_empty_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        let builder = comp.track("empty")
+            .pattern_start()
+            .duplicate();
+
+        assert_eq!(builder.cursor, 0.0);
+    }
+
+    #[test]
+    fn test_group_then_duplicate() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Group into chord, then duplicate
+        comp.track("chords")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .group(1.0)
+            .duplicate();
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 2 chords
+        assert_eq!(events.len(), 2);
+
+        // Both should be chords with 3 frequencies
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                assert_eq!(note.num_freqs, 3);
             }
         }
     }

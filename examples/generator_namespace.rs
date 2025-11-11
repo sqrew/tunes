@@ -13,7 +13,7 @@ fn main() -> anyhow::Result<()> {
     println!("🎯 Complete Generator API Demo\n");
 
     // ==================== GENERATOR NAMESPACE ====================
-    println!("🎼 GENERATOR NAMESPACE (40+ methods total):");
+    println!("🎼 GENERATOR NAMESPACE (50+ methods total):");
     println!("   CHORDS: chord, chord_inverted, chord_voice_lead, chord_over_bass, chords, chords_from");
     println!("   SCALES: scale, scale_reverse, scale_updown, scale_downup");
     println!("   ARPEGGIOS: arpeggiate, arpeggiate_reverse, arpeggiate_updown, arpeggiate_downup");
@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
     println!("   TUPLETS: tuplet, triplet, quintuplet, sextuplet, septuplet");
     println!("   MUSICAL: octaves, pedal, sequence_from");
     println!("   PORTAMENTO: slide");
+    println!("   ALGORITHMIC: orbit, bounce, scatter, stream, random_notes, sprinkle");
     println!("   TIME-BASED: wholes, halves, quarters, eighths, sixteenths\n");
 
     // ==================== CHORDS ====================
@@ -68,12 +69,54 @@ fn main() -> anyhow::Result<()> {
             .scale(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.125)
         );
 
+    // ==================== ORBIT ====================
+    comp.instrument("orbit", &Instrument::synth_lead())
+        .wait(7.0)
+        .generator(|g| g
+            .orbit(A4, 7.0, 16, 0.0625, 1.5, true)  // 1.5 orbits around A4
+        );
+
+    // ==================== BOUNCE ====================
+    comp.instrument("bounce", &Instrument::pluck())
+        .wait(8.5)
+        .generator(|g| g
+            .bounce(523.25, 261.63, 0.6, 3, 6, 0.0833)  // C5 bouncing to C4
+        );
+
+    // ==================== SCATTER ====================
+    comp.instrument("scatter", &Instrument::synth_lead())
+        .wait(10.0)
+        .generator(|g| g
+            .scatter(300.0, 900.0, 16, 0.0625)  // Random notes 300-900Hz
+        );
+
+    // ==================== STREAM ====================
+    comp.instrument("stream", &Instrument::electric_piano())
+        .wait(11.0)
+        .generator(|g| g
+            .stream(440.0, 16, 0.0625)  // Repeated A4 notes (drone/ostinato)
+        );
+
+    // ==================== RANDOM_NOTES ====================
+    comp.instrument("random", &Instrument::synth_lead())
+        .wait(12.0)
+        .generator(|g| g
+            .random_notes(&[C5, E5, G5, C6], 16, 0.0625)  // Random from C major triad
+        );
+
+    // ==================== SPRINKLE ====================
+    comp.instrument("sprinkle", &Instrument::synth_lead())
+        .wait(13.0)
+        .generator(|g| g
+            .sprinkle(250.0, 850.0, 16, 0.0625)  // Continuous random f32 frequencies (no snapping)
+        );
+
     // ==================== COMBINED WITH TRANSFORMS ====================
     println!("🔗 COMBINED - Generators + Transforms:");
     println!("   Chain generators with transforms for complete control\n");
 
     comp.instrument("combined", &Instrument::synth_lead())
-        .wait(7.0)
+        .wait(14.0)
         .generator(|g| g
             .chord(C5, &ChordPattern::MAJOR, 0.25)
             .chord(F5, &ChordPattern::MAJOR, 0.25)
@@ -88,7 +131,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Create complex musical phrases in stages\n");
 
     comp.instrument("chained", &Instrument::electric_piano())
-        .wait(8.0)
+        .wait(15.0)
         // First: Generate a chord progression
         .generator(|g| g
             .chord(C4, &ChordPattern::MAJOR, 0.5)
@@ -104,7 +147,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Direct method calls for quick live coding\n");
 
     comp.instrument("old_style", &Instrument::electric_piano())
-        .wait(9.0)
+        .wait(16.0)
         // Old direct-call syntax (no namespace)
         .chord(G4, &ChordPattern::MAJOR7, 0.5)
         .arpeggiate(&[G4, B4, D5, F5], 0.125);
@@ -116,7 +159,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("✅ Demo complete!\n");
     println!("💡 Benefits of generator namespace:");
-    println!("   📦 Organized - 40+ note generators clearly grouped");
+    println!("   📦 Organized - 50+ note generators clearly grouped");
     println!("   🔍 Discoverable - Type .generator() to see all note-producing methods");
     println!("   🧹 Clean autocomplete - Only see generator methods in this namespace");
     println!("   📖 Readable - Visual boundaries clarify intent");

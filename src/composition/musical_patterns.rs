@@ -1,4 +1,6 @@
 use super::TrackBuilder;
+use rand::Rng;
+use std::f32::consts::PI;
 
 impl<'a> TrackBuilder<'a> {
     /// Add a sequence of chords with equal duration starting at the current cursor position
@@ -678,13 +680,379 @@ impl<'a> TrackBuilder<'a> {
         }
         self
     }
+
+    /// Generate notes in an orbital pattern around a center pitch
+    ///
+    /// Creates a smooth sinusoidal pattern of pitches that oscillate around a center frequency,
+    /// like a planet orbiting a star.
+    ///
+    /// # Arguments
+    /// * `center` - The center pitch to orbit around (e.g., C4, A4)
+    /// * `radius_semitones` - Maximum distance from center in semitones (e.g., 7 for a fifth, 12 for an octave)
+    /// * `steps_per_rotation` - Number of notes in one complete orbit (resolution)
+    /// * `step_duration` - Duration of each note in seconds
+    /// * `rotations` - Number of complete orbits (can be fractional, e.g., 1.0, 2.5, 0.5)
+    /// * `clockwise` - Direction: true = start ascending, false = start descending
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("orbit", &Instrument::synth_lead())
+    ///     .orbit(C4, 7.0, 16, 0.125, 2.0, true);  // Two complete orbits, 16 steps each
+    /// ```
+    pub fn orbit(
+        mut self,
+        center: f32,
+        radius_semitones: f32,
+        steps_per_rotation: usize,
+        step_duration: f32,
+        rotations: f32,
+        clockwise: bool,
+    ) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        // Calculate total number of notes
+        let total_steps = (steps_per_rotation as f32 * rotations) as usize;
+
+        for i in 0..total_steps {
+            // Calculate angle for this step (spans multiple rotations)
+            let angle = (i as f32 / steps_per_rotation as f32) * 2.0 * PI;
+
+            // Use sine wave to create smooth oscillation
+            // Clockwise: start at 0, go positive (up in pitch)
+            // Counter-clockwise: start at 0, go negative (down in pitch)
+            let direction = if clockwise { 1.0 } else { -1.0 };
+            let semitone_offset = radius_semitones * (angle.sin() * direction);
+
+            // Convert semitone offset to frequency multiplier
+            let freq = center * 2.0_f32.powf(semitone_offset / 12.0);
+
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    step_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(step_duration);
+            self.cursor += swung_duration;
+        }
+
+        self.update_section_duration();
+        self
+    }
+
+    /// Generate a bouncing pitch pattern that settles toward a floor frequency
+    ///
+    /// Simulates a bouncing ball in pitch space with damping. Starts at a high pitch,
+    /// falls to a floor, then bounces back up with decreasing height each time.
+    ///
+    /// # Arguments
+    /// * `start` - Starting frequency (e.g., 440.0 for A4)
+    /// * `stop` - Floor frequency where bounces occur (e.g., 220.0 for A3)
+    /// * `ratio` - Damping ratio for each bounce (0.0-1.0, e.g., 0.5 = each bounce is 50% of previous height)
+    /// * `bounces` - Number of times to bounce back up
+    /// * `steps_per_segment` - Number of notes in each rise/fall segment
+    /// * `step_duration` - Duration of each note in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("bounce", &Instrument::synth_lead())
+    ///     .bounce(440.0, 220.0, 0.6, 3, 8, 0.0625);  // Bouncing ball effect
+    /// ```
+    pub fn bounce(
+        mut self,
+        start: f32,
+        stop: f32,
+        ratio: f32,
+        bounces: usize,
+        steps_per_segment: usize,
+        step_duration: f32,
+    ) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        // Initial fall from start to stop
+        for i in 0..steps_per_segment {
+            let t = i as f32 / (steps_per_segment - 1) as f32;
+            let freq = start + (stop - start) * t;
+
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    step_duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(step_duration);
+            self.cursor += swung_duration;
+        }
+
+        // Calculate initial bounce height
+        let initial_height = start - stop;
+
+        // Generate each bounce
+        for bounce in 1..=bounces {
+            // Calculate bounce height with damping
+            let bounce_height = initial_height * ratio.powi(bounce as i32);
+            let peak = stop + bounce_height;
+
+            // Rise from floor to peak
+            for i in 0..steps_per_segment {
+                let t = i as f32 / (steps_per_segment - 1) as f32;
+                let freq = stop + (peak - stop) * t;
+
+                let cursor = self.cursor;
+                self.get_track_mut()
+                    .add_note_with_waveform_envelope_and_bend(
+                        &[freq],
+                        cursor,
+                        step_duration,
+                        waveform,
+                        envelope,
+                        pitch_bend,
+                    );
+
+                let swung_duration = self.apply_swing(step_duration);
+                self.cursor += swung_duration;
+            }
+
+            // Fall from peak back to floor
+            for i in 0..steps_per_segment {
+                let t = i as f32 / (steps_per_segment - 1) as f32;
+                let freq = peak + (stop - peak) * t;
+
+                let cursor = self.cursor;
+                self.get_track_mut()
+                    .add_note_with_waveform_envelope_and_bend(
+                        &[freq],
+                        cursor,
+                        step_duration,
+                        waveform,
+                        envelope,
+                        pitch_bend,
+                    );
+
+                let swung_duration = self.apply_swing(step_duration);
+                self.cursor += swung_duration;
+            }
+        }
+
+        self.update_section_duration();
+        self
+    }
+
+    /// Generate random notes scattered across a frequency range
+    ///
+    /// Creates a sequence of random pitches within a specified range. Each note
+    /// has a random frequency uniformly distributed between min and max.
+    ///
+    /// # Arguments
+    /// * `min` - Minimum frequency in Hz (e.g., 220.0 for A3)
+    /// * `max` - Maximum frequency in Hz (e.g., 880.0 for A5)
+    /// * `count` - Number of random notes to generate
+    /// * `duration` - Duration of each note in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("scatter", &Instrument::synth_lead())
+    ///     .scatter(200.0, 800.0, 32, 0.0625);  // 32 random notes in that range
+    /// ```
+    pub fn scatter(mut self, min: f32, max: f32, count: usize, duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        let mut rng = rand::rng();
+
+        for _ in 0..count {
+            // Generate random frequency in range
+            let freq = rng.random_range(min..=max);
+
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(duration);
+            self.cursor += swung_duration;
+        }
+
+        self.update_section_duration();
+        self
+    }
+
+    /// Generate a stream of repeated notes at a single frequency
+    ///
+    /// Creates a sequence of identical notes - perfect for drones, ostinatos,
+    /// or as a base pattern for transforms.
+    ///
+    /// # Arguments
+    /// * `freq` - Frequency in Hz (e.g., 440.0 for A4)
+    /// * `count` - Number of notes to generate
+    /// * `duration` - Duration of each note in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("stream", &Instrument::synth_lead())
+    ///     .stream(440.0, 16, 0.125);  // 16 repeated A4 notes
+    /// ```
+    pub fn stream(mut self, freq: f32, count: usize, duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        for _ in 0..count {
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(duration);
+            self.cursor += swung_duration;
+        }
+
+        self.update_section_duration();
+        self
+    }
+
+    /// Generate random notes picked from a provided set
+    ///
+    /// Randomly selects notes from a provided array with equal probability.
+    /// Perfect for generative music within a scale, chord, or any custom note set.
+    ///
+    /// # Arguments
+    /// * `notes` - Array of frequencies to randomly choose from (e.g., scale or chord tones)
+    /// * `count` - Number of random notes to generate
+    /// * `duration` - Duration of each note in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("random", &Instrument::synth_lead())
+    ///     .random_notes(&[C4, E4, G4, C5], 16, 0.125);  // Random notes from C major triad
+    /// ```
+    pub fn random_notes(mut self, notes: &[f32], count: usize, duration: f32) -> Self {
+        if notes.is_empty() {
+            return self;
+        }
+
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        let mut rng = rand::rng();
+
+        for _ in 0..count {
+            // Pick a random note from the array
+            let idx = rng.random_range(0..notes.len());
+            let freq = notes[idx];
+
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(duration);
+            self.cursor += swung_duration;
+        }
+
+        self.update_section_duration();
+        self
+    }
+
+    /// Generate completely random frequencies within a range
+    ///
+    /// Creates random f32 frequencies with no snapping or quantization.
+    /// Unlike discrete note selection, this produces truly continuous pitch values.
+    ///
+    /// # Arguments
+    /// * `min` - Minimum frequency (Hz)
+    /// * `max` - Maximum frequency (Hz)
+    /// * `count` - Number of random notes to generate
+    /// * `duration` - Duration of each note in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("sprinkle", &Instrument::synth_lead())
+    ///     .sprinkle(220.0, 440.0, 8, 0.125);  // Random f32 frequencies between A3-A4
+    /// ```
+    pub fn sprinkle(mut self, min: f32, max: f32, count: usize, duration: f32) -> Self {
+        let waveform = self.waveform;
+        let envelope = self.envelope;
+        let pitch_bend = self.pitch_bend;
+
+        let mut rng = rand::rng();
+
+        for _ in 0..count {
+            // Generate completely random f32 frequency
+            let freq = rng.random_range(min..=max);
+
+            let cursor = self.cursor;
+            self.get_track_mut()
+                .add_note_with_waveform_envelope_and_bend(
+                    &[freq],
+                    cursor,
+                    duration,
+                    waveform,
+                    envelope,
+                    pitch_bend,
+                );
+
+            let swung_duration = self.apply_swing(duration);
+            self.cursor += swung_duration;
+        }
+
+        self.update_section_duration();
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::consts::notes::*;
     use crate::composition::rhythm::Tempo;
+    use crate::consts::notes::*;
+    use crate::prelude::Instrument;
     use crate::track::AudioEvent;
 
     #[test]
@@ -1062,8 +1430,12 @@ mod tests {
     #[test]
     fn test_progression_creates_triads() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("prog")
-            .progression(C4, &crate::theory::core::ScalePattern::MAJOR, &[1, 4, 5, 1], 1.0);
+        comp.track("prog").progression(
+            C4,
+            &crate::theory::core::ScalePattern::MAJOR,
+            &[1, 4, 5, 1],
+            1.0,
+        );
 
         let track = &comp.into_mixer().tracks()[0];
         // Should have 4 chords (I-IV-V-I)
@@ -1116,8 +1488,12 @@ mod tests {
     #[test]
     fn test_progression_with_different_scales() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("minor")
-            .progression(A3, &crate::theory::core::ScalePattern::MINOR, &[1, 4, 5], 1.0);
+        comp.track("minor").progression(
+            A3,
+            &crate::theory::core::ScalePattern::MINOR,
+            &[1, 4, 5],
+            1.0,
+        );
 
         let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
@@ -1134,5 +1510,358 @@ mod tests {
         let track = &comp.into_mixer().tracks()[0];
         // 1 note + 2 chords + 1 note = 4 events
         assert_eq!(track.events.len(), 4);
+    }
+
+    #[test]
+    fn test_orbit_generates_correct_number_of_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("orbit").orbit(C4, 7.0, 16, 0.125, 1.0, true);
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 16);
+    }
+
+    #[test]
+    fn test_orbit_advances_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("orbit").orbit(C4, 12.0, 8, 0.25, 1.0, false);
+
+        // 8 steps * 0.25 duration = 2.0
+        assert_eq!(builder.cursor, 2.0);
+    }
+
+    #[test]
+    fn test_orbit_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("orbit_ns")
+            .generator(|g| g.orbit(A4, 5.0, 12, 0.1, 1.0, true));
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 12);
+    }
+
+    #[test]
+    fn test_orbit_clockwise_vs_counterclockwise() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("cw").orbit(C4, 12.0, 4, 0.25, 1.0, true);
+        comp.track("ccw").orbit(C4, 12.0, 4, 0.25, 1.0, false);
+
+        let mixer = comp.into_mixer();
+        let cw_track = &mixer.tracks()[0];
+        let ccw_track = &mixer.tracks()[1];
+
+        // Both should have same number of notes
+        assert_eq!(cw_track.events.len(), 4);
+        assert_eq!(ccw_track.events.len(), 4);
+
+        // Pitches should be different (opposite directions)
+        if let (AudioEvent::Note(cw_note), AudioEvent::Note(ccw_note)) =
+            (&cw_track.events[1], &ccw_track.events[1])
+        {
+            // At step 1, clockwise goes up, counterclockwise goes down
+            // They should have different pitches
+            assert_ne!(cw_note.frequencies[0], ccw_note.frequencies[0]);
+        }
+    }
+
+    #[test]
+    fn test_orbit_multiple_rotations() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("double").orbit(C4, 7.0, 8, 0.125, 2.0, true); // 2 complete rotations
+
+        let track = &comp.into_mixer().tracks()[0];
+        // 8 steps per rotation * 2 rotations = 16 notes
+        assert_eq!(track.events.len(), 16);
+    }
+
+    #[test]
+    fn test_orbit_fractional_rotations() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("half").orbit(C4, 12.0, 16, 0.0625, 0.5, true); // Half rotation
+
+        let track = &comp.into_mixer().tracks()[0];
+        // 16 steps per rotation * 0.5 = 8 notes
+        assert_eq!(track.events.len(), 8);
+    }
+
+    #[test]
+    fn test_bounce_generates_correct_number_of_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("bounce").bounce(440.0, 220.0, 0.5, 2, 4, 0.125);
+
+        let track = &comp.into_mixer().tracks()[0];
+        // Initial fall (4) + bounce1 up (4) + bounce1 down (4) + bounce2 up (4) + bounce2 down (4) = 20
+        assert_eq!(track.events.len(), 20);
+    }
+
+    #[test]
+    fn test_bounce_pitch_descends_initially() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("bounce").bounce(440.0, 220.0, 0.6, 1, 8, 0.0625);
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        // Check first note is near start frequency
+        if let AudioEvent::Note(first_note) = &track.events[0] {
+            assert!((first_note.frequencies[0] - 440.0).abs() < 1.0);
+        }
+
+        // Check that pitch generally descends in first segment
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) =
+            (&track.events[0], &track.events[4])
+        {
+            assert!(note1.frequencies[0] > note2.frequencies[0]);
+        }
+    }
+
+    #[test]
+    fn test_bounce_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("bounce_ns")
+            .generator(|g| g.bounce(330.0, 165.0, 0.7, 3, 4, 0.1));
+
+        let track = &comp.into_mixer().tracks()[0];
+        // Initial fall (4) + 3 bounces * 2 segments each * 4 notes = 4 + 24 = 28
+        assert_eq!(track.events.len(), 28);
+    }
+
+    #[test]
+    fn test_bounce_zero_bounces() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("fall").bounce(440.0, 220.0, 0.5, 0, 8, 0.125);
+
+        let track = &comp.into_mixer().tracks()[0];
+        // Only the initial fall, no bounces
+        assert_eq!(track.events.len(), 8);
+    }
+
+    #[test]
+    fn test_scatter_generates_correct_count() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("scatter").scatter(200.0, 800.0, 24, 0.125);
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 24);
+    }
+
+    #[test]
+    fn test_scatter_stays_in_range() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("scatter").scatter(300.0, 600.0, 50, 0.0625);
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        // All notes should be within range
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                assert!(note.frequencies[0] >= 300.0);
+                assert!(note.frequencies[0] <= 600.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_scatter_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("scatter_ns")
+            .generator(|g| g.scatter(220.0, 880.0, 16, 0.1));
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 16);
+    }
+
+    #[test]
+    fn test_scatter_advances_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("scatter").scatter(400.0, 800.0, 10, 0.25);
+
+        // 10 notes * 0.25 duration = 2.5
+        assert_eq!(builder.cursor, 2.5);
+    }
+
+    #[test]
+    fn test_stream_generates_correct_count() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("stream").stream(440.0, 16, 0.125);
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 16);
+    }
+
+    #[test]
+    fn test_stream_all_same_frequency() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("stream").stream(523.25, 8, 0.25);
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        // All notes should be the same frequency
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                assert!((note.frequencies[0] - 523.25).abs() < 0.01);
+            }
+        }
+    }
+
+    #[test]
+    fn test_stream_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("stream_ns")
+            .generator(|g| g.stream(330.0, 12, 0.1));
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 12);
+    }
+
+    #[test]
+    fn test_stream_advances_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("stream").stream(880.0, 8, 0.125);
+
+        // 8 notes * 0.125 duration = 1.0
+        assert_eq!(builder.cursor, 1.0);
+    }
+
+    #[test]
+    fn test_random_notes_generates_correct_count() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("random")
+            .random_notes(&[C4, E4, G4, C5], 20, 0.125);
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 20);
+    }
+
+    #[test]
+    fn test_random_notes_only_picks_from_set() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let note_set = vec![261.63, 329.63, 392.0]; // C4, E4, G4
+        comp.track("random").random_notes(&note_set, 30, 0.0625);
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        // All notes should be from the provided set
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                let freq = note.frequencies[0];
+                assert!(
+                    (freq - 261.63).abs() < 0.1
+                        || (freq - 329.63).abs() < 0.1
+                        || (freq - 392.0).abs() < 0.1,
+                    "Note {} not in set",
+                    freq
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_random_notes_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("random_ns")
+            .generator(|g| g.random_notes(&[D4, F4, A4], 12, 0.1));
+
+        let track = &comp.into_mixer().tracks()[0];
+        assert_eq!(track.events.len(), 12);
+    }
+
+    #[test]
+    fn test_random_notes_empty_array() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("empty").random_notes(&[], 10, 0.125);
+
+        // Should return without advancing cursor if array is empty
+        assert_eq!(builder.cursor, 0.0);
+    }
+
+    #[test]
+    fn test_random_notes_advances_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("random").random_notes(&[C4, E4, G4], 8, 0.25);
+
+        // 8 notes * 0.25 duration = 2.0
+        assert_eq!(builder.cursor, 2.0);
+    }
+
+    #[test]
+    fn test_sprinkle_generates_correct_count() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.instrument("sprinkle", &Instrument::synth_lead())
+            .sprinkle(200.0, 800.0, 12, 0.125);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks()[0];
+
+        // 12 notes
+        assert_eq!(track.events.len(), 12);
+    }
+
+    #[test]
+    fn test_sprinkle_within_range() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.instrument("sprinkle", &Instrument::synth_lead())
+            .sprinkle(220.0, 440.0, 20, 0.1);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks()[0];
+
+        // All frequencies should be within range
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                let freq = note.frequencies[0];
+                assert!(
+                    freq >= 220.0 && freq <= 440.0,
+                    "Frequency {} outside range 220-440",
+                    freq
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_sprinkle_with_generator_namespace() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.instrument("sprinkle", &Instrument::synth_lead())
+            .generator(|g| g.sprinkle(300.0, 600.0, 8, 0.125));
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks()[0];
+
+        assert_eq!(track.events.len(), 8);
+    }
+
+    #[test]
+    fn test_sprinkle_advances_cursor() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        let builder = comp.track("sprinkle").sprinkle(100.0, 1000.0, 16, 0.0625);
+
+        // 16 notes * 0.0625 duration = 1.0
+        assert_eq!(builder.cursor, 1.0);
+    }
+
+    #[test]
+    fn test_sprinkle_generates_continuous_values() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.instrument("sprinkle", &Instrument::synth_lead())
+            .sprinkle(220.0, 440.0, 50, 0.05);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks()[0];
+
+        // Check that we get variety (not all the same frequency)
+        let mut freqs = std::collections::HashSet::new();
+        for event in &track.events {
+            if let AudioEvent::Note(note) = event {
+                let freq = note.frequencies[0];
+                freqs.insert((freq * 100.0) as i32); // Discretize for comparison
+            }
+        }
+
+        // With 50 random samples, we should get many different values
+        assert!(
+            freqs.len() > 10,
+            "Expected diverse frequencies, got only {} unique values",
+            freqs.len()
+        );
     }
 }

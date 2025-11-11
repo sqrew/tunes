@@ -95,13 +95,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Same closure pattern as `.transform()` and `.effects()` for consistent API design
   - Fully backward compatible - generators can still be called directly
   - See `examples/generator_namespace.rs` for complete usage guide
-- **Added 6 transform methods to namespace:**
+- **NEW: `.orbit()` generator** - Create sinusoidal pitch patterns around a center frequency
+  - Example: `.orbit(C4, 7.0, 16, 0.125, 1.5, true)` - oscillate ±7 semitones around C4, 16 steps per rotation, 1.5 complete orbits
+  - Parameters: center pitch, radius (semitones), steps per rotation, step duration, rotations (can be fractional), direction (clockwise/counter-clockwise)
+  - **Rotations parameter** allows multiple complete orbits (2.0 = two cycles) or fractional (0.5 = half orbit for ascending/descending phrases)
+  - Perfect for melodic contours, vibrato effects, ambient textures, and generative patterns
+  - Combines beautifully with `.magnetize()` to snap to scales or `.gravity()` for tonal attraction
+  - See `examples/orbit_demo.rs` for detailed demonstrations including multiple and fractional rotations
+- **NEW: `.bounce()` generator** - Physics-based bouncing ball effect with damping
+  - Example: `.bounce(440.0, 220.0, 0.5, 3, 8, 0.0625)` - drop from A4 to A3, bounce 3 times at 50% damping, 8 steps per segment
+  - Parameters: start frequency, floor frequency, damping ratio (0.0-1.0), number of bounces, steps per segment, step duration
+  - Simulates realistic bouncing with exponential decay - each bounce is `ratio` times the height of the previous bounce
+  - **Zero bounces** creates a smooth pitch drop (portamento effect)
+  - **Low ratio** (0.2-0.4) = tight, controlled bouncing that settles quickly
+  - **High ratio** (0.7-0.9) = energetic bouncing that takes longer to settle
+  - Perfect for percussive melodies, glitch effects, generative patterns, and sound design
+  - Combine with `.magnetize()` to snap bounces to scale degrees
+  - See `examples/bounce_demo.rs` for comprehensive demonstrations including layered bounces and reverse effects
+- **NEW: `.scatter()` generator** - Generate random notes across a frequency range
+  - Example: `.scatter(200.0, 800.0, 32, 0.0625)` - 32 random notes uniformly distributed between 200-800Hz
+  - Parameters: minimum frequency, maximum frequency, note count, duration per note
+  - Each note has a random pitch uniformly distributed within the range
+  - Perfect for experimental music, glitch textures, generative soundscapes, and aleatoric composition
+  - Combine with `.magnetize()` to constrain random notes to a scale
+  - Combine with `.humanize()` for organic timing variations
+  - Great for creating unpredictable melodic patterns and textural elements
+- **NEW: `.stream()` generator** - Generate repeated notes at a single frequency
+  - Example: `.stream(440.0, 16, 0.125)` - 16 repeated A4 notes, each 0.125 seconds long
+  - Parameters: frequency, note count, duration per note
+  - Creates uniform sequences of identical notes - perfect for drones and ostinatos
+  - Ideal as a base pattern for transforms (`.shift()`, `.mutate()`, `.humanize()`, etc.)
+  - Simple, efficient generator for repetitive patterns
+  - Great starting point for generative manipulations
+- **NEW: `.random_notes()` generator** - Randomly pick notes from a provided set
+  - Example: `.random_notes(&[C4, E4, G4, C5], 16, 0.125)` - 16 random notes picked from C major triad
+  - Parameters: array of frequencies, note count, duration per note
+  - Each note randomly selected with equal probability from the provided array
+  - Perfect for generative music constrained to a scale, chord, or custom note set
+  - Different from `.scatter()` which uses continuous uniform distribution - this picks from discrete notes
+- **NEW: `.sprinkle()` generator** - Generate completely random f32 frequencies within a range
+  - Example: `.sprinkle(220.0, 440.0, 8, 0.125)` - 8 random frequencies between A3 and A4 (no snapping)
+  - Parameters: min frequency, max frequency, note count, duration per note
+  - Produces truly continuous pitch values with no quantization or snapping
+  - Perfect for experimental, microtonal, or ambient textures
+  - Different from discrete note selection - generates any f32 value within the range
+  - Great for creating unpredictable, organic-sounding patterns
+  - Great for algorithmic composition, random melodies within harmonic constraints
+  - Combine with scales: `.random_notes(&C4_MAJOR_SCALE, 32, 0.0625)` for random scale-based melodies
+- **Added 10 transform methods to namespace:**
   - `.reverse()` - Reverse timing of all events in pattern
   - `.invert(axis_freq)` - Invert pitches around an axis frequency (pitch mirroring)
   - `.invert_constrained(axis_freq, min, max)` - Pitch inversion with range constraints
+  - `.sieve_inclusive(min_freq, max_freq)` - **NEW: Filter to keep only notes within frequency range**
+  - `.sieve_exclusive(min_freq, max_freq)` - **NEW: Filter to remove notes within frequency range**
+  - `.group(duration)` - **NEW: Collapse sequential notes into a single chord**
+  - `.duplicate()` - **NEW: Duplicate pattern for layered transforms**
   - `.repeat(times)` - Repeat the pattern N times
   - `.harmonize(notes, semitones, duration)` - Play harmonized notes with interval above/below
   - `.every_n(n, drum)` - Play a drum every Nth event in the pattern
+- **NEW: `.sieve_inclusive(min_freq, max_freq)` transform** - Frequency-based filtering to keep notes in range
+  - Example: `.sieve_inclusive(150.0, 300.0)` keeps only notes between 150-300 Hz (bass range)
+  - Removes all notes whose frequencies fall outside [min_freq, max_freq]
+  - Perfect for isolating specific frequency bands (bass, midrange, treble)
+  - Use cases: extract bass line, isolate melody, frequency-based arrangement
+  - Chain with other sieves for complex frequency sculpting
+  - Works with namespace: `.transform(|t| t.sieve_inclusive(20.0, 200.0))`
+- **NEW: `.sieve_exclusive(min_freq, max_freq)` transform** - Frequency-based filtering to remove notes in range
+  - Example: `.sieve_exclusive(200.0, 800.0)` removes muddy midrange, keeps bass and treble
+  - Removes all notes whose frequencies fall within [min_freq, max_freq]
+  - Perfect for removing problematic frequency ranges or creating spectral gaps
+  - Use cases: remove muddy midrange, create frequency notches, experimental arrangements
+  - Chain multiple exclusions: `.transform(|t| t.sieve_exclusive(100.0, 200.0).sieve_exclusive(400.0, 600.0))`
+  - Opposite of `sieve_inclusive` - useful for subtractive frequency sculpting
+- **NEW: `.group(duration)` transform** - Collapse sequential notes into a single chord
+  - Example: `.notes(&[C4, E4, G4, C5], 0.25).group(2.0)` → single 4-note chord lasting 2 seconds
+  - Takes all notes from a pattern and plays them simultaneously
+  - Perfect for converting arpeggios/melodies into harmonic blocks
+  - Use cases: arpeggio → chord, melodic line → pad, generative → harmony
+  - Example: generate random notes then group them into experimental chords
+  - Works with namespace: `.transform(|t| t.group(1.5))`
+- **NEW: `.duplicate()` transform** - Duplicate pattern for layered transforms
+  - Example: `.notes(&[C4, E4, G4], 0.25).duplicate().transform(|t| t.shift(12))` → melody + octave doubling
+  - Creates a copy of all events and appends them after the pattern
+  - Different from `.repeat()` - allows transforms to be applied to the duplicated copy
+  - Perfect for harmony layers, echo effects, octave doubling
+  - Use cases: instant harmonization, texture building, layered variations
+  - Example: `.duplicate().transform(|t| t.shift(7).humanize(0.01, 0.05))` → add harmony with variation
+  - Chain multiple: `.duplicate().shift(7).duplicate().shift(12)` → 3-part harmony
 - **`.shift(semitones)`** - Transpose entire patterns up or down by semitones
   - Example: `.shift(7)` transposes up a perfect fifth, `.shift(-12)` down an octave
   - Works within `pattern_start()` boundaries, preserves timing and all note parameters

@@ -1,6 +1,6 @@
 # Tunes Examples
 
-This directory contains **80 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
+This directory contains **84 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
 
 ---
 
@@ -112,7 +112,11 @@ This directory contains **80 example programs** demonstrating all features of th
 | `pattern_transformations.rs` | **21 pattern tools: shift, humanize, rotate, retrograde, reverse, shuffle, thin, stack, mutate, stretch, compress, quantize, palindrome, stutter, stutter_every, granularize, magnetize, gravity, ripple, invert, invert_constrained** |
 | `pattern_physics.rs` | **Physics-inspired transformations: magnetize, gravity, ripple** |
 | `transform_namespace.rs` | **Closure-based `.transform()` API for organized pattern transformations** |
+| `sieve_demo.rs` | **Frequency-based filtering transforms: sieve_inclusive, sieve_exclusive** |
 | `generator_namespace.rs` | **Closure-based `.generator()` API for organized note generation** |
+| `orbit_demo.rs` | **Orbit generator - sinusoidal pitch patterns around a center frequency** |
+| `bounce_demo.rs` | **Bounce generator - physics-based bouncing ball effect with damping** |
+| `sprinkle_demo.rs` | **Sprinkle generator - completely random f32 frequencies with no snapping** |
 | `namespace_api.rs` | **Complete namespace API guide - `.generator()`, `.transform()`, and `.effects()` closure patterns** |
 | `pattern_modifiers.rs` | Transform patterns: reverse, invert, transpose |
 | `pattern_repeat.rs` | Loop and repeat musical patterns |
