@@ -11,7 +11,7 @@ use tunes::synthesis::Sample;
 fn main() -> anyhow::Result<()> {
     println!("🎵 Direct Sample & Slice Playback Demo\n");
 
-    // Create a test sample (in practice: Sample::from_wav("drumloop.wav")?)
+    // Create a test sample (in practice: Sample::from_file("drumloop.wav")?)
     let drumloop = create_test_drumloop();
     println!("✓ Created test drumloop: {:.2}s @ {}Hz\n",
         drumloop.duration, drumloop.sample_rate());
@@ -140,7 +140,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("   Example:");
     println!("   ```rust");
-    println!("   let sample = Sample::from_wav(\"break.wav\")?;");
+    println!("   let sample = Sample::from_file(\"break.wav\")?;");
     println!("   let slices = sample.slice_by_transients(0.3, 50.0)?;");
     println!("   ");
     println!("   comp.track(\"drums\")");

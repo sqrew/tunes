@@ -52,6 +52,16 @@ enum AudioCommand {
         duration: f32,      // Duration in seconds
         target_volume: f32, // Target volume (0.0-1.0)
     },
+    TweenPan {
+        id: SoundId,
+        target_pan: f32,  // Target pan (-1.0 to 1.0)
+        duration: f32,    // Duration in seconds
+    },
+    TweenPlaybackRate {
+        id: SoundId,
+        target_rate: f32, // Target playback rate
+        duration: f32,    // Duration in seconds
+    },
     SetSoundPosition {
         id: SoundId,
         position: SpatialPosition,
@@ -82,11 +92,21 @@ struct ActiveSound {
     paused: bool,
     looping: bool,
     spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
-    // Fade state
+    // Volume fade state
     fade_start_time: Option<f32>,
     fade_duration: f32,
     fade_start_volume: f32,
     fade_target_volume: f32,
+    // Pan tween state
+    pan_tween_start_time: Option<f32>,
+    pan_tween_duration: f32,
+    pan_tween_start_value: f32,
+    pan_tween_target_value: f32,
+    // Playback rate tween state
+    rate_tween_start_time: Option<f32>,
+    rate_tween_duration: f32,
+    rate_tween_start_value: f32,
+    rate_tween_target_value: f32,
 }
 
 /// Audio callback state (allocation-free mixing)
@@ -290,6 +310,14 @@ impl AudioEngine {
                         fade_duration: 0.0,
                         fade_start_volume: 1.0,
                         fade_target_volume: 1.0,
+                        pan_tween_start_time: None,
+                        pan_tween_duration: 0.0,
+                        pan_tween_start_value: 0.0,
+                        pan_tween_target_value: 0.0,
+                        rate_tween_start_time: None,
+                        rate_tween_duration: 0.0,
+                        rate_tween_start_value: 1.0,
+                        rate_tween_target_value: 1.0,
                     },
                 );
             }
@@ -372,6 +400,30 @@ impl AudioEngine {
                     sound.fade_target_volume = target_volume.clamp(0.0, 1.0);
                 }
             }
+            AudioCommand::TweenPan {
+                id,
+                target_pan,
+                duration,
+            } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.pan_tween_start_time = Some(sound.elapsed_time);
+                    sound.pan_tween_duration = duration;
+                    sound.pan_tween_start_value = sound.pan;
+                    sound.pan_tween_target_value = target_pan.clamp(-1.0, 1.0);
+                }
+            }
+            AudioCommand::TweenPlaybackRate {
+                id,
+                target_rate,
+                duration,
+            } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.rate_tween_start_time = Some(sound.elapsed_time);
+                    sound.rate_tween_duration = duration;
+                    sound.rate_tween_start_value = sound.playback_rate;
+                    sound.rate_tween_target_value = target_rate.max(0.1); // Prevent division by zero
+                }
+            }
         }
     }
 
@@ -439,6 +491,36 @@ impl AudioEngine {
                 listener_for_mixer,
                 params_for_mixer,
             );
+
+            // Apply pan tween if active (before calculating spatial audio)
+            if let Some(tween_start) = sound.pan_tween_start_time {
+                let tween_elapsed = sound.elapsed_time - tween_start;
+                if tween_elapsed >= sound.pan_tween_duration {
+                    // Tween complete
+                    sound.pan = sound.pan_tween_target_value;
+                    sound.pan_tween_start_time = None;
+                } else {
+                    // Interpolate
+                    let t = (tween_elapsed / sound.pan_tween_duration).clamp(0.0, 1.0);
+                    sound.pan = sound.pan_tween_start_value
+                        + (sound.pan_tween_target_value - sound.pan_tween_start_value) * t;
+                }
+            }
+
+            // Apply playback rate tween if active
+            if let Some(tween_start) = sound.rate_tween_start_time {
+                let tween_elapsed = sound.elapsed_time - tween_start;
+                if tween_elapsed >= sound.rate_tween_duration {
+                    // Tween complete
+                    sound.playback_rate = sound.rate_tween_target_value;
+                    sound.rate_tween_start_time = None;
+                } else {
+                    // Interpolate
+                    let t = (tween_elapsed / sound.rate_tween_duration).clamp(0.0, 1.0);
+                    sound.playback_rate = sound.rate_tween_start_value
+                        + (sound.rate_tween_target_value - sound.rate_tween_start_value) * t;
+                }
+            }
 
             // Calculate spatial audio if runtime position is set
             let (spatial_volume, spatial_pan) = if let Some(pos) = &sound.spatial_position {
@@ -881,6 +963,80 @@ impl AudioEngine {
                 id,
                 duration,
                 target_volume,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Smoothly tween the pan of a playing sound
+    ///
+    /// Gradually changes the pan from its current position to the target pan position
+    /// over the specified duration. Perfect for creating smooth panning effects like
+    /// sounds moving from left to right.
+    ///
+    /// # Arguments
+    /// * `id` - The sound to pan
+    /// * `target_pan` - Target pan position (-1.0 = full left, 0.0 = center, 1.0 = full right)
+    /// * `duration` - Tween duration in seconds
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # let engine = AudioEngine::new()?;
+    /// let id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Smoothly pan from left to right over 5 seconds (helicopter flyby effect)
+    /// engine.set_pan(id, -1.0)?; // Start at full left
+    /// engine.tween_pan(id, 1.0, 5.0)?; // Pan to full right over 5 seconds
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tween_pan(&self, id: SoundId, target_pan: f32, duration: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::TweenPan {
+                id,
+                target_pan,
+                duration,
+            })
+            .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
+        Ok(())
+    }
+
+    /// Smoothly tween the playback rate (pitch and speed) of a playing sound
+    ///
+    /// Gradually changes the playback rate from its current value to the target rate
+    /// over the specified duration. Since playback rate affects both pitch and speed,
+    /// this creates effects like engine sounds ramping up or slowing down.
+    ///
+    /// # Arguments
+    /// * `id` - The sound to modify
+    /// * `target_rate` - Target playback rate (1.0 = normal, 2.0 = double speed/pitch, 0.5 = half speed/pitch)
+    /// * `duration` - Tween duration in seconds
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// # let engine = AudioEngine::new()?;
+    /// let id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Smoothly speed up engine sound over 3 seconds (acceleration)
+    /// engine.tween_playback_rate(id, 2.0, 3.0)?;
+    ///
+    /// // Later: slow down over 2 seconds (deceleration)
+    /// engine.tween_playback_rate(id, 0.5, 2.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tween_playback_rate(&self, id: SoundId, target_rate: f32, duration: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::TweenPlaybackRate {
+                id,
+                target_rate,
+                duration,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
         Ok(())

@@ -1,18 +1,20 @@
 # Working with Samples
 
-Samples are pre-recorded audio files (like `.wav` files) that you can load, manipulate, and play back in your compositions. They're essential for game audio - sound effects, voice lines, drum loops, and realistic instruments all come from samples.
+Samples are pre-recorded audio files that you can load, manipulate, and play back in your compositions. They're essential for game audio - sound effects, voice lines, drum loops, and realistic instruments all come from samples.
 
 ## Loading Your First Sample
 
-The most common way to use samples is loading them from WAV files:
+Tunes supports multiple audio formats with automatic format detection:
 
 ```rust
 use tunes::prelude::*;
 use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
-    // Load a WAV file
-    let kick = Sample::from_wav("assets/audio/kick.wav")?;
+    // Load any supported audio file - format is automatically detected
+    let kick = Sample::from_file("assets/audio/kick.mp3")?;
+    let snare = Sample::from_file("assets/audio/snare.ogg")?;
+    let hihat = Sample::from_file("assets/audio/hihat.flac")?;
 
     println!("Loaded sample:");
     println!("  Duration: {:.2}s", kick.duration);
@@ -24,10 +26,14 @@ fn main() -> anyhow::Result<()> {
 ```
 
 **Supported formats:**
-- WAV files (`.wav`)
-- Sample rates: Any (44.1kHz, 48kHz, etc.)
-- Bit depths: 16-bit, 24-bit, 32-bit (int or float)
-- Channels: Mono or stereo
+- **MP3** (MPEG-1/2 Layer III)
+- **OGG Vorbis** (`.ogg`)
+- **FLAC** (Free Lossless Audio Codec, `.flac`)
+- **WAV** (PCM, IEEE Float, `.wav`)
+- **AAC / M4A** (Advanced Audio Coding, `.aac`, `.m4a`)
+- **Sample rates:** Any (44.1kHz, 48kHz, 96kHz, etc.)
+- **Bit depths:** 8/16/24/32-bit (int), 32/64-bit (float) - automatically converted to f32
+- **Channels:** Mono or stereo
 
 ## Playing Samples in Compositions
 
@@ -79,8 +85,8 @@ fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
     // Load samples directly
-    let explosion = Sample::from_wav("assets/explosion.wav")?;
-    let impact = Sample::from_wav("assets/impact.wav")?;
+    let explosion = Sample::from_file("assets/explosion.wav")?;
+    let impact = Sample::from_file("assets/impact.wav")?;
 
     // Play them directly
     comp.track("sfx")
@@ -109,7 +115,7 @@ use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
-    let voice = Sample::from_wav("assets/voice.wav")?;
+    let voice = Sample::from_file("assets/voice.wav")?;
 
     comp.track("examples")
         // Normal playback
@@ -141,7 +147,7 @@ Stretch or compress duration without affecting pitch:
 use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
-    let impact = Sample::from_wav("assets/impact.wav")?;
+    let impact = Sample::from_file("assets/impact.wav")?;
 
     // Slow motion: 2x longer, same pitch
     let slow_mo = impact.time_stretch(2.0);
@@ -173,7 +179,7 @@ Shift pitch without changing duration:
 use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
-    let footstep = Sample::from_wav("assets/footstep.wav")?;
+    let footstep = Sample::from_file("assets/footstep.wav")?;
 
     // Shift up by 5 semitones (higher pitch)
     let small_enemy = footstep.pitch_shift(5.0);
@@ -210,7 +216,7 @@ Reduce repetitive audio by creating pitch variations:
 use tunes::synthesis::Sample;
 
 fn create_footstep_variations() -> anyhow::Result<Vec<Sample>> {
-    let base = Sample::from_wav("assets/footstep.wav")?;
+    let base = Sample::from_file("assets/footstep.wav")?;
 
     // Create 5 variations with slight pitch changes
     let variations = vec![
@@ -239,7 +245,7 @@ Split samples into smaller pieces for creative manipulation:
 use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
-    let drum_loop = Sample::from_wav("assets/drumloop.wav")?;
+    let drum_loop = Sample::from_file("assets/drumloop.wav")?;
 
     // Split into 8 equal slices
     let slices = drum_loop.slice_equal(8)?;
@@ -269,7 +275,7 @@ Automatically find hit points in drum loops or percussive samples:
 use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
-    let drum_loop = Sample::from_wav("assets/drumloop.wav")?;
+    let drum_loop = Sample::from_file("assets/drumloop.wav")?;
 
     // Detect transients (hits)
     // threshold: 0.3 (sensitivity), min_gap: 50ms (avoid double-triggers)
@@ -303,7 +309,7 @@ fn main() -> anyhow::Result<()> {
 Scale sample to maximum volume without clipping:
 
 ```rust
-let sample = Sample::from_wav("quiet.wav")?;
+let sample = Sample::from_file("quiet.wav")?;
 let normalized = sample.normalize();
 ```
 
@@ -312,7 +318,7 @@ let normalized = sample.normalize();
 Adjust volume by a multiplier:
 
 ```rust
-let sample = Sample::from_wav("loud.wav")?;
+let sample = Sample::from_file("loud.wav")?;
 
 let quieter = sample.with_gain(0.5);   // Half volume
 let louder = sample.with_gain(2.0);    // Double volume (may clip)
@@ -323,7 +329,7 @@ let louder = sample.with_gain(2.0);    // Double volume (may clip)
 Play sample backwards:
 
 ```rust
-let sample = Sample::from_wav("speech.wav")?;
+let sample = Sample::from_file("speech.wav")?;
 let reversed = sample.reverse();
 ```
 
@@ -332,7 +338,7 @@ let reversed = sample.reverse();
 Apply fade in/out envelopes:
 
 ```rust
-let sample = Sample::from_wav("pad.wav")?;
+let sample = Sample::from_file("pad.wav")?;
 
 let with_fadein = sample.with_fade_in(0.5);   // 0.5 second fade in
 let with_fadeout = sample.with_fade_out(1.0); // 1.0 second fade out
@@ -357,7 +363,7 @@ struct FootstepSystem {
 
 impl FootstepSystem {
     fn new() -> anyhow::Result<Self> {
-        let base = Sample::from_wav("assets/footstep.wav")?;
+        let base = Sample::from_file("assets/footstep.wav")?;
 
         // Create pitch variations for less repetition
         let variations = vec![
@@ -399,7 +405,7 @@ fn play_impact_for_enemy(
     size: EnemySize,
     time: f32
 ) -> anyhow::Result<()> {
-    let impact = Sample::from_wav("assets/impact.wav")?;
+    let impact = Sample::from_file("assets/impact.wav")?;
 
     // Adjust pitch based on size
     let adjusted = match size {
@@ -422,7 +428,7 @@ fn play_impact_for_enemy(
 use tunes::synthesis::Sample;
 
 fn create_slow_motion_sfx() -> anyhow::Result<Sample> {
-    let explosion = Sample::from_wav("assets/explosion.wav")?;
+    let explosion = Sample::from_file("assets/explosion.wav")?;
 
     // 2x slower for dramatic slow-mo
     let slow_mo = explosion.time_stretch(2.0);
@@ -444,7 +450,7 @@ fn create_glitch_drums() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(140.0));
 
     // Load and slice drum loop
-    let loop_sample = Sample::from_wav("assets/drumloop.wav")?;
+    let loop_sample = Sample::from_file("assets/drumloop.wav")?;
     let slices = loop_sample.slice_equal(16)?;
 
     // Create glitchy pattern by playing slices in random order
@@ -480,7 +486,7 @@ impl SampleBank {
     }
 
     fn load_variations(&mut self, name: &str, path: &str, count: usize) -> anyhow::Result<()> {
-        let base = Sample::from_wav(path)?;
+        let base = Sample::from_file(path)?;
 
         let mut variations = Vec::new();
         for i in 0..count {
@@ -509,7 +515,7 @@ impl SampleBank {
 Samples use `Arc<Vec<f32>>` internally, so cloning is cheap - it only increments a reference count rather than copying audio data.
 
 ```rust
-let sample1 = Sample::from_wav("big_file.wav")?;
+let sample1 = Sample::from_file("big_file.wav")?;
 let sample2 = sample1.clone(); // Cheap! No audio data copied
 
 // Both share the same audio data in memory
@@ -565,12 +571,14 @@ This is useful for:
 ## Quick Reference
 
 ```rust
-// Loading
-Sample::from_wav("path.wav")?
-Sample::from_mono(vec![0.0, 0.5, 1.0], 44100)
+// Loading (supports MP3, OGG, FLAC, WAV, AAC)
+Sample::from_file("kick.mp3")?
+Sample::from_file("snare.ogg")?
+Sample::from_file("loop.flac")?
+Sample::from_mono(vec![0.0, 0.5, 1.0], 44100)  // Programmatic creation
 
 // Playing
-comp.load_sample("name", "path.wav")?
+comp.load_sample("name", "sample.mp3")?
 comp.track("t").sample("name")?
 comp.track("t").play_sample(&sample, 1.0)
 

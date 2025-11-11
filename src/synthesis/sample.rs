@@ -1,9 +1,19 @@
-/// Sample playback module for loading and playing WAV files
-/// This module provides functionality to load audio samples from WAV files
-/// and play them back with pitch shifting, looping, and effects.
+/// Sample playback module for loading and playing audio files
+/// This module provides functionality to load audio samples from various formats
+/// (WAV, MP3, OGG, FLAC, AAC) and play them back with pitch shifting, looping, and effects.
 use crate::error::{Result, TunesError};
+use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
+use symphonia::core::audio::{AudioBuffer, AudioBufferRef, Signal};
+use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::conv::{FromSample, IntoSample};
+use symphonia::core::errors::Error as SymphoniaError;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+use symphonia::core::sample::Sample as SymphoniaSample;
 
 /// An audio sample loaded from a WAV file
 /// Samples are stored in memory as f32 values (-1.0 to 1.0) and can be
@@ -33,76 +43,172 @@ pub struct Sample {
 }
 
 impl Sample {
-    /// Load a sample from a WAV file
+    /// Load a sample from any supported audio file format
+    ///
+    /// Automatically detects the format and decodes MP3, OGG Vorbis, FLAC, WAV, AAC, and more.
+    /// This is the recommended method for loading audio files.
+    ///
+    /// # Supported Formats
+    /// - MP3 (MPEG-1/2 Layer III)
+    /// - OGG Vorbis
+    /// - FLAC (Free Lossless Audio Codec)
+    /// - WAV (PCM, IEEE Float)
+    /// - AAC (Advanced Audio Coding)
+    /// - And more via symphonia
     ///
     /// # Arguments
-    /// * `path` - Path to the WAV file
+    /// * `path` - Path to the audio file
     ///
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let kick = Sample::from_wav("samples/kick.wav")?;
+    /// let kick = Sample::from_file("samples/kick.mp3")?;
+    /// let snare = Sample::from_file("samples/snare.ogg")?;
+    /// let hihat = Sample::from_file("samples/hihat.flac")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
-    pub fn from_wav<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let mut reader = hound::WavReader::open(path.as_ref())?;
-        let spec = reader.spec();
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref();
 
-        // Read all samples and convert to f32
-        let samples: Vec<f32> = match spec.sample_format {
-            hound::SampleFormat::Int => {
-                match spec.bits_per_sample {
-                    16 => reader
-                        .samples::<i16>()
-                        .map(|s| {
-                            s.map(|sample| sample as f32 / 32768.0)
-                                .map_err(TunesError::from)
-                        })
-                        .collect::<Result<Vec<f32>>>()?,
-                    24 => {
-                        reader
-                            .samples::<i32>()
-                            .map(|s| {
-                                s.map(|sample| sample as f32 / 8388608.0)
-                                    .map_err(TunesError::from)
-                            }) // 2^23
-                            .collect::<Result<Vec<f32>>>()?
-                    }
-                    32 => {
-                        reader
-                            .samples::<i32>()
-                            .map(|s| {
-                                s.map(|sample| sample as f32 / 2147483648.0)
-                                    .map_err(TunesError::from)
-                            }) // 2^31
-                            .collect::<Result<Vec<f32>>>()?
-                    }
-                    _ => {
-                        return Err(TunesError::WavReadError(format!(
-                            "Unsupported bit depth: {}",
-                            spec.bits_per_sample
-                        )));
-                    }
+        // Open the file
+        let file = File::open(path).map_err(|e| {
+            TunesError::WavReadError(format!("Failed to open file: {}", e))
+        })?;
+
+        // Create a media source stream
+        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+
+        // Create a hint to help the format registry guess the format
+        let mut hint = Hint::new();
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            hint.with_extension(ext);
+        }
+
+        // Probe the media source for a format
+        let format_opts = FormatOptions::default();
+        let metadata_opts = MetadataOptions::default();
+        let probed = symphonia::default::get_probe()
+            .format(&hint, mss, &format_opts, &metadata_opts)
+            .map_err(|e| TunesError::WavReadError(format!("Format detection failed: {}", e)))?;
+
+        let mut format = probed.format;
+
+        // Get the default track
+        let track = format
+            .default_track()
+            .ok_or_else(|| TunesError::WavReadError("No audio tracks found".to_string()))?;
+
+        // Get the sample rate and channel count
+        let sample_rate = track.codec_params.sample_rate
+            .ok_or_else(|| TunesError::WavReadError("Sample rate not found".to_string()))?;
+        let channels = track.codec_params.channels
+            .ok_or_else(|| TunesError::WavReadError("Channel count not found".to_string()))?
+            .count() as u16;
+
+        // Create a decoder
+        let decoder_opts = DecoderOptions::default();
+        let mut decoder = symphonia::default::get_codecs()
+            .make(&track.codec_params, &decoder_opts)
+            .map_err(|e| TunesError::WavReadError(format!("Decoder creation failed: {}", e)))?;
+
+        // Decode all packets and collect samples
+        let mut samples = Vec::new();
+        let track_id = track.id;
+
+        loop {
+            // Get the next packet
+            let packet = match format.next_packet() {
+                Ok(packet) => packet,
+                Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    break;
                 }
-            }
-            hound::SampleFormat::Float => reader
-                .samples::<f32>()
-                .map(|s| s.map_err(TunesError::from))
-                .collect::<Result<Vec<f32>>>()?,
-        };
+                Err(SymphoniaError::ResetRequired) => {
+                    // Decoder needs to be reset (rare, but handle it)
+                    decoder.reset();
+                    continue;
+                }
+                Err(e) => {
+                    return Err(TunesError::WavReadError(format!("Packet read failed: {}", e)));
+                }
+            };
 
-        let num_frames = samples.len() / spec.channels as usize;
-        let duration = num_frames as f32 / spec.sample_rate as f32;
+            // Skip packets from other tracks
+            if packet.track_id() != track_id {
+                continue;
+            }
+
+            // Decode the packet
+            let decoded = match decoder.decode(&packet) {
+                Ok(decoded) => decoded,
+                Err(SymphoniaError::DecodeError(_)) => continue, // Skip decode errors
+                Err(e) => {
+                    return Err(TunesError::WavReadError(format!("Decode failed: {}", e)));
+                }
+            };
+
+            // Convert the decoded audio to f32 samples (interleaved)
+            Self::convert_audio_buffer_to_f32(&decoded, &mut samples);
+        }
+
+        if samples.is_empty() {
+            return Err(TunesError::WavReadError("No audio data decoded".to_string()));
+        }
+
+        let num_frames = samples.len() / channels as usize;
+        let duration = num_frames as f32 / sample_rate as f32;
 
         Ok(Self {
             data: Arc::new(samples),
-            channels: spec.channels,
-            sample_rate: spec.sample_rate,
+            channels,
+            sample_rate,
             duration,
             num_frames,
             loop_start: None,
             loop_end: None,
         })
+    }
+
+    /// Convert a symphonia AudioBufferRef to interleaved f32 samples
+    ///
+    /// Handles all sample formats (i8, i16, i24, i32, f32, f64) and converts to f32.
+    /// Output is interleaved: for stereo [L, R, L, R, ...], for mono [M, M, M, ...].
+    fn convert_audio_buffer_to_f32(decoded: &AudioBufferRef, output: &mut Vec<f32>) {
+        match decoded {
+            AudioBufferRef::U8(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::U16(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::U24(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::U32(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::S8(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::S16(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::S24(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::S32(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::F32(buf) => Self::interleave_buffer(buf, output),
+            AudioBufferRef::F64(buf) => Self::interleave_buffer(buf, output),
+        }
+    }
+
+    /// Interleave a planar audio buffer into interleaved f32 samples
+    ///
+    /// Symphonia provides planar audio (one array per channel), but we need interleaved
+    /// audio (samples alternating between channels).
+    fn interleave_buffer<S>(buf: &AudioBuffer<S>, output: &mut Vec<f32>)
+    where
+        S: SymphoniaSample,
+        f32: FromSample<S>,
+    {
+        let num_channels = buf.spec().channels.count();
+        let num_frames = buf.frames();
+
+        // Reserve space
+        output.reserve(num_frames * num_channels);
+
+        // Interleave: iterate frame-by-frame, then channel-by-channel
+        for frame_idx in 0..num_frames {
+            for chan_idx in 0..num_channels {
+                let sample = buf.chan(chan_idx)[frame_idx];
+                output.push(sample.into_sample());
+            }
+        }
     }
 
     /// Create a sample from raw mono audio data
@@ -257,7 +363,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("kick.wav")?;
+    /// let sample = Sample::from_file("kick.wav")?;
     /// let attack = sample.slice(0.0, 0.05)?; // First 50ms
     /// # Ok::<(), anyhow::Error>(())
     /// ```
@@ -313,7 +419,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("synth.wav")?
+    /// let sample = Sample::from_file("synth.wav")?
     ///     .with_loop(0.5, 2.0)?; // Loop between 0.5s and 2.0s
     /// # Ok::<(), anyhow::Error>(())
     /// ```

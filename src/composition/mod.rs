@@ -121,21 +121,26 @@ impl Composition {
         }
     }
 
-    /// Load a WAV file as a sample and cache it with a name
+    /// Load an audio file as a sample and cache it with a name
+    ///
+    /// Supports multiple formats: MP3, OGG Vorbis, FLAC, WAV, AAC.
+    /// The format is automatically detected from the file extension and content.
     ///
     /// # Arguments
     /// * `name` - Name to use for this sample (e.g., "kick", "snare")
-    /// * `path` - Path to the WAV file
+    /// * `path` - Path to the audio file
     ///
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
     /// let mut comp = Composition::new(Tempo::new(120.0));
-    /// comp.load_sample("kick", "samples/kick.wav")?;
+    /// comp.load_sample("kick", "samples/kick.mp3")?;
+    /// comp.load_sample("snare", "samples/snare.ogg")?;
+    /// comp.load_sample("hihat", "samples/hihat.flac")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn load_sample(&mut self, name: &str, path: &str) -> anyhow::Result<()> {
-        let sample = Sample::from_wav(path)?;
+        let sample = Sample::from_file(path)?;
         self.samples.insert(name.to_string(), sample);
         Ok(())
     }

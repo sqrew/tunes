@@ -223,7 +223,7 @@ fn create_rhythm_with_variations() -> Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
     // In a real scenario, you'd load an actual drum sample
-    // let kick = Sample::from_wav("kick.wav")?;
+    // let kick = Sample::from_file("kick.wav")?;
 
     // For this example, we'll create a synthetic kick
     let sample_rate = 44100;

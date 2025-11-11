@@ -143,7 +143,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 // Create a synthetic drum loop for testing
-// In real usage, you'd load from a WAV file: Sample::from_wav("drumloop.wav")?
+// In real usage, you'd load from a WAV file: Sample::from_file("drumloop.wav")?
 fn create_test_drumloop() -> Sample {
     let sample_rate: u32 = 44100;
     let duration = 2.0; // 2 seconds

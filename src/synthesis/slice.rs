@@ -123,7 +123,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let sample = Sample::from_file("drumloop.wav")?;
     /// let slices = sample.slice_equal(16)?; // 16 equal slices
     ///
     /// // Play slice 4
@@ -164,7 +164,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("phrase.wav")?;
+    /// let sample = Sample::from_file("phrase.wav")?;
     ///
     /// // Slice at 0.5s, 1.2s, and 2.5s
     /// // Creates 4 slices: [0.0-0.5], [0.5-1.2], [1.2-2.5], [2.5-end]
@@ -266,7 +266,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let sample = Sample::from_file("drumloop.wav")?;
     ///
     /// // Detect transients with moderate sensitivity
     /// let transient_frames = sample.detect_transients(0.3, 50.0)?;
@@ -350,7 +350,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let sample = Sample::from_file("drumloop.wav")?;
     /// let slices = sample.slice_by_transients(0.3, 50.0)?;
     ///
     /// println!("Detected {} hits in the loop", slices.len());
@@ -379,7 +379,7 @@ impl Sample {
     /// # Example
     /// ```no_run
     /// # use tunes::synthesis::sample::Sample;
-    /// let sample = Sample::from_wav("loop_140bpm.wav")?;
+    /// let sample = Sample::from_file("loop_140bpm.wav")?;
     ///
     /// // Slice into 16th notes at 140 BPM
     /// let slices = sample.slice_at_beats(140.0, 0.25)?;

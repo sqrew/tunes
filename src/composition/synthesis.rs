@@ -273,7 +273,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     pub fn granular(mut self, sample_path: &str, params: GranularParams, duration: f32) -> Self {
         // Load the sample
-        let source_sample = match Sample::from_wav(sample_path) {
+        let source_sample = match Sample::from_file(sample_path) {
             Ok(sample) => sample,
             Err(e) => {
                 eprintln!("Error loading sample '{}': {}", sample_path, e);

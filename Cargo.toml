@@ -41,8 +41,11 @@ cpal = "0.15"
 anyhow = "1.0"
 rand = "0.9.2"
 lazy_static = "1.4"
-hound = "3.5"
 midly = "0.5"
-flacenc = "0.5"
 notify = "6.1"
 crossbeam = "0.8"
+
+# Audio I/O
+hound = "3.5"       # WAV export only (writing)
+flacenc = "0.5"     # FLAC export
+symphonia = { version = "0.5", features = ["mp3", "isomp4", "aac"] }  # Multi-format import (MP3, OGG, FLAC, WAV, AAC)

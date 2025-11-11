@@ -10,19 +10,18 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Composition DSL**: Fluent API for building musical sequences
 - **Sections & Arrangements**: Create reusable sections (verse, chorus, bridge) and arrange them
 - **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
-- **Sample Playback**: Load and play WAV files with pitch shifting
-- **Rhythm & Drums**: Drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Instruments**: 150+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
+- **Rhythm & Drums**: 100+ pre-configured drum sounds, drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
 - **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
-- **Musical Patterns**: Arpeggios, ornaments, tuplets, classical techniques
+- **Musical Patterns**: Arpeggios, ornaments, tuplets, and many classical techniques and patterns built-in
 - **Algorithmic Sequences**: 50+ algorithms, including Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
+- **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
-- **Sample Import**: Load and manipulate WAV samples
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
   * [ ] The library includes **1083 comprehensive tests and 396 doc tests** ensuring reliability and correctness.
 

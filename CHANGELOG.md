@@ -35,10 +35,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Reduces repetitive audio in games by creating pitch variations
   - Implementation uses Hann windowing and cross-correlation for smooth grain matching
   - No external FFT dependencies required
+- **Multi-Format Audio Import** - Industry-standard format support via symphonia:
+  - `Sample::from_file(path)` - Universal audio loader with automatic format detection
+  - Supported formats: MP3, OGG Vorbis, FLAC, WAV (PCM/Float), AAC, M4A
+  - Automatic format detection from file extension and content analysis
+  - Handles all sample formats (8/16/24/32-bit int, 32/64-bit float) with conversion to f32
+  - Planar-to-interleaved audio conversion for efficient processing
+  - Updated `Composition::load_sample()` to support all formats automatically
+  - Simplified codebase: Removed `Sample::from_wav()` in favor of unified `from_file()` API
+  - Clean separation: hound for WAV export (writing), symphonia for all import (reading)
+- **Runtime Parameter Tweening** - Smooth interpolation for dynamic sound control:
+  - `AudioEngine::tween_pan(id, target_pan, duration)` - Smoothly pan sounds left/right
+  - `AudioEngine::tween_playback_rate(id, target_rate, duration)` - Smoothly change pitch/speed
+  - Extends existing volume tweening (`fade_in`, `fade_out`) with pan and playback rate
+  - Linear interpolation over specified duration (in seconds)
+  - Perfect for game audio: engine sounds ramping up, helicopter flyby effects, doppler simulation
+  - Multiple tweens can run simultaneously on the same sound
+  - Zero allocations - all state tracked in pre-allocated ActiveSound struct
 - New examples:
   - `sample_slicing.rs` - Comprehensive demonstration of all slicing techniques
   - `slice_playback.rs` - Direct sample/slice playback in compositions
   - `time_pitch_manipulation.rs` - Time stretching and pitch shifting for game audio variations
+  - `multiformat_import.rs` - Multi-format audio loading (MP3, OGG, FLAC, WAV, AAC)
+  - `tweening_demo.rs` - Runtime parameter tweening for volume, pan, and playback rate
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance

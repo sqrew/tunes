@@ -134,13 +134,6 @@ impl fmt::Display for TunesError {
 
 impl std::error::Error for TunesError {}
 
-// Conversion from hound errors
-impl From<hound::Error> for TunesError {
-    fn from(err: hound::Error) -> Self {
-        TunesError::WavReadError(err.to_string())
-    }
-}
-
 // Conversion from IO errors
 impl From<std::io::Error> for TunesError {
     fn from(err: std::io::Error) -> Self {

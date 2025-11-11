@@ -112,7 +112,7 @@ impl<'a> TrackBuilder<'a> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// // Load and slice a sample
-    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let sample = Sample::from_file("drumloop.wav")?;
     /// let slices = sample.slice_equal(16)?;
     ///
     /// // Play slices directly without caching
@@ -155,7 +155,7 @@ impl<'a> TrackBuilder<'a> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut comp = Composition::new(Tempo::new(140.0));
     ///
-    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let sample = Sample::from_file("drumloop.wav")?;
     /// let slices = sample.slice_by_transients(0.3, 50.0)?;
     ///
     /// // Play each detected hit
