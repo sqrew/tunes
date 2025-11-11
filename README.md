@@ -24,6 +24,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
+  * [ ] The library includes **1006 comprehensive tests and 362 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:
@@ -319,11 +320,10 @@ Run `cargo doc --open` to view the full API documentation with detailed examples
 cargo test
 ```
 
-  * [ ] The library includes **967 comprehensive tests and 326 doc tests** ensuring reliability and correctness.
 
 ## Examples
 
-Run the included **70+ examples** to hear the library in action:
+Run the included **75+ examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)

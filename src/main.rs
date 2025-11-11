@@ -29,6 +29,12 @@ fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
     let eighth = comp.tempo().eighth_note();
 
+    comp.instrument("lead", &Instrument::acid_bass())
+        .interpolated(C1, C4, 32, 0.2)
+        .granularize(4)
+        .stutter_every(2, 3)
+        .mutate(2);
+
     let engine = AudioEngine::new()?;
     engine.play_mixer(&comp.into_mixer())?;
 

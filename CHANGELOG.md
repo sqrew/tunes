@@ -75,7 +75,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Pattern Transformation Methods for Live Coding
-- **Six new pattern manipulation methods** - Powerful tools for generative music and live coding workflows
+- **Twenty-four pattern manipulation methods** - Powerful tools for generative music and live coding workflows
+- **NEW: `.transform()` namespace API** - Closure-based scoped access to all transformations
+  - Example: `.transform(|t| t.shift(7).humanize(0.01, 0.05).rotate(1))`
+  - Provides clean, organized namespace - only see transforms when you need them
+  - Reduces autocomplete pollution - 24 methods are scoped within `.transform()`
+  - Fully backward compatible - old direct-call syntax still works: `.shift(7).humanize(0.01, 0.05)`
+  - Rust-idiomatic closure-based API with clear visual boundaries
+  - Can chain multiple `.transform()` blocks for organized, readable code
+  - See `examples/transform_namespace.rs` and `examples/namespace_api.rs` for usage
+- **NEW: `.effects()` namespace API** - Closure-based scoped access to all 17 audio effects
+  - Example: `.effects(|e| e.filter(...).reverb(...).delay(...))`
+  - Organizes all effects (filter, delay, reverb, distortion, bitcrusher, compressor, chorus, eq, saturation, phaser, flanger, ring_mod, tremolo, autopan, gate, limiter, modulate)
+  - Same closure pattern as `.transform()` for consistent API design
+  - Fully backward compatible - effects can still be called directly
+- **NEW: `.generator()` namespace API** - Closure-based scoped access to all 40+ note-generating methods
+  - Example: `.generator(|g| g.chord(...).arpeggiate(...).trill(...))`
+  - Organizes all generators: chords (6), scales (4), arpeggios (4), classical patterns (6), ornaments (8), tuplets (5), musical patterns (3), portamento (1), time-based (5)
+  - Same closure pattern as `.transform()` and `.effects()` for consistent API design
+  - Fully backward compatible - generators can still be called directly
+  - See `examples/generator_namespace.rs` for complete usage guide
+- **Added 6 transform methods to namespace:**
+  - `.reverse()` - Reverse timing of all events in pattern
+  - `.invert(axis_freq)` - Invert pitches around an axis frequency (pitch mirroring)
+  - `.invert_constrained(axis_freq, min, max)` - Pitch inversion with range constraints
+  - `.repeat(times)` - Repeat the pattern N times
+  - `.harmonize(notes, semitones, duration)` - Play harmonized notes with interval above/below
+  - `.every_n(n, drum)` - Play a drum every Nth event in the pattern
 - **`.shift(semitones)`** - Transpose entire patterns up or down by semitones
   - Example: `.shift(7)` transposes up a perfect fifth, `.shift(-12)` down an octave
   - Works within `pattern_start()` boundaries, preserves timing and all note parameters
@@ -94,9 +120,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`.thin(keep_probability)`** - Probabilistically remove notes to reduce density
   - Example: `.thin(0.7)` keeps ~70% of notes, removes ~30%
   - Great for hi-hat variations, creating space, and sparse textures
+- **`.stack(semitones, count)`** - Layer harmonic voices on each note (octave doubling, vocal stacking)
+  - Example: `.stack(12, 1)` adds octave above, `.stack(12, 2)` adds two octaves (three-voice stack)
+  - Classic production technique for making sounds bigger and richer
+  - Can stack any interval: `.stack(7, 1)` adds perfect fifth, `.stack(-12, 1)` bass reinforcement
+- **`.mutate(max_semitones)`** - Evolutionary pitch variation for generative music
+  - Example: `.mutate(2)` randomly shifts each note by -2 to +2 semitones
+  - Creates organic variations while maintaining overall melodic shape
+  - Perfect for generative systems and algorithmic composition
+- **`.stretch(factor)`** - Time manipulation (speed up/slow down patterns)
+  - Example: `.stretch(2.0)` plays at half speed (twice as long), `.stretch(0.5)` at double speed
+  - Stretches both note timings AND durations proportionally
+  - Great for rhythmic variations and time-based effects
+- **`.compress(target_duration)`** - Ergonomic time compression to exact duration (no ratio math!)
+  - Example: `.compress(1.0)` fits pattern to exactly 1 second, `.compress(2.5)` to 2.5 seconds
+  - Automatically calculates stretch factor internally: `target_duration / current_duration`
+  - Wrapper around `.stretch()` for more intuitive live coding workflow
+- **`.quantize(grid)`** - Snap note timings to rhythmic grid
+  - Example: `.quantize(0.25)` snaps to 16th notes, `.quantize(0.5)` to 8th notes
+  - Perfect for cleaning up timing after humanization or fixing sloppy MIDI imports
+  - Ensures tight rhythmic accuracy for electronic music production
+- **`.palindrome()`** - Mirror pattern forward then backward (symmetrical phrases)
+  - Example: `.notes(&[C4, E4, G4], 0.25).palindrome()` becomes C4, E4, G4, G4, E4, C4
+  - Creates beautiful symmetrical musical phrases
+  - Classic compositional technique for balance and structure
+- **`.stutter(probability, repeats)`** - Random glitchy stuttering effect
+  - Example: `.stutter(0.5, 4)` gives each note 50% chance to rapidly repeat 4 times
+  - Popular in electronic music, glitch, and trap production
+  - Creates unpredictable rhythmic complexity
+- **`.stutter_every(nth, repeats)`** - Deterministic stuttering (every Nth note)
+  - Example: `.stutter_every(4, 8)` makes every 4th note roll 8 times rapidly
+  - Perfect for trap hi-hat rolls and rhythmic patterns
+  - Predictable unlike `.stutter()` - great for consistent rhythmic effects
+- **`.granularize(divisions)`** - Break notes into micro-fragments
+  - Example: `.granularize(20)` splits each note into 20 tiny grains
+  - Creates shimmering, glitchy, ambient textures
+  - Combine with `.mutate()` for insane generative results: `.granularize(20).mutate(3)`
+- **`.magnetize(scale_notes)`** - Snap pitches to nearest scale degree (pitch quantization)
+  - Example: `.magnetize(&[C4, D4, E4, G4, A4])` forces chromatic melody into C major pentatonic
+  - Perfect for generative music - ensures all notes are in-scale
+  - Great for modal jazz, fixing off-key notes, or forcing melodies into specific tonalities
+- **`.gravity(center_pitch, strength)`** - Apply gravitational pull toward/away from tonal center
+  - Example: `.gravity(C4, 0.5)` pulls notes 50% closer to middle C
+  - Negative strength repels: `.gravity(C4, -0.3)` pushes notes away from center
+  - Creates organic pitch compression/expansion and tonal magnetism effects
+- **`.ripple(intensity)`** - Cascading effects where each note influences subsequent notes
+  - Example: `.ripple(0.02)` creates water droplet-like cascading timing and pitch shifts
+  - Positive intensity pushes notes forward in time and up in pitch
+  - Effect decays over time (70% per note) for natural-sounding cascades
 - **All methods are chainable** and work seamlessly with existing pattern operations
-  - Example: `.pattern_start().notes(...).shuffle().shift(7).thin(0.7).humanize(0.01, 0.05)`
-- **Fully tested** with 17 new unit tests ensuring correctness and edge cases
+  - Example: `.pattern_start().note(&[C4], 1.0).granularize(16).mutate(4).thin(0.7).shuffle().humanize(0.01, 0.08)`
+- **Fully tested** with 59 new unit tests ensuring correctness and edge cases (includes 2 tests for `.transform()` namespace API)
 
 #### Professional Bus Architecture and Master Effects Chain
 - **Major architectural refactor** - Complete bus-based mixing system with master effects chain

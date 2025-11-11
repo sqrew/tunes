@@ -1,3 +1,4 @@
+#![allow(unused, dead_code)]
 // Tunes Live Coding Template
 //
 // Edit this file and save to hear your changes in real-time!
@@ -17,31 +18,9 @@ use crate::consts::*;
 use crate::engine::AudioEngine;
 use crate::instruments::Instrument;
 
-#[allow(dead_code)]
 fn main() -> anyhow::Result<()> {
     // Create your composition here
     let mut comp = Composition::new(Tempo::new(140.0));
-
-    // Add drums
-    comp.track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
-
-    // Add bass
-    comp.instrument("bass", &Instrument::wobble_bass())
-        .at(0.0)
-        .notes(&[C2, C2, G1, G2], 0.5);
-
-    // Add melody showcasing pattern transformations
-    comp.instrument("lead", &Instrument::synth_lead())
-        .pattern_start()
-        .notes(&[C4, E4, G4, C5, E4, G4, E4, C5], 0.25)
-        .shuffle()      // Randomize order
-        .shift(7)       // Shift up a perfect fifth
-        .thin(0.7)      // Keep ~70% of notes
-        .humanize(0.01, 0.05); // Add subtle organic feel
 
     // Convert to mixer
     let mixer = comp.into_mixer();

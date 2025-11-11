@@ -4,6 +4,8 @@
 //! random walks, sequence transformations, and pattern manipulations.
 
 use super::TrackBuilder;
+use super::drums::DrumType;
+use crate::theory::core::ChordPattern;
 use crate::track::AudioEvent;
 use rand::Rng;
 
@@ -96,7 +98,531 @@ pub fn biased_random_walk_sequence(
     sequence
 }
 
+/// Builder for pattern transformations (accessed via `.transform()`)
+///
+/// Provides a scoped namespace for all pattern transformation methods.
+/// Use with closure syntax for clean, organized code:
+///
+/// ```rust
+/// # use tunes::composition::Composition;
+/// # use tunes::composition::rhythm::Tempo;
+/// # use tunes::consts::notes::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// comp.track("melody")
+///     .pattern_start()
+///     .notes(&[C4, E4, G4], 0.5)
+///     .transform(|t| t
+///         .shift(7)
+///         .humanize(0.01, 0.05)
+///         .rotate(1)
+///     )
+///     .wait(1.0);
+/// ```
+pub struct TransformBuilder<'a> {
+    inner: TrackBuilder<'a>,
+}
+
+impl<'a> TransformBuilder<'a> {
+    /// Unwrap back to the inner TrackBuilder
+    fn into_inner(self) -> TrackBuilder<'a> {
+        self.inner
+    }
+
+    /// Transpose pattern by semitones
+    pub fn shift(mut self, semitones: i32) -> Self {
+        self.inner = self.inner.shift(semitones);
+        self
+    }
+
+    /// Add organic timing and velocity variations
+    pub fn humanize(mut self, timing_variance: f32, velocity_variance: f32) -> Self {
+        self.inner = self.inner.humanize(timing_variance, velocity_variance);
+        self
+    }
+
+    /// Cycle pitch positions
+    pub fn rotate(mut self, positions: i32) -> Self {
+        self.inner = self.inner.rotate(positions);
+        self
+    }
+
+    /// Reverse pitch order (classical retrograde)
+    pub fn retrograde(mut self) -> Self {
+        self.inner = self.inner.retrograde();
+        self
+    }
+
+    /// Randomly reorder pitches
+    pub fn shuffle(mut self) -> Self {
+        self.inner = self.inner.shuffle();
+        self
+    }
+
+    /// Probabilistically remove notes
+    pub fn thin(mut self, keep_probability: f32) -> Self {
+        self.inner = self.inner.thin(keep_probability);
+        self
+    }
+
+    /// Layer harmonic voices (octave doubling, etc.)
+    pub fn stack(mut self, semitones: i32, count: usize) -> Self {
+        self.inner = self.inner.stack(semitones, count);
+        self
+    }
+
+    /// Random pitch variation for each note
+    pub fn mutate(mut self, max_semitones: i32) -> Self {
+        self.inner = self.inner.mutate(max_semitones);
+        self
+    }
+
+    /// Time stretch/compress by factor
+    pub fn stretch(mut self, factor: f32) -> Self {
+        self.inner = self.inner.stretch(factor);
+        self
+    }
+
+    /// Compress to exact target duration
+    pub fn compress(mut self, target_duration: f32) -> Self {
+        self.inner = self.inner.compress(target_duration);
+        self
+    }
+
+    /// Snap timing to rhythmic grid
+    pub fn quantize(mut self, grid: f32) -> Self {
+        self.inner = self.inner.quantize(grid);
+        self
+    }
+
+    /// Mirror pattern forward then backward
+    pub fn palindrome(mut self) -> Self {
+        self.inner = self.inner.palindrome();
+        self
+    }
+
+    /// Random glitchy stuttering
+    pub fn stutter(mut self, probability: f32, repeats: usize) -> Self {
+        self.inner = self.inner.stutter(probability, repeats);
+        self
+    }
+
+    /// Deterministic stuttering (every Nth note)
+    pub fn stutter_every(mut self, nth: usize, repeats: usize) -> Self {
+        self.inner = self.inner.stutter_every(nth, repeats);
+        self
+    }
+
+    /// Break notes into micro-fragments
+    pub fn granularize(mut self, divisions: usize) -> Self {
+        self.inner = self.inner.granularize(divisions);
+        self
+    }
+
+    /// Snap pitches to nearest scale degree
+    pub fn magnetize(mut self, scale_notes: &[f32]) -> Self {
+        self.inner = self.inner.magnetize(scale_notes);
+        self
+    }
+
+    /// Gravitational pull toward/away from center pitch
+    pub fn gravity(mut self, center_pitch: f32, strength: f32) -> Self {
+        self.inner = self.inner.gravity(center_pitch, strength);
+        self
+    }
+
+    /// Cascading effects through time and pitch
+    pub fn ripple(mut self, intensity: f32) -> Self {
+        self.inner = self.inner.ripple(intensity);
+        self
+    }
+
+    /// Reverse timing of all events in pattern
+    pub fn reverse(mut self) -> Self {
+        self.inner = self.inner.reverse();
+        self
+    }
+
+    /// Invert pitches around an axis frequency
+    pub fn invert(mut self, axis_freq: f32) -> Self {
+        self.inner = self.inner.invert(axis_freq);
+        self
+    }
+
+    /// Invert pitches around axis with range constraints
+    pub fn invert_constrained(mut self, axis_freq: f32, min_freq: f32, max_freq: f32) -> Self {
+        self.inner = self.inner.invert_constrained(axis_freq, min_freq, max_freq);
+        self
+    }
+
+    /// Repeat the pattern N times
+    pub fn repeat(mut self, times: usize) -> Self {
+        self.inner = self.inner.repeat(times);
+        self
+    }
+
+    /// Play harmonized notes (adds interval above/below)
+    pub fn harmonize(mut self, notes: &[f32], semitones: i32, note_duration: f32) -> Self {
+        self.inner = self.inner.harmonize(notes, semitones, note_duration);
+        self
+    }
+
+    /// Play a drum every Nth event in the pattern
+    pub fn every_n(mut self, n: usize, drum: DrumType) -> Self {
+        self.inner = self.inner.every_n(n, drum);
+        self
+    }
+}
+
+/// Builder for note generators (accessed via `.generator()`)
+///
+/// Provides a scoped namespace for all note-generating pattern methods.
+/// Use with closure syntax for clean, organized code:
+///
+/// ```rust
+/// # use tunes::composition::Composition;
+/// # use tunes::composition::rhythm::Tempo;
+/// # use tunes::consts::notes::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// comp.track("melody")
+///     .generator(|g| g
+///         .arpeggiate(&[C4, E4, G4], 0.25)
+///         .alberti_bass(&[C4, E4, G4, C5], 0.125)
+///         .trill(C4, D4, 8, 0.0625)
+///     );
+/// ```
+pub struct GeneratorBuilder<'a> {
+    inner: TrackBuilder<'a>,
+}
+
+impl<'a> GeneratorBuilder<'a> {
+    /// Unwrap back to the inner TrackBuilder
+    fn into_inner(self) -> TrackBuilder<'a> {
+        self.inner
+    }
+
+    // === CHORDS ===
+    /// Generate a chord
+    pub fn chord(mut self, root: f32, pattern: &ChordPattern, duration: f32) -> Self {
+        self.inner = self.inner.chord(root, pattern, duration);
+        self
+    }
+
+    /// Generate an inverted chord
+    pub fn chord_inverted(mut self, root: f32, pattern: &ChordPattern, inversion: usize, duration: f32) -> Self {
+        self.inner = self.inner.chord_inverted(root, pattern, inversion, duration);
+        self
+    }
+
+    /// Generate chord with voice leading
+    pub fn chord_voice_lead(mut self, root: f32, pattern: &ChordPattern, duration: f32) -> Self {
+        self.inner = self.inner.chord_voice_lead(root, pattern, duration);
+        self
+    }
+
+    /// Generate chord over a bass note
+    pub fn chord_over_bass(mut self, root: f32, pattern: &ChordPattern, bass: f32, duration: f32) -> Self {
+        self.inner = self.inner.chord_over_bass(root, pattern, bass, duration);
+        self
+    }
+
+    /// Generate a sequence of chords
+    pub fn chords(mut self, chord_sequence: &[&[f32]], chord_duration: f32) -> Self {
+        self.inner = self.inner.chords(chord_sequence, chord_duration);
+        self
+    }
+
+    /// Generate chords from vector format
+    pub fn chords_from(mut self, chord_vecs: &[Vec<f32>], chord_duration: f32) -> Self {
+        self.inner = self.inner.chords_from(chord_vecs, chord_duration);
+        self
+    }
+
+    // === SCALES ===
+    /// Play a scale ascending
+    pub fn scale(mut self, scale: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.scale(scale, note_duration);
+        self
+    }
+
+    /// Play a scale descending
+    pub fn scale_reverse(mut self, scale: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.scale_reverse(scale, note_duration);
+        self
+    }
+
+    /// Play scale up then down
+    pub fn scale_updown(mut self, scale: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.scale_updown(scale, note_duration);
+        self
+    }
+
+    /// Play scale down then up
+    pub fn scale_downup(mut self, scale: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.scale_downup(scale, note_duration);
+        self
+    }
+
+    // === ARPEGGIOS ===
+    /// Arpeggiate chord ascending
+    pub fn arpeggiate(mut self, chord: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.arpeggiate(chord, note_duration);
+        self
+    }
+
+    /// Arpeggiate chord descending
+    pub fn arpeggiate_reverse(mut self, chord: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.arpeggiate_reverse(chord, note_duration);
+        self
+    }
+
+    /// Arpeggiate up then down
+    pub fn arpeggiate_updown(mut self, chord: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.arpeggiate_updown(chord, note_duration);
+        self
+    }
+
+    /// Arpeggiate down then up
+    pub fn arpeggiate_downup(mut self, chord: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.arpeggiate_downup(chord, note_duration);
+        self
+    }
+
+    // === CLASSICAL PATTERNS ===
+    /// Generate Alberti bass pattern
+    pub fn alberti_bass(mut self, chord: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.alberti_bass(chord, note_duration);
+        self
+    }
+
+    /// Generate waltz bass pattern
+    pub fn waltz_bass(mut self, root: f32, chord: &[f32], beat_duration: f32) -> Self {
+        self.inner = self.inner.waltz_bass(root, chord, beat_duration);
+        self
+    }
+
+    /// Generate broken chord pattern
+    pub fn broken_chord(mut self, chord: &[f32], pattern_type: u8, note_duration: f32) -> Self {
+        self.inner = self.inner.broken_chord(chord, pattern_type, note_duration);
+        self
+    }
+
+    /// Generate walking bass line
+    pub fn walking_bass(mut self, bass_line: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.walking_bass(bass_line, note_duration);
+        self
+    }
+
+    /// Generate tremolo strings effect
+    pub fn tremolo_strings(mut self, notes: &[f32], total_duration: f32, note_speed: f32) -> Self {
+        self.inner = self.inner.tremolo_strings(notes, total_duration, note_speed);
+        self
+    }
+
+    /// Generate ostinato pattern
+    pub fn ostinato(mut self, pattern: &[f32], note_duration: f32, repeats: usize) -> Self {
+        self.inner = self.inner.ostinato(pattern, note_duration, repeats);
+        self
+    }
+
+    // === ORNAMENTS ===
+    /// Generate trill between two notes
+    pub fn trill(mut self, note1: f32, note2: f32, count: usize, note_duration: f32) -> Self {
+        self.inner = self.inner.trill(note1, note2, count, note_duration);
+        self
+    }
+
+    /// Generate cascading notes
+    pub fn cascade(mut self, notes: &[f32], note_duration: f32, stagger: f32) -> Self {
+        self.inner = self.inner.cascade(notes, note_duration, stagger);
+        self
+    }
+
+    /// Generate tremolo on single note
+    pub fn tremolo_note(mut self, note: f32, count: usize, note_duration: f32) -> Self {
+        self.inner = self.inner.tremolo_note(note, count, note_duration);
+        self
+    }
+
+    /// Generate strummed chord
+    pub fn strum(mut self, chord: &[f32], note_duration: f32, stagger: f32) -> Self {
+        self.inner = self.inner.strum(chord, note_duration, stagger);
+        self
+    }
+
+    /// Generate mordent ornament
+    pub fn mordent(mut self, main_note: f32, duration: f32) -> Self {
+        self.inner = self.inner.mordent(main_note, duration);
+        self
+    }
+
+    /// Generate inverted mordent
+    pub fn inverted_mordent(mut self, main_note: f32, duration: f32) -> Self {
+        self.inner = self.inner.inverted_mordent(main_note, duration);
+        self
+    }
+
+    /// Generate turn ornament
+    pub fn turn(mut self, main_note: f32, duration: f32) -> Self {
+        self.inner = self.inner.turn(main_note, duration);
+        self
+    }
+
+    /// Generate inverted turn
+    pub fn inverted_turn(mut self, main_note: f32, duration: f32) -> Self {
+        self.inner = self.inner.inverted_turn(main_note, duration);
+        self
+    }
+
+    // === TUPLETS ===
+    /// Generate tuplet
+    pub fn tuplet(mut self, notes: &[f32], count: usize, total_duration: f32) -> Self {
+        self.inner = self.inner.tuplet(notes, count, total_duration);
+        self
+    }
+
+    /// Generate triplet
+    pub fn triplet(mut self, notes: &[f32], total_duration: f32) -> Self {
+        self.inner = self.inner.triplet(notes, total_duration);
+        self
+    }
+
+    /// Generate quintuplet
+    pub fn quintuplet(mut self, notes: &[f32], total_duration: f32) -> Self {
+        self.inner = self.inner.quintuplet(notes, total_duration);
+        self
+    }
+
+    /// Generate sextuplet
+    pub fn sextuplet(mut self, notes: &[f32], total_duration: f32) -> Self {
+        self.inner = self.inner.sextuplet(notes, total_duration);
+        self
+    }
+
+    /// Generate septuplet
+    pub fn septuplet(mut self, notes: &[f32], total_duration: f32) -> Self {
+        self.inner = self.inner.septuplet(notes, total_duration);
+        self
+    }
+
+    // === MUSICAL PATTERNS ===
+    /// Generate octave doubling
+    pub fn octaves(mut self, notes: &[f32], octave_offset: i32, note_duration: f32) -> Self {
+        self.inner = self.inner.octaves(notes, octave_offset, note_duration);
+        self
+    }
+
+    /// Generate pedal tone with melody
+    pub fn pedal(mut self, pedal_note: f32, melody_notes: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.pedal(pedal_note, melody_notes, note_duration);
+        self
+    }
+
+    /// Generate notes from sequence indices
+    pub fn sequence_from(mut self, sequence: &[u32], notes: &[f32], note_duration: f32) -> Self {
+        self.inner = self.inner.sequence_from(sequence, notes, note_duration);
+        self
+    }
+
+    // === PORTAMENTO ===
+    /// Generate slide between two pitches
+    pub fn slide(mut self, from: f32, to: f32, duration: f32) -> Self {
+        self.inner = self.inner.slide(from, to, duration);
+        self
+    }
+
+    // === TIME-BASED ===
+    /// Generate whole notes
+    pub fn wholes(mut self, notes: &[f32]) -> Self {
+        self.inner = self.inner.wholes(notes);
+        self
+    }
+
+    /// Generate half notes
+    pub fn halves(mut self, notes: &[f32]) -> Self {
+        self.inner = self.inner.halves(notes);
+        self
+    }
+
+    /// Generate quarter notes
+    pub fn quarters(mut self, notes: &[f32]) -> Self {
+        self.inner = self.inner.quarters(notes);
+        self
+    }
+
+    /// Generate eighth notes
+    pub fn eighths(mut self, notes: &[f32]) -> Self {
+        self.inner = self.inner.eighths(notes);
+        self
+    }
+
+    /// Generate sixteenth notes
+    pub fn sixteenths(mut self, notes: &[f32]) -> Self {
+        self.inner = self.inner.sixteenths(notes);
+        self
+    }
+}
+
 impl<'a> TrackBuilder<'a> {
+    /// Enter note generator namespace
+    ///
+    /// Provides scoped access to all note-generating pattern methods.
+    /// The closure receives a `GeneratorBuilder` and should return it
+    /// after generating notes.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .generator(|g| g
+    ///         .arpeggiate(&[C4, E4, G4], 0.25)
+    ///         .scale(&[C4, D4, E4, F4, G4], 0.25)
+    ///         .trill(C4, D4, 8, 0.0625)
+    ///     );
+    /// ```
+    pub fn generator<F>(self, f: F) -> Self
+    where
+        F: FnOnce(GeneratorBuilder<'a>) -> GeneratorBuilder<'a>,
+    {
+        let builder = GeneratorBuilder { inner: self };
+        let result = f(builder);
+        result.into_inner()
+    }
+}
+
+impl<'a> TrackBuilder<'a> {
+    /// Enter pattern transformation namespace
+    ///
+    /// Provides scoped access to all 18 pattern transformation methods.
+    /// The closure receives a `TransformBuilder` and should return it
+    /// after applying transformations.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .transform(|t| t
+    ///         .mutate(3)
+    ///         .rotate(1)
+    ///         .humanize(0.01, 0.05)
+    ///     )
+    ///     .wait(1.0);
+    /// ```
+    pub fn transform<F>(self, f: F) -> Self
+    where
+        F: FnOnce(TransformBuilder<'a>) -> TransformBuilder<'a>,
+    {
+        let builder = TransformBuilder { inner: self };
+        let result = f(builder);
+        result.into_inner()
+    }
     /// Generate notes using a random walk within a scale
     ///
     /// Starts at a given frequency and takes random steps through the scale,
@@ -312,6 +838,865 @@ impl<'a> TrackBuilder<'a> {
                 note.frequencies = freqs[rotated_idx].0;
                 note.num_freqs = freqs[rotated_idx].1;
             }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Mutate pitches by random semitone offsets (evolutionary variation)
+    ///
+    /// Randomly adjusts each note by up to ±amount semitones, creating subtle to dramatic
+    /// variations while maintaining the overall melodic shape. Great for generative music
+    /// and creating organic variations of existing patterns.
+    ///
+    /// # Arguments
+    /// * `max_semitones` - Maximum random shift in semitones (positive values only)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Subtle variation - like a slightly drunk pianist
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .mutate(1);  // Each note shifts by -1, 0, or +1 semitones
+    ///
+    /// // Dramatic variation
+    /// comp.track("wild")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .mutate(5);  // Each note can shift by -5 to +5 semitones
+    /// ```
+    pub fn mutate(mut self, max_semitones: i32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || max_semitones == 0 {
+            return self;
+        }
+
+        let max_semitones = max_semitones.abs(); // Ensure positive
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        use rand::Rng;
+        let mut rng = rand::rng();
+
+        // Mutate notes in the pattern
+        for event in &mut self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    // Apply random mutation to each frequency in the note/chord
+                    for i in 0..note.num_freqs {
+                        // Random offset: -max_semitones to +max_semitones
+                        let offset = rng.random_range(-max_semitones..=max_semitones);
+                        if offset != 0 {
+                            let shift_ratio = 2.0_f32.powf(offset as f32 / 12.0);
+                            note.frequencies[i] *= shift_ratio;
+                        }
+                    }
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Stack harmonic layers on each note
+    ///
+    /// Adds `count` additional voices to each note, each shifted by `semitones` from the previous.
+    /// Creates thick unison sounds, octave stacking, or complex harmonic layers - a fundamental
+    /// technique in music production for making sounds bigger and richer.
+    ///
+    /// # Arguments
+    /// * `semitones` - Semitone interval between each layer (can be negative)
+    /// * `count` - Number of layers to add (1 = two voices, 2 = three voices, etc.)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Classic octave stacking - C4 becomes [C4, C5] playing simultaneously
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.5)
+    ///     .stack(12, 1);  // Stack octave above each note
+    ///
+    /// // Thick three-octave unison - C4 becomes [C4, C5, C6]
+    /// comp.track("lead")
+    ///     .pattern_start()
+    ///     .notes(&[C4], 1.0)
+    ///     .stack(12, 2);  // Stack two octaves
+    ///
+    /// // Stack perfect fifth and major ninth - C4 becomes [C4, G4, D5]
+    /// comp.track("chord")
+    ///     .pattern_start()
+    ///     .notes(&[C4], 1.0)
+    ///     .stack(7, 2);
+    ///
+    /// // Bass reinforcement - stack octave below
+    /// comp.track("bass")
+    ///     .pattern_start()
+    ///     .notes(&[C4], 1.0)
+    ///     .stack(-12, 1);
+    /// ```
+    pub fn stack(mut self, semitones: i32, count: usize) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || count == 0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Duplicate notes in the pattern
+        for event in &mut self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    let original_count = note.num_freqs;
+
+                    // For each duplicate layer
+                    for layer in 1..=count {
+                        let shift = semitones * layer as i32;
+                        let shift_ratio = 2.0_f32.powf(shift as f32 / 12.0);
+
+                        // Duplicate each original frequency
+                        for i in 0..original_count {
+                            if note.num_freqs < 8 {
+                                note.frequencies[note.num_freqs] = note.frequencies[i] * shift_ratio;
+                                note.num_freqs += 1;
+                            } else {
+                                // Max 8 frequencies - silently stop if we hit the limit
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Stretch pattern timing by a factor
+    ///
+    /// Multiplies all note start times and durations within the pattern by the given factor.
+    /// Values > 1.0 slow down the pattern, values < 1.0 speed it up.
+    ///
+    /// # Arguments
+    /// * `factor` - Time multiplication factor (e.g., 2.0 = half speed, 0.5 = double speed)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Original pattern at normal speed
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25);
+    ///
+    /// // Same pattern at half speed (twice as long)
+    /// comp.track("slow")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .stretch(2.0);
+    ///
+    /// // Same pattern at double speed (half duration)
+    /// comp.track("fast")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .stretch(0.5);
+    /// ```
+    pub fn stretch(mut self, factor: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || factor <= 0.0 || (factor - 1.0).abs() < 0.001 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Stretch all events in the pattern
+        for event in &mut self.get_track_mut().events {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        // Stretch timing relative to pattern start
+                        let offset = note.start_time - pattern_start;
+                        note.start_time = pattern_start + (offset * factor);
+                        note.duration *= factor;
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Stretch timing relative to pattern start
+                        let offset = drum.start_time - pattern_start;
+                        drum.start_time = pattern_start + (offset * factor);
+                    }
+                }
+                _ => {} // Ignore other event types
+            }
+        }
+
+        // Update cursor to reflect stretched duration
+        self.cursor = pattern_start + (pattern_duration * factor);
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Compress pattern to fit within a specific duration
+    ///
+    /// Ergonomic wrapper around `.stretch()` - instead of calculating ratios manually,
+    /// simply specify the target duration and the pattern will be stretched to fit.
+    ///
+    /// # Arguments
+    /// * `target_duration` - Desired duration in beats (e.g., 1.0 = one beat, 2.5 = two and a half beats)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Pattern naturally takes 0.75 beats
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .compress(0.5);  // Now fits in exactly 0.5 beats
+    ///
+    /// // Compress multiple notes into 1 beat
+    /// comp.track("fast")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4, G4], 0.5)  // Naturally 2.5 beats
+    ///     .compress(1.0);  // Now exactly 1 beat
+    /// ```
+    pub fn compress(self, target_duration: f32) -> Self {
+        let current_duration = self.cursor - self.pattern_start;
+
+        if current_duration <= 0.0 || target_duration <= 0.0 {
+            return self;
+        }
+
+        // Calculate stretch factor to reach target duration
+        let factor = target_duration / current_duration;
+
+        // Reuse stretch implementation
+        self.stretch(factor)
+    }
+
+    /// Quantize note timings to a rhythmic grid
+    ///
+    /// Snaps all note start times to the nearest grid position, useful for cleaning up
+    /// timing after humanization or ensuring tight rhythmic accuracy.
+    ///
+    /// # Arguments
+    /// * `grid` - Grid size in beats (e.g., 0.25 = 16th notes, 0.5 = 8th notes, 1.0 = quarter notes)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Humanized pattern with timing variations
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .humanize(0.05, 0.1)  // Add timing jitter
+    ///     .quantize(0.25);       // Snap back to 16th note grid
+    ///
+    /// // Snap to 8th note grid (less strict)
+    /// comp.track("loose")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .quantize(0.5);  // 8th note grid
+    /// ```
+    pub fn quantize(mut self, grid: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || grid <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Quantize all events in the pattern
+        for event in &mut self.get_track_mut().events {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        // Quantize to nearest grid position
+                        let offset = note.start_time - pattern_start;
+                        let quantized_offset = (offset / grid).round() * grid;
+                        note.start_time = pattern_start + quantized_offset;
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Quantize to nearest grid position
+                        let offset = drum.start_time - pattern_start;
+                        let quantized_offset = (offset / grid).round() * grid;
+                        drum.start_time = pattern_start + quantized_offset;
+                    }
+                }
+                _ => {} // Ignore other event types
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Create a palindrome - pattern plays forward then backward
+    ///
+    /// Mirrors the pattern by appending a reversed copy. Creates symmetrical musical phrases
+    /// that return to the starting point. Timing is reversed but pitches play in reverse order.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Original: C4, E4, G4
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .palindrome();  // Becomes: C4, E4, G4, G4, E4, C4
+    ///
+    /// // Great for creating symmetrical phrases
+    /// comp.track("symmetrical")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4], 0.25)
+    ///     .palindrome();  // → C4, D4, E4, F4, F4, E4, D4, C4
+    /// ```
+    pub fn palindrome(mut self) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect all events in the pattern
+        let mut events_to_mirror: Vec<AudioEvent> = Vec::new();
+        for event in &self.get_track_mut().events {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        events_to_mirror.push(event.clone());
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        events_to_mirror.push(event.clone());
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if events_to_mirror.is_empty() {
+            return self;
+        }
+
+        // Reverse and append the mirrored events
+        for event in events_to_mirror.iter().rev() {
+            let mut mirrored_event = event.clone();
+
+            // Calculate mirrored timing (relative to end of original pattern)
+            let original_offset = match event {
+                AudioEvent::Note(note) => note.start_time - pattern_start,
+                AudioEvent::Drum(drum) => drum.start_time - pattern_start,
+                _ => 0.0,
+            };
+
+            let mirrored_offset = pattern_duration - original_offset;
+            let new_start_time = cursor + mirrored_offset;
+
+            match &mut mirrored_event {
+                AudioEvent::Note(note) => {
+                    // Position reversed notes after the original pattern
+                    note.start_time = new_start_time - note.duration;
+                }
+                AudioEvent::Drum(drum) => {
+                    drum.start_time = new_start_time;
+                }
+                _ => {}
+            }
+
+            self.get_track_mut().events.push(mirrored_event);
+        }
+
+        // Update cursor to reflect doubled length
+        self.cursor = cursor + pattern_duration;
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Add random stuttering (glitch effect) - rapidly repeat notes
+    ///
+    /// Randomly triggers rapid repetitions of notes, creating glitchy stuttering effects
+    /// popular in electronic music and trap production.
+    ///
+    /// # Arguments
+    /// * `probability` - Chance (0.0-1.0) that each note will stutter
+    /// * `repeats` - Number of rapid repeats to create (typically 2-8)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // 50% chance each note stutters 4 times
+    /// comp.track("glitch")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.5)
+    ///     .stutter(0.5, 4);  // Random notes become: C-C-C-C or E-E-E-E (fast)
+    ///
+    /// // Trap hi-hat rolls
+    /// comp.track("hats")
+    ///     .pattern_start()
+    ///     .notes(&[C4, C4, C4, C4], 0.25)
+    ///     .stutter(0.25, 8);  // Occasional 8x rolls
+    /// ```
+    pub fn stutter(mut self, probability: f32, repeats: usize) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || probability <= 0.0 || repeats == 0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        use rand::Rng;
+        let mut rng = rand::rng();
+
+        // Collect events that will stutter
+        let mut stutter_events: Vec<(usize, AudioEvent, f32)> = Vec::new();
+
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            let should_stutter = rng.random_range(0.0..1.0) < probability;
+
+            if !should_stutter {
+                continue;
+            }
+
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        stutter_events.push((idx, event.clone(), note.duration));
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Drums don't have duration, use small interval
+                        stutter_events.push((idx, event.clone(), 0.05));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Add stutter repeats
+        for (_idx, event, base_duration) in stutter_events {
+            // Calculate rapid repeat interval (divide duration by number of repeats)
+            let stutter_interval = base_duration / repeats as f32;
+
+            for i in 1..=repeats {
+                let mut stutter_copy = event.clone();
+                let offset = stutter_interval * i as f32;
+
+                match &mut stutter_copy {
+                    AudioEvent::Note(note) => {
+                        note.start_time += offset;
+                        note.duration = stutter_interval * 0.8; // Slightly shorter for separation
+                    }
+                    AudioEvent::Drum(drum) => {
+                        drum.start_time += offset;
+                    }
+                    _ => {}
+                }
+
+                self.get_track_mut().events.push(stutter_copy);
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Stutter every Nth note (deterministic glitch effect)
+    ///
+    /// Applies stuttering to every Nth note in the pattern, creating rhythmic glitch effects.
+    /// Unlike `.stutter()` which is random, this version is predictable and great for
+    /// creating consistent rhythmic patterns like trap hi-hat rolls.
+    ///
+    /// # Arguments
+    /// * `nth` - Which note to stutter (e.g., 4 = every 4th note)
+    /// * `repeats` - Number of rapid repeats to create
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Every 4th note stutters 8 times (trap hi-hat roll)
+    /// comp.track("hats")
+    ///     .pattern_start()
+    ///     .notes(&[C4, C4, C4, C4, C4, C4, C4, C4], 0.25)
+    ///     .stutter_every(4, 8);  // 4th and 8th notes roll
+    ///
+    /// // Kick drum pattern with stutter on 2 and 4
+    /// comp.track("kicks")
+    ///     .pattern_start()
+    ///     .notes(&[C2, C2, C2, C2], 0.5)
+    ///     .stutter_every(2, 4);  // 2nd and 4th kicks stutter
+    /// ```
+    pub fn stutter_every(mut self, nth: usize, repeats: usize) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || nth == 0 || repeats == 0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect events to stutter (every nth event)
+        let mut stutter_events: Vec<(usize, AudioEvent, f32)> = Vec::new();
+        let mut note_count = 0;
+
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        note_count += 1;
+                        if note_count % nth == 0 {
+                            stutter_events.push((idx, event.clone(), note.duration));
+                        }
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        note_count += 1;
+                        if note_count % nth == 0 {
+                            stutter_events.push((idx, event.clone(), 0.05));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Add stutter repeats
+        for (_idx, event, base_duration) in stutter_events {
+            let stutter_interval = base_duration / repeats as f32;
+
+            for i in 1..=repeats {
+                let mut stutter_copy = event.clone();
+                let offset = stutter_interval * i as f32;
+
+                match &mut stutter_copy {
+                    AudioEvent::Note(note) => {
+                        note.start_time += offset;
+                        note.duration = stutter_interval * 0.8;
+                    }
+                    AudioEvent::Drum(drum) => {
+                        drum.start_time += offset;
+                    }
+                    _ => {}
+                }
+
+                self.get_track_mut().events.push(stutter_copy);
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Break each note into micro-fragments (granularize)
+    ///
+    /// Splits each note into multiple tiny notes across its duration, creating granular textures.
+    /// Great for creating shimmering effects, especially when combined with other transformations
+    /// like `.mutate()` or `.shuffle()`.
+    ///
+    /// # Arguments
+    /// * `divisions` - Number of fragments to create per note (typically 4-50)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Break each note into 10 grains
+    /// comp.track("texture")
+    ///     .pattern_start()
+    ///     .note(&[C4], 1.0)
+    ///     .granularize(10);  // → 10 tiny 0.1s notes
+    ///
+    /// // Granular with pitch variation
+    /// comp.track("shimmer")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.5)
+    ///     .granularize(20)   // Break into 20 grains each
+    ///     .mutate(3);        // Add pitch variation to grains
+    /// ```
+    pub fn granularize(mut self, divisions: usize) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || divisions == 0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect notes to granularize and remove originals
+        let mut notes_to_granularize: Vec<AudioEvent> = Vec::new();
+        let mut indices_to_remove: Vec<usize> = Vec::new();
+
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        notes_to_granularize.push(event.clone());
+                        indices_to_remove.push(idx);
+                    }
+                }
+                _ => {} // Only granularize notes, not drums
+            }
+        }
+
+        // Remove original notes in reverse order to maintain indices
+        for &idx in indices_to_remove.iter().rev() {
+            self.get_track_mut().events.remove(idx);
+        }
+
+        // Create granularized versions
+        for event in notes_to_granularize {
+            if let AudioEvent::Note(note) = event {
+                let grain_duration = note.duration / divisions as f32;
+
+                for i in 0..divisions {
+                    let mut grain = note.clone();
+                    grain.start_time = note.start_time + (grain_duration * i as f32);
+                    grain.duration = grain_duration * 0.9; // Slight gap between grains
+
+                    self.get_track_mut()
+                        .events
+                        .push(AudioEvent::Note(grain));
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Snap all note pitches to the nearest note in a given scale
+    ///
+    /// Quantizes pitch (not time) by snapping each note frequency to the closest
+    /// frequency in the provided scale. Great for forcing melodies into a specific
+    /// tonality or correcting out-of-scale notes.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Chromatic melody snapped to C major pentatonic (C, D, E, G, A)
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, CS4, D4, DS4, E4, F4, FS4, G4, GS4, A4], 0.25)
+    ///     .magnetize(&[C4, D4, E4, G4, A4]);  // Snap to pentatonic
+    /// ```
+    pub fn magnetize(mut self, scale_notes: &[f32]) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || scale_notes.is_empty() {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Snap each note frequency to nearest scale note
+        for event in &mut self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    for i in 0..note.num_freqs {
+                        let original_freq = note.frequencies[i];
+
+                        // Find nearest frequency in scale
+                        let mut closest_freq = scale_notes[0];
+                        let mut min_distance = (original_freq / closest_freq).log2().abs();
+
+                        for &scale_freq in scale_notes.iter().skip(1) {
+                            let distance = (original_freq / scale_freq).log2().abs();
+                            if distance < min_distance {
+                                min_distance = distance;
+                                closest_freq = scale_freq;
+                            }
+                        }
+
+                        note.frequencies[i] = closest_freq;
+                    }
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Apply gravitational pull toward or away from a center pitch
+    ///
+    /// Notes are attracted (positive strength) or repelled (negative strength)
+    /// from a center frequency. The effect is proportional to distance - notes
+    /// closer to the center are affected more strongly.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C3, E4, G5, C6], 0.5)
+    ///     .gravity(C4, 0.3);  // Pull toward middle C (30% of distance)
+    /// ```
+    pub fn gravity(mut self, center_pitch: f32, strength: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || strength == 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Apply gravitational force to each note
+        for event in &mut self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    for i in 0..note.num_freqs {
+                        let original_freq = note.frequencies[i];
+
+                        // Calculate distance in semitones
+                        let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
+
+                        // Apply gravity - move by (strength * distance) toward center
+                        let pull_semitones = -semitone_distance * strength;
+                        let shift_ratio = 2.0_f32.powf(pull_semitones / 12.0);
+
+                        note.frequencies[i] = original_freq * shift_ratio;
+                    }
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Create cascading effects where each note influences subsequent notes
+    ///
+    /// Each note creates a "ripple" that affects the timing and pitch of following
+    /// notes. The effect decays over time. Positive intensity pushes notes forward
+    /// in time and up in pitch, negative pulls them back and down.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, C4, C4, C4, C4], 0.25)
+    ///     .ripple(0.02);  // Each note pushes the next one slightly
+    /// ```
+    pub fn ripple(mut self, intensity: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || intensity == 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect notes in time order
+        let mut note_data: Vec<(usize, f32, [f32; 8], usize)> = Vec::new();
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    note_data.push((idx, note.start_time, note.frequencies, note.num_freqs));
+                }
+            }
+        }
+
+        // Sort by time
+        note_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Apply cascading ripple effects
+        let mut accumulated_time_shift = 0.0;
+        let mut accumulated_pitch_shift = 0.0;
+        let decay = 0.7; // Each ripple decays to 70% of previous
+
+        for (i, (idx, _original_time, _original_freqs, num_freqs)) in note_data.iter().enumerate() {
+            if i > 0 {
+                // Apply accumulated effects from previous notes
+                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*idx] {
+                    // Apply timing shift
+                    note.start_time += accumulated_time_shift;
+
+                    // Apply pitch shift
+                    let pitch_shift_ratio = 2.0_f32.powf(accumulated_pitch_shift / 12.0);
+                    for j in 0..*num_freqs {
+                        note.frequencies[j] *= pitch_shift_ratio;
+                    }
+                }
+            }
+
+            // Add this note's contribution to the ripple (decayed)
+            accumulated_time_shift = (accumulated_time_shift + intensity) * decay;
+            accumulated_pitch_shift = (accumulated_pitch_shift + intensity * 2.0) * decay;
         }
 
         self.get_track_mut().invalidate_time_cache();
@@ -1152,6 +2537,609 @@ mod tests {
     }
 
     #[test]
+    fn test_mutate_changes_pitches() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .mutate(2); // Each note can shift by -2, -1, 0, +1, or +2 semitones
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 4);
+
+        // Check that timing is preserved
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.start_time, 0.0);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert_eq!(note.start_time, 0.25);
+        }
+
+        // At least one note should be different (with very high probability)
+        let original_freqs = vec![C4, E4, G4, C5];
+        let mut has_mutation = false;
+        for (i, event) in events.iter().enumerate() {
+            if let AudioEvent::Note(note) = event {
+                // Allow for ±2 semitones of variation
+                let diff = (note.frequencies[0] - original_freqs[i]).abs();
+                if diff > 0.1 {
+                    has_mutation = true;
+                    break;
+                }
+            }
+        }
+        // With 4 notes and mutate(2), very likely at least one changes
+        assert!(has_mutation, "Mutate should change at least one note");
+    }
+
+    #[test]
+    fn test_mutate_by_zero() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .mutate(0); // No mutation
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should remain unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!((note.frequencies[0] - G4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_mutate_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().mutate(2); // Mutate with no notes
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_stack_octave_above() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4], 0.5)
+            .stack(12, 1); // Add one octave above
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 1);
+
+        // Should have 2 frequencies: C4 and C5
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 2);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.frequencies[1] - C5).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_stack_two_octaves() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4], 0.5)
+            .stack(12, 2); // Add two octaves above
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 1);
+
+        // Should have 3 frequencies: C4, C5, C6
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 3);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.frequencies[1] - C5).abs() < 0.1);
+            assert!((note.frequencies[2] - C6).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_stack_octave_below() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4], 0.5)
+            .stack(-12, 1); // Add one octave below
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 1);
+
+        // Should have 2 frequencies: C4 and C3
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 2);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.frequencies[1] - C3).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_stack_perfect_fifth() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4], 0.5)
+            .stack(7, 2); // Add perfect fifth and major ninth
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 1);
+
+        // Should have 3 frequencies: C4, G4 (+7), D5 (+14)
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 3);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.frequencies[1] - G4).abs() < 0.1);
+            // D5 is 14 semitones above C4
+            let d5 = C4 * 2.0_f32.powf(14.0 / 12.0);
+            assert!((note.frequencies[2] - d5).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_stack_chord() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25) // C major chord
+            .stack(12, 1); // Add octave above each note
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Each note should be doubled
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 2);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.frequencies[1] - C5).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert_eq!(note.num_freqs, 2);
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+            assert!((note.frequencies[1] - E5).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert_eq!(note.num_freqs, 2);
+            assert!((note.frequencies[0] - G4).abs() < 0.1);
+            assert!((note.frequencies[1] - G5).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_stack_count_zero() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4], 0.5)
+            .stack(12, 0); // No stacking
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should remain unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.num_freqs, 1);
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_stack_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().stack(12, 1); // Stack with no notes
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_stretch_double_speed() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.5)
+            .stretch(2.0); // Half speed (twice as long)
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Check timing is stretched (doubled)
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);
+            assert!((note.duration - 1.0).abs() < 0.01); // 0.5 * 2.0 = 1.0
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 1.0).abs() < 0.01); // 0.5 * 2.0 = 1.0
+            assert!((note.duration - 1.0).abs() < 0.01);
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!((note.start_time - 2.0).abs() < 0.01); // 1.0 * 2.0 = 2.0
+            assert!((note.duration - 1.0).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_stretch_half_speed() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 1.0)
+            .stretch(0.5); // Double speed (half duration)
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        // Check timing is compressed (halved)
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);
+            assert!((note.duration - 0.5).abs() < 0.01); // 1.0 * 0.5 = 0.5
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.5).abs() < 0.01); // 1.0 * 0.5 = 0.5
+            assert!((note.duration - 0.5).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_stretch_by_one() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.25)
+            .stretch(1.0); // No change
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should remain unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);
+            assert!((note.duration - 0.25).abs() < 0.01);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.25).abs() < 0.01);
+            assert!((note.duration - 0.25).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_stretch_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().stretch(2.0); // Stretch with no notes
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_compress_to_target_duration() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)  // Naturally 0.75 beats
+            .compress(0.5);  // Compress to 0.5 beats
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Should be compressed by factor of 0.5/0.75 = 0.666...
+        // First note at 0.0 with duration ~0.167 (0.25 * 0.666)
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.start_time, 0.0);
+            assert!((note.duration - 0.167).abs() < 0.01);
+        }
+        // Second note at ~0.167
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.167).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_compress_expand_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.5)  // Naturally 1.0 beat
+            .compress(2.0);  // Expand to 2.0 beats
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should be expanded by factor of 2.0
+        if let AudioEvent::Note(note) = &events[0] {
+            assert_eq!(note.start_time, 0.0);
+            assert!((note.duration - 1.0).abs() < 0.01);  // 0.5 * 2.0
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 1.0).abs() < 0.01);  // 0.5 * 2.0
+        }
+    }
+
+    #[test]
+    fn test_compress_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().compress(1.0);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_quantize_to_grid() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .wait(0.12)
+            .note(&[C4], 0.25)
+            .wait(0.11)
+            .note(&[E4], 0.25)
+            .wait(0.04)
+            .note(&[G4], 0.25)
+            .quantize(0.25);  // Snap to 16th note grid
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Check quantized to nearest 0.25 grid
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);  // 0.12 → 0.0
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.5).abs() < 0.01);  // 0.48 → 0.5
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!((note.start_time - 0.75).abs() < 0.01); // 0.77 → 0.75
+        }
+    }
+
+    #[test]
+    fn test_quantize_eighth_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .wait(0.13)
+            .note(&[C4], 0.25)
+            .wait(0.24)
+            .note(&[E4], 0.25)
+            .quantize(0.5);  // Snap to 8th note grid
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Check quantized to nearest 0.5 grid
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);  // 0.13 → 0.0
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.5).abs() < 0.01);  // 0.62 → 0.5
+        }
+    }
+
+    #[test]
+    fn test_quantize_preserves_pitches() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .wait(0.12)
+            .note(&[C4], 0.25)
+            .wait(0.01)
+            .note(&[E4], 0.25)
+            .quantize(0.25);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Pitches should remain unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_quantize_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().quantize(0.25); // Quantize with no notes
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_palindrome_mirrors_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .palindrome();  // Should become: C4, E4, G4, G4, E4, C4
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 6);  // Original 3 + mirrored 3
+
+        // Check forward sequence
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert_eq!(note.start_time, 0.0);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+            assert_eq!(note.start_time, 0.25);
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!((note.frequencies[0] - G4).abs() < 0.1);
+            assert_eq!(note.start_time, 0.5);
+        }
+
+        // Check reversed sequence (should be G4, E4, C4)
+        if let AudioEvent::Note(note) = &events[3] {
+            assert!((note.frequencies[0] - G4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[4] {
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[5] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_palindrome_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().palindrome();
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_stutter_adds_repeats() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.25)
+            .stutter(1.0, 3);  // 100% probability, 3 repeats
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have original 2 notes + 3 stutters for each = 2 + 6 = 8 total
+        assert_eq!(events.len(), 8);
+
+        // Check first note and its stutters
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert_eq!(note.start_time, 0.0);
+        }
+    }
+
+    #[test]
+    fn test_stutter_with_zero_probability() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .stutter(0.0, 4);  // 0% probability
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should remain unchanged (3 notes)
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_stutter_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().stutter(1.0, 4);
+
+        let mixer = comp.into_mixer();
+        // Should create no track since no notes were added
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_stutter_every_nth_note() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .stutter_every(2, 3);  // Every 2nd note stutters 3 times
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 4 original + (2 notes * 3 stutters) = 10 total
+        assert_eq!(events.len(), 10);
+
+        // Check that 2nd and 4th notes got stuttered
+        // Original: C4, E4, G4, C5
+        // E4 (2nd) and C5 (4th) should have 3 additional copies each
+    }
+
+    #[test]
+    fn test_stutter_every_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("melody").pattern_start().stutter_every(2, 4);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
+    fn test_granularize_splits_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("texture")
+            .pattern_start()
+            .note(&[C4], 1.0)
+            .granularize(10);  // Split into 10 grains
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 10);  // 1 note → 10 grains
+
+        // Check first grain
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert_eq!(note.start_time, 0.0);
+            assert!((note.duration - 0.09).abs() < 0.01);  // 1.0/10 * 0.9 = 0.09
+        }
+
+        // Check second grain
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+            assert!((note.start_time - 0.1).abs() < 0.01);  // 1.0/10 = 0.1
+        }
+    }
+
+    #[test]
+    fn test_granularize_multiple_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("shimmer")
+            .pattern_start()
+            .notes(&[C4, E4], 0.5)
+            .granularize(5);  // Split each into 5 grains
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 10);  // 2 notes * 5 grains = 10 total
+    }
+
+    #[test]
+    fn test_granularize_with_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("texture").pattern_start().granularize(10);
+
+        let mixer = comp.into_mixer();
+        assert_eq!(mixer.tracks().len(), 0);
+    }
+
+    #[test]
     fn test_shuffle_reorders_pitches() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("melody")
@@ -1307,6 +3295,295 @@ mod tests {
             if let AudioEvent::Note(note) = event {
                 assert!(note.frequencies[0] >= C3 - 1.0);
                 assert!(note.frequencies[0] <= C5 + 1.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_magnetize_snaps_to_scale() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Chromatic notes that should snap to C major pentatonic (C, D, E, G, A)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, CS4, D4, DS4, E4], 0.25)
+            .magnetize(&[C4, D4, E4, G4, A4]);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 5);
+
+        // CS4 should snap to C4 or D4 (equidistant, so could be either)
+        if let AudioEvent::Note(note) = &events[1] {
+            // CS4 is equidistant from C4 and D4 (1 semitone each way)
+            let snapped_to_c = (note.frequencies[0] - C4).abs() < 1.0;
+            let snapped_to_d = (note.frequencies[0] - D4).abs() < 1.0;
+            assert!(snapped_to_c || snapped_to_d);
+        }
+
+        // DS4 should snap to D4 or E4 (equidistant)
+        if let AudioEvent::Note(note) = &events[3] {
+            // DS4 is equidistant from D4 and E4 (1 semitone each way)
+            let snapped_to_d = (note.frequencies[0] - D4).abs() < 1.0;
+            let snapped_to_e = (note.frequencies[0] - E4).abs() < 1.0;
+            assert!(snapped_to_d || snapped_to_e);
+        }
+    }
+
+    #[test]
+    fn test_magnetize_empty_scale() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .magnetize(&[]); // Empty scale should do nothing
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Notes should be unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_magnetize_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .notes(&[C4, E4, G4], 0.25)
+            .magnetize(&[C4, D4, E4]); // No pattern_start()
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_gravity_pulls_toward_center() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, C5], 0.5)
+            .gravity(C4, 0.5); // 50% pull toward C4
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        // C3 should move up toward C4
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!(note.frequencies[0] > C3);
+            assert!(note.frequencies[0] < C4);
+        }
+
+        // C5 should move down toward C4
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!(note.frequencies[0] < C5);
+            assert!(note.frequencies[0] > C4);
+        }
+    }
+
+    #[test]
+    fn test_gravity_repels_from_center() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.5)
+            .gravity(D4, -0.3); // Negative strength = repulsion
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        // C4 should move away (down) from D4
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!(note.frequencies[0] < C4);
+        }
+
+        // E4 should move away (up) from D4
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!(note.frequencies[0] > E4);
+        }
+    }
+
+    #[test]
+    fn test_gravity_zero_strength() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.5)
+            .gravity(D4, 0.0); // Zero strength = no effect
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Notes should be unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_gravity_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .notes(&[C4, E4, G4], 0.5)
+            .gravity(D4, 0.5); // No pattern_start()
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_ripple_affects_timing() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, C4, C4, C4], 0.25)
+            .ripple(0.02);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 4);
+
+        // Later notes should be shifted more in time
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) = (&events[0], &events[1]) {
+            let expected_interval = 0.25;
+            let actual_interval = note2.start_time - note1.start_time;
+            // Second note should be pushed forward
+            assert!(actual_interval > expected_interval);
+        }
+
+        if let (AudioEvent::Note(note2), AudioEvent::Note(note3)) = (&events[1], &events[2]) {
+            let interval = note3.start_time - note2.start_time;
+            // Third note interval should be even larger due to accumulation
+            assert!(interval > 0.25);
+        }
+    }
+
+    #[test]
+    fn test_ripple_affects_pitch() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, C4, C4], 0.25)
+            .ripple(0.05);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // First note should be unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+
+        // Later notes should be shifted up in pitch
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!(note.frequencies[0] > C4);
+        }
+
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!(note.frequencies[0] > C4);
+        }
+    }
+
+    #[test]
+    fn test_ripple_zero_intensity() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, C4, C4], 0.25)
+            .ripple(0.0); // Zero intensity = no effect
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // All notes should be unchanged
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                assert!((note.frequencies[0] - C4).abs() < 0.1);
+            }
+        }
+    }
+
+    #[test]
+    fn test_ripple_no_pattern() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .notes(&[C4, C4, C4], 0.25)
+            .ripple(0.05); // No pattern_start()
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_transform_closure_syntax() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Test the new closure-based .transform() API
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.5)
+            .transform(|t| t
+                .shift(7)           // Transpose up a fifth
+                .humanize(0.01, 0.05)
+                .rotate(1)          // Rotate pitches
+            )
+            .wait(1.0);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // First note should be shifted and rotated (originally C4, rotated to E4, then shifted +7)
+        if let AudioEvent::Note(note) = &events[0] {
+            // E4 + 7 semitones = B4
+            let expected = E4 * 2.0_f32.powf(7.0 / 12.0);
+            assert!((note.frequencies[0] - expected).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_transform_chaining_multiple_calls() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Test chaining multiple .transform() calls
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, D4, E4], 0.25)
+            .transform(|t| t.shift(12))   // First transform block: up an octave
+            .transform(|t| t.rotate(1))   // Second transform block: rotate
+            .wait(1.0);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // All notes should be shifted up an octave
+        // Original: C4, D4, E4 -> Shifted: C5, D5, E5 -> Rotated: D5, E5, C5
+        for event in events {
+            if let AudioEvent::Note(note) = event {
+                // Should be in the 5th octave (C5 and above)
+                assert!(note.frequencies[0] >= C5 - 1.0);
+                assert!(note.frequencies[0] <= E5 + 1.0);
             }
         }
     }

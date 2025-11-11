@@ -6,6 +6,171 @@ use crate::synthesis::effects::{
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
 
+/// Builder for audio effects (accessed via `.effects()`)
+///
+/// Provides a scoped namespace for all 17 audio effect methods.
+/// Use with closure syntax for clean, organized code:
+///
+/// ```rust
+/// # use tunes::composition::Composition;
+/// # use tunes::composition::rhythm::Tempo;
+/// # use tunes::synthesis::effects::*;
+/// # use tunes::synthesis::filter::*;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// comp.track("synth")
+///     .note(&[440.0], 1.0)
+///     .effects(|e| e
+///         .filter(Filter::low_pass(1000.0, 0.7))
+///         .reverb(Reverb::hall())
+///         .delay(Delay::eighth_note())
+///     );
+/// ```
+pub struct EffectsBuilder<'a> {
+    inner: TrackBuilder<'a>,
+}
+
+impl<'a> EffectsBuilder<'a> {
+    /// Unwrap back to the inner TrackBuilder
+    fn into_inner(self) -> TrackBuilder<'a> {
+        self.inner
+    }
+
+    /// Set the filter for this track
+    pub fn filter(mut self, filter: Filter) -> Self {
+        self.inner = self.inner.filter(filter);
+        self
+    }
+
+    /// Add delay effect
+    pub fn delay(mut self, delay: Delay) -> Self {
+        self.inner = self.inner.delay(delay);
+        self
+    }
+
+    /// Add reverb effect
+    pub fn reverb(mut self, reverb: Reverb) -> Self {
+        self.inner = self.inner.reverb(reverb);
+        self
+    }
+
+    /// Add distortion effect
+    pub fn distortion(mut self, distortion: Distortion) -> Self {
+        self.inner = self.inner.distortion(distortion);
+        self
+    }
+
+    /// Add bitcrusher effect
+    pub fn bitcrusher(mut self, bitcrusher: BitCrusher) -> Self {
+        self.inner = self.inner.bitcrusher(bitcrusher);
+        self
+    }
+
+    /// Add compressor effect
+    pub fn compressor(mut self, compressor: Compressor) -> Self {
+        self.inner = self.inner.compressor(compressor);
+        self
+    }
+
+    /// Add chorus effect
+    pub fn chorus(mut self, chorus: Chorus) -> Self {
+        self.inner = self.inner.chorus(chorus);
+        self
+    }
+
+    /// Add EQ effect
+    pub fn eq(mut self, eq: EQ) -> Self {
+        self.inner = self.inner.eq(eq);
+        self
+    }
+
+    /// Add saturation effect
+    pub fn saturation(mut self, saturation: Saturation) -> Self {
+        self.inner = self.inner.saturation(saturation);
+        self
+    }
+
+    /// Add phaser effect
+    pub fn phaser(mut self, phaser: Phaser) -> Self {
+        self.inner = self.inner.phaser(phaser);
+        self
+    }
+
+    /// Add flanger effect
+    pub fn flanger(mut self, flanger: Flanger) -> Self {
+        self.inner = self.inner.flanger(flanger);
+        self
+    }
+
+    /// Add ring modulator effect
+    pub fn ring_mod(mut self, ring_mod: RingModulator) -> Self {
+        self.inner = self.inner.ring_mod(ring_mod);
+        self
+    }
+
+    /// Add tremolo effect
+    pub fn tremolo(mut self, tremolo: Tremolo) -> Self {
+        self.inner = self.inner.tremolo(tremolo);
+        self
+    }
+
+    /// Add autopan effect
+    pub fn autopan(mut self, autopan: AutoPan) -> Self {
+        self.inner = self.inner.autopan(autopan);
+        self
+    }
+
+    /// Add gate effect
+    pub fn gate(mut self, gate: Gate) -> Self {
+        self.inner = self.inner.gate(gate);
+        self
+    }
+
+    /// Add limiter effect
+    pub fn limiter(mut self, limiter: Limiter) -> Self {
+        self.inner = self.inner.limiter(limiter);
+        self
+    }
+
+    /// Add LFO modulation
+    pub fn modulate(mut self, mod_route: ModRoute) -> Self {
+        self.inner = self.inner.modulate(mod_route);
+        self
+    }
+}
+
+impl<'a> TrackBuilder<'a> {
+    /// Enter effects namespace
+    ///
+    /// Provides scoped access to all 17 audio effect methods.
+    /// The closure receives an `EffectsBuilder` and should return it
+    /// after applying effects.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::synthesis::effects::*;
+    /// # use tunes::synthesis::filter::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("melody")
+    ///     .note(&[440.0], 1.0)
+    ///     .effects(|e| e
+    ///         .filter(Filter::low_pass(1200.0, 0.8))
+    ///         .reverb(Reverb::hall())
+    ///         .delay(Delay::quarter_note())
+    ///         .chorus(Chorus::default())
+    ///     );
+    /// ```
+    pub fn effects<F>(self, f: F) -> Self
+    where
+        F: FnOnce(EffectsBuilder<'a>) -> EffectsBuilder<'a>,
+    {
+        let builder = EffectsBuilder { inner: self };
+        let result = f(builder);
+        result.into_inner()
+    }
+}
+
 impl<'a> TrackBuilder<'a> {
     /// Set the filter for this track
     pub fn filter(mut self, filter: Filter) -> Self {
