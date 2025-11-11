@@ -1,6 +1,6 @@
 # Tunes Examples
 
-This directory contains **75 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
+This directory contains **76 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
 
 ---
 
@@ -109,6 +109,7 @@ This directory contains **75 example programs** demonstrating all features of th
 | `templates_demo.rs` | Reusable composition templates |
 | `classical_techniques.rs` | Canon, fugue, counterpoint, retrograde |
 | `expressive_techniques.rs` | Dynamics, articulation, phrasing |
+| `pattern_transformations.rs` | **NEW! Pattern tools: shift, humanize, rotate, retrograde, shuffle, thin** |
 | `pattern_modifiers.rs` | Transform patterns: reverse, invert, transpose |
 | `pattern_repeat.rs` | Loop and repeat musical patterns |
 | `reverse_patterns.rs` | Retrograde melodies and rhythms |
@@ -256,7 +257,7 @@ Most examples will:
 ### By Use Case
 
 **Game Audio:** `concurrent_playback_demo.rs`, `spatial_audio_demo.rs`, `sample_playback_demo.rs`
-**Generative Music:** `sequences_showcase.rs`, `algorithmic_patterns.rs`, `chaotic_sequences.rs`
+**Generative Music:** `sequences_showcase.rs`, `algorithmic_patterns.rs`, `chaotic_sequences.rs`, `pattern_transformations.rs`
 **Electronic Music:** `drum_808.rs`, `sidechaining.rs`, `wavetable_synthesis.rs`
 **Classical/Acoustic:** `classical_techniques.rs`, `voicing_and_voice_leading.rs`, `ornaments_showcase.rs`
 **Learning:** `master_feature_showcase.rs`, `instrument_showcase.rs`, `effects_showcase.rs`

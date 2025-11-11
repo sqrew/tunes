@@ -28,6 +28,14 @@ opt-level = 3
 inherits = "release"
 debug = true  # Keep debug symbols for debugging
 
+# Live coding profile: fast iteration with good enough audio performance
+[profile.live]
+inherits = "release"
+opt-level = 2           # Slightly less optimization = much faster compile
+lto = false             # Disable Link Time Optimization for faster linking
+incremental = true      # Enable incremental compilation
+codegen-units = 256     # More parallel compilation (faster)
+
 [dependencies]
 cpal = "0.15"
 anyhow = "1.0"

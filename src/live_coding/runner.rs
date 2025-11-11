@@ -62,7 +62,7 @@ impl LiveRunner {
         // Find the tunes project root by looking for Cargo.toml with [package] name = "tunes"
         let tunes_root = find_tunes_root()?;
 
-        // Create Cargo.toml
+        // Create Cargo.toml with live profile for fast iteration
         let cargo_toml = format!(
             r#"[package]
 name = "tunes-live-session"
@@ -72,6 +72,13 @@ edition = "2021"
 [dependencies]
 tunes = {{ path = "{}" }}
 anyhow = "1.0"
+
+[profile.live]
+inherits = "release"
+opt-level = 2
+lto = false
+incremental = true
+codegen-units = 256
 "#,
             tunes_root.display()
         );
@@ -94,10 +101,11 @@ anyhow = "1.0"
             .replace("use crate::prelude", "use tunes::prelude");
         fs::write(src_dir.join("main.rs"), source_content)?;
 
-        // Compile
+        // Compile using live profile (fast iteration with good audio performance)
         let compile_output = Command::new("cargo")
             .arg("build")
-            .arg("--release")
+            .arg("--profile")
+            .arg("live")
             .current_dir(&project_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -111,9 +119,9 @@ anyhow = "1.0"
 
         println!("✅ Compiled successfully!");
 
-        // Run the compiled binary
+        // Run the compiled binary (live profile outputs to target/live)
         let binary_path = project_dir
-            .join("target/release")
+            .join("target/live")
             .join("tunes-live-session");
 
         println!("▶️  Starting playback...");

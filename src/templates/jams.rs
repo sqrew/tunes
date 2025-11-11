@@ -34,9 +34,14 @@ fn main() -> anyhow::Result<()> {
         .at(0.0)
         .notes(&[C2, C2, G1, G2], 0.5);
 
-    // Add melody
+    // Add melody showcasing pattern transformations
     comp.instrument("lead", &Instrument::synth_lead())
-        .notes(&[C4, E4, G4, C5, G4, E4, C4, A4], 0.25);
+        .pattern_start()
+        .notes(&[C4, E4, G4, C5, E4, G4, E4, C5], 0.25)
+        .shuffle()      // Randomize order
+        .shift(7)       // Shift up a perfect fifth
+        .thin(0.7)      // Keep ~70% of notes
+        .humanize(0.01, 0.05); // Add subtle organic feel
 
     // Convert to mixer
     let mixer = comp.into_mixer();

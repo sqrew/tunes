@@ -74,6 +74,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Pattern Transformation Methods for Live Coding
+- **Six new pattern manipulation methods** - Powerful tools for generative music and live coding workflows
+- **`.shift(semitones)`** - Transpose entire patterns up or down by semitones
+  - Example: `.shift(7)` transposes up a perfect fifth, `.shift(-12)` down an octave
+  - Works within `pattern_start()` boundaries, preserves timing and all note parameters
+- **`.humanize(timing_variance, velocity_variance)`** - Add organic feel to programmed sequences
+  - Example: `.humanize(0.02, 0.1)` adds ±20ms timing jitter and ±10% velocity variation
+  - Affects both notes and drums, makes mechanical patterns feel natural
+- **`.rotate(positions)`** - Cycle pitch sequence while keeping timing intact
+  - Example: `.rotate(1)` shifts pitches forward, `.rotate(-1)` shifts backward
+  - Original: C4, E4, G4, C5 → After `.rotate(1)`: E4, G4, C5, C4
+- **`.retrograde()`** - Classic compositional technique, reverses pitch order
+  - Different from `.reverse()` which reverses time - retrograde only reverses pitches
+  - Example: C4, E4, G4 becomes G4, E4, C4 at the same time positions
+- **`.shuffle()`** - Randomly reorder pitches while maintaining rhythm
+  - Each call produces a different random ordering using Fisher-Yates algorithm
+  - Perfect for generative variations and exploration
+- **`.thin(keep_probability)`** - Probabilistically remove notes to reduce density
+  - Example: `.thin(0.7)` keeps ~70% of notes, removes ~30%
+  - Great for hi-hat variations, creating space, and sparse textures
+- **All methods are chainable** and work seamlessly with existing pattern operations
+  - Example: `.pattern_start().notes(...).shuffle().shift(7).thin(0.7).humanize(0.01, 0.05)`
+- **Fully tested** with 17 new unit tests ensuring correctness and edge cases
+
 #### Professional Bus Architecture and Master Effects Chain
 - **Major architectural refactor** - Complete bus-based mixing system with master effects chain
 - **`Bus` struct** - Intermediate mixing layer between tracks and master output
