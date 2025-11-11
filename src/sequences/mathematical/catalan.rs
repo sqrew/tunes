@@ -37,7 +37,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let catalan = sequences::catalan(8);
+/// let catalan = sequences::catalan::generate(8);
 /// assert_eq!(catalan, vec![1, 1, 2, 5, 14, 42, 132, 429]);
 ///
 /// // Use for growing rhythmic density
@@ -71,7 +71,7 @@
 /// # Note on Size
 /// Catalan numbers grow quickly! C(15) = 9,694,845. For musical applications,
 /// typically use the first 8-12 terms and normalize/scale appropriately.
-pub fn catalan(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     if n == 0 {
         return vec![];
     }
@@ -95,31 +95,31 @@ mod tests {
 
     #[test]
     fn test_catalan_basic() {
-        let cat = catalan(8);
+        let cat = generate(8);
         assert_eq!(cat, vec![1, 1, 2, 5, 14, 42, 132, 429]);
     }
 
     #[test]
     fn test_catalan_empty() {
-        let cat = catalan(0);
+        let cat = generate(0);
         assert_eq!(cat, Vec::<u32>::new());
     }
 
     #[test]
     fn test_catalan_one() {
-        let cat = catalan(1);
+        let cat = generate(1);
         assert_eq!(cat, vec![1]);
     }
 
     #[test]
     fn test_catalan_two() {
-        let cat = catalan(2);
+        let cat = generate(2);
         assert_eq!(cat, vec![1, 1]);
     }
 
     #[test]
     fn test_catalan_known_values() {
-        let cat = catalan(10);
+        let cat = generate(10);
         assert_eq!(cat[0], 1);
         assert_eq!(cat[1], 1);
         assert_eq!(cat[2], 2);
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_catalan_growth() {
-        let cat = catalan(10);
+        let cat = generate(10);
         // Catalan numbers should grow (except C(0) = C(1))
         for i in 2..cat.len() {
             assert!(cat[i] > cat[i - 1]);
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_catalan_first_values() {
-        let cat = catalan(6);
+        let cat = generate(6);
         // First few Catalan numbers count specific things:
         // C(0) = 1 (one way to arrange nothing)
         // C(1) = 1 (one binary tree with 2 leaves)
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_catalan_moderate_growth() {
-        let cat = catalan(8);
+        let cat = generate(8);
         // Catalan grows faster than Fibonacci but slower than 2^n
         // Let's verify it's not exponential doubling
         for i in 2..cat.len() {
@@ -171,14 +171,14 @@ mod tests {
 
     #[test]
     fn test_catalan_longer_sequence() {
-        let cat = catalan(12);
+        let cat = generate(12);
         assert_eq!(cat.len(), 12);
         assert_eq!(cat[11], 58786); // C(11)
     }
 
     #[test]
     fn test_catalan_third() {
-        let cat = catalan(4);
+        let cat = generate(4);
         assert_eq!(cat[3], 5);
         // C(3) = 5 counts:
         // - 5 ways to parenthesize 3 binary operations

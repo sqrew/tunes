@@ -61,15 +61,15 @@
 //! use tunes::prelude::*;
 //!
 //! // Create a Fibonacci melody
-//! let fib = sequences::fibonacci(8);
+//! let fib = sequences::fibonacci::generate(8);
 //! let melody = sequences::normalize(&fib, 220.0, 880.0);
 //!
 //! // Create Euclidean rhythm
-//! let kick_pattern = sequences::euclidean(4, 16);
-//! let snare_pattern = sequences::euclidean(3, 16);
+//! let kick_pattern = sequences::euclidean::generate(4, 16);
+//! let snare_pattern = sequences::euclidean::generate(3, 16);
 //!
 //! // Generate chaotic variation
-//! let chaos = sequences::logistic_map(3.9, 0.5, 32);
+//! let chaos = sequences::logistic_map::generate(3.9, 0.5, 32);
 //!
 //! // Map to C major scale
 //! let scale_notes = sequences::map_to_scale(

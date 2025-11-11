@@ -40,15 +40,15 @@
 /// use tunes::sequences;
 ///
 /// // Pure rotation (K=0) - perfectly periodic
-/// let rotation = sequences::circle_map(0.25, 0.0, 0.5, 16);
+/// let rotation = sequences::generate(0.25, 0.0, 0.5, 16);
 /// // Creates 1:4 rhythm (hits every 4 steps)
 ///
 /// // Critical coupling (K=1) - interesting mode-locking
-/// let critical = sequences::circle_map(0.333, 1.0, 0.5, 24);
+/// let critical = sequences::generate(0.333, 1.0, 0.5, 24);
 /// // Creates 1:3 patterns with slight variation
 ///
 /// // High coupling (K=2) - complex rhythms
-/// let complex = sequences::circle_map(0.618, 2.0, 0.0, 32);
+/// let complex = sequences::generate(0.618, 2.0, 0.0, 32);
 /// // Golden ratio creates non-repeating but structured rhythms
 ///
 /// // Convert to rhythm hits (trigger when crossing threshold)
@@ -79,7 +79,7 @@
 /// # Advanced: Finding Mode-Locked Regions
 /// For a given omega, mode-locking occurs at specific K values.
 /// The tongue for p:q ratio is centered approximately at K = 1.
-pub fn circle_map(omega: f32, k: f32, initial: f32, iterations: usize) -> Vec<f32> {
+pub fn generate(omega: f32, k: f32, initial: f32, iterations: usize) -> Vec<f32> {
     let mut phases = Vec::with_capacity(iterations);
     let mut theta = initial % 1.0; // Ensure initial is in [0, 1)
 
@@ -133,17 +133,15 @@ pub fn circle_map_to_hits(
     iterations: usize,
     threshold: f32,
 ) -> Vec<usize> {
-    let phases = circle_map(omega, k, initial, iterations);
+    let phases = generate(omega, k, initial, iterations);
     let mut hits = Vec::new();
     let mut prev_phase = initial;
 
     for (i, &phase) in phases.iter().enumerate() {
-        // Trigger when crossing threshold from below
-        if prev_phase < threshold && phase >= threshold {
-            hits.push(i);
-        }
-        // Also handle wraparound case
-        else if prev_phase > phase && (prev_phase < threshold || phase >= threshold) {
+        // Trigger when crossing threshold from below or on wraparound
+        if (prev_phase < threshold && phase >= threshold)
+            || (prev_phase > phase && (prev_phase < threshold || phase >= threshold))
+        {
             hits.push(i);
         }
 
@@ -205,13 +203,13 @@ mod tests {
 
     #[test]
     fn test_circle_map_length() {
-        let phases = circle_map(0.3, 1.0, 0.5, 100);
+        let phases = generate(0.3, 1.0, 0.5, 100);
         assert_eq!(phases.len(), 100);
     }
 
     #[test]
     fn test_circle_map_bounded() {
-        let phases = circle_map(0.5, 2.0, 0.0, 200);
+        let phases = generate(0.5, 2.0, 0.0, 200);
         for phase in phases {
             assert!(phase >= 0.0 && phase < 1.0, "Phase should be in [0, 1)");
         }
@@ -220,7 +218,7 @@ mod tests {
     #[test]
     fn test_pure_rotation() {
         // K=0 should give pure rotation
-        let phases = circle_map(0.25, 0.0, 0.0, 4);
+        let phases = generate(0.25, 0.0, 0.0, 4);
         assert_eq!(phases.len(), 4);
         // Should be 0, 0.25, 0.5, 0.75 (approximately)
         assert!((phases[0] - 0.0).abs() < 0.001);

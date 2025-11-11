@@ -25,8 +25,8 @@
 /// use tunes::track::ids::{BusId, BusIdGenerator};
 ///
 /// let mut gen = BusIdGenerator::new();
-/// let id1 = gen.next(); // 0
-/// let id2 = gen.next(); // 1
+/// let id1 = gen.next_id(); // 0
+/// let id2 = gen.next_id(); // 1
 /// assert_ne!(id1, id2);
 /// ```
 pub type BusId = u32;
@@ -40,7 +40,7 @@ pub type TrackId = u32;
 
 /// Generator for unique bus IDs
 ///
-/// Creates sequential BusId values starting from 0. Each call to `next()`
+/// Creates sequential BusId values starting from 0. Each call to `next_id()`
 /// returns a new unique ID.
 ///
 /// # Example
@@ -48,9 +48,9 @@ pub type TrackId = u32;
 /// use tunes::track::ids::BusIdGenerator;
 ///
 /// let mut gen = BusIdGenerator::new();
-/// assert_eq!(gen.next(), 0);
-/// assert_eq!(gen.next(), 1);
-/// assert_eq!(gen.next(), 2);
+/// assert_eq!(gen.next_id(), 0);
+/// assert_eq!(gen.next_id(), 1);
+/// assert_eq!(gen.next_id(), 2);
 /// ```
 #[derive(Debug, Clone)]
 pub struct BusIdGenerator {
@@ -67,7 +67,7 @@ impl BusIdGenerator {
     ///
     /// Returns sequential IDs starting from 0. Each call increments
     /// the internal counter.
-    pub fn next(&mut self) -> BusId {
+    pub fn next_id(&mut self) -> BusId {
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         id
@@ -92,7 +92,7 @@ impl Default for BusIdGenerator {
 
 /// Generator for unique track IDs
 ///
-/// Creates sequential TrackId values starting from 0. Each call to `next()`
+/// Creates sequential TrackId values starting from 0. Each call to `next_id()`
 /// returns a new unique ID.
 ///
 /// # Example
@@ -100,9 +100,9 @@ impl Default for BusIdGenerator {
 /// use tunes::track::ids::TrackIdGenerator;
 ///
 /// let mut gen = TrackIdGenerator::new();
-/// assert_eq!(gen.next(), 0);
-/// assert_eq!(gen.next(), 1);
-/// assert_eq!(gen.next(), 2);
+/// assert_eq!(gen.next_id(), 0);
+/// assert_eq!(gen.next_id(), 1);
+/// assert_eq!(gen.next_id(), 2);
 /// ```
 #[derive(Debug, Clone)]
 pub struct TrackIdGenerator {
@@ -119,7 +119,7 @@ impl TrackIdGenerator {
     ///
     /// Returns sequential IDs starting from 0. Each call increments
     /// the internal counter.
-    pub fn next(&mut self) -> TrackId {
+    pub fn next_id(&mut self) -> TrackId {
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         id
@@ -149,42 +149,42 @@ mod tests {
     #[test]
     fn test_bus_id_generator() {
         let mut gen = BusIdGenerator::new();
-        assert_eq!(gen.next(), 0);
-        assert_eq!(gen.next(), 1);
-        assert_eq!(gen.next(), 2);
+        assert_eq!(gen.next_id(), 0);
+        assert_eq!(gen.next_id(), 1);
+        assert_eq!(gen.next_id(), 2);
     }
 
     #[test]
     fn test_track_id_generator() {
         let mut gen = TrackIdGenerator::new();
-        assert_eq!(gen.next(), 0);
-        assert_eq!(gen.next(), 1);
-        assert_eq!(gen.next(), 2);
+        assert_eq!(gen.next_id(), 0);
+        assert_eq!(gen.next_id(), 1);
+        assert_eq!(gen.next_id(), 2);
     }
 
     #[test]
     fn test_bus_id_generator_peek() {
         let mut gen = BusIdGenerator::new();
         assert_eq!(gen.peek(), 0);
-        assert_eq!(gen.next(), 0);
+        assert_eq!(gen.next_id(), 0);
         assert_eq!(gen.peek(), 1);
-        assert_eq!(gen.next(), 1);
+        assert_eq!(gen.next_id(), 1);
     }
 
     #[test]
     fn test_bus_id_generator_reset() {
         let mut gen = BusIdGenerator::new();
-        gen.next();
-        gen.next();
+        gen.next_id();
+        gen.next_id();
         gen.reset();
-        assert_eq!(gen.next(), 0);
+        assert_eq!(gen.next_id(), 0);
     }
 
     #[test]
     fn test_track_id_generator_wrapping() {
         let mut gen = TrackIdGenerator::new();
         gen.next_id = u32::MAX;
-        assert_eq!(gen.next(), u32::MAX);
-        assert_eq!(gen.next(), 0); // Wraps around
+        assert_eq!(gen.next_id(), u32::MAX);
+        assert_eq!(gen.next_id(), 0); // Wraps around
     }
 }

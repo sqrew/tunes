@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
         .portamento(C4, C5, &C4_MAJOR_SCALE, 0.1);
 
     // Fibonacci sequence mapped to scale
-    let fib = sequences::fibonacci(12);
+    let fib = sequences::fibonacci::generate(12);
     comp.instrument("fibonacci", &Instrument::pluck())
         .at(8.5)
         .sequence_from(&fib, &C4_MAJOR_SCALE, 0.1);

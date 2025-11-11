@@ -44,7 +44,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let pell = sequences::pell(10);
+/// let pell = sequences::pell::generate(10);
 /// assert_eq!(pell, vec![0, 1, 2, 5, 12, 29, 70, 169, 408, 985]);
 ///
 /// // Use for dramatic crescendo
@@ -80,7 +80,7 @@
 ///            ↑  ↑   ↑   ↑   ↑   ↑    ↑    ↑    ↑     ↑     ↑
 ///           (Pell grows much faster - more dramatic!)
 /// ```
-pub fn pell(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     if n == 0 {
         return vec![];
     }
@@ -105,31 +105,31 @@ mod tests {
 
     #[test]
     fn test_pell_basic() {
-        let seq = pell(10);
+        let seq = generate(10);
         assert_eq!(seq, vec![0, 1, 2, 5, 12, 29, 70, 169, 408, 985]);
     }
 
     #[test]
     fn test_pell_empty() {
-        let seq = pell(0);
+        let seq = generate(0);
         assert_eq!(seq, Vec::<u32>::new());
     }
 
     #[test]
     fn test_pell_one() {
-        let seq = pell(1);
+        let seq = generate(1);
         assert_eq!(seq, vec![0]);
     }
 
     #[test]
     fn test_pell_two() {
-        let seq = pell(2);
+        let seq = generate(2);
         assert_eq!(seq, vec![0, 1]);
     }
 
     #[test]
     fn test_pell_recurrence() {
-        let seq = pell(12);
+        let seq = generate(12);
         // Verify the recurrence relation P(n) = 2·P(n-1) + P(n-2)
         for i in 2..seq.len() {
             assert_eq!(seq[i], 2 * seq[i - 1] + seq[i - 2]);
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_pell_known_values() {
-        let seq = pell(12);
+        let seq = generate(12);
         assert_eq!(seq[0], 0);
         assert_eq!(seq[1], 1);
         assert_eq!(seq[2], 2);     // 2·1 + 0
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_pell_growth() {
-        let seq = pell(12);
+        let seq = generate(12);
         // Pell numbers should grow monotonically after P(0)
         for i in 2..seq.len() {
             assert!(seq[i] > seq[i - 1]);
@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_pell_faster_than_fibonacci() {
-        let pell_seq = pell(10);
+        let pell_seq = generate(10);
         // Fibonacci would be: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
         // Pell is faster:     [0, 1, 2, 5, 12, 29, 70, 169, 408, 985]
 
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_pell_sqrt2_approximation() {
-        let seq = pell(10);
+        let seq = generate(10);
         // P(n)/P(n-1) should approximate 1 + √2 ≈ 2.41421356
 
         // Check later ratios (skip P(1)/P(0) which is undefined)
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_pell_specific_values() {
-        let seq = pell(10);
+        let seq = generate(10);
         // Verify specific known Pell numbers
         // This serves as a comprehensive check of the algorithm
 
@@ -213,14 +213,14 @@ mod tests {
 
     #[test]
     fn test_pell_starts_with_zero() {
-        let seq = pell(5);
+        let seq = generate(5);
         assert_eq!(seq[0], 0);
         assert_eq!(seq[1], 1);
     }
 
     #[test]
     fn test_pell_rapid_growth() {
-        let seq = pell(12);
+        let seq = generate(12);
         // Verify rapid growth - each term should be at least double the previous
         for i in 2..seq.len() {
             assert!(seq[i] >= 2 * seq[i - 1]);
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_pell_longer_sequence() {
-        let seq = pell(13);
+        let seq = generate(13);
         assert_eq!(seq.len(), 13);
         assert_eq!(seq[12], 13860); // P(12)
     }

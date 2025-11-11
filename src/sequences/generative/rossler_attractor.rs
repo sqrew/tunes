@@ -35,7 +35,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Rössler spiral
-/// let path = sequences::rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
+/// let path = sequences::generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
 ///
 /// // Extract x coordinates for melody and normalize to frequency range
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _, _)| *x).collect();
@@ -77,7 +77,7 @@
 /// - X and Y coordinates create the spiral (roughly -10 to 10)
 /// - Z coordinate oscillates with larger amplitude (roughly 0 to 20)
 /// - Try different c values to explore the transition to chaos
-pub fn rossler_attractor(
+pub fn generate(
     a: f32,
     b: f32,
     c: f32,
@@ -160,7 +160,7 @@ pub fn rossler_attractor(
 pub fn rossler_spiral(steps: usize) -> Vec<(f32, f32, f32)> {
     // Generate extra steps to discard transient
     let total_steps = steps + 100;
-    let full_path = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, total_steps);
+    let full_path = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, total_steps);
 
     // Discard first 100 steps (transient)
     full_path.into_iter().skip(100).collect()
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_rossler_attractor_length() {
-        let path = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
+        let path = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
         assert_eq!(path.len(), 100);
     }
 
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_rossler_stays_bounded() {
         // Rössler attractor should stay roughly within bounds
-        let path = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 1000);
+        let path = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 1000);
 
         for (x, y, z) in path {
             assert!(x.abs() < 20.0, "X should stay bounded, got {}", x);
@@ -197,8 +197,8 @@ mod tests {
     #[test]
     fn test_rossler_is_chaotic() {
         // Two nearby initial conditions should diverge (butterfly effect)
-        let path1 = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 2000);
-        let path2 = rossler_attractor(0.2, 0.2, 5.7, (0.11, 0.0, 0.0), 0.01, 2000);
+        let path1 = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 2000);
+        let path2 = generate(0.2, 0.2, 5.7, (0.11, 0.0, 0.0), 0.01, 2000);
 
         // Check that paths diverge
         let (x1, y1, z1) = path1[1999];
@@ -216,8 +216,8 @@ mod tests {
 
     #[test]
     fn test_rossler_deterministic() {
-        let path1 = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
-        let path2 = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
+        let path1 = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
+        let path2 = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
 
         // Same parameters should produce identical sequences
         for i in 0..100 {
@@ -233,10 +233,10 @@ mod tests {
     #[test]
     fn test_rossler_different_c_values() {
         // c=3 should be periodic (before chaos threshold)
-        let path_periodic = rossler_attractor(0.2, 0.2, 3.0, (0.1, 0.0, 0.0), 0.01, 1000);
+        let path_periodic = generate(0.2, 0.2, 3.0, (0.1, 0.0, 0.0), 0.01, 1000);
 
         // c=5.7 should be chaotic
-        let path_chaotic = rossler_attractor(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 1000);
+        let path_chaotic = generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 1000);
 
         // Both should stay bounded but have different dynamics
         for (x, y, z) in &path_periodic {
@@ -262,8 +262,8 @@ mod tests {
 
     #[test]
     fn test_rossler_different_a_values() {
-        let path1 = rossler_attractor(0.1, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 500);
-        let path2 = rossler_attractor(0.3, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 500);
+        let path1 = generate(0.1, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 500);
+        let path2 = generate(0.3, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 500);
 
         // Different a values should produce different trajectories
         let (x1, y1, _) = path1[499];
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_rossler_all_coordinates_evolve() {
-        let path = rossler_attractor(0.2, 0.2, 5.7, (1.0, 1.0, 1.0), 0.01, 500);
+        let path = generate(0.2, 0.2, 5.7, (1.0, 1.0, 1.0), 0.01, 500);
 
         // Check that all coordinates change over time
         let (x0, y0, z0) = path[0];

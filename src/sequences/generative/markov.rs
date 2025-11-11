@@ -43,7 +43,7 @@
 /// // From G (4): likely to resolve back down
 /// transitions.insert(4, vec![(2, 0.4), (0, 0.6)]);
 ///
-/// let melody = sequences::markov_chain(&transitions, 0, 16);
+/// let melody = sequences::markov::generate(&transitions, 0, 16);
 /// // Generates a 16-note melody following the transition probabilities
 /// ```
 ///
@@ -66,7 +66,7 @@
 /// let transitions = sequences::build_markov_transitions(&training_data, 1);
 ///
 /// // Now generate new sequences with similar patterns
-/// let generated = sequences::markov_chain(&transitions, 0, 20);
+/// let generated = sequences::markov::generate(&transitions, 0, 20);
 /// ```
 ///
 /// # Why Markov Chains Work for Music
@@ -74,7 +74,7 @@
 /// likely to follow others. Markov chains capture this without needing to understand
 /// music theory. They create sequences that "feel" similar to the training data
 /// while introducing variation and surprise.
-pub fn markov_chain(
+pub fn generate(
     transitions: &std::collections::HashMap<u32, Vec<(u32, f32)>>,
     start_state: u32,
     length: usize,
@@ -121,7 +121,7 @@ pub fn markov_chain(
 /// Build Markov chain transition table from training data
 ///
 /// Analyzes a sequence and builds a transition probability table showing
-/// how often each state follows another. This can then be used with `markov_chain()`
+/// how often each state follows another. This can then be used with `generate()`
 /// to generate new sequences with similar statistical properties.
 ///
 /// # Arguments
@@ -140,7 +140,7 @@ pub fn markov_chain(
 /// let transitions = sequences::build_markov_transitions(&melody, 1);
 ///
 /// // Now generate variations
-/// let new_melody = sequences::markov_chain(&transitions, 0, 16);
+/// let new_melody = sequences::markov::generate(&transitions, 0, 16);
 /// // Will create melodies with similar step patterns
 /// ```
 ///
@@ -198,7 +198,7 @@ mod tests {
         transitions.insert(1, vec![(2, 1.0)]);
         transitions.insert(2, vec![(0, 1.0)]);
 
-        let seq = markov_chain(&transitions, 0, 7);
+        let seq = generate(&transitions, 0, 7);
         assert_eq!(seq, vec![0, 1, 2, 0, 1, 2, 0]);
     }
 

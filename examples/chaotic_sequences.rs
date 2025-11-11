@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     println!("   r < 3: Stable → r = 3.57: Chaos → r > 3.57: Full chaos\n");
 
     // Stable behavior (r=2.5)
-    let stable_chaos = sequences::logistic_map(2.5, 0.5, 16);
+    let stable_chaos = sequences::logistic_map::generate(2.5, 0.5, 16);
     let stable_freqs = sequences::normalize(
         &stable_chaos
             .iter()
@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&stable_freqs, 0.3);
 
     // Chaotic behavior (r=3.9)
-    let chaotic = sequences::logistic_map(3.9, 0.5, 32);
+    let chaotic = sequences::logistic_map::generate(3.9, 0.5, 32);
     let chaotic_freqs = sequences::normalize(
         &chaotic
             .iter()
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Simpler than logistic map, easier to predict");
     println!("   μ = 2.0 for full chaos, creates clean patterns\n");
 
-    let tent = sequences::tent_map(2.0, 0.3, 24);
+    let tent = sequences::tent_map::generate(2.0, 0.3, 24);
     let tent_freqs: Vec<f32> = tent.iter().map(|&val| 220.0 + val * 660.0).collect();
 
     comp.instrument("tent_map", &Instrument::pluck())
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Based on sine waves - VERY musical!");
     println!("   r ∈ [2.5, 2.9] = sweet spot for musical chaos\n");
 
-    let sine_chaos = sequences::sine_map(2.7, 0.4, 32);
+    let sine_chaos = sequences::sine_map::generate(2.7, 0.4, 32);
     let sine_freqs: Vec<f32> = sine_chaos
         .iter()
         .map(|&val| 220.0 + (val / 3.0) * 660.0)
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
     println!("   y(n+1) = b*x(n)");
     println!("   Classic parameters: a=1.4, b=0.3\n");
 
-    let (henon_x, henon_y) = sequences::henon_map(1.4, 0.3, 0.1, 0.1, 32);
+    let (henon_x, henon_y) = sequences::henon_map::generate(1.4, 0.3, 0.1, 0.1, 32);
 
     // Use x for melody
     let henon_melody: Vec<f32> = henon_x
@@ -121,7 +121,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Stretching → Cutting → Stacking");
     println!("   Creates fractal distributions in [0, 1]\n");
 
-    let (bakers_x, bakers_y) = sequences::bakers_map(0.3, 0.7, 32);
+    let (bakers_x, bakers_y) = sequences::bakers_map::generate(0.3, 0.7, 32);
 
     // Use x for pitch (already in [0, 1])
     let bakers_pitches: Vec<f32> = bakers_x
@@ -149,7 +149,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Smooth, organic wandering melodies");
     println!("   Like a drunk person walking or particle diffusion\n");
 
-    let walk = sequences::random_walk(440.0, 20.0, 24);
+    let walk = sequences::random_walk::generate(440.0, 20.0, 24);
 
     comp.instrument("random_walk", &Instrument::pluck())
         .reverb(Reverb::new(0.6, 0.5, 0.4))
@@ -161,7 +161,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Random walk constrained to a range");
     println!("   Never escapes - perfect for controlled variation\n");
 
-    let bounded = sequences::bounded_walk(440.0, 30.0, 220.0, 880.0, 32);
+    let bounded = sequences::bounded_walk::generate(440.0, 30.0, 220.0, 880.0, 32);
 
     comp.instrument("bounded_walk", &Instrument::synth_lead())
         .delay(Delay::new(0.375, 0.3, 0.6))
@@ -173,9 +173,9 @@ fn main() -> anyhow::Result<()> {
     println!("   All starting from similar initial conditions\n");
 
     // Play them in parallel for comparison
-    let compare_logistic = sequences::logistic_map(3.8, 0.5, 16);
-    let compare_tent = sequences::tent_map(2.0, 0.5, 16);
-    let compare_sine = sequences::sine_map(2.7, 0.5, 16);
+    let compare_logistic = sequences::logistic_map::generate(3.8, 0.5, 16);
+    let compare_tent = sequences::tent_map::generate(2.0, 0.5, 16);
+    let compare_sine = sequences::sine_map::generate(2.7, 0.5, 16);
 
     let logistic_freqs = sequences::normalize(
         &compare_logistic

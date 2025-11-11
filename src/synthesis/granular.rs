@@ -90,18 +90,6 @@ impl GranularParams {
         }
     }
 
-    /// Default granular parameters (balanced)
-    ///
-    /// Good starting point for experimentation.
-    pub fn default() -> Self {
-        Self {
-            grain_size_ms: 50.0,
-            density: 0.5,
-            position: 0.5,
-            position_spread: 0.1,
-            pitch_variation: 0.0,
-        }
-    }
 
     /// Rich, evolving texture preset
     ///
@@ -169,6 +157,21 @@ impl GranularParams {
     }
 }
 
+impl Default for GranularParams {
+    /// Default granular parameters (balanced)
+    ///
+    /// Good starting point for experimentation.
+    fn default() -> Self {
+        Self {
+            grain_size_ms: 50.0,
+            density: 0.5,
+            position: 0.5,
+            position_spread: 0.1,
+            pitch_variation: 0.0,
+        }
+    }
+}
+
 /// Apply Hann window envelope to a sample to prevent clicks
 ///
 /// The Hann window smoothly fades in/out the grain edges, eliminating
@@ -188,9 +191,9 @@ fn apply_hann_window(sample: Sample) -> Sample {
     }
 
     // Apply Hann window: w(n) = 0.5 * (1 - cos(2πn/N))
-    for i in 0..len {
+    for (i, sample) in data.iter_mut().enumerate() {
         let hann = 0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / len as f32).cos());
-        data[i] *= hann;
+        *sample *= hann;
     }
 
     Sample::from_mono(data, sample.sample_rate)

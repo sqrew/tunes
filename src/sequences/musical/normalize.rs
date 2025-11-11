@@ -24,22 +24,22 @@
 /// use tunes::sequences;
 ///
 /// // Map Fibonacci to frequency range (200-800 Hz)
-/// let fib = sequences::fibonacci(8);
+/// let fib = sequences::fibonacci::generate(8);
 /// let freqs = sequences::normalize(&fib, 200.0, 800.0);
 /// // Result: [200.0, 200.0, 230.0, 260.0, 320.0, 410.0, 530.0, 800.0]
 ///
 /// // Map to MIDI velocity (0-127)
-/// let primes = sequences::primes(10);
+/// let primes = sequences::primes::generate(10);
 /// let velocities = sequences::normalize(&primes, 40.0, 127.0);
 ///
 /// // Map to note durations (eighth to whole note)
-/// let seq = sequences::arithmetic(1, 2, 8);
+/// let seq = sequences::arithmetic::generate(1, 2, 8);
 /// let durations = sequences::normalize(&seq, 0.125, 1.0);
 ///
 /// // Use normalized sequence for melody
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let collatz = sequences::collatz(27, 20);
+/// let collatz = sequences::collatz::generate(27, 20);
 /// let melody = sequences::normalize(&collatz, 220.0, 880.0);
 /// comp.track("collatz_melody").notes(&melody, 0.25);
 /// ```
@@ -103,7 +103,7 @@ pub fn normalize(sequence: &[u32], min: f32, max: f32) -> Vec<f32> {
 /// let melody = sequences::normalize_f32(&x_vals, 220.0, 880.0);
 ///
 /// // Normalize Perlin noise to volume range
-/// let noise = sequences::perlin_noise(42, 0.1, 3, 0.5, 64);
+/// let noise = sequences::perlin_noise::generate(42, 0.1, 3, 0.5, 64);
 /// let volumes = sequences::normalize_f32(&noise, 0.3, 0.8);
 ///
 /// // Map bipolar noise to pan (-1.0 to 1.0)

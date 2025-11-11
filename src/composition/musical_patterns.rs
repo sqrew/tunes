@@ -649,7 +649,7 @@ impl<'a> TrackBuilder<'a> {
     /// use tunes::sequences;
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
     ///
-    /// let fib = sequences::fibonacci(16);
+    /// let fib = sequences::fibonacci::generate(16);
     /// comp.instrument("fib", &Instrument::pluck())
     ///     .sequence_from(&fib, &C4_MAJOR_SCALE, 0.125);  // Maps Fibonacci to C major scale
     ///

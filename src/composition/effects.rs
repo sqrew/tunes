@@ -21,8 +21,8 @@ use crate::synthesis::lfo::ModRoute;
 ///     .note(&[440.0], 1.0)
 ///     .effects(|e| e
 ///         .filter(Filter::low_pass(1000.0, 0.7))
-///         .reverb(Reverb::hall())
-///         .delay(Delay::eighth_note())
+///         .reverb(Reverb::new(0.8, 0.5, 0.3))
+///         .delay(Delay::new(0.25, 0.4, 0.5))
 ///     );
 /// ```
 pub struct EffectsBuilder<'a> {
@@ -156,9 +156,9 @@ impl<'a> TrackBuilder<'a> {
     ///     .note(&[440.0], 1.0)
     ///     .effects(|e| e
     ///         .filter(Filter::low_pass(1200.0, 0.8))
-    ///         .reverb(Reverb::hall())
-    ///         .delay(Delay::quarter_note())
-    ///         .chorus(Chorus::default())
+    ///         .reverb(Reverb::new(0.8, 0.5, 0.3))
+    ///         .delay(Delay::new(0.5, 0.4, 0.5))
+    ///         .chorus(Chorus::new(1.0, 5.0, 0.5))
     ///     );
     /// ```
     pub fn effects<F>(self, f: F) -> Self

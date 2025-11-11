@@ -262,12 +262,10 @@ impl Mixer {
 
         // First pass: collect all track names and IDs for resolution
         let mut track_name_to_id: HashMap<String, TrackId> = HashMap::new();
-        for bus_opt in &self.buses {
-            if let Some(bus) = bus_opt {
-                for track in &bus.tracks {
-                    if let Some(ref track_name) = track.name {
-                        track_name_to_id.insert(track_name.clone(), track.id);
-                    }
+        for bus in self.buses.iter().flatten() {
+            for track in &bus.tracks {
+                if let Some(ref track_name) = track.name {
+                    track_name_to_id.insert(track_name.clone(), track.id);
                 }
             }
         }

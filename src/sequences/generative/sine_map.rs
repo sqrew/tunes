@@ -32,7 +32,7 @@
 //! use tunes::sequences::sine_map;
 //!
 //! // Generate 64 values with chaotic parameter
-//! let sequence = sine_map(2.7, 0.4, 64);
+//! let sequence = generate(2.7, 0.4, 64);
 //!
 //! // Map to musical frequencies (values in range ~[0, 2.7])
 //! let notes: Vec<f32> = sequence.iter()
@@ -69,7 +69,7 @@ use std::f32::consts::PI;
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Sine map creates smoother chaos than logistic map
-/// let smooth_chaos = sequences::sine_map(2.7, 0.5, 32);
+/// let smooth_chaos = sequences::generate(2.7, 0.5, 32);
 ///
 /// // Map to major pentatonic
 /// let melody = sequences::map_to_scale_f32(
@@ -90,7 +90,7 @@ use std::f32::consts::PI;
 /// use tunes::sequences::sine_map;
 ///
 /// // Chaotic sine map
-/// let sequence = sine_map(2.9, 0.5, 100);
+/// let sequence = generate(2.9, 0.5, 100);
 /// assert_eq!(sequence.len(), 100);
 ///
 /// // All values should be in [0, 1]
@@ -98,7 +98,7 @@ use std::f32::consts::PI;
 ///     assert!(val >= 0.0 && val <= 1.0);
 /// }
 /// ```
-pub fn sine_map(r: f32, x0: f32, n: usize) -> Vec<f32> {
+pub fn generate(r: f32, x0: f32, n: usize) -> Vec<f32> {
     let mut result = Vec::with_capacity(n);
     let mut x = x0.clamp(0.0, 1.0);
 
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_sine_map_basic() {
-        let sequence = sine_map(2.9, 0.5, 10);
+        let sequence = generate(2.9, 0.5, 10);
         assert_eq!(sequence.len(), 10);
 
         // First value should be the initial condition
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_sine_map_stays_in_range() {
-        let sequence = sine_map(2.9, 0.5, 200);
+        let sequence = generate(2.9, 0.5, 200);
 
         // Values should stay reasonable (may exceed 1.0 slightly for high r)
         for &val in &sequence {
@@ -147,8 +147,8 @@ mod tests {
 
     #[test]
     fn test_sine_map_deterministic() {
-        let seq1 = sine_map(2.9, 0.5, 50);
-        let seq2 = sine_map(2.9, 0.5, 50);
+        let seq1 = generate(2.9, 0.5, 50);
+        let seq2 = generate(2.9, 0.5, 50);
 
         // Same parameters should produce identical sequences
         assert_eq!(seq1, seq2);
@@ -156,8 +156,8 @@ mod tests {
 
     #[test]
     fn test_sine_map_different_initial_conditions() {
-        let seq1 = sine_map(2.9, 0.5, 50);
-        let seq2 = sine_map(2.9, 0.6, 50);
+        let seq1 = generate(2.9, 0.5, 50);
+        let seq2 = generate(2.9, 0.6, 50);
 
         // Different initial conditions should produce different sequences
         assert_ne!(seq1, seq2);
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_sine_map_first_iteration() {
-        let sequence = sine_map(2.9, 0.5, 2);
+        let sequence = generate(2.9, 0.5, 2);
 
         // First iteration: x1 = 2.9 * sin(π * 0.5) = 2.9 * 1.0 = 2.9
         // But clamped to [0, 1] = 1.0
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_sine_map_at_pi() {
         // r = π is the onset of chaos
-        let sequence = sine_map(PI, 0.5, 100);
+        let sequence = generate(PI, 0.5, 100);
 
         // Should produce varied values
         for &val in &sequence {
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn test_sine_map_chaotic_behavior() {
         // With r around 2.5-2.8, should show chaotic behavior
-        let sequence = sine_map(2.7, 0.3, 200);
+        let sequence = generate(2.7, 0.3, 200);
 
         // Should explore different regions
         let has_low = sequence.iter().any(|&x| x < 0.5);
@@ -199,13 +199,13 @@ mod tests {
     #[test]
     fn test_sine_map_clamps_input() {
         // Test that out-of-range inputs are clamped
-        let sequence = sine_map(2.9, 1.5, 1);
+        let sequence = generate(2.9, 1.5, 1);
         assert_eq!(sequence[0], 1.0); // Clamped to 1.0
     }
 
     #[test]
     fn test_sine_map_single_iteration() {
-        let sequence = sine_map(2.9, 0.5, 1);
+        let sequence = generate(2.9, 0.5, 1);
         assert_eq!(sequence.len(), 1);
         assert_eq!(sequence[0], 0.5);
     }
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn test_sine_map_at_zero() {
         // Starting at 0 should stay at 0
-        let sequence = sine_map(2.9, 0.0, 5);
+        let sequence = generate(2.9, 0.0, 5);
 
         // sin(0) = 0, so x stays at 0
         for &val in &sequence {
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn test_sine_map_at_one() {
         // Starting at 1 gives: sin(π) = 0
-        let sequence = sine_map(2.9, 1.0, 3);
+        let sequence = generate(2.9, 1.0, 3);
 
         assert_eq!(sequence[0], 1.0);
         // x1 = 2.9 * sin(π * 1.0) = 2.9 * 0 = 0
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_sine_map_smoothness() {
         // Sine map should produce smoother transitions than tent map
-        let sequence = sine_map(2.7, 0.3, 100);
+        let sequence = generate(2.7, 0.3, 100);
 
         // Calculate average absolute difference between consecutive values
         let mut total_diff = 0.0;
@@ -250,8 +250,8 @@ mod tests {
     #[test]
     fn test_sine_map_sensitive_to_initial_conditions() {
         // Chaotic systems are sensitive to initial conditions
-        let seq1 = sine_map(2.7, 0.3, 50);
-        let seq2 = sine_map(2.7, 0.31, 50);
+        let seq1 = generate(2.7, 0.3, 50);
+        let seq2 = generate(2.7, 0.31, 50);
 
         // Different initial conditions should produce different sequences
         assert_ne!(seq1, seq2);
@@ -261,7 +261,7 @@ mod tests {
     fn test_sine_map_periodic_window() {
         // Some r values create periodic orbits
         // r = 2.0 should create relatively stable behavior
-        let sequence = sine_map(2.0, 0.5, 100);
+        let sequence = generate(2.0, 0.5, 100);
 
         // Should still produce valid values
         for &val in &sequence {
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_sine_map_coverage() {
         // Chaotic regime should explore the space reasonably
-        let sequence = sine_map(2.7, 0.3, 1000);
+        let sequence = generate(2.7, 0.3, 1000);
 
         // Should show variation (not all same value)
         let min_val = sequence.iter().cloned().fold(f32::INFINITY, f32::min);
@@ -285,7 +285,7 @@ mod tests {
     fn test_sine_map_musical_sweet_spot() {
         // r in [2.5, 2.9] should produce musically interesting sequences
         for r in [2.5, 2.6, 2.7, 2.8, 2.9] {
-            let sequence = sine_map(r, 0.4, 100);
+            let sequence = generate(r, 0.4, 100);
 
             // Should produce valid values
             for &val in &sequence {

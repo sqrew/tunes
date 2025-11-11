@@ -34,20 +34,20 @@
 /// use tunes::sequences;
 ///
 /// // Simple smooth noise - slow organic drift
-/// let drift = sequences::perlin_noise(42, 0.05, 1, 0.5, 100);
+/// let drift = sequences::generate(42, 0.05, 1, 0.5, 100);
 /// // Single octave, very smooth
 ///
 /// // Rich textured noise - multiple detail layers
-/// let texture = sequences::perlin_noise(123, 0.1, 4, 0.5, 200);
+/// let texture = sequences::generate(123, 0.1, 4, 0.5, 200);
 /// // 4 octaves create complex but natural variation
 ///
 /// // Fast variation for tremolo/vibrato depth
-/// let vibrato = sequences::perlin_noise(7, 0.3, 2, 0.5, 500);
+/// let vibrato = sequences::generate(7, 0.3, 2, 0.5, 500);
 ///
 /// // Use for filter automation
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let filter_curve = sequences::perlin_noise(99, 0.08, 3, 0.5, 64);
+/// let filter_curve = sequences::generate(99, 0.08, 3, 0.5, 64);
 /// for (i, &cutoff) in filter_curve.iter().enumerate() {
 ///     let freq = 200.0 + cutoff * 1800.0; // Map to 200-2000 Hz
 ///     comp.track("synth")
@@ -93,7 +93,7 @@
 /// - **vs White Noise**: Smooth and continuous, not jumpy
 ///
 /// Used everywhere: Serum, Massive, Omnisphere all use Perlin for modulation
-pub fn perlin_noise(
+pub fn generate(
     seed: u32,
     frequency: f32,
     octaves: u32,
@@ -128,7 +128,7 @@ pub fn perlin_noise(
 
 /// Generate bipolar Perlin noise in range [-1.0, 1.0]
 ///
-/// Same as `perlin_noise()` but returns values centered around zero.
+/// Same as `generate()` but returns values centered around zero.
 /// Useful when you need symmetric modulation (like LFO, panning).
 ///
 /// # Examples
@@ -237,13 +237,13 @@ mod tests {
 
     #[test]
     fn test_perlin_noise_length() {
-        let noise = perlin_noise(42, 0.1, 2, 0.5, 100);
+        let noise = generate(42, 0.1, 2, 0.5, 100);
         assert_eq!(noise.len(), 100);
     }
 
     #[test]
     fn test_perlin_noise_bounded() {
-        let noise = perlin_noise(123, 0.2, 4, 0.5, 200);
+        let noise = generate(123, 0.2, 4, 0.5, 200);
         for &value in &noise {
             assert!(value >= 0.0 && value <= 1.0, "Value {} out of range [0, 1]", value);
         }
@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn test_perlin_noise_smoothness() {
         // Perlin noise should be smooth - check no huge jumps
-        let noise = perlin_noise(99, 0.1, 2, 0.5, 100);
+        let noise = generate(99, 0.1, 2, 0.5, 100);
 
         for i in 1..noise.len() {
             let diff = (noise[i] - noise[i - 1]).abs();
@@ -271,8 +271,8 @@ mod tests {
     #[test]
     fn test_perlin_noise_deterministic() {
         // Same seed should produce same output
-        let noise1 = perlin_noise(42, 0.1, 2, 0.5, 50);
-        let noise2 = perlin_noise(42, 0.1, 2, 0.5, 50);
+        let noise1 = generate(42, 0.1, 2, 0.5, 50);
+        let noise2 = generate(42, 0.1, 2, 0.5, 50);
 
         for i in 0..noise1.len() {
             assert_eq!(noise1[i], noise2[i], "Noise not deterministic at index {}", i);
@@ -282,8 +282,8 @@ mod tests {
     #[test]
     fn test_perlin_noise_different_seeds() {
         // Different seeds should produce different output
-        let noise1 = perlin_noise(42, 0.2, 3, 0.5, 100);
-        let noise2 = perlin_noise(99, 0.2, 3, 0.5, 100);
+        let noise1 = generate(42, 0.2, 3, 0.5, 100);
+        let noise2 = generate(99, 0.2, 3, 0.5, 100);
 
         let mut differences = 0;
         for i in 0..noise1.len() {
@@ -309,8 +309,8 @@ mod tests {
     #[test]
     fn test_octaves_add_detail() {
         // More octaves should add more variation
-        let simple = perlin_noise(42, 0.1, 1, 0.5, 100);
-        let complex = perlin_noise(42, 0.1, 4, 0.5, 100);
+        let simple = generate(42, 0.1, 1, 0.5, 100);
+        let complex = generate(42, 0.1, 4, 0.5, 100);
 
         // Measure variation (simplified variance)
         let simple_var = simple.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>();

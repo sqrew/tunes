@@ -103,7 +103,7 @@ impl Composition {
         let mut bus_id_to_name = HashMap::new();
 
         // Pre-register the "default" bus with id 0
-        let default_bus_id = bus_id_gen.next(); // This will be 0
+        let default_bus_id = bus_id_gen.next_id(); // This will be 0
         bus_name_to_id.insert("default".to_string(), default_bus_id);
         bus_id_to_name.insert(default_bus_id, "default".to_string());
 
@@ -667,7 +667,7 @@ impl<'a> TrackBuilder<'a> {
         // Pre-allocate a track ID before we borrow the track
         // If the track already exists with an ID, we'll waste this ID value,
         // but that's acceptable for simplicity and avoiding borrow conflicts
-        let new_id = self.composition.track_id_gen.next();
+        let new_id = self.composition.track_id_gen.next_id();
 
         // Get or create the track
         let track = match &self.context {
@@ -724,7 +724,7 @@ impl<'a> TrackBuilder<'a> {
             id
         } else {
             // Create new bus ID
-            let id = self.composition.bus_id_gen.next();
+            let id = self.composition.bus_id_gen.next_id();
             self.composition.bus_name_to_id.insert(bus_name.to_string(), id);
             self.composition.bus_id_to_name.insert(id, bus_name.to_string());
             id

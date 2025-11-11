@@ -22,13 +22,13 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let pattern = sequences::golden_ratio_rhythm(16);
+/// let pattern = sequences::generate(16);
 /// // Creates a non-repeating, naturally flowing rhythm over 16 steps
 ///
 /// // Use with drum_grid:
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let phi_rhythm = sequences::golden_ratio_rhythm(32);
+/// let phi_rhythm = sequences::generate(32);
 /// comp.track("phi_drums")
 ///     .drum_grid(32, 0.125)
 ///     .kick(&phi_rhythm);
@@ -39,7 +39,7 @@
 /// - **Self-similar**: Zooming in/out reveals similar structure
 /// - **Balanced**: Neither too sparse nor too dense
 /// - **Organic**: Sounds natural, not mechanical
-pub fn golden_ratio_rhythm(steps: usize) -> Vec<usize> {
+pub fn generate(steps: usize) -> Vec<usize> {
     const PHI: f32 = 1.618_034;
 
     (0..steps)
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_golden_ratio_rhythm() {
-        let pattern = golden_ratio_rhythm(16);
+        let pattern = generate(16);
 
         // Should have hits but not all steps
         assert!(!pattern.is_empty());
@@ -82,7 +82,7 @@ mod tests {
     #[test]
     fn test_golden_ratio_rhythm_properties() {
         // Golden ratio rhythm has interesting mathematical properties
-        let pattern = golden_ratio_rhythm(100);
+        let pattern = generate(100);
 
         // The ratio of hits to total steps should approach 1/φ ≈ 0.618
         let ratio = pattern.len() as f32 / 100.0;

@@ -41,7 +41,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Ikeda spiral with chaos
-/// let path = sequences::ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+/// let path = sequences::generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
 ///
 /// // Extract coordinates for musical use
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _)| *x).collect();
@@ -91,7 +91,7 @@
 /// - Beautiful when combined with `map_to_scale()` for constrained pitch sets
 /// - X tends to spiral, Y oscillates - complementary melodic/rhythmic roles
 /// - Inspired by optical cavities - pairs well with reverb and delay effects!
-pub fn ikeda_map(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<(f32, f32)> {
+pub fn generate(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<(f32, f32)> {
     let mut path = Vec::with_capacity(n);
     let (mut x, mut y) = initial;
 
@@ -140,7 +140,7 @@ pub fn ikeda_map(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) 
 /// assert_eq!(spiral_melody.len(), 64);
 /// ```
 pub fn ikeda_x(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<f32> {
-    ikeda_map(a, b, c, d, initial, n)
+    generate(a, b, c, d, initial, n)
         .into_iter()
         .map(|(x, _)| x)
         .collect()
@@ -170,7 +170,7 @@ pub fn ikeda_x(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) ->
 /// assert_eq!(rhythm.len(), 64);
 /// ```
 pub fn ikeda_y(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<f32> {
-    ikeda_map(a, b, c, d, initial, n)
+    generate(a, b, c, d, initial, n)
         .into_iter()
         .map(|(_, y)| y)
         .collect()
@@ -200,7 +200,7 @@ pub fn ikeda_y(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) ->
 pub fn ikeda_spiral(n: usize) -> Vec<(f32, f32)> {
     // Generate extra steps to discard transient
     let total_steps = n + 10;
-    let full_path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), total_steps);
+    let full_path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), total_steps);
 
     // Discard first 10 steps (transient)
     full_path.into_iter().skip(10).collect()
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_map_length() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
         assert_eq!(path.len(), 100);
     }
 
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_first_point_is_initial() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.5, 0.5), 10);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.5, 0.5), 10);
         let (x0, y0) = path[0];
         assert_eq!(x0, 0.5);
         assert_eq!(y0, 0.5);
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn test_ikeda_stays_bounded() {
         // Ikeda map with classic parameters should stay roughly bounded
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 1000);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 1000);
 
         for (x, y) in path {
             assert!(
@@ -251,8 +251,8 @@ mod tests {
 
     #[test]
     fn test_ikeda_deterministic() {
-        let path1 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
-        let path2 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path1 = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path2 = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
 
         // Same parameters should produce identical sequences
         for i in 0..100 {
@@ -266,8 +266,8 @@ mod tests {
 
     #[test]
     fn test_ikeda_different_initial_conditions() {
-        let path1 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
-        let path2 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.5, 0.5), 100);
+        let path1 = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path2 = generate(1.0, 0.9, 0.4, 6.0, (0.5, 0.5), 100);
 
         // Different initial conditions should produce different paths
         let (x1_end, y1_end) = path1[99];
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_evolution() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 5);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 5);
 
         // Manually verify first iteration from (0, 0)
         // t0 = 0.4 - 6.0 / (1 + 0 + 0) = 0.4 - 6.0 = -5.6
@@ -292,8 +292,8 @@ mod tests {
 
     #[test]
     fn test_ikeda_different_a_values() {
-        let path1 = ikeda_map(0.8, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
-        let path2 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path1 = generate(0.8, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+        let path2 = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
 
         // Different A values should create different sequences
         let (x1, y1) = path1[50];
@@ -305,8 +305,8 @@ mod tests {
 
     #[test]
     fn test_ikeda_different_d_values() {
-        let path1 = ikeda_map(1.0, 0.9, 0.4, 4.0, (0.0, 0.0), 100);
-        let path2 = ikeda_map(1.0, 0.9, 0.4, 8.0, (0.0, 0.0), 100);
+        let path1 = generate(1.0, 0.9, 0.4, 4.0, (0.0, 0.0), 100);
+        let path2 = generate(1.0, 0.9, 0.4, 8.0, (0.0, 0.0), 100);
 
         // Different D values should create different dynamics
         let (x1, y1) = path1[50];
@@ -319,7 +319,7 @@ mod tests {
     #[test]
     fn test_ikeda_x_convenience() {
         let x_only = ikeda_x(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
-        let full_path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
+        let full_path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
         let x_full: Vec<f32> = full_path.into_iter().map(|(x, _)| x).collect();
 
         assert_eq!(x_only, x_full);
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn test_ikeda_y_convenience() {
         let y_only = ikeda_y(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
-        let full_path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
+        let full_path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 32);
         let y_full: Vec<f32> = full_path.into_iter().map(|(_, y)| y).collect();
 
         assert_eq!(y_only, y_full);
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_single_iteration() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (1.0, 1.0), 1);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (1.0, 1.0), 1);
         assert_eq!(path.len(), 1);
         let (x0, y0) = path[0];
         assert_eq!(x0, 1.0);
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_coordinates_evolve() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.1, 0.1), 100);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.1, 0.1), 100);
 
         // Check that coordinates change over time
         let (x0, y0) = path[0];
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_ikeda_produces_finite_values() {
-        let path = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 1000);
+        let path = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 1000);
 
         for (x, y) in path {
             assert!(x.is_finite(), "X should be finite");
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn test_ikeda_small_b_converges() {
         // With smaller B (more damping), system should converge
-        let path = ikeda_map(1.0, 0.5, 0.4, 6.0, (2.0, 2.0), 100);
+        let path = generate(1.0, 0.5, 0.4, 6.0, (2.0, 2.0), 100);
 
         // Should stay bounded and finite
         for (x, y) in path {
@@ -380,8 +380,8 @@ mod tests {
     #[test]
     fn test_ikeda_phase_parameter() {
         // Different C (phase) values should affect the dynamics
-        let path1 = ikeda_map(1.0, 0.9, 0.2, 6.0, (0.0, 0.0), 100);
-        let path2 = ikeda_map(1.0, 0.9, 0.6, 6.0, (0.0, 0.0), 100);
+        let path1 = generate(1.0, 0.9, 0.2, 6.0, (0.0, 0.0), 100);
+        let path2 = generate(1.0, 0.9, 0.6, 6.0, (0.0, 0.0), 100);
 
         // Should produce different trajectories
         let (x1, y1) = path1[50];
@@ -394,8 +394,8 @@ mod tests {
     #[test]
     fn test_ikeda_chaotic_behavior() {
         // Small difference in initial conditions should lead to divergence
-        let path1 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 200);
-        let path2 = ikeda_map(1.0, 0.9, 0.4, 6.0, (0.001, 0.0), 200);
+        let path1 = generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 200);
+        let path2 = generate(1.0, 0.9, 0.4, 6.0, (0.001, 0.0), 200);
 
         // Paths should diverge (butterfly effect)
         let (x1, y1) = path1[199];

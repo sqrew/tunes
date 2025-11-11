@@ -100,9 +100,9 @@ impl Wavetable {
         let size_recip = 1.0 / (size as f32);
         for &(harmonic, amplitude) in harmonics {
             let harmonic_f32 = harmonic as f32;
-            for i in 0..size {
+            for (i, sample) in table.iter_mut().enumerate() {
                 let phase = (i as f32) * size_recip;
-                table[i] += amplitude * (phase * harmonic_f32 * TWO_PI).sin();
+                *sample += amplitude * (phase * harmonic_f32 * TWO_PI).sin();
             }
         }
 

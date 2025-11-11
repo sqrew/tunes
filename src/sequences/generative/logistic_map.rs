@@ -44,7 +44,7 @@
 /// let mut comp = Composition::new(Tempo::new(140.0));
 ///
 /// // Generate chaotic values
-/// let chaos = sequences::logistic_map(3.9, 0.5, 32);
+/// let chaos = sequences::generate(3.9, 0.5, 32);
 ///
 /// // Map to D minor pentatonic scale
 /// let melody = sequences::map_to_scale_f32(
@@ -68,7 +68,7 @@
 /// fn generate_for_intensity(intensity: f32, n: usize) -> Vec<f32> {
 ///     // intensity: 0.0 (calm) to 1.0 (chaotic)
 ///     let r = 2.5 + intensity * 1.5;  // Maps to r=2.5-4.0
-///     let chaos = sequences::logistic_map(r, 0.5, n);
+///     let chaos = sequences::generate(r, 0.5, n);
 ///     sequences::normalize(
 ///         &chaos.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
 ///         220.0,
@@ -94,7 +94,7 @@
 /// The logistic map is perfect for game audio because you can smoothly transition
 /// from stable (calm) to chaotic (intense) music by adjusting the `r` parameter
 /// based on gameplay state (enemy count, health, proximity to danger, etc.).
-pub fn logistic_map(r: f32, initial: f32, n: usize) -> Vec<f32> {
+pub fn generate(r: f32, initial: f32, n: usize) -> Vec<f32> {
     let mut seq = vec![initial.clamp(0.0, 1.0)];
     let mut x = initial.clamp(0.0, 1.0);
 
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_logistic_map_stable() {
         // r=2.5 should converge to a stable fixed point
-        let seq = logistic_map(2.5, 0.5, 50);
+        let seq = generate(2.5, 0.5, 50);
 
         assert_eq!(seq.len(), 50);
         assert_eq!(seq[0], 0.5);
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn test_logistic_map_chaotic() {
         // r=3.9 should produce chaotic behavior
-        let seq = logistic_map(3.9, 0.5, 100);
+        let seq = generate(3.9, 0.5, 100);
 
         assert_eq!(seq.len(), 100);
 
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_logistic_map_dies_out() {
         // r=0.5 should converge to 0 (population dies)
-        let seq = logistic_map(0.5, 0.5, 20);
+        let seq = generate(0.5, 0.5, 20);
 
         // Should approach 0
         let last_val = seq.last().unwrap();
@@ -169,14 +169,14 @@ mod tests {
     #[test]
     fn test_logistic_map_edge_cases() {
         // Initial value clamping
-        let seq1 = logistic_map(2.0, -0.5, 10);
+        let seq1 = generate(2.0, -0.5, 10);
         assert_eq!(seq1[0], 0.0); // Should clamp to 0
 
-        let seq2 = logistic_map(2.0, 1.5, 10);
+        let seq2 = generate(2.0, 1.5, 10);
         assert_eq!(seq2[0], 1.0); // Should clamp to 1
 
         // Single value
-        let seq3 = logistic_map(3.0, 0.5, 1);
+        let seq3 = generate(3.0, 0.5, 1);
         assert_eq!(seq3.len(), 1);
         assert_eq!(seq3[0], 0.5);
     }

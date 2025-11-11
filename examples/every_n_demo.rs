@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
     println!("Part 8: Euclidean Rhythm with Accents\n");
     println!("  Euclidean pattern + crash every 4th hit\n");
 
-    let euclidean = sequences::euclidean(5, 16);
+    let euclidean = sequences::euclidean::generate(5, 16);
 
     comp.track("euclidean_accent")
         .at(19.0)

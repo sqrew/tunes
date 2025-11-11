@@ -34,7 +34,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Lorenz butterfly
-/// let path = sequences::lorenz_attractor(10.0, 28.0, 8.0/3.0, (1.0, 1.0, 1.0), 0.01, 100);
+/// let path = sequences::generate(10.0, 28.0, 8.0/3.0, (1.0, 1.0, 1.0), 0.01, 100);
 ///
 /// // Extract x coordinates for melody and normalize to frequency range
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _, _)| *x).collect();
@@ -108,7 +108,7 @@
 /// - Discard first ~100 steps (transient before settling on attractor)
 /// - Normalize coordinates to musical ranges (they span roughly -20 to 20)
 /// - Try different initial conditions for different trajectories
-pub fn lorenz_attractor(
+pub fn generate(
     sigma: f32,
     rho: f32,
     beta: f32,
@@ -188,7 +188,7 @@ pub fn lorenz_attractor(
 pub fn lorenz_butterfly(steps: usize) -> Vec<(f32, f32, f32)> {
     // Generate extra steps to discard transient
     let total_steps = steps + 100;
-    let full_path = lorenz_attractor(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, total_steps);
+    let full_path = generate(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, total_steps);
 
     // Discard first 100 steps (transient)
     full_path.into_iter().skip(100).collect()
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_lorenz_attractor_length() {
-        let path = lorenz_attractor(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 100);
+        let path = generate(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 100);
         assert_eq!(path.len(), 100);
     }
 
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn test_lorenz_stays_bounded() {
         // Lorenz attractor should stay roughly within bounds
-        let path = lorenz_attractor(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 1000);
+        let path = generate(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 1000);
 
         for (x, y, z) in path {
             assert!(x.abs() < 50.0, "X should stay bounded");
@@ -226,8 +226,8 @@ mod tests {
     fn test_lorenz_is_chaotic() {
         // Two nearby initial conditions should diverge (butterfly effect)
         // Using a larger initial difference for clearer divergence
-        let path1 = lorenz_attractor(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 2000);
-        let path2 = lorenz_attractor(10.0, 28.0, 8.0 / 3.0, (1.1, 1.0, 1.0), 0.01, 2000);
+        let path1 = generate(10.0, 28.0, 8.0 / 3.0, (1.0, 1.0, 1.0), 0.01, 2000);
+        let path2 = generate(10.0, 28.0, 8.0 / 3.0, (1.1, 1.0, 1.0), 0.01, 2000);
 
         // Check that paths diverge
         let (x1, y1, z1) = path1[1999];

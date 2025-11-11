@@ -25,14 +25,14 @@
 /// use tunes::sequences::shepard_tone;
 ///
 /// // Create ascending Shepard tone sequence
-/// let rising = shepard_tone(24, 12, true);
+/// let rising = generate(24, 12, true);
 /// // Result: [0,1,2,3,4,5,6,7,8,9,10,11,0,1,2,3,4,5,6,7,8,9,10,11]
 ///
 /// // Create descending sequence
-/// let falling = shepard_tone(16, 12, false);
+/// let falling = generate(16, 12, false);
 /// // Result: [0,11,10,9,8,7,6,5,4,3,2,1,0,11,10,9]
 /// ```
-pub fn shepard_tone(length: usize, steps_per_octave: u32, direction: bool) -> Vec<u32> {
+pub fn generate(length: usize, steps_per_octave: u32, direction: bool) -> Vec<u32> {
     if length == 0 || steps_per_octave == 0 {
         return vec![];
     }
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_shepard_tone_ascending() {
-        let tone = shepard_tone(24, 12, true);
+        let tone = generate(24, 12, true);
 
         assert_eq!(tone.len(), 24);
 
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_shepard_tone_descending() {
-        let tone = shepard_tone(13, 12, false);
+        let tone = generate(13, 12, false);
 
         assert_eq!(tone.len(), 13);
 
@@ -90,8 +90,8 @@ mod tests {
 
     #[test]
     fn test_shepard_tone_properties() {
-        let ascending = shepard_tone(100, 12, true);
-        let descending = shepard_tone(100, 12, false);
+        let ascending = generate(100, 12, true);
+        let descending = generate(100, 12, false);
 
         // All values should be within range
         for &val in &ascending {
@@ -112,19 +112,19 @@ mod tests {
     #[test]
     fn test_shepard_tone_edge_cases() {
         // Empty sequence
-        let empty = shepard_tone(0, 12, true);
+        let empty = generate(0, 12, true);
         assert_eq!(empty, Vec::<u32>::new());
 
         // Zero steps per octave
-        let zero_steps = shepard_tone(10, 0, true);
+        let zero_steps = generate(10, 0, true);
         assert_eq!(zero_steps, Vec::<u32>::new());
 
         // Single step
-        let single = shepard_tone(1, 12, true);
+        let single = generate(1, 12, true);
         assert_eq!(single, vec![0]);
 
         // Different divisions (quarter tones)
-        let quarter = shepard_tone(24, 24, true);
+        let quarter = generate(24, 24, true);
         assert_eq!(quarter.len(), 24);
         assert_eq!(quarter[23], 23);
     }
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_shepard_tone_continuous_ascending() {
         // Verify ascending pattern is monotonic within each cycle
-        let tone = shepard_tone(12, 12, true);
+        let tone = generate(12, 12, true);
 
         for i in 0..11 {
             assert_eq!(tone[i] + 1, tone[i + 1], "Ascending should increment by 1");
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_shepard_tone_continuous_descending() {
         // Verify descending pattern decrements within each cycle
-        let tone = shepard_tone(13, 12, false);
+        let tone = generate(13, 12, false);
 
         // Skip first element (0), check that each decrements
         for i in 1..12 {

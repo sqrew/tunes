@@ -34,7 +34,7 @@
 //! let pattern = vec![0, 2, 5, 7];
 //!
 //! // Generate 8 phase steps (each shifts by 1)
-//! let phases = sequences::phase_shift(&pattern, 8, 16);
+//! let phases = sequences::generate(&pattern, 8, 16);
 //!
 //! // phases[0] = [0, 2, 5, 7]        (original)
 //! // phases[1] = [1, 3, 6, 8]        (shift +1)
@@ -43,13 +43,13 @@
 //!
 //! // Reich's "Clapping Music" pattern
 //! let clap_pattern = vec![0, 1, 2, 3, 5, 6, 8, 9, 10];
-//! let clapping_music = sequences::phase_shift(&clap_pattern, 12, 12);
+//! let clapping_music = sequences::generate(&clap_pattern, 12, 12);
 //!
 //! // Use in composition with gradual transition:
 //! # use tunes::prelude::*;
 //! # let mut comp = Composition::new(Tempo::new(120.0));
 //! let pattern = vec![0, 3, 7, 10];
-//! let phases = sequences::phase_shift(&pattern, 8, 16);
+//! let phases = sequences::generate(&pattern, 8, 16);
 //!
 //! // Voice 1: original pattern, repeating
 //! for i in 0..8 {
@@ -93,14 +93,14 @@
 ///
 /// // Simple 3-note pattern over 8 steps
 /// let pattern = vec![0, 2, 5];
-/// let phases = phase_shift(&pattern, 4, 8);
+/// let phases = generate(&pattern, 4, 8);
 ///
 /// assert_eq!(phases[0], vec![0, 2, 5]); // Original
 /// assert_eq!(phases[1], vec![1, 3, 6]); // +1
 /// assert_eq!(phases[2], vec![2, 4, 7]); // +2
 /// assert_eq!(phases[3], vec![3, 5, 0]); // +3, wraps around
 /// ```
-pub fn phase_shift(pattern: &[usize], phases: usize, cycle_length: usize) -> Vec<Vec<usize>> {
+pub fn generate(pattern: &[usize], phases: usize, cycle_length: usize) -> Vec<Vec<usize>> {
     if pattern.is_empty() || cycle_length == 0 {
         return vec![vec![]; phases];
     }
@@ -148,7 +148,7 @@ pub fn clapping_music() -> Vec<Vec<usize>> {
     let pattern = vec![0, 2, 3, 5, 6, 8, 9, 10];
 
     // Generate 12 phases (which cycles back to original at phase 12)
-    let mut phases = phase_shift(&pattern, 12, 12);
+    let mut phases = generate(&pattern, 12, 12);
 
     // Add the original again at the end to complete the cycle
     phases.push(pattern);
@@ -245,7 +245,7 @@ pub fn phase_shift_timed(
     cycle_length: usize,
     duration_per_phase: f32,
 ) -> Vec<(f32, Vec<usize>)> {
-    let shifted_patterns = phase_shift(pattern, phases, cycle_length);
+    let shifted_patterns = generate(pattern, phases, cycle_length);
 
     shifted_patterns
         .into_iter()
@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn test_phase_shift_basic() {
         let pattern = vec![0, 2, 5];
-        let phases = phase_shift(&pattern, 3, 8);
+        let phases = generate(&pattern, 3, 8);
 
         assert_eq!(phases.len(), 3);
         assert_eq!(phases[0], vec![0, 2, 5]);
@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn test_phase_shift_wrapping() {
         let pattern = vec![7];
-        let phases = phase_shift(&pattern, 3, 8);
+        let phases = generate(&pattern, 3, 8);
 
         assert_eq!(phases[0], vec![7]);
         assert_eq!(phases[1], vec![0]); // Wraps around
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn test_phase_shift_empty_pattern() {
         let pattern = vec![];
-        let phases = phase_shift(&pattern, 3, 8);
+        let phases = generate(&pattern, 3, 8);
 
         assert_eq!(phases.len(), 3);
         for phase in phases {
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn test_phase_shift_zero_cycle() {
         let pattern = vec![0, 2];
-        let phases = phase_shift(&pattern, 2, 0);
+        let phases = generate(&pattern, 2, 0);
 
         assert_eq!(phases.len(), 2);
         for phase in phases {
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn test_phase_shift_by_one_equals_regular() {
         let pattern = vec![0, 3, 7];
-        let phases1 = phase_shift(&pattern, 4, 12);
+        let phases1 = generate(&pattern, 4, 12);
         let phases2 = phase_shift_by(&pattern, 4, 1, 12);
 
         assert_eq!(phases1, phases2);
@@ -464,7 +464,7 @@ mod tests {
     #[test]
     fn test_phase_shift_full_cycle() {
         let pattern = vec![0, 3];
-        let phases = phase_shift(&pattern, 9, 8);
+        let phases = generate(&pattern, 9, 8);
 
         // Phase 8 should wrap back close to original
         assert_eq!(phases[8], vec![0, 3]); // Full cycle
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn test_phase_shift_preserves_pattern_length() {
         let pattern = vec![0, 2, 4, 6, 8];
-        let phases = phase_shift(&pattern, 10, 16);
+        let phases = generate(&pattern, 10, 16);
 
         for phase in phases {
             assert_eq!(phase.len(), pattern.len());
@@ -493,7 +493,7 @@ mod tests {
     #[test]
     fn test_all_phases_have_same_length() {
         let pattern = vec![0, 1, 5, 9];
-        let phases = phase_shift(&pattern, 12, 12);
+        let phases = generate(&pattern, 12, 12);
 
         for phase in phases {
             assert_eq!(phase.len(), pattern.len());
@@ -503,7 +503,7 @@ mod tests {
     #[test]
     fn test_phase_shift_single_element() {
         let pattern = vec![3];
-        let phases = phase_shift(&pattern, 5, 8);
+        let phases = generate(&pattern, 5, 8);
 
         assert_eq!(phases[0], vec![3]);
         assert_eq!(phases[1], vec![4]);

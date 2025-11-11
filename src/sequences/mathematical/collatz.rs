@@ -27,22 +27,22 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let seq = sequences::collatz(10, 100);
+/// let seq = sequences::collatz::generate(10, 100);
 /// assert_eq!(seq, vec![10, 5, 16, 8, 4, 2, 1]);
 ///
-/// let seq27 = sequences::collatz(27, 150);
+/// let seq27 = sequences::collatz::generate(27, 150);
 /// // Takes 111 steps to reach 1, with dramatic ups and downs!
 /// assert_eq!(seq27.len(), 112); // 111 steps + starting value
 ///
 /// // Use for unpredictable melodic contours
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let melody_seq = sequences::collatz(19, 50);
+/// let melody_seq = sequences::collatz::generate(19, 50);
 /// let melody = sequences::normalize(&melody_seq, 220.0, 880.0);
 /// comp.track("collatz_melody").notes(&melody, 0.2);
 ///
 /// // Use for rhythmic variation
-/// let rhythm_seq = sequences::collatz(15, 30);
+/// let rhythm_seq = sequences::collatz::generate(15, 30);
 /// let durations = sequences::normalize(&rhythm_seq, 0.1, 0.5);
 /// ```
 ///
@@ -84,7 +84,7 @@
 /// let mut comp = Composition::new(Tempo::new(110.0));
 ///
 /// // Use 27 for dramatic journey
-/// let collatz = sequences::collatz(27, 120);
+/// let collatz = sequences::collatz::generate(27, 120);
 ///
 /// // Map to A minor pentatonic
 /// let melody = sequences::map_to_scale(
@@ -106,7 +106,23 @@
 /// - **127**: Long journey with interesting patterns
 ///
 /// Try different starting values to find interesting contours for your music!
-pub fn collatz(start: u32, max_terms: usize) -> Vec<u32> {
+///
+/// # Usage
+/// ```
+/// use tunes::sequences::collatz;
+///
+/// // Custom parameters
+/// let seq = collatz::generate(27, 32);
+///
+/// // Or use presets
+/// let seq = collatz::dramatic();
+/// ```
+
+/// Generate Collatz sequence with custom parameters
+///
+/// See module-level documentation for details on the Collatz conjecture,
+/// musical applications, and typical parameter values.
+pub fn generate(start: u32, max_terms: usize) -> Vec<u32> {
     let mut seq = vec![start];
     let mut current = start;
 
@@ -121,13 +137,45 @@ pub fn collatz(start: u32, max_terms: usize) -> Vec<u32> {
     seq
 }
 
+// ========== PRESETS ==========
+
+/// Short Collatz sequence (15 start, 17 steps) - quick musical gesture
+pub fn short() -> Vec<u32> {
+    generate(15, 20)
+}
+
+/// Medium Collatz sequence (19 start, 20 steps) - balanced melodic contour
+pub fn medium() -> Vec<u32> {
+    generate(19, 25)
+}
+
+/// Classic Collatz sequence (7 start, 16 steps) - nice ups and downs
+pub fn classic() -> Vec<u32> {
+    generate(7, 20)
+}
+
+/// Dramatic Collatz sequence (27 start, 111 steps!) - reaches 9,232 before descending
+pub fn dramatic() -> Vec<u32> {
+    generate(27, 120)
+}
+
+/// Epic Collatz sequence (31 start, 106 steps) - long journey with high peaks
+pub fn epic() -> Vec<u32> {
+    generate(31, 115)
+}
+
+/// Sparse Collatz sequence (27 start, truncated) - dramatic but shorter
+pub fn sparse() -> Vec<u32> {
+    generate(27, 32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_collatz() {
-        let seq = collatz(10, 100);
+        let seq = generate(10, 100);
         assert_eq!(seq[0], 10);
         assert_eq!(*seq.last().unwrap(), 1);
     }

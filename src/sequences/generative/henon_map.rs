@@ -28,7 +28,7 @@
 //! use tunes::sequences::henon_map;
 //!
 //! // Generate 64 points from the classic Hénon attractor
-//! let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.1, 0.1, 64);
+//! let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 64);
 //!
 //! // Use x values for melody (map to frequency range manually)
 //! let melody: Vec<f32> = x_vals.iter()
@@ -70,7 +70,7 @@
 /// let mut comp = Composition::new(Tempo::new(130.0));
 ///
 /// // Generate classic Hénon attractor
-/// let (x_vals, y_vals) = sequences::henon_map(1.4, 0.3, 0.1, 0.1, 32);
+/// let (x_vals, y_vals) = sequences::generate(1.4, 0.3, 0.1, 0.1, 32);
 ///
 /// // Use x for melody
 /// let melody = sequences::map_to_scale_f32(
@@ -100,14 +100,14 @@
 /// use tunes::sequences::henon_map;
 ///
 /// // Classic Hénon attractor parameters
-/// let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.1, 0.1, 100);
+/// let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 100);
 /// assert_eq!(x_vals.len(), 100);
 /// assert_eq!(y_vals.len(), 100);
 ///
 /// // Different parameters create different patterns
-/// let (x2, y2) = henon_map(1.2, 0.25, 0.0, 0.0, 50);
+/// let (x2, y2) = generate(1.2, 0.25, 0.0, 0.0, 50);
 /// ```
-pub fn henon_map(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
+pub fn generate(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
     let mut x_vals = Vec::with_capacity(n);
     let mut y_vals = Vec::with_capacity(n);
 
@@ -150,7 +150,7 @@ pub fn henon_map(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f
 /// assert_eq!(melody.len(), 32);
 /// ```
 pub fn henon_x(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> Vec<f32> {
-    henon_map(a, b, x0, y0, n).0
+    generate(a, b, x0, y0, n).0
 }
 
 /// Generate only the y-coordinate sequence from the Hénon map
@@ -175,7 +175,7 @@ pub fn henon_x(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> Vec<f32> {
 /// assert_eq!(rhythm.len(), 32);
 /// ```
 pub fn henon_y(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> Vec<f32> {
-    henon_map(a, b, x0, y0, n).1
+    generate(a, b, x0, y0, n).1
 }
 
 #[cfg(test)]
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_henon_map_basic() {
-        let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.1, 0.1, 10);
+        let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 10);
         assert_eq!(x_vals.len(), 10);
         assert_eq!(y_vals.len(), 10);
 
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_henon_map_classic_parameters() {
-        let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.1, 0.1, 100);
+        let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 100);
 
         // Classic parameters should produce bounded values
         for &x in &x_vals {
@@ -208,8 +208,8 @@ mod tests {
 
     #[test]
     fn test_henon_map_deterministic() {
-        let (x1, y1) = henon_map(1.4, 0.3, 0.1, 0.1, 50);
-        let (x2, y2) = henon_map(1.4, 0.3, 0.1, 0.1, 50);
+        let (x1, y1) = generate(1.4, 0.3, 0.1, 0.1, 50);
+        let (x2, y2) = generate(1.4, 0.3, 0.1, 0.1, 50);
 
         // Same parameters should produce identical sequences
         assert_eq!(x1, x2);
@@ -218,8 +218,8 @@ mod tests {
 
     #[test]
     fn test_henon_map_different_initial_conditions() {
-        let (x1, _) = henon_map(1.4, 0.3, 0.1, 0.1, 50);
-        let (x2, _) = henon_map(1.4, 0.3, 0.2, 0.2, 50);
+        let (x1, _) = generate(1.4, 0.3, 0.1, 0.1, 50);
+        let (x2, _) = generate(1.4, 0.3, 0.2, 0.2, 50);
 
         // Different initial conditions should diverge
         assert_ne!(x1, x2);
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_henon_map_evolution() {
-        let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.1, 0.1, 5);
+        let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 5);
 
         // Manually verify first iteration
         // x1 = 1 - 1.4 * 0.1^2 + 0.1 = 1 - 0.014 + 0.1 = 1.086
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_henon_map_single_point() {
-        let (x_vals, y_vals) = henon_map(1.4, 0.3, 0.5, 0.5, 1);
+        let (x_vals, y_vals) = generate(1.4, 0.3, 0.5, 0.5, 1);
         assert_eq!(x_vals.len(), 1);
         assert_eq!(y_vals.len(), 1);
         assert_eq!(x_vals[0], 0.5);
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_henon_x_convenience() {
         let x_only = henon_x(1.4, 0.3, 0.1, 0.1, 32);
-        let (x_full, _) = henon_map(1.4, 0.3, 0.1, 0.1, 32);
+        let (x_full, _) = generate(1.4, 0.3, 0.1, 0.1, 32);
 
         assert_eq!(x_only, x_full);
     }
@@ -256,15 +256,15 @@ mod tests {
     #[test]
     fn test_henon_y_convenience() {
         let y_only = henon_y(1.4, 0.3, 0.1, 0.1, 32);
-        let (_, y_full) = henon_map(1.4, 0.3, 0.1, 0.1, 32);
+        let (_, y_full) = generate(1.4, 0.3, 0.1, 0.1, 32);
 
         assert_eq!(y_only, y_full);
     }
 
     #[test]
     fn test_henon_map_different_parameters() {
-        let (x1, _) = henon_map(1.2, 0.3, 0.1, 0.1, 50);
-        let (x2, _) = henon_map(1.4, 0.3, 0.1, 0.1, 50);
+        let (x1, _) = generate(1.2, 0.3, 0.1, 0.1, 50);
+        let (x2, _) = generate(1.4, 0.3, 0.1, 0.1, 50);
 
         // Different a parameter should create different sequences
         assert_ne!(x1, x2);
@@ -272,8 +272,8 @@ mod tests {
 
     #[test]
     fn test_henon_map_coupling_parameter() {
-        let (_, y1) = henon_map(1.4, 0.2, 0.1, 0.1, 50);
-        let (_, y2) = henon_map(1.4, 0.4, 0.1, 0.1, 50);
+        let (_, y1) = generate(1.4, 0.2, 0.1, 0.1, 50);
+        let (_, y2) = generate(1.4, 0.4, 0.1, 0.1, 50);
 
         // Different b parameter should create different y sequences
         assert_ne!(y1, y2);
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_henon_map_non_chaotic_parameters() {
         // Lower a value should produce more ordered behavior
-        let (x_vals, _) = henon_map(0.5, 0.3, 0.1, 0.1, 100);
+        let (x_vals, _) = generate(0.5, 0.3, 0.1, 0.1, 100);
 
         // Should still produce bounded values
         for &x in &x_vals {

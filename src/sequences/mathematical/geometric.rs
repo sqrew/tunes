@@ -24,29 +24,30 @@
 /// - Term 5: 162
 /// - Term 10: 39,366
 /// - Term 15: 9,565,938
-/// Use normalize() to map to usable ranges.
+///
+/// Use `normalize()` to map to usable ranges.
 ///
 /// # Examples
 /// ```
 /// use tunes::sequences;
 ///
 /// // Doubling sequence (same as powers of 2 but with custom start)
-/// let doubling = sequences::geometric(1, 2, 8);
+/// let doubling = sequences::geometric::generate(1, 2, 8);
 /// assert_eq!(doubling, vec![1, 2, 4, 8, 16, 32, 64, 128]);
 ///
 /// // Tripling sequence
-/// let tripling = sequences::geometric(1, 3, 5);
+/// let tripling = sequences::geometric::generate(1, 3, 5);
 /// assert_eq!(tripling, vec![1, 3, 9, 27, 81]);
 ///
 /// // Use for accelerating rhythms
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let accel = sequences::geometric(1, 2, 6);
+/// let accel = sequences::geometric::generate(1, 2, 6);
 /// let durations = sequences::normalize(&accel, 0.125, 1.0);
 /// // Creates accelerating pattern: long → medium → short → very short
 ///
 /// // Use for exponential volume increase (careful!)
-/// let growth = sequences::geometric(1, 2, 8);
+/// let growth = sequences::geometric::generate(1, 2, 8);
 /// let volumes = sequences::normalize(&growth, 0.1, 1.0);
 /// ```
 ///
@@ -67,6 +68,6 @@
 ///
 /// However, they grow very fast - almost always use normalize() to constrain the output
 /// to musical ranges.
-pub fn geometric(start: u32, ratio: u32, n: usize) -> Vec<u32> {
+pub fn generate(start: u32, ratio: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start * ratio.pow(i as u32)).collect()
 }

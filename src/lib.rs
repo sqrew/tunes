@@ -85,9 +85,12 @@ pub mod prelude {
 
     // Sequences
     pub use crate::sequences::{
-        euclidean, euclidean_pattern, golden_ratio, golden_ratio_rhythm, golden_sections,
-        harmonic_series,
+        golden_ratio, golden_ratio_rhythm, golden_sections, harmonic_series,
     };
+    // Note: euclidean, fibonacci, and collatz are now modules - use:
+    //   sequences::euclidean::generate(pulses, steps) or sequences::euclidean::kick_four_floor()
+    //   sequences::fibonacci::generate(n) or sequences::fibonacci::classic()
+    //   sequences::collatz::generate(start, max) or sequences::collatz::dramatic()
 
     // Automation
     pub use crate::synthesis::{Automation, Interpolation};

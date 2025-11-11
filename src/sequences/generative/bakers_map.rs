@@ -29,7 +29,7 @@
 //! use tunes::sequences::bakers_map;
 //!
 //! // Generate 128 points from Baker's map
-//! let (x_vals, y_vals) = bakers_map(0.3, 0.7, 128);
+//! let (x_vals, y_vals) = generate(0.3, 0.7, 128);
 //!
 //! // Use x for pitch (values already in [0, 1])
 //! let pitches: Vec<f32> = x_vals.iter()
@@ -60,7 +60,7 @@
 /// use tunes::sequences::bakers_map;
 ///
 /// // Start from an arbitrary point
-/// let (x_vals, y_vals) = bakers_map(0.3, 0.7, 100);
+/// let (x_vals, y_vals) = generate(0.3, 0.7, 100);
 /// assert_eq!(x_vals.len(), 100);
 /// assert_eq!(y_vals.len(), 100);
 ///
@@ -69,7 +69,7 @@
 ///     assert!(x >= 0.0 && x <= 1.0);
 /// }
 /// ```
-pub fn bakers_map(x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
+pub fn generate(x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
     let mut x_vals = Vec::with_capacity(n);
     let mut y_vals = Vec::with_capacity(n);
 
@@ -114,7 +114,7 @@ pub fn bakers_map(x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
 /// assert_eq!(melody.len(), 64);
 /// ```
 pub fn bakers_x(x0: f32, y0: f32, n: usize) -> Vec<f32> {
-    bakers_map(x0, y0, n).0
+    generate(x0, y0, n).0
 }
 
 /// Generate only the y-coordinate sequence from Baker's map
@@ -137,7 +137,7 @@ pub fn bakers_x(x0: f32, y0: f32, n: usize) -> Vec<f32> {
 /// assert_eq!(dynamics.len(), 64);
 /// ```
 pub fn bakers_y(x0: f32, y0: f32, n: usize) -> Vec<f32> {
-    bakers_map(x0, y0, n).1
+    generate(x0, y0, n).1
 }
 
 #[cfg(test)]
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_bakers_map_basic() {
-        let (x_vals, y_vals) = bakers_map(0.3, 0.7, 10);
+        let (x_vals, y_vals) = generate(0.3, 0.7, 10);
         assert_eq!(x_vals.len(), 10);
         assert_eq!(y_vals.len(), 10);
 
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_bakers_map_stays_in_unit_square() {
-        let (x_vals, y_vals) = bakers_map(0.5, 0.5, 200);
+        let (x_vals, y_vals) = generate(0.5, 0.5, 200);
 
         // All values should stay in [0, 1]
         for &x in &x_vals {
@@ -170,8 +170,8 @@ mod tests {
 
     #[test]
     fn test_bakers_map_deterministic() {
-        let (x1, y1) = bakers_map(0.3, 0.7, 50);
-        let (x2, y2) = bakers_map(0.3, 0.7, 50);
+        let (x1, y1) = generate(0.3, 0.7, 50);
+        let (x2, y2) = generate(0.3, 0.7, 50);
 
         // Same initial conditions should produce identical sequences
         assert_eq!(x1, x2);
@@ -180,8 +180,8 @@ mod tests {
 
     #[test]
     fn test_bakers_map_different_initial_conditions() {
-        let (x1, _) = bakers_map(0.3, 0.7, 50);
-        let (x2, _) = bakers_map(0.4, 0.6, 50);
+        let (x1, _) = generate(0.3, 0.7, 50);
+        let (x2, _) = generate(0.4, 0.6, 50);
 
         // Different initial conditions should produce different sequences
         assert_ne!(x1, x2);
@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn test_bakers_map_left_half() {
         // Test the x < 0.5 case
-        let (x_vals, y_vals) = bakers_map(0.25, 0.8, 2);
+        let (x_vals, y_vals) = generate(0.25, 0.8, 2);
 
         // First iteration: x < 0.5
         // x1 = 2 * 0.25 = 0.5
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_bakers_map_right_half() {
         // Test the x >= 0.5 case
-        let (x_vals, y_vals) = bakers_map(0.75, 0.6, 2);
+        let (x_vals, y_vals) = generate(0.75, 0.6, 2);
 
         // First iteration: x >= 0.5
         // x1 = 2 * 0.75 - 1 = 0.5
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_bakers_map_clamps_input() {
         // Test that out-of-range inputs are clamped
-        let (x_vals, y_vals) = bakers_map(1.5, -0.5, 1);
+        let (x_vals, y_vals) = generate(1.5, -0.5, 1);
 
         assert_eq!(x_vals[0], 1.0); // Clamped to 1.0
         assert_eq!(y_vals[0], 0.0); // Clamped to 0.0
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_bakers_map_single_point() {
-        let (x_vals, y_vals) = bakers_map(0.5, 0.5, 1);
+        let (x_vals, y_vals) = generate(0.5, 0.5, 1);
         assert_eq!(x_vals.len(), 1);
         assert_eq!(y_vals.len(), 1);
     }
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_bakers_map_mixing() {
         // Baker's map should mix values - check that we visit different regions
-        let (x_vals, y_vals) = bakers_map(0.123456, 0.789012, 100);
+        let (x_vals, y_vals) = generate(0.123456, 0.789012, 100);
 
         // Should have values in both lower and upper halves for both x and y
         let has_low_x = x_vals.iter().any(|&x| x < 0.5);
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn test_bakers_x_convenience() {
         let x_only = bakers_x(0.3, 0.7, 32);
-        let (x_full, _) = bakers_map(0.3, 0.7, 32);
+        let (x_full, _) = generate(0.3, 0.7, 32);
 
         assert_eq!(x_only, x_full);
     }
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_bakers_y_convenience() {
         let y_only = bakers_y(0.3, 0.7, 32);
-        let (_, y_full) = bakers_map(0.3, 0.7, 32);
+        let (_, y_full) = generate(0.3, 0.7, 32);
 
         assert_eq!(y_only, y_full);
     }
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn test_bakers_map_boundary_behavior() {
         // Test exactly at the boundary x = 0.5
-        let (x_vals, y_vals) = bakers_map(0.5, 0.5, 2);
+        let (x_vals, y_vals) = generate(0.5, 0.5, 2);
 
         // x = 0.5 should use the right half case (x >= 0.5)
         // x1 = 2 * 0.5 - 1 = 0.0
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn test_bakers_map_distribution() {
         // After many iterations, should explore the unit square
-        let (x_vals, _) = bakers_map(0.123456, 0.789012, 1000);
+        let (x_vals, _) = generate(0.123456, 0.789012, 1000);
 
         // Calculate approximate distribution across [0, 1]
         let count_0_to_0_5 = x_vals.iter().filter(|&&x| x < 0.5).count();

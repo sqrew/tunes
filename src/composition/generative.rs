@@ -1548,14 +1548,12 @@ impl<'a> TrackBuilder<'a> {
         let mut indices_to_remove: Vec<usize> = Vec::new();
 
         for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            match event {
-                AudioEvent::Note(note) => {
-                    if note.start_time >= pattern_start && note.start_time < cursor {
-                        notes_to_granularize.push(event.clone());
-                        indices_to_remove.push(idx);
-                    }
+            // Only granularize notes, not drums
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    notes_to_granularize.push(event.clone());
+                    indices_to_remove.push(idx);
                 }
-                _ => {} // Only granularize notes, not drums
             }
         }
 
@@ -2008,8 +2006,8 @@ impl<'a> TrackBuilder<'a> {
                         AudioEvent::Note(note) => {
                             // Shift each frequency in the note/chord
                             let mut shifted_freqs = [0.0f32; 8];
-                            for i in 0..note.num_freqs {
-                                shifted_freqs[i] = note.frequencies[i] * shift_ratio;
+                            for (i, freq) in shifted_freqs.iter_mut().enumerate().take(note.num_freqs) {
+                                *freq = note.frequencies[i] * shift_ratio;
                             }
 
                             Some(AudioEvent::Note(crate::track::NoteEvent {
@@ -2106,15 +2104,14 @@ impl<'a> TrackBuilder<'a> {
                         AudioEvent::Note(note) => {
                             // Invert each frequency in the note/chord
                             let mut inverted_freqs = [0.0f32; 8];
-                            for i in 0..note.num_freqs {
+                            for (i, inv_freq) in inverted_freqs.iter_mut().enumerate().take(note.num_freqs) {
                                 let freq = note.frequencies[i];
                                 // Calculate distance from axis in semitones
                                 let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
                                 // Mirror it
                                 let inverted_semitones = -semitones_from_axis;
                                 // Convert back to frequency
-                                inverted_freqs[i] =
-                                    axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
+                                *inv_freq = axis_freq * 2.0_f32.powf(inverted_semitones / 12.0);
                             }
 
                             Some(AudioEvent::Note(crate::track::NoteEvent {
@@ -2205,7 +2202,7 @@ impl<'a> TrackBuilder<'a> {
                     match event {
                         AudioEvent::Note(note) => {
                             let mut inverted_freqs = [0.0f32; 8];
-                            for i in 0..note.num_freqs {
+                            for (i, inv_freq_slot) in inverted_freqs.iter_mut().enumerate().take(note.num_freqs) {
                                 let freq = note.frequencies[i];
                                 let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
                                 let inverted_semitones = -semitones_from_axis;
@@ -2220,7 +2217,7 @@ impl<'a> TrackBuilder<'a> {
                                     inverted_freq /= 2.0;
                                 }
 
-                                inverted_freqs[i] = inverted_freq;
+                                *inv_freq_slot = inverted_freq;
                             }
 
                             Some(AudioEvent::Note(crate::track::NoteEvent {

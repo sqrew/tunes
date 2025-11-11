@@ -33,7 +33,7 @@
 /// let mut comp = Composition::new(Tempo::new(140.0));
 ///
 /// // Use primes for irregular but deterministic hit pattern
-/// let primes = sequences::primes(10);
+/// let primes = sequences::primes::generate(10);
 /// let rhythm: Vec<usize> = primes.iter().map(|&p| (p % 16) as usize).collect();
 ///
 /// comp.track("prime_perc")
@@ -45,13 +45,13 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let primes = sequences::primes(10);
+/// let primes = sequences::primes::generate(10);
 /// assert_eq!(primes, vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]);
 ///
 /// // Use for rhythmic patterns that avoid repetition
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(140.0));
-/// let prime_rhythm = sequences::primes(8);
+/// let prime_rhythm = sequences::primes::generate(8);
 /// let hits = sequences::normalize(&prime_rhythm, 0.0, 16.0);
 /// for &hit_time in &hits {
 ///     comp.track("prime_kicks")
@@ -60,7 +60,7 @@
 /// }
 ///
 /// // Use for melodic intervals (semitone jumps)
-/// let intervals = sequences::primes(12);
+/// let intervals = sequences::primes::generate(12);
 /// let pitches = sequences::normalize(&intervals, 200.0, 800.0);
 /// comp.track("prime_melody").notes(&pitches, 0.25);
 /// ```
@@ -78,7 +78,7 @@
 /// "never repeat" within practical performance time. The lack of common factors means
 /// patterns layer in complex, non-obvious ways - perfect for generative music that needs
 /// to sound structured but not mechanical.
-pub fn primes(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     let mut primes = Vec::new();
     let mut candidate = 2u32;
 
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_primes() {
-        let p = primes(5);
+        let p = generate(5);
         assert_eq!(p, vec![2, 3, 5, 7, 11]);
     }
 }

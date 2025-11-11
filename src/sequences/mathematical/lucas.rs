@@ -32,7 +32,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let lucas = sequences::lucas(8);
+/// let lucas = sequences::lucas::generate(8);
 /// assert_eq!(lucas, vec![2, 1, 3, 4, 7, 11, 18, 29]);
 ///
 /// // Use for melodic intervals (semitones)
@@ -47,7 +47,7 @@
 /// }
 ///
 /// // Use for phrase lengths (different from Fibonacci)
-/// let phrase_lengths = sequences::lucas(5); // [2, 1, 3, 4, 7] beats
+/// let phrase_lengths = sequences::lucas::generate(5); // [2, 1, 3, 4, 7] beats
 /// ```
 ///
 /// # Musical Applications
@@ -65,7 +65,7 @@
 ///            ↑  ↓  ↑  ↑  ↑   ↑   ↑   ↑   ↑   ↑
 ///           (Lucas starts higher, dips, then diverges upward)
 /// ```
-pub fn lucas(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     if n == 0 {
         return vec![];
     }
@@ -89,37 +89,37 @@ mod tests {
 
     #[test]
     fn test_lucas_basic() {
-        let seq = lucas(8);
+        let seq = generate(8);
         assert_eq!(seq, vec![2, 1, 3, 4, 7, 11, 18, 29]);
     }
 
     #[test]
     fn test_lucas_empty() {
-        let seq = lucas(0);
+        let seq = generate(0);
         assert_eq!(seq, Vec::<u32>::new());
     }
 
     #[test]
     fn test_lucas_one() {
-        let seq = lucas(1);
+        let seq = generate(1);
         assert_eq!(seq, vec![2]);
     }
 
     #[test]
     fn test_lucas_two() {
-        let seq = lucas(2);
+        let seq = generate(2);
         assert_eq!(seq, vec![2, 1]);
     }
 
     #[test]
     fn test_lucas_long_sequence() {
-        let seq = lucas(12);
+        let seq = generate(12);
         assert_eq!(seq, vec![2, 1, 3, 4, 7, 11, 18, 29, 47, 76, 123, 199]);
     }
 
     #[test]
     fn test_lucas_recurrence() {
-        let seq = lucas(10);
+        let seq = generate(10);
         // Verify the recurrence relation L(n) = L(n-1) + L(n-2)
         for i in 2..seq.len() {
             assert_eq!(seq[i], seq[i - 1] + seq[i - 2]);
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_lucas_growth() {
-        let seq = lucas(10);
+        let seq = generate(10);
         // Lucas numbers should grow
         for i in 2..seq.len() {
             assert!(seq[i] > seq[i - 1]);
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_lucas_differs_from_fibonacci() {
-        let lucas_seq = lucas(8);
+        let lucas_seq = generate(8);
         // Fibonacci would be: [1, 1, 2, 3, 5, 8, 13, 21]
         // Lucas should be different (except they might share some values)
         assert_eq!(lucas_seq[0], 2); // Not 1

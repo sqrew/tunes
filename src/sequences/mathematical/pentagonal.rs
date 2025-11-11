@@ -50,7 +50,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let pent = sequences::pentagonal(10);
+/// let pent = sequences::pentagonal::generate(10);
 /// assert_eq!(pent, vec![1, 5, 12, 22, 35, 51, 70, 92, 117, 145]);
 ///
 /// // Use for rhythmic acceleration
@@ -92,7 +92,7 @@
 ///
 /// Pentagonal grows faster than triangular but not as fast as square
 /// ```
-pub fn pentagonal(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     (1..=n)
         .map(|i| {
             let i = i as u32;
@@ -107,25 +107,25 @@ mod tests {
 
     #[test]
     fn test_pentagonal_basic() {
-        let seq = pentagonal(10);
+        let seq = generate(10);
         assert_eq!(seq, vec![1, 5, 12, 22, 35, 51, 70, 92, 117, 145]);
     }
 
     #[test]
     fn test_pentagonal_empty() {
-        let seq = pentagonal(0);
+        let seq = generate(0);
         assert_eq!(seq, Vec::<u32>::new());
     }
 
     #[test]
     fn test_pentagonal_one() {
-        let seq = pentagonal(1);
+        let seq = generate(1);
         assert_eq!(seq, vec![1]);
     }
 
     #[test]
     fn test_pentagonal_formula() {
-        let seq = pentagonal(12);
+        let seq = generate(12);
         // Verify each value matches the formula P(n) = n(3n-1)/2
         for (i, &value) in seq.iter().enumerate() {
             let n = (i + 1) as u32;
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_known_values() {
-        let seq = pentagonal(8);
+        let seq = generate(8);
         assert_eq!(seq[0], 1);   // 1(3·1-1)/2 = 1·2/2 = 1
         assert_eq!(seq[1], 5);   // 2(3·2-1)/2 = 2·5/2 = 5
         assert_eq!(seq[2], 12);  // 3(3·3-1)/2 = 3·8/2 = 12
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_growth() {
-        let seq = pentagonal(15);
+        let seq = generate(15);
         // Pentagonal numbers should grow monotonically
         for i in 1..seq.len() {
             assert!(seq[i] > seq[i - 1]);
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_differences() {
-        let seq = pentagonal(10);
+        let seq = generate(10);
         // The differences between consecutive pentagonal numbers
         // form an arithmetic sequence: 4, 7, 10, 13, 16, 19, 22, 25, 28...
         // (increasing by 3 each time)
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_second_differences() {
-        let seq = pentagonal(10);
+        let seq = generate(10);
 
         // First differences
         let mut diffs1 = Vec::new();
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_quadratic_growth() {
-        let seq = pentagonal(10);
+        let seq = generate(10);
         // Pentagonal has quadratic growth, roughly proportional to n²
 
         // Later terms should be roughly 9x the early terms when n triples
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_faster_than_triangular() {
-        let pent = pentagonal(10);
+        let pent = generate(10);
         // Triangular numbers: 1, 3, 6, 10, 15, 21, 28, 36, 45, 55
         // Pentagonal numbers: 1, 5, 12, 22, 35, 51, 70, 92, 117, 145
 
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_pentagonal_relation_to_triangular() {
-        let pent = pentagonal(8);
+        let pent = generate(8);
         // P(n) = n + 3·T(n-1) where T(n) = n(n+1)/2 is triangular
 
         for i in 1..pent.len() {
@@ -238,14 +238,14 @@ mod tests {
 
     #[test]
     fn test_pentagonal_longer_sequence() {
-        let seq = pentagonal(15);
+        let seq = generate(15);
         assert_eq!(seq.len(), 15);
         assert_eq!(seq[14], 330); // P(15) = 15(3·15-1)/2 = 15·44/2 = 330
     }
 
     #[test]
     fn test_pentagonal_specific_values() {
-        let seq = pentagonal(5);
+        let seq = generate(5);
         // These are the classic pentagonal numbers
         assert_eq!(seq, vec![1, 5, 12, 22, 35]);
     }

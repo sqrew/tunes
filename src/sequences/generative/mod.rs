@@ -23,22 +23,16 @@ pub mod rossler_attractor;
 pub mod clifford_attractor;
 pub mod ikeda_map;
 
-pub use random_walk::random_walk;
-pub use bounded_walk::bounded_walk;
-pub use logistic_map::logistic_map;
-pub use tent_map::tent_map;
-pub use sine_map::sine_map;
-pub use henon_map::{henon_map, henon_x, henon_y};
-pub use bakers_map::{bakers_map, bakers_x, bakers_y};
-pub use thue_morse::thue_morse;
-pub use recaman::recaman;
-pub use van_der_corput::van_der_corput;
-pub use cellular_automaton::cellular_automaton;
-pub use lsystem::{lsystem, lsystem_to_sequence};
-pub use markov::{markov_chain, build_markov_transitions};
-pub use cantor_set::cantor_set;
-pub use lorenz_attractor::{lorenz_attractor, lorenz_butterfly};
-pub use perlin_noise::{perlin_noise, perlin_noise_bipolar};
-pub use rossler_attractor::{rossler_attractor, rossler_spiral};
-pub use clifford_attractor::{clifford_attractor, clifford_x, clifford_y, clifford_flow};
-pub use ikeda_map::{ikeda_map, ikeda_x, ikeda_y, ikeda_spiral};
+// All generative sequences are now modules with generate() functions
+// Use as: random_walk::generate(), logistic_map::generate(), etc.
+//
+// Helper functions are still available:
+pub use henon_map::{henon_x, henon_y};
+pub use bakers_map::{bakers_x, bakers_y};
+pub use lsystem::lsystem_to_sequence;
+pub use markov::build_markov_transitions;
+pub use lorenz_attractor::lorenz_butterfly;
+pub use perlin_noise::perlin_noise_bipolar;
+pub use rossler_attractor::rossler_spiral;
+pub use clifford_attractor::{clifford_x, clifford_y, clifford_flow};
+pub use ikeda_map::{ikeda_x, ikeda_y, ikeda_spiral};

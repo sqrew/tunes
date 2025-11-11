@@ -33,7 +33,7 @@
 /// let mut rules = HashMap::new();
 /// rules.insert('A', "AB".to_string());
 /// rules.insert('B', "A".to_string());
-/// let pattern = sequences::lsystem("A", &rules, 4);
+/// let pattern = sequences::generate("A", &rules, 4);
 /// // "A" → "AB" → "ABA" → "ABAAB" → "ABAABABA"
 /// assert_eq!(pattern, "ABAABABA");
 ///
@@ -85,7 +85,7 @@
 /// rules.insert('E', "CG".to_string());   // Third jumps to fifth
 /// rules.insert('G', "C".to_string());    // Fifth returns home
 ///
-/// let melody = sequences::lsystem("C", &rules, 4);
+/// let melody = sequences::generate("C", &rules, 4);
 /// // Evolution: C → CD → CDCE → CDCECG → CDCECGCE...
 ///
 /// // Map to frequencies
@@ -101,7 +101,7 @@
 ///     .copied()
 ///     .collect();
 /// ```
-pub fn lsystem(axiom: &str, rules: &std::collections::HashMap<char, String>, iterations: usize) -> String {
+pub fn generate(axiom: &str, rules: &std::collections::HashMap<char, String>, iterations: usize) -> String {
     let mut current = axiom.to_string();
 
     for _ in 0..iterations {
@@ -141,7 +141,7 @@ pub fn lsystem(axiom: &str, rules: &std::collections::HashMap<char, String>, ite
 /// let mut rules = HashMap::new();
 /// rules.insert('A', "AB".to_string());
 /// rules.insert('B', "A".to_string());
-/// let pattern = sequences::lsystem("A", &rules, 4);
+/// let pattern = sequences::generate("A", &rules, 4);
 /// let values = sequences::lsystem_to_sequence(&pattern);
 /// // Maps: A=0, B=1 → [0,1,0,0,1]
 /// ```
@@ -174,19 +174,19 @@ mod tests {
         rules.insert('A', "AB".to_string());
         rules.insert('B', "A".to_string());
 
-        let gen0 = lsystem("A", &rules, 0);
+        let gen0 = generate("A", &rules, 0);
         assert_eq!(gen0, "A");
         
-        let gen1 = lsystem("A", &rules, 1);
+        let gen1 = generate("A", &rules, 1);
         assert_eq!(gen1, "AB");
         
-        let gen2 = lsystem("A", &rules, 2);
+        let gen2 = generate("A", &rules, 2);
         assert_eq!(gen2, "ABA");
         
-        let gen3 = lsystem("A", &rules, 3);
+        let gen3 = generate("A", &rules, 3);
         assert_eq!(gen3, "ABAAB");
         
-        let gen4 = lsystem("A", &rules, 4);
+        let gen4 = generate("A", &rules, 4);
         assert_eq!(gen4, "ABAABABA");
     }
 

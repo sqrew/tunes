@@ -21,7 +21,7 @@
 /// use tunes::sequences::cantor_set;
 ///
 /// // Create a Cantor set rhythm pattern
-/// let pattern = cantor_set(2, 27); // 27 = 3^3 for clean divisions
+/// let pattern = generate(2, 27); // 27 = 3^3 for clean divisions
 /// // iteration 0: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 /// // iteration 1: [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1]
 /// // iteration 2: [1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,1,1]
@@ -33,7 +33,7 @@
 ///     .map(|(i, _)| i)
 ///     .collect();
 /// ```
-pub fn cantor_set(iterations: usize, resolution: usize) -> Vec<u32> {
+pub fn generate(iterations: usize, resolution: usize) -> Vec<u32> {
     if resolution == 0 {
         return vec![];
     }
@@ -66,8 +66,8 @@ pub fn cantor_set(iterations: usize, resolution: usize) -> Vec<u32> {
             new_segments.push((start, start + third));
 
             // Remove middle third
-            for i in (start + third)..(start + third * 2) {
-                set[i] = 0;
+            for val in set[(start + third)..(start + third * 2)].iter_mut() {
+                *val = 0;
             }
 
             // Keep last third
@@ -86,26 +86,26 @@ mod tests {
 
     #[test]
     fn test_cantor_set_basic() {
-        let set0 = cantor_set(0, 9);
+        let set0 = generate(0, 9);
         assert_eq!(set0, vec![1, 1, 1, 1, 1, 1, 1, 1, 1]);
 
-        let set1 = cantor_set(1, 9);
+        let set1 = generate(1, 9);
         assert_eq!(set1, vec![1, 1, 1, 0, 0, 0, 1, 1, 1]);
     }
 
     #[test]
     fn test_cantor_set_edge_cases() {
-        let empty = cantor_set(3, 0);
+        let empty = generate(3, 0);
         assert_eq!(empty, Vec::<u32>::new());
 
-        let single = cantor_set(2, 1);
+        let single = generate(2, 1);
         assert_eq!(single, vec![1]);
     }
 
     #[test]
     fn test_cantor_set_iteration_2() {
         // With 27 points (3^3), we can cleanly divide
-        let set = cantor_set(2, 27);
+        let set = generate(2, 27);
 
         // First third (0-8): keep first and last thirds, remove middle
         assert_eq!(set[0], 1); // First point kept
@@ -138,9 +138,9 @@ mod tests {
     #[test]
     fn test_cantor_set_properties() {
         // As iterations increase, fewer points remain
-        let set1 = cantor_set(1, 27);
-        let set2 = cantor_set(2, 27);
-        let set3 = cantor_set(3, 27);
+        let set1 = generate(1, 27);
+        let set2 = generate(2, 27);
+        let set3 = generate(3, 27);
 
         let count1: u32 = set1.iter().sum();
         let count2: u32 = set2.iter().sum();

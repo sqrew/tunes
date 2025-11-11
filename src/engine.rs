@@ -507,7 +507,7 @@ impl AudioEngine {
 
         // Remove finished sounds
         for id in finished_sounds {
-            active_sounds.remove(&id);
+            active_sounds.remove(id);
         }
 
         // Clamp output to prevent distortion

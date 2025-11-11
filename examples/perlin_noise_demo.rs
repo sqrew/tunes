@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     // 1 octave - smooth and simple
     println!("   A. 1 octave - smooth drift");
-    let smooth = sequences::perlin_noise(42, 0.15, 1, 0.5, 32);
+    let smooth = sequences::perlin_noise::generate(42, 0.15, 1, 0.5, 32);
     for (i, &vol) in smooth.iter().enumerate() {
         let volume = 0.3 + vol * 0.5; // Map to 0.3-0.8
         comp.track("octave_1")
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
 
     // 3 octaves - natural texture
     println!("   B. 3 octaves - natural feel");
-    let natural = sequences::perlin_noise(42, 0.15, 3, 0.5, 32);
+    let natural = sequences::perlin_noise::generate(42, 0.15, 3, 0.5, 32);
     for (i, &vol) in natural.iter().enumerate() {
         let volume = 0.3 + vol * 0.5;
         comp.track("octave_3")
@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
 
     // 6 octaves - rich detail
     println!("   C. 6 octaves - detailed texture");
-    let detailed = sequences::perlin_noise(42, 0.15, 6, 0.5, 32);
+    let detailed = sequences::perlin_noise::generate(42, 0.15, 6, 0.5, 32);
     for (i, &vol) in detailed.iter().enumerate() {
         let volume = 0.3 + vol * 0.5;
         comp.track("octave_6")
@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
 
     // Slow drift (ambient pads)
     println!("   A. 0.05 frequency - slow ambient drift");
-    let slow = sequences::perlin_noise(99, 0.05, 3, 0.5, 48);
+    let slow = sequences::perlin_noise::generate(99, 0.05, 3, 0.5, 48);
     for (i, &val) in slow.iter().enumerate() {
         let pitch = 220.0 + val * 220.0; // A3 to A4
         comp.track("freq_slow")
@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
 
     // Medium evolution
     println!("   B. 0.15 frequency - natural evolution");
-    let medium = sequences::perlin_noise(99, 0.15, 3, 0.5, 48);
+    let medium = sequences::perlin_noise::generate(99, 0.15, 3, 0.5, 48);
     for (i, &val) in medium.iter().enumerate() {
         let pitch = 330.0 + val * 220.0; // E4 to E5
         comp.track("freq_medium")
@@ -85,7 +85,7 @@ fn main() -> anyhow::Result<()> {
 
     // Fast variation
     println!("   C. 0.35 frequency - fast modulation");
-    let fast = sequences::perlin_noise(99, 0.35, 3, 0.5, 48);
+    let fast = sequences::perlin_noise::generate(99, 0.35, 3, 0.5, 48);
     for (i, &val) in fast.iter().enumerate() {
         let pitch = 440.0 + val * 220.0; // A4 to A5
         comp.track("freq_fast")
@@ -128,7 +128,7 @@ fn main() -> anyhow::Result<()> {
 
     // A. Breathing pad (volume automation)
     println!("   A. Breathing pad - organic volume swells");
-    let breath = sequences::perlin_noise(777, 0.08, 4, 0.5, 64);
+    let breath = sequences::perlin_noise::generate(777, 0.08, 4, 0.5, 64);
     for (i, &vol) in breath.iter().enumerate() {
         let volume = 0.2 + vol * 0.6; // 0.2 to 0.8
         comp.track("breathing_pad")
@@ -139,7 +139,7 @@ fn main() -> anyhow::Result<()> {
 
     // B. Evolving arpeggio (pitch within scale)
     println!("   B. Evolving arpeggio - pitch drift within C major");
-    let pitch_evolution = sequences::perlin_noise(888, 0.12, 3, 0.5, 32);
+    let pitch_evolution = sequences::perlin_noise::generate(888, 0.12, 3, 0.5, 32);
     let c_major = vec![C4, D4, E4, F4, G4, A4, B4, C5];
 
     for (i, &val) in pitch_evolution.iter().enumerate() {
@@ -164,7 +164,7 @@ fn main() -> anyhow::Result<()> {
 
     // D. Dynamic harmony (chord voicing evolution)
     println!("   D. Dynamic harmony - shifting chord inversions");
-    let harmony = sequences::perlin_noise(321, 0.06, 3, 0.5, 16);
+    let harmony = sequences::perlin_noise::generate(321, 0.06, 3, 0.5, 16);
 
     for (i, &val) in harmony.iter().enumerate() {
         // C major chord with evolving octave distribution
@@ -197,7 +197,7 @@ fn main() -> anyhow::Result<()> {
 
     // Perlin noise (natural)
     println!("   B. Perlin noise - smooth, organic, unpredictable");
-    let perlin_comp = sequences::perlin_noise(404, 0.15, 3, 0.5, 32);
+    let perlin_comp = sequences::perlin_noise::generate(404, 0.15, 3, 0.5, 32);
     for (i, &val) in perlin_comp.iter().enumerate() {
         let volume = 0.3 + val * 0.5;
         comp.track("perlin")

@@ -1,4 +1,5 @@
 use tunes::prelude::*;
+use tunes::sequences::euclidean;
 
 fn main() -> anyhow::Result<()> {
     println!("\n🎛️  Pattern Modifiers Demo\n");
@@ -43,7 +44,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 4: Generative drum pattern with euclidean rhythm
     println!("4. Euclidean rhythm pattern");
-    let pattern = euclidean(7, 16);
+    let pattern = euclidean::generate(7, 16);
 
     comp.track("drums")
         .at(8.0)

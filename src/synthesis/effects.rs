@@ -166,6 +166,48 @@ impl Delay {
         self.buffer.fill(0.0);
         self.write_pos = 0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Eighth note delay (125ms at 120 BPM) with subtle feedback
+    pub fn eighth_note() -> Self {
+        Self::new(0.125, 0.35, 0.3)
+    }
+
+    /// Quarter note delay (250ms at 120 BPM) with moderate feedback
+    pub fn quarter_note() -> Self {
+        Self::new(0.25, 0.4, 0.35)
+    }
+
+    /// Dotted eighth delay (187.5ms at 120 BPM) - classic U2/Edge sound
+    pub fn dotted_eighth() -> Self {
+        Self::new(0.1875, 0.35, 0.3)
+    }
+
+    /// Half note delay (500ms at 120 BPM) with spacious feedback
+    pub fn half_note() -> Self {
+        Self::new(0.5, 0.45, 0.4)
+    }
+
+    /// Slapback delay (80ms) with no feedback - classic rockabilly/country sound
+    pub fn slapback() -> Self {
+        Self::new(0.08, 0.0, 0.3)
+    }
+
+    /// Ping-pong style delay with higher feedback for multiple repeats
+    pub fn ping_pong() -> Self {
+        Self::new(0.375, 0.5, 0.4)
+    }
+
+    /// Subtle doubling effect (30ms) for thickening vocals/instruments
+    pub fn doubling() -> Self {
+        Self::new(0.03, 0.0, 0.2)
+    }
+
+    /// Long ambient delay (1 second) with high feedback for soundscapes
+    pub fn ambient() -> Self {
+        Self::new(1.0, 0.6, 0.5)
+    }
 }
 
 /// Simple reverb using multiple comb filters
@@ -337,6 +379,48 @@ impl Reverb {
         self.comb_positions.fill(0);
         self.filter_state.fill(0.0);
     }
+
+    // ========== PRESETS ==========
+
+    /// Small room reverb - intimate, subtle space
+    pub fn room() -> Self {
+        Self::new(0.3, 0.7, 0.2)
+    }
+
+    /// Large concert hall - spacious, balanced
+    pub fn hall() -> Self {
+        Self::new(0.8, 0.5, 0.3)
+    }
+
+    /// Plate reverb - bright, dense reflections
+    pub fn plate() -> Self {
+        Self::new(0.5, 0.3, 0.25)
+    }
+
+    /// Chamber reverb - medium space with warmth
+    pub fn chamber() -> Self {
+        Self::new(0.6, 0.6, 0.25)
+    }
+
+    /// Cathedral/church - huge, long decay
+    pub fn cathedral() -> Self {
+        Self::new(0.95, 0.4, 0.4)
+    }
+
+    /// Ambient soundscape - massive space, lush
+    pub fn ambient() -> Self {
+        Self::new(0.9, 0.4, 0.5)
+    }
+
+    /// Subtle room presence - barely noticeable
+    pub fn subtle() -> Self {
+        Self::new(0.4, 0.6, 0.15)
+    }
+
+    /// Spring reverb - vintage, characteristic boing
+    pub fn spring() -> Self {
+        Self::new(0.4, 0.8, 0.3)
+    }
 }
 
 /// Distortion/overdrive effect
@@ -431,6 +515,38 @@ impl Distortion {
             let current_sample_count = sample_count + i as u64;
             *sample = self.process(*sample, current_time, current_sample_count);
         }
+    }
+
+    // ========== PRESETS ==========
+
+    /// Light saturation - subtle analog warmth
+    pub fn saturation() -> Self {
+        Self::new(1.5, 0.5)
+    }
+
+    /// Overdrive - tube-style warmth and grit
+    pub fn overdrive() -> Self {
+        Self::new(2.5, 0.8)
+    }
+
+    /// Crunch - classic rock distortion
+    pub fn crunch() -> Self {
+        Self::new(4.0, 0.9)
+    }
+
+    /// Heavy distortion - metal/high-gain
+    pub fn heavy() -> Self {
+        Self::new(6.0, 1.0)
+    }
+
+    /// Fuzz - extreme, compressed distortion
+    pub fn fuzz() -> Self {
+        Self::new(8.0, 1.0)
+    }
+
+    /// Gentle drive - barely-there warmth
+    pub fn gentle() -> Self {
+        Self::new(1.8, 0.4)
     }
 }
 
@@ -555,6 +671,33 @@ impl BitCrusher {
     pub fn reset(&mut self) {
         self.hold_sample = 0.0;
         self.sample_counter = 0.0;
+    }
+
+    // ========== PRESETS ==========
+
+    /// Lo-fi effect - 8-bit style with mild downsampling
+    pub fn lofi() -> Self {
+        Self::new(8.0, 2.0, 0.7)
+    }
+
+    /// Game Boy - classic 4-bit handheld sound
+    pub fn gameboy() -> Self {
+        Self::new(4.0, 4.0, 0.85)
+    }
+
+    /// Telephone - heavily crushed, narrow bandwidth
+    pub fn telephone() -> Self {
+        Self::new(6.0, 8.0, 0.8)
+    }
+
+    /// Glitch - extreme digital degradation
+    pub fn glitch() -> Self {
+        Self::new(3.0, 12.0, 1.0)
+    }
+
+    /// Vintage - subtle lo-fi character
+    pub fn vintage() -> Self {
+        Self::new(10.0, 1.5, 0.4)
     }
 }
 
@@ -873,6 +1016,43 @@ impl Compressor {
     pub fn reset(&mut self) {
         self.envelope = 0.0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Gentle compression - transparent, barely noticeable (2:1 ratio)
+    pub fn gentle() -> Self {
+        Self::new(0.5, 2.0, 0.01, 0.1, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Vocal compression - fast attack for controlling vocals (4:1 ratio)
+    pub fn vocal() -> Self {
+        Self::new(0.4, 4.0, 0.005, 0.05, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Drum bus compression - punchy, adds glue to drums (4:1 ratio)
+    pub fn drum_bus() -> Self {
+        Self::new(0.6, 4.0, 0.01, 0.15, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Bass compression - evens out bass notes (6:1 ratio)
+    pub fn bass() -> Self {
+        Self::new(0.5, 6.0, 0.02, 0.2, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Master compression - gentle glue for final mix (2.5:1 ratio)
+    pub fn master() -> Self {
+        Self::new(0.6, 2.5, 0.01, 0.1, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Limiter - brick wall limiting (20:1 ratio)
+    pub fn limiter() -> Self {
+        Self::new(0.8, 20.0, 0.001, 0.05, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Aggressive compression - heavy squashing (8:1 ratio)
+    pub fn aggressive() -> Self {
+        Self::new(0.3, 8.0, 0.005, 0.08, DEFAULT_SAMPLE_RATE)
+    }
 }
 
 /// Chorus - creates thickness by layering detuned copies
@@ -1021,6 +1201,33 @@ impl Chorus {
         self.buffer.fill(0.0);
         self.write_pos = 0;
         self.lfo_phase = 0.0;
+    }
+
+    // ========== PRESETS ==========
+
+    /// Subtle chorus - gentle thickening
+    pub fn subtle() -> Self {
+        Self::new(0.5, 3.0, 0.3)
+    }
+
+    /// Classic chorus - 80s style chorus effect
+    pub fn classic() -> Self {
+        Self::new(1.5, 5.0, 0.5)
+    }
+
+    /// Wide chorus - expansive stereo spread
+    pub fn wide() -> Self {
+        Self::new(0.8, 8.0, 0.6)
+    }
+
+    /// Vibrato - 100% wet for pitch modulation
+    pub fn vibrato() -> Self {
+        Self::new(5.0, 3.0, 1.0)
+    }
+
+    /// Thick - dense, layered sound
+    pub fn thick() -> Self {
+        Self::new(2.0, 7.0, 0.7)
     }
 }
 
@@ -1174,6 +1381,43 @@ impl EQ {
         self.mid_state = [0.0; 2];
         self.high_state = [0.0; 2];
     }
+
+    // ========== PRESETS ==========
+
+    /// Flat EQ - no adjustment (unity gain)
+    pub fn flat() -> Self {
+        Self::new(1.0, 1.0, 1.0, 300.0, 3000.0)
+    }
+
+    /// Bass boost - enhanced low end for warmth
+    pub fn bass_boost() -> Self {
+        Self::new(1.5, 1.0, 1.0, 100.0, 3000.0)
+    }
+
+    /// Treble boost - enhanced highs for brightness
+    pub fn treble_boost() -> Self {
+        Self::new(1.0, 1.0, 1.5, 300.0, 5000.0)
+    }
+
+    /// Smiley face - boosted lows and highs, scooped mids
+    pub fn smiley() -> Self {
+        Self::new(1.4, 0.7, 1.4, 200.0, 4000.0)
+    }
+
+    /// Presence - boost mids for vocal clarity
+    pub fn presence() -> Self {
+        Self::new(1.0, 1.3, 1.1, 500.0, 3000.0)
+    }
+
+    /// Warmth - gentle low boost, slight high cut
+    pub fn warmth() -> Self {
+        Self::new(1.3, 1.0, 0.9, 150.0, 3000.0)
+    }
+
+    /// Bright - reduce lows, boost highs
+    pub fn bright() -> Self {
+        Self::new(0.8, 1.0, 1.4, 300.0, 5000.0)
+    }
 }
 
 /// Saturation - warm analog-style clipping
@@ -1291,6 +1535,38 @@ impl Saturation {
             let current_sample_count = sample_count + i as u64;
             *sample = self.process(*sample, current_time, current_sample_count);
         }
+    }
+
+    // ========== PRESETS ==========
+
+    /// Tape saturation - warm analog tape character
+    pub fn tape() -> Self {
+        Self::new(2.0, 0.3, 0.7)
+    }
+
+    /// Tube saturation - vintage tube amp warmth
+    pub fn tube() -> Self {
+        Self::new(3.0, 0.5, 0.8)
+    }
+
+    /// Soft clipping - gentle harmonic enhancement
+    pub fn soft() -> Self {
+        Self::new(1.5, 0.2, 0.5)
+    }
+
+    /// Hard clipping - aggressive saturation
+    pub fn hard() -> Self {
+        Self::new(4.0, 0.8, 0.9)
+    }
+
+    /// Warmth - subtle analog color
+    pub fn warmth() -> Self {
+        Self::new(1.8, 0.4, 0.6)
+    }
+
+    /// Aggressive - heavy analog distortion
+    pub fn aggressive() -> Self {
+        Self::new(5.0, 0.9, 1.0)
     }
 }
 
@@ -1482,6 +1758,33 @@ impl Phaser {
         self.allpass_states = vec![AllPassFilter::new(); self.stages];
         self.lfo_phase = 0.0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Slow phaser - gentle sweep (0.3 Hz)
+    pub fn slow() -> Self {
+        Self::new(0.3, 0.7, 0.5, 4, 0.5)
+    }
+
+    /// Classic phaser - 70s style phasing (0.5 Hz, 4 stages)
+    pub fn classic() -> Self {
+        Self::new(0.5, 0.8, 0.6, 4, 0.6)
+    }
+
+    /// Fast phaser - intense modulation (2.0 Hz, 6 stages)
+    pub fn fast() -> Self {
+        Self::new(2.0, 0.9, 0.7, 6, 0.7)
+    }
+
+    /// Subtle phaser - barely-there swoosh (0.4 Hz, mild depth)
+    pub fn subtle() -> Self {
+        Self::new(0.4, 0.5, 0.3, 4, 0.4)
+    }
+
+    /// Deep phaser - thick, resonant sweep (0.6 Hz, 8 stages)
+    pub fn deep() -> Self {
+        Self::new(0.6, 1.0, 0.8, 8, 0.8)
+    }
 }
 
 /// Flanger - creates jet-plane/swoosh effects with very short delays
@@ -1660,6 +1963,33 @@ impl Flanger {
         self.write_pos = 0;
         self.lfo_phase = 0.0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Subtle flanger - gentle swoosh (0.5 Hz)
+    pub fn subtle() -> Self {
+        Self::new(0.5, 2.0, 0.3, 0.4)
+    }
+
+    /// Classic flanger - balanced flanging effect (1.0 Hz)
+    pub fn classic() -> Self {
+        Self::new(1.0, 3.0, 0.5, 0.6)
+    }
+
+    /// Jet flanger - dramatic jet-plane effect (2.0 Hz, high feedback)
+    pub fn jet() -> Self {
+        Self::new(2.0, 5.0, 0.8, 0.8)
+    }
+
+    /// Through-zero flanger - authentic through-zero sound (1.0 Hz)
+    pub fn through_zero() -> Self {
+        Self::new(1.0, 4.0, 0.9, 1.0)
+    }
+
+    /// Metallic flanger - sharp, resonant (1.5 Hz, high feedback)
+    pub fn metallic() -> Self {
+        Self::new(1.5, 4.5, 0.85, 0.85)
+    }
 }
 
 /// Ring Modulator - creates metallic/robotic inharmonic tones
@@ -1777,6 +2107,38 @@ impl RingModulator {
     pub fn reset(&mut self) {
         self.phase = 0.0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Metallic - classic ring mod tone (440 Hz carrier)
+    pub fn metallic() -> Self {
+        Self::new(440.0, 0.7)
+    }
+
+    /// Robotic - mid-range carrier for voice effects (220 Hz)
+    pub fn robotic() -> Self {
+        Self::new(220.0, 0.8)
+    }
+
+    /// Bell-like - high carrier for bell tones (880 Hz)
+    pub fn bell() -> Self {
+        Self::new(880.0, 0.6)
+    }
+
+    /// Deep - low carrier for sub-bass effects (110 Hz)
+    pub fn deep() -> Self {
+        Self::new(110.0, 0.75)
+    }
+
+    /// Harsh - high carrier for aggressive tones (1760 Hz)
+    pub fn harsh() -> Self {
+        Self::new(1760.0, 0.9)
+    }
+
+    /// Subtle - gentle inharmonic color (330 Hz)
+    pub fn subtle() -> Self {
+        Self::new(330.0, 0.4)
+    }
 }
 
 /// Tremolo - rhythmic amplitude modulation
@@ -1803,7 +2165,8 @@ impl Tremolo {
     /// * `rate` - LFO frequency in Hz (typically 1-20 Hz)
     /// * `depth` - Modulation depth 0.0 (no effect) to 1.0 (full tremolo)
     /// * `sample_rate` - Audio sample rate in Hz (kept for API compatibility but ignored)
-    /// Note: The actual sample rate is provided at runtime during processing.
+    ///
+    /// **Note:** The actual sample rate is provided at runtime during processing.
     pub fn with_sample_rate(rate: f32, depth: f32, _sample_rate: f32) -> Self {
         Self {
             rate: rate.max(0.01),
@@ -1899,6 +2262,33 @@ impl Tremolo {
     pub fn reset(&mut self) {
         self.phase = 0.0;
     }
+
+    // ========== PRESETS ==========
+
+    /// Slow tremolo - gentle, pulsing effect (2 Hz)
+    pub fn slow() -> Self {
+        Self::new(2.0, 0.5)
+    }
+
+    /// Classic tremolo - standard rock/blues tremolo (4 Hz)
+    pub fn classic() -> Self {
+        Self::new(4.0, 0.6)
+    }
+
+    /// Fast tremolo - intense modulation (8 Hz)
+    pub fn fast() -> Self {
+        Self::new(8.0, 0.7)
+    }
+
+    /// Subtle tremolo - barely noticeable pulse (3 Hz)
+    pub fn subtle() -> Self {
+        Self::new(3.0, 0.3)
+    }
+
+    /// Helicopter - extreme, rhythmic chop (12 Hz)
+    pub fn helicopter() -> Self {
+        Self::new(12.0, 0.9)
+    }
 }
 
 /// AutoPan - automatic stereo panning modulation
@@ -1924,7 +2314,8 @@ impl AutoPan {
     /// * `rate` - LFO frequency in Hz (typically 0.1-10 Hz)
     /// * `depth` - Pan modulation depth 0.0 to 1.0 (0.5 pans full left-right)
     /// * `sample_rate` - Audio sample rate in Hz (kept for API compatibility but ignored)
-    /// Note: The actual sample rate is provided at runtime during processing.
+    ///
+    /// **Note:** The actual sample rate is provided at runtime during processing.
     pub fn with_sample_rate(rate: f32, depth: f32, _sample_rate: f32) -> Self {
         Self {
             rate: rate.max(0.01),
@@ -2001,6 +2392,33 @@ impl AutoPan {
     /// Reset the auto-pan state
     pub fn reset(&mut self) {
         self.phase = 0.0;
+    }
+
+    // ========== PRESETS ==========
+
+    /// Slow pan - gentle left-right sweep (0.25 Hz)
+    pub fn slow() -> Self {
+        Self::new(0.25, 0.75)
+    }
+
+    /// Classic autopan - steady rhythmic panning (0.5 Hz)
+    pub fn classic() -> Self {
+        Self::new(0.5, 0.75)
+    }
+
+    /// Fast pan - quick stereo movement (2.0 Hz)
+    pub fn fast() -> Self {
+        Self::new(2.0, 0.75)
+    }
+
+    /// Subtle pan - light stereo enhancement (0.3 Hz, mild depth)
+    pub fn subtle() -> Self {
+        Self::new(0.3, 0.4)
+    }
+
+    /// Extreme pan - hard left-right panning (1.0 Hz, full depth)
+    pub fn extreme() -> Self {
+        Self::new(1.0, 1.0)
     }
 }
 
@@ -2146,6 +2564,33 @@ impl Gate {
     /// Reset the gate state
     pub fn reset(&mut self) {
         self.envelope = 0.0;
+    }
+
+    // ========== PRESETS ==========
+
+    /// Gentle gate - subtle noise reduction (-35 dB threshold)
+    pub fn gentle() -> Self {
+        Self::with_sample_rate(-35.0, 4.0, 0.001, 0.05, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Standard gate - balanced noise control (-40 dB threshold)
+    pub fn standard() -> Self {
+        Self::with_sample_rate(-40.0, 10.0, 0.001, 0.05, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Aggressive gate - hard gating for dramatic effect (-30 dB, high ratio)
+    pub fn aggressive() -> Self {
+        Self::with_sample_rate(-30.0, f32::INFINITY, 0.0001, 0.02, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Drum gate - fast attack/release for drums (-45 dB)
+    pub fn drum() -> Self {
+        Self::with_sample_rate(-45.0, 20.0, 0.0001, 0.03, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Vocal gate - moderate gating for vocals (-38 dB)
+    pub fn vocal() -> Self {
+        Self::with_sample_rate(-38.0, 8.0, 0.002, 0.08, DEFAULT_SAMPLE_RATE)
     }
 }
 
@@ -2330,6 +2775,33 @@ impl Limiter {
     /// Reset the limiter state
     pub fn reset(&mut self) {
         self.gain_reduction = 1.0;
+    }
+
+    // ========== PRESETS ==========
+
+    /// Transparent limiter - very light limiting (-0.5 dB)
+    pub fn transparent() -> Self {
+        Self::with_sample_rate(-0.5, 0.1, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Standard limiter - balanced protection (-0.3 dB)
+    pub fn standard() -> Self {
+        Self::with_sample_rate(-0.3, 0.05, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Brick wall - maximum protection (-0.1 dB, fast release)
+    pub fn brick_wall() -> Self {
+        Self::with_sample_rate(-0.1, 0.005, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Mastering limiter - professional mastering (-0.2 dB)
+    pub fn mastering() -> Self {
+        Self::with_sample_rate(-0.2, 0.08, DEFAULT_SAMPLE_RATE)
+    }
+
+    /// Safety limiter - emergency protection (0.0 dB)
+    pub fn safety() -> Self {
+        Self::with_sample_rate(0.0, 0.01, DEFAULT_SAMPLE_RATE)
     }
 }
 

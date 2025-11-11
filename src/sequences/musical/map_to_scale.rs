@@ -20,7 +20,7 @@
 /// use tunes::sequences::{fibonacci, map_to_scale, Scale};
 ///
 /// // Map Fibonacci to C major pentatonic - use note constants!
-/// let fib = fibonacci(16);
+/// let fib = fibonacci::generate(16);
 /// let melody = map_to_scale(&fib, &Scale::major_pentatonic(), C4, 2);
 /// // Result: Frequencies following Fibonacci pattern but staying in C major pentatonic
 ///
@@ -81,11 +81,11 @@ pub fn map_to_scale(values: &[u32], scale: &[u32], root: f32, octave_range: u32)
 /// // Result: D minor frequencies following the chaotic attractor's path
 ///
 /// // Map Perlin noise to C major pentatonic
-/// let noise = sequences::perlin_noise(42, 0.15, 3, 0.5, 64);
+/// let noise = sequences::perlin_noise::generate(42, 0.15, 3, 0.5, 64);
 /// let melody = sequences::map_to_scale_f32(&noise, &sequences::Scale::major_pentatonic(), C4, 3);
 ///
 /// // Map circle map phases to blues scale
-/// let phases = sequences::circle_map(0.618, 1.5, 0.0, 32);
+/// let phases = sequences::circle_map::generate(0.618, 1.5, 0.0, 32);
 /// let melody = sequences::map_to_scale_f32(&phases, &sequences::Scale::blues(), E3, 2);
 ///
 /// // Use directly - no conversion needed!
@@ -256,7 +256,7 @@ mod tests {
         use crate::sequences::fibonacci;
 
         // Practical example: map Fibonacci to scale
-        let fib = fibonacci(10);
+        let fib = fibonacci::generate(10);
         let scale = Scale::minor_pentatonic();
         let melody = map_to_scale(&fib, &scale, E3, 3); // E3 root, 3 octaves
 

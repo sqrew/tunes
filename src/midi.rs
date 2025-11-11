@@ -953,12 +953,10 @@ impl Mixer {
                 let time = ticks_to_seconds(absolute_tick, current_tempo, ppq);
 
                 match &event.kind {
-                    TrackEventKind::Meta(meta) => match meta {
-                        MetaMessage::TrackName(name) => {
-                            track_name = Some(String::from_utf8_lossy(name).to_string());
-                        }
-                        _ => {}
-                    },
+                    TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
+                        track_name = Some(String::from_utf8_lossy(name).to_string());
+                    }
+                    TrackEventKind::Meta(_) => {} // Ignore other meta messages
                     TrackEventKind::Midi {
                         channel: ch,
                         message,

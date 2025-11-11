@@ -6,10 +6,10 @@
 /// # Examples
 /// ```
 /// use tunes::sequences;
-/// let tri = sequences::triangular(6);
+/// let tri = sequences::triangular::generate(6);
 /// assert_eq!(tri, vec![1, 3, 6, 10, 15, 21]);
 /// ```
-pub fn triangular(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     (1..=n)
         .map(|i| {
             let i = i as u32;
@@ -24,7 +24,7 @@ mod tests {
 
     #[test]
     fn test_triangular() {
-        let tri = triangular(6);
+        let tri = generate(6);
         assert_eq!(tri, vec![1, 3, 6, 10, 15, 21]);
     }
 }

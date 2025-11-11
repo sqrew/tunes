@@ -36,7 +36,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Clifford attractor
-/// let path = sequences::clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+/// let path = sequences::generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
 ///
 /// // Extract coordinates for musical use
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _)| *x).collect();
@@ -83,7 +83,7 @@
 /// - Discard first ~10 steps if you want to skip transient behavior
 /// - Beautiful when combined with `map_to_scale()` for modal melodies
 /// - X and Y often have complementary rhythmic/melodic relationships
-pub fn clifford_attractor(
+pub fn generate(
     a: f32,
     b: f32,
     c: f32,
@@ -130,7 +130,7 @@ pub fn clifford_attractor(
 /// assert_eq!(melody.len(), 64);
 /// ```
 pub fn clifford_x(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<f32> {
-    clifford_attractor(a, b, c, d, initial, n)
+    generate(a, b, c, d, initial, n)
         .into_iter()
         .map(|(x, _)| x)
         .collect()
@@ -159,7 +159,7 @@ pub fn clifford_x(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize)
 /// assert_eq!(harmony.len(), 64);
 /// ```
 pub fn clifford_y(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize) -> Vec<f32> {
-    clifford_attractor(a, b, c, d, initial, n)
+    generate(a, b, c, d, initial, n)
         .into_iter()
         .map(|(_, y)| y)
         .collect()
@@ -189,7 +189,7 @@ pub fn clifford_y(a: f32, b: f32, c: f32, d: f32, initial: (f32, f32), n: usize)
 pub fn clifford_flow(n: usize) -> Vec<(f32, f32)> {
     // Generate extra steps to discard transient
     let total_steps = n + 10;
-    let full_path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), total_steps);
+    let full_path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), total_steps);
 
     // Discard first 10 steps (transient)
     full_path.into_iter().skip(10).collect()
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_clifford_attractor_length() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
         assert_eq!(path.len(), 100);
     }
 
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_clifford_first_point_is_initial() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.5, 0.5), 10);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.5, 0.5), 10);
         let (x0, y0) = path[0];
         assert_eq!(x0, 0.5);
         assert_eq!(y0, 0.5);
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_clifford_stays_bounded() {
         // Clifford attractor should stay roughly within bounds
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 1000);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 1000);
 
         for (x, y) in path {
             assert!(
@@ -240,8 +240,8 @@ mod tests {
 
     #[test]
     fn test_clifford_deterministic() {
-        let path1 = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
-        let path2 = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+        let path1 = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+        let path2 = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
 
         // Same parameters should produce identical sequences
         for i in 0..100 {
@@ -255,8 +255,8 @@ mod tests {
 
     #[test]
     fn test_clifford_different_initial_conditions() {
-        let path1 = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 50);
-        let path2 = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.5, 0.5), 50);
+        let path1 = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 50);
+        let path2 = generate(-1.4, 1.6, 1.0, 0.7, (0.5, 0.5), 50);
 
         // After skipping initial condition, paths may converge or diverge
         // Just verify they start different
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_clifford_evolution() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 5);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 5);
 
         // Manually verify first iteration from (0, 0)
         // x1 = sin(-1.4 * 0) + 1.0 * cos(-1.4 * 0) = sin(0) + 1.0 * cos(0) = 0 + 1.0 = 1.0
@@ -280,8 +280,8 @@ mod tests {
 
     #[test]
     fn test_clifford_different_parameters() {
-        let path1 = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
-        let path2 = clifford_attractor(1.5, -1.8, 1.6, 0.9, (0.0, 0.0), 100);
+        let path1 = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+        let path2 = generate(1.5, -1.8, 1.6, 0.9, (0.0, 0.0), 100);
 
         // Different parameters should create different sequences
         let (x1, y1) = path1[50];
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn test_clifford_x_convenience() {
         let x_only = clifford_x(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
-        let full_path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
+        let full_path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
         let x_full: Vec<f32> = full_path.into_iter().map(|(x, _)| x).collect();
 
         assert_eq!(x_only, x_full);
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn test_clifford_y_convenience() {
         let y_only = clifford_y(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
-        let full_path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
+        let full_path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 32);
         let y_full: Vec<f32> = full_path.into_iter().map(|(_, y)| y).collect();
 
         assert_eq!(y_only, y_full);
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_clifford_single_iteration() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (1.0, 1.0), 1);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (1.0, 1.0), 1);
         assert_eq!(path.len(), 1);
         let (x0, y0) = path[0];
         assert_eq!(x0, 1.0);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_clifford_coordinates_evolve() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 200);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 200);
 
         // Check that coordinates change over time
         let (x0, y0) = path[0];
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_clifford_produces_finite_values() {
-        let path = clifford_attractor(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 1000);
+        let path = generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 1000);
 
         for (x, y) in path {
             assert!(x.is_finite(), "X should be finite");
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn test_clifford_symmetric_parameters() {
         // Test with symmetric parameters
-        let path = clifford_attractor(1.7, 1.7, 0.6, 1.2, (0.0, 0.0), 100);
+        let path = generate(1.7, 1.7, 0.6, 1.2, (0.0, 0.0), 100);
 
         // Should still produce bounded, finite values
         for (x, y) in path {

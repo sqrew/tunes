@@ -20,17 +20,17 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let powers = sequences::powers_of_two(8);
+/// let powers = sequences::powers_of_two::generate(8);
 /// assert_eq!(powers, vec![1, 2, 4, 8, 16, 32, 64, 128]);
 ///
 /// // Use for rhythmic subdivision (whole, half, quarter, eighth...)
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let subdivisions = sequences::powers_of_two(5); // [1, 2, 4, 8, 16]
+/// let subdivisions = sequences::powers_of_two::generate(5); // [1, 2, 4, 8, 16]
 /// let durations = sequences::normalize(&subdivisions, 0.0625, 1.0);
 ///
 /// // Use for octave relationships (frequency doubling)
-/// let octaves = sequences::powers_of_two(4);
+/// let octaves = sequences::powers_of_two::generate(4);
 /// let freqs: Vec<f32> = octaves.iter()
 ///     .map(|&mult| 110.0 * mult as f32)  // A2, A3, A4, A5
 ///     .collect();
@@ -44,6 +44,6 @@
 /// - **Structural proportions**: Section lengths doubling (8 bars, 16 bars, 32 bars)
 /// - **Polyrhythms**: Layer patterns with power-of-2 relationships (4 against 8, 8 against 16)
 /// - **Digital timing**: Synchronize with digital audio buffer boundaries
-pub fn powers_of_two(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     (0..n).map(|i| 2u32.pow(i as u32)).collect()
 }

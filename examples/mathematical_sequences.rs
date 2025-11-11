@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Each number is the sum of the previous two");
     println!("   Found everywhere in nature: shells, flowers, galaxies\n");
 
-    let fib = sequences::fibonacci(16);
+    let fib = sequences::fibonacci::generate(16);
     let fib_freqs = sequences::normalize(&fib, 220.0, 880.0);
 
     comp.instrument("fibonacci", &Instrument::pluck())
@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Numbers divisible only by 1 and themselves");
     println!("   Creates angular, unpredictable melodies\n");
 
-    let primes = sequences::primes(16);
+    let primes = sequences::primes::generate(16);
     let prime_freqs = sequences::normalize(&primes, 300.0, 900.0);
 
     comp.instrument("primes", &Instrument::synth_lead())
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
     println!("   T(n) = n(n+1)/2 - sum of first n integers");
     println!("   Creates smooth ascending melodic contours\n");
 
-    let triangular = sequences::triangular(12);
+    let triangular = sequences::triangular::generate(12);
     let tri_freqs = sequences::normalize(&triangular, 200.0, 1000.0);
 
     comp.instrument("triangular", &Instrument::pluck())
@@ -61,7 +61,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Fundamental to digital audio and binary systems");
     println!("   Creates octave relationships\n");
 
-    let powers = sequences::powers_of_two(8);
+    let powers = sequences::powers_of_two::generate(8);
     let power_freqs = sequences::normalize(&powers, 110.0, 880.0);
 
     comp.instrument("powers_of_two", &Instrument::pluck())
@@ -73,7 +73,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Linear progression: a, a+d, a+2d, a+3d...");
     println!("   Steady, predictable motion - like a scale\n");
 
-    let arithmetic = sequences::arithmetic(5, 3, 12);
+    let arithmetic = sequences::arithmetic::generate(5, 3, 12);
     let arith_freqs = sequences::normalize(&arithmetic, 300.0, 700.0);
 
     comp.instrument("arithmetic", &Instrument::synth_lead())
@@ -85,7 +85,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Exponential growth: a, ar, ar², ar³...");
     println!("   Rapid expansion creates dramatic effect\n");
 
-    let geometric = sequences::geometric(2, 2, 8);
+    let geometric = sequences::geometric::generate(2, 2, 8);
     let geo_freqs = sequences::normalize(&geometric, 150.0, 900.0);
 
     comp.instrument("geometric", &Instrument::pluck())
@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
     println!("   If even: divide by 2, if odd: multiply by 3 and add 1");
     println!("   Unsolved mathematical mystery - always reaches 1?\n");
 
-    let collatz = sequences::collatz(27, 40);
+    let collatz = sequences::collatz::generate(27, 40);
     let collatz_freqs = sequences::normalize(&collatz, 200.0, 800.0);
 
     comp.instrument("collatz", &Instrument::pluck())
@@ -111,7 +111,7 @@ fn main() -> anyhow::Result<()> {
     println!("   Fibonacci rhythm + Arithmetic melody\n");
 
     // Use Fibonacci to control rhythm density
-    let fib_rhythm = sequences::fibonacci(6);
+    let fib_rhythm = sequences::fibonacci::generate(6);
     for (i, &density) in fib_rhythm.iter().take(4).enumerate() {
         let steps: Vec<usize> = (0..(density as usize).min(16))
             .map(|x| x * 16 / density as usize)
@@ -124,7 +124,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Arithmetic melody over the top
-    let combined_melody = sequences::arithmetic(440, 55, 8);
+    let combined_melody = sequences::arithmetic::generate(440, 55, 8);
     let combined_freqs: Vec<f32> = combined_melody.iter().map(|&x| x as f32).collect();
 
     comp.instrument("combined_melody", &Instrument::synth_lead())

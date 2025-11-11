@@ -39,7 +39,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Wandering bass around 110 Hz (A2)
-/// let bass_walk = sequences::random_walk(110.0, 8.0, 16);
+/// let bass_walk = sequences::generate(110.0, 8.0, 16);
 ///
 /// comp.instrument("bass", &Instrument::sub_bass())
 ///     .notes(&bass_walk, 0.5);
@@ -52,7 +52,7 @@
 ///
 /// // Generate smooth filter automation
 /// let start_cutoff = 500.0;  // Hz
-/// let walk = sequences::random_walk(start_cutoff, 40.0, 64);
+/// let walk = sequences::generate(start_cutoff, 40.0, 64);
 ///
 /// // Clamp to reasonable filter range
 /// let filter_curve: Vec<f32> = walk.iter()
@@ -69,7 +69,7 @@
 /// # Note
 /// This is an unbounded walk - values can grow arbitrarily large or small.
 /// Use `bounded_walk()` if you need to constrain the range.
-pub fn random_walk(start: f32, step_size: f32, steps: usize) -> Vec<f32> {
+pub fn generate(start: f32, step_size: f32, steps: usize) -> Vec<f32> {
     use rand::Rng;
     let mut rng = rand::rng();
     let mut seq = vec![start];
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_random_walk_basic() {
-        let walk = random_walk(100.0, 10.0, 20);
+        let walk = generate(100.0, 10.0, 20);
 
         assert_eq!(walk.len(), 20);
         assert_eq!(walk[0], 100.0); // Starts at initial value
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_random_walk_unbounded() {
         // With enough steps and large step size, should be able to go far from start
-        let walk = random_walk(0.0, 50.0, 100);
+        let walk = generate(0.0, 50.0, 100);
 
         assert_eq!(walk.len(), 100);
         assert_eq!(walk[0], 0.0);

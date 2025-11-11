@@ -36,7 +36,7 @@
 /// let mut comp = Composition::new(Tempo::new(128.0));
 ///
 /// // Extract hit positions from Thue-Morse
-/// let tm = sequences::thue_morse(32);
+/// let tm = sequences::generate(32);
 /// let hits: Vec<usize> = tm.iter()
 ///     .enumerate()
 ///     .filter(|(_, &v)| v == 1)
@@ -46,20 +46,20 @@
 /// comp.track("tm_drums")
 ///     .drum_grid(32, 0.125)
 ///     .kick(&hits)
-///     .hihat(&sequences::euclidean(16, 32));  // Layer with Euclidean
+///     .hihat(&sequences::euclidean::generate(16, 32));  // Layer with Euclidean
 /// ```
 ///
 /// # Examples
 /// ```
 /// use tunes::sequences;
 ///
-/// let tm = sequences::thue_morse(16);
+/// let tm = sequences::generate(16);
 /// // [0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0]
 ///
 /// // Use as rhythm pattern (0 = rest, 1 = hit)
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let pattern: Vec<usize> = sequences::thue_morse(32)
+/// let pattern: Vec<usize> = sequences::generate(32)
 ///     .iter()
 ///     .enumerate()
 ///     .filter(|(_, &v)| v == 1)
@@ -71,7 +71,7 @@
 ///     .kick(&pattern);
 ///
 /// // Use for parameter switching
-/// let tm_seq = sequences::thue_morse(8);
+/// let tm_seq = sequences::generate(8);
 /// for (i, &val) in tm_seq.iter().enumerate() {
 ///     let freq = if val == 0 { 440.0 } else { 554.37 };
 ///     comp.track("alternating").note(&[freq], 0.25);
@@ -91,7 +91,7 @@
 /// while maintaining perfect fairness. It sounds organic and interesting without
 /// being truly random - ideal for generative music that needs structure but
 /// wants to avoid repetitive patterns.
-pub fn thue_morse(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     let mut seq = vec![0];
 
     while seq.len() < n {
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn test_thue_morse_basic() {
         // Test the first few terms match the known sequence
-        let tm = thue_morse(16);
+        let tm = generate(16);
 
         assert_eq!(tm.len(), 16);
 
@@ -122,10 +122,10 @@ mod tests {
     #[test]
     fn test_thue_morse_construction() {
         // Verify the construction algorithm works
-        let tm4 = thue_morse(4);
+        let tm4 = generate(4);
         assert_eq!(tm4, vec![0, 1, 1, 0]);
 
-        let tm8 = thue_morse(8);
+        let tm8 = generate(8);
         assert_eq!(tm8, vec![0, 1, 1, 0, 1, 0, 0, 1]);
 
         // Verify that tm8 = tm4 + complement(tm4)
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_thue_morse_properties() {
-        let tm = thue_morse(64);
+        let tm = generate(64);
 
         // Should have roughly equal 0s and 1s (fairness property)
         let ones = tm.iter().filter(|&&x| x == 1).count();
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn test_thue_morse_no_aaa() {
         // Thue-Morse never has three consecutive identical blocks
-        let tm = thue_morse(100);
+        let tm = generate(100);
 
         // Check no "000" pattern
         for i in 0..tm.len().saturating_sub(2) {
@@ -169,20 +169,20 @@ mod tests {
 
     #[test]
     fn test_thue_morse_edge_cases() {
-        let tm1 = thue_morse(1);
+        let tm1 = generate(1);
         assert_eq!(tm1, vec![0]);
 
-        let tm2 = thue_morse(2);
+        let tm2 = generate(2);
         assert_eq!(tm2, vec![0, 1]);
 
-        let tm3 = thue_morse(3);
+        let tm3 = generate(3);
         assert_eq!(tm3, vec![0, 1, 1]); // Truncated from [0,1,1,0]
     }
 
     #[test]
     fn test_thue_morse_as_rhythm() {
         // Convert to hit indices like Euclidean rhythms
-        let tm = thue_morse(16);
+        let tm = generate(16);
         let hits: Vec<usize> = tm
             .iter()
             .enumerate()

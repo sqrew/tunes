@@ -38,7 +38,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Wandering melody in 2-octave range
-/// let melody = sequences::bounded_walk(
+/// let melody = sequences::generate(
 ///     440.0,   // Start at A4
 ///     35.0,    // Steps of up to 35 Hz
 ///     220.0,   // Min: A3
@@ -60,7 +60,7 @@
 /// let mut comp = Composition::new(Tempo::new(140.0));
 ///
 /// // Bass that stays in one octave
-/// let bass = sequences::bounded_walk(
+/// let bass = sequences::generate(
 ///     110.0,  // A2
 ///     8.0,    // Small steps for smooth bass
 ///     82.4,   // E2 (low end)
@@ -78,7 +78,7 @@
 /// - **Parameter automation**: Filter, pan, volume staying in valid ranges
 /// - **Scale-based melodies**: Step between scale degrees randomly
 /// - **Dynamic contrast**: Volume variation within acceptable range
-pub fn bounded_walk(start: f32, step: f32, min: f32, max: f32, steps: usize) -> Vec<f32> {
+pub fn generate(start: f32, step: f32, min: f32, max: f32, steps: usize) -> Vec<f32> {
     use rand::Rng;
     let mut rng = rand::rng();
     let start_clamped = start.clamp(min, max);
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_bounded_walk_stays_in_range() {
-        let walk = bounded_walk(50.0, 10.0, 0.0, 100.0, 50);
+        let walk = generate(50.0, 10.0, 0.0, 100.0, 50);
 
         assert_eq!(walk.len(), 50);
         assert_eq!(walk[0], 50.0);
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_bounded_walk_clamping() {
         // Start near boundary and use large steps - should clamp
-        let walk = bounded_walk(95.0, 20.0, 0.0, 100.0, 20);
+        let walk = generate(95.0, 20.0, 0.0, 100.0, 20);
 
         // Should still be within bounds despite large steps
         for &val in &walk {
@@ -123,17 +123,17 @@ mod tests {
     #[test]
     fn test_bounded_walk_clamps_initial() {
         // Initial value outside bounds should be clamped
-        let walk1 = bounded_walk(-10.0, 5.0, 0.0, 100.0, 10);
+        let walk1 = generate(-10.0, 5.0, 0.0, 100.0, 10);
         assert_eq!(walk1[0], 0.0); // Clamped to min
 
-        let walk2 = bounded_walk(150.0, 5.0, 0.0, 100.0, 10);
+        let walk2 = generate(150.0, 5.0, 0.0, 100.0, 10);
         assert_eq!(walk2[0], 100.0); // Clamped to max
     }
 
     #[test]
     fn test_bounded_walk_normalized() {
         // Useful for parameter automation (0.0 to 1.0)
-        let walk = bounded_walk(0.5, 0.1, 0.0, 1.0, 32);
+        let walk = generate(0.5, 0.1, 0.0, 1.0, 32);
 
         for &val in &walk {
             assert!(

@@ -35,7 +35,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Generate Fibonacci and map to C major scale
-/// let fib = sequences::fibonacci(12);
+/// let fib = sequences::fibonacci::generate(12);
 /// let melody = sequences::map_to_scale(&fib, &sequences::Scale::major(), C4, 2);
 ///
 /// comp.instrument("fib_melody", &Instrument::pluck())
@@ -47,7 +47,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let fib = sequences::fibonacci(8);
+/// let fib = sequences::fibonacci::generate(8);
 /// assert_eq!(fib, vec![1, 1, 2, 3, 5, 8, 13, 21]);
 ///
 /// // Use for rhythm - note durations following Fibonacci
@@ -61,7 +61,7 @@
 /// }
 ///
 /// // Use for phrase lengths (in beats)
-/// let phrase_lengths = sequences::fibonacci(5); // [1, 1, 2, 3, 5] beats
+/// let phrase_lengths = sequences::fibonacci::generate(5); // [1, 1, 2, 3, 5] beats
 /// ```
 ///
 /// # Musical Applications
@@ -71,7 +71,23 @@
 /// - **Formal structure**: Section lengths in larger compositions
 /// - **Polyrhythms**: Layer rhythms based on different Fibonacci numbers (3 against 5, 5 against 8)
 /// - **Dynamic curves**: Volume or filter changes following Fibonacci proportions
-pub fn fibonacci(n: usize) -> Vec<u32> {
+///
+/// # Usage
+/// ```
+/// use tunes::sequences::fibonacci;
+///
+/// // Custom parameters
+/// let seq = fibonacci::generate(12);
+///
+/// // Or use presets
+/// let seq = fibonacci::classic();
+/// ```
+
+/// Generate Fibonacci sequence with custom length
+///
+/// See module-level documentation for details on the Fibonacci sequence,
+/// musical applications, and typical values.
+pub fn generate(n: usize) -> Vec<u32> {
     let mut fib = vec![1, 1];
     for i in 2..n {
         let next = fib[i - 1] + fib[i - 2];
@@ -81,13 +97,40 @@ pub fn fibonacci(n: usize) -> Vec<u32> {
     fib
 }
 
+// ========== PRESETS ==========
+
+/// Short Fibonacci sequence (6 terms) - quick phrases
+pub fn short() -> Vec<u32> {
+    generate(6)
+}
+
+/// Medium Fibonacci sequence (10 terms) - complete melodies
+pub fn medium() -> Vec<u32> {
+    generate(10)
+}
+
+/// Classic Fibonacci sequence (12 terms) - balanced length
+pub fn classic() -> Vec<u32> {
+    generate(12)
+}
+
+/// Long Fibonacci sequence (16 terms) - evolving patterns
+pub fn long() -> Vec<u32> {
+    generate(16)
+}
+
+/// Extended Fibonacci sequence (20 terms) - epic structures
+pub fn extended() -> Vec<u32> {
+    generate(20)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_fibonacci() {
-        let fib = fibonacci(8);
+        let fib = generate(8);
         assert_eq!(fib, vec![1, 1, 2, 3, 5, 8, 13, 21]);
     }
 }

@@ -26,7 +26,7 @@
 /// use tunes::sequences;
 ///
 /// // Simple 3:4 polyrhythm over 12 steps
-/// let patterns = sequences::polyrhythm(&[3, 4], 12);
+/// let patterns = sequences::generate(&[3, 4], 12);
 /// // patterns[0] = [0, 4, 8]     (3 hits)
 /// // patterns[1] = [0, 3, 6, 9]  (4 hits)
 ///
@@ -38,7 +38,7 @@
 ///     .snare(&patterns[1]); // 4 hits
 ///
 /// // Complex triple polyrhythm: 5:6:7 over 210 steps (LCM)
-/// let triple = sequences::polyrhythm(&[5, 6, 7], 210);
+/// let triple = sequences::generate(&[5, 6, 7], 210);
 /// comp.track("poly567")
 ///     .drum_grid(210, 0.125)
 ///     .kick(&triple[0])
@@ -46,7 +46,7 @@
 ///     .hihat(&triple[2]);
 ///
 /// // Hemiola pattern (3:2 over 6 steps)
-/// let hemiola = sequences::polyrhythm(&[3, 2], 6);
+/// let hemiola = sequences::generate(&[3, 2], 6);
 /// ```
 ///
 /// # Musical Applications
@@ -63,7 +63,7 @@
 /// - Prime numbers (3, 5, 7, 11) create maximum tension
 /// - Golden ratio (5:8, 8:13) from Fibonacci create flowing patterns
 /// - Start simple (3:4) before moving to complex (7:11:13)
-pub fn polyrhythm(ratios: &[usize], total_length: usize) -> Vec<Vec<usize>> {
+pub fn generate(ratios: &[usize], total_length: usize) -> Vec<Vec<usize>> {
     let mut patterns = Vec::with_capacity(ratios.len());
 
     for &ratio in ratios {
@@ -118,7 +118,7 @@ pub fn lcm(numbers: &[usize]) -> usize {
         return 0;
     }
 
-    numbers.iter().copied().reduce(|a, b| lcm_two(a, b)).unwrap()
+    numbers.iter().copied().reduce(lcm_two).unwrap()
 }
 
 /// Calculate LCM of two numbers
@@ -170,7 +170,7 @@ fn gcd_two(mut a: usize, mut b: usize) -> usize {
 /// ```
 pub fn polyrhythm_cycle(ratios: &[usize]) -> (Vec<Vec<usize>>, usize) {
     let cycle_length = lcm(ratios);
-    let patterns = polyrhythm(ratios, cycle_length);
+    let patterns = generate(ratios, cycle_length);
     (patterns, cycle_length)
 }
 
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn test_polyrhythm_34() {
         // 3:4 over 12 steps
-        let patterns = polyrhythm(&[3, 4], 12);
+        let patterns = generate(&[3, 4], 12);
         assert_eq!(patterns.len(), 2);
 
         // First voice: 3 hits evenly spaced
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_triple_polyrhythm() {
-        let patterns = polyrhythm(&[3, 5, 7], 105); // LCM of 3,5,7 is 105
+        let patterns = generate(&[3, 5, 7], 105); // LCM of 3,5,7 is 105
         assert_eq!(patterns.len(), 3);
         assert_eq!(patterns[0].len(), 3); // 3 hits
         assert_eq!(patterns[1].len(), 5); // 5 hits
@@ -301,11 +301,11 @@ mod tests {
     #[test]
     fn test_empty_and_zero() {
         // Empty slice
-        let patterns = polyrhythm(&[], 16);
+        let patterns = generate(&[], 16);
         assert_eq!(patterns.len(), 0);
 
         // Zero ratio
-        let patterns = polyrhythm(&[3, 0, 4], 12);
+        let patterns = generate(&[3, 0, 4], 12);
         assert_eq!(patterns.len(), 3);
         assert!(patterns[1].is_empty()); // Zero ratio produces no hits
     }

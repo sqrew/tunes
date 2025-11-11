@@ -42,7 +42,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let padovan = sequences::padovan(12);
+/// let padovan = sequences::padovan::generate(12);
 /// assert_eq!(padovan, vec![1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16]);
 ///
 /// // Use for melodic intervals with gentler growth
@@ -57,7 +57,7 @@
 /// }
 ///
 /// // Use for phrase structure (triadic groupings)
-/// let phrase_lengths = sequences::padovan(6); // [1, 1, 1, 2, 2, 3] bars
+/// let phrase_lengths = sequences::padovan::generate(6); // [1, 1, 1, 2, 2, 3] bars
 /// ```
 ///
 /// # Musical Applications
@@ -76,7 +76,7 @@
 ///            ↓  ↓  ↓  ↓  ↓   ↓   ↓   ↓   ↓
 ///           (Padovan grows more slowly - gentler curves)
 /// ```
-pub fn padovan(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     if n == 0 {
         return vec![];
     }
@@ -104,37 +104,37 @@ mod tests {
 
     #[test]
     fn test_padovan_basic() {
-        let seq = padovan(12);
+        let seq = generate(12);
         assert_eq!(seq, vec![1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16]);
     }
 
     #[test]
     fn test_padovan_empty() {
-        let seq = padovan(0);
+        let seq = generate(0);
         assert_eq!(seq, Vec::<u32>::new());
     }
 
     #[test]
     fn test_padovan_one() {
-        let seq = padovan(1);
+        let seq = generate(1);
         assert_eq!(seq, vec![1]);
     }
 
     #[test]
     fn test_padovan_two() {
-        let seq = padovan(2);
+        let seq = generate(2);
         assert_eq!(seq, vec![1, 1]);
     }
 
     #[test]
     fn test_padovan_three() {
-        let seq = padovan(3);
+        let seq = generate(3);
         assert_eq!(seq, vec![1, 1, 1]);
     }
 
     #[test]
     fn test_padovan_recurrence() {
-        let seq = padovan(15);
+        let seq = generate(15);
         // Verify the recurrence relation P(n) = P(n-2) + P(n-3)
         for i in 3..seq.len() {
             assert_eq!(seq[i], seq[i - 2] + seq[i - 3]);
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_padovan_known_values() {
-        let seq = padovan(16);
+        let seq = generate(16);
         assert_eq!(seq[0], 1);
         assert_eq!(seq[1], 1);
         assert_eq!(seq[2], 1);
@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_padovan_growth() {
-        let seq = padovan(15);
+        let seq = generate(15);
         // Padovan grows, but not always monotonically at the start
         // After the initial 1,1,1, it should generally increase
         for i in 4..seq.len() {
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_padovan_slower_than_fibonacci() {
-        let padovan_seq = padovan(12);
+        let padovan_seq = generate(12);
         // Fibonacci would be: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144]
         // Padovan is slower: [1, 1, 1, 2, 2, 3,  4,  5,  7,  9, 12,  16]
 
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_padovan_triple_start() {
-        let seq = padovan(5);
+        let seq = generate(5);
         // Padovan uniquely starts with three 1s
         assert_eq!(seq[0], 1);
         assert_eq!(seq[1], 1);
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_padovan_plastic_ratio() {
-        let seq = padovan(20);
+        let seq = generate(20);
         // The ratio should converge to the plastic number ρ ≈ 1.32471795
 
         // Check later ratios (they converge slowly)
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_padovan_longer_sequence() {
-        let seq = padovan(20);
+        let seq = generate(20);
         assert_eq!(seq.len(), 20);
         // Verify a value in the middle
         assert_eq!(seq[15], 49); // P(15)

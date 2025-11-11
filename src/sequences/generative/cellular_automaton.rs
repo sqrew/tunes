@@ -29,7 +29,7 @@
 /// use tunes::sequences;
 ///
 /// // Rule 30 - classic chaotic pattern
-/// let rule30 = sequences::cellular_automaton(30, 16, 32, None);
+/// let rule30 = sequences::generate(30, 16, 32, None);
 /// // Each row is a generation, creates chaotic rhythm patterns
 ///
 /// // Use first row as rhythm
@@ -46,7 +46,7 @@
 ///     .kick(&rhythm);
 ///
 /// // Rule 90 - Sierpinski fractal
-/// let rule90 = sequences::cellular_automaton(90, 16, 32, None);
+/// let rule90 = sequences::generate(90, 16, 32, None);
 /// // Creates self-similar fractal patterns
 /// ```
 ///
@@ -68,7 +68,7 @@
 /// Cellular automata are used by composers like Iannis Xenakis and in generative
 /// art worldwide. They create patterns that are deterministic but unpredictable,
 /// perfect for algorithmic composition that needs structure without repetition.
-pub fn cellular_automaton(
+pub fn generate(
     rule: u8,
     steps: usize,
     width: usize,
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_cellular_automaton_rule30() {
-        let ca = cellular_automaton(30, 5, 7, None);
+        let ca = generate(30, 5, 7, None);
         assert_eq!(ca.len(), 5);
         assert_eq!(ca[0].len(), 7);
         assert_eq!(ca[0], vec![0, 0, 0, 1, 0, 0, 0]);
@@ -136,10 +136,10 @@ mod tests {
 
     #[test]
     fn test_cellular_automaton_edge_cases() {
-        let empty = cellular_automaton(30, 5, 0, None);
+        let empty = generate(30, 5, 0, None);
         assert_eq!(empty, Vec::<Vec<u32>>::new());
 
-        let single = cellular_automaton(30, 1, 7, None);
+        let single = generate(30, 1, 7, None);
         assert_eq!(single.len(), 1);
         assert_eq!(single[0].len(), 7);
     }
@@ -148,7 +148,7 @@ mod tests {
     fn test_cellular_automaton_all_rules_binary() {
         // Test various rules all produce binary output
         for rule in [0, 30, 90, 110, 184, 255].iter() {
-            let ca = cellular_automaton(*rule, 5, 10, None);
+            let ca = generate(*rule, 5, 10, None);
 
             for gen in &ca {
                 for &cell in gen {
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn test_cellular_automaton_as_rhythm() {
         // Use CA generation as rhythm pattern
-        let ca = cellular_automaton(30, 8, 16, None);
+        let ca = generate(30, 8, 16, None);
 
         // Convert 5th generation to rhythm
         let rhythm: Vec<usize> = ca[4]
@@ -185,7 +185,7 @@ mod tests {
     fn test_cellular_automaton_custom_initial() {
         // Test with custom initial state
         let initial = vec![1, 0, 1, 0, 1];
-        let ca = cellular_automaton(30, 3, 5, Some(initial.clone()));
+        let ca = generate(30, 3, 5, Some(initial.clone()));
 
         assert_eq!(ca.len(), 3);
         assert_eq!(ca[0], initial); // First generation matches initial state
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_cellular_automaton_rule110() {
         // Rule 110 - Turing complete!
-        let ca = cellular_automaton(110, 10, 20, None);
+        let ca = generate(110, 10, 20, None);
 
         assert_eq!(ca.len(), 10);
 
@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn test_cellular_automaton_rule90() {
         // Rule 90 - Sierpinski triangle
-        let ca = cellular_automaton(90, 8, 15, None);
+        let ca = generate(90, 8, 15, None);
 
         assert_eq!(ca.len(), 8);
         assert_eq!(ca[0].len(), 15);

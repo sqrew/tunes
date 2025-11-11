@@ -32,7 +32,7 @@
 /// let mut comp = Composition::new(Tempo::new(110.0));
 ///
 /// // Generate Recamán spiral
-/// let recaman = sequences::recaman(24);
+/// let recaman = sequences::generate(24);
 ///
 /// // Map to bass range (E2 to E3)
 /// let bass_line = sequences::normalize(&recaman, 82.4, 164.8);
@@ -45,7 +45,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let recaman = sequences::recaman(20);
+/// let recaman = sequences::generate(20);
 /// // [0, 1, 3, 6, 2, 7, 13, 20, 12, 21, 11, 22, 10, 23, 9, 24, 8, 25, 43, 62]
 ///
 /// // Use for melodic contours
@@ -54,7 +54,7 @@
 /// // Use for interesting bass lines
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let bass_recaman = sequences::recaman(16);
+/// let bass_recaman = sequences::generate(16);
 /// let bass_freqs = sequences::normalize(&bass_recaman, 55.0, 110.0);
 /// comp.instrument("bass", &Instrument::sub_bass())
 ///     .notes(&bass_freqs, 0.25);
@@ -73,7 +73,7 @@
 /// and avoids revisiting them when possible. This creates patterns that wander
 /// but never quite repeat, perfect for generative music that needs to feel
 /// purposeful without being predictable.
-pub fn recaman(n: usize) -> Vec<u32> {
+pub fn generate(n: usize) -> Vec<u32> {
     if n == 0 {
         return vec![];
     }
@@ -127,11 +127,11 @@ pub fn recaman(n: usize) -> Vec<u32> {
 /// use tunes::sequences;
 ///
 /// // Generate quasi-random values
-/// let quasi = sequences::van_der_corput(16, 2);
+/// let quasi = sequences::van_der_corput::generate(16, 2);
 /// // More evenly distributed than random!
 ///
 /// // Use for note placement that avoids clumping
-/// let positions = sequences::van_der_corput(32, 2);
+/// let positions = sequences::van_der_corput::generate(32, 2);
 /// let note_times: Vec<f32> = positions.iter()
 ///     .map(|&x| x * 4.0)  // Spread over 4 seconds
 ///     .collect();
@@ -139,7 +139,7 @@ pub fn recaman(n: usize) -> Vec<u32> {
 /// // Use for parameter sweeps
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let cutoff_values = sequences::van_der_corput(64, 2);
+/// let cutoff_values = sequences::van_der_corput::generate(64, 2);
 /// for (i, &cutoff) in cutoff_values.iter().enumerate() {
 ///     let freq = 200.0 + cutoff * 600.0;  // 200-800 Hz range
 ///     comp.instrument("sweep", &Instrument::synth_lead())
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_recaman_basic() {
-        let seq = recaman(20);
+        let seq = generate(20);
 
         // Known Recamán sequence values
         let expected = vec![
@@ -181,19 +181,19 @@ mod tests {
 
     #[test]
     fn test_recaman_edge_cases() {
-        let empty = recaman(0);
+        let empty = generate(0);
         assert_eq!(empty, Vec::<u32>::new());
 
-        let single = recaman(1);
+        let single = generate(1);
         assert_eq!(single, vec![0]);
 
-        let two = recaman(2);
+        let two = generate(2);
         assert_eq!(two, vec![0, 1]);
     }
 
     #[test]
     fn test_recaman_backward_when_possible() {
-        let seq = recaman(10);
+        let seq = generate(10);
 
         // At step 1: 0 - 1 would be negative, so go forward: 0 + 1 = 1
         assert_eq!(seq[1], 1);
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_recaman_properties() {
-        let seq = recaman(50);
+        let seq = generate(50);
 
         // Recamán CAN have duplicates (when forward step lands on seen value)
         // This is actually part of the sequence's interesting behavior!

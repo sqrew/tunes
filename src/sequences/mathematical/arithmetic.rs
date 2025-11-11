@@ -23,23 +23,23 @@
 /// use tunes::sequences;
 ///
 /// // Simple counting sequence
-/// let count = sequences::arithmetic(1, 1, 10);
+/// let count = sequences::arithmetic::generate(1, 1, 10);
 /// assert_eq!(count, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ///
 /// // Even numbers
-/// let evens = sequences::arithmetic(2, 2, 8);
+/// let evens = sequences::arithmetic::generate(2, 2, 8);
 /// assert_eq!(evens, vec![2, 4, 6, 8, 10, 12, 14, 16]);
 ///
 /// // Use for ascending scale pattern
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
 /// # use tunes::consts::scales::C4_MAJOR_SCALE;
-/// let scale_indices = sequences::arithmetic(0, 1, 8); // [0, 1, 2, 3, 4, 5, 6, 7]
+/// let scale_indices = sequences::arithmetic::generate(0, 1, 8); // [0, 1, 2, 3, 4, 5, 6, 7]
 /// comp.track("ascending")
 ///     .sequence_from(&scale_indices, &C4_MAJOR_SCALE, 0.25);
 ///
 /// // Use for regular rhythm (every 4 beats)
-/// let beat_positions = sequences::arithmetic(0, 4, 16);
+/// let beat_positions = sequences::arithmetic::generate(0, 4, 16);
 /// let times = sequences::normalize(&beat_positions, 0.0, 16.0);
 /// ```
 ///
@@ -57,6 +57,6 @@
 /// - Building foundations for more complex variations
 /// - Establishing a baseline before applying transformations
 /// - Simulating linear motion or growth
-pub fn arithmetic(start: u32, step: u32, n: usize) -> Vec<u32> {
+pub fn generate(start: u32, step: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start + step * i as u32).collect()
 }

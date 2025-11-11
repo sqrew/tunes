@@ -34,7 +34,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Generate quasi-random values
-/// let quasi = sequences::van_der_corput(32, 2);
+/// let quasi = sequences::generate(32, 2);
 ///
 /// // Map to C minor pentatonic
 /// let melody = sequences::map_to_scale_f32(
@@ -54,11 +54,11 @@
 /// use tunes::sequences;
 ///
 /// // Generate quasi-random values
-/// let quasi = sequences::van_der_corput(16, 2);
+/// let quasi = sequences::generate(16, 2);
 /// // More evenly distributed than random!
 ///
 /// // Use for note placement that avoids clumping
-/// let positions = sequences::van_der_corput(32, 2);
+/// let positions = sequences::generate(32, 2);
 /// let note_times: Vec<f32> = positions.iter()
 ///     .map(|&x| x * 4.0)  // Spread over 4 seconds
 ///     .collect();
@@ -66,7 +66,7 @@
 /// // Use for parameter sweeps
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let cutoff_values = sequences::van_der_corput(64, 2);
+/// let cutoff_values = sequences::generate(64, 2);
 /// for (i, &cutoff) in cutoff_values.iter().enumerate() {
 ///     let freq = 200.0 + cutoff * 600.0;  // 200-800 Hz range
 ///     comp.instrument("sweep", &Instrument::synth_lead())
@@ -90,7 +90,7 @@
 /// - **Grid**: Predictable, mechanical
 ///
 /// Perfect middle ground for generative music that needs randomness without chaos.
-pub fn van_der_corput(n: usize, base: u32) -> Vec<f32> {
+pub fn generate(n: usize, base: u32) -> Vec<f32> {
     (0..n)
         .map(|i| {
             let mut result = 0.0;
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_van_der_corput_basic() {
-        let seq = van_der_corput(8, 2);
+        let seq = generate(8, 2);
         assert_eq!(seq.len(), 8);
         
         assert!((seq[0] - 0.5).abs() < 0.001);
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_van_der_corput_range() {
-        let seq = van_der_corput(100, 2);
+        let seq = generate(100, 2);
         for &val in &seq {
             assert!(val >= 0.0 && val < 1.0);
         }
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn test_van_der_corput_base_3() {
         // Test with base 3
-        let seq = van_der_corput(9, 3);
+        let seq = generate(9, 3);
 
         assert_eq!(seq.len(), 9);
 
@@ -144,14 +144,14 @@ mod tests {
         }
 
         // Base 3 should give different distribution than base 2
-        let seq2 = van_der_corput(9, 2);
+        let seq2 = generate(9, 2);
         assert_ne!(seq, seq2);
     }
 
     #[test]
     fn test_van_der_corput_distribution() {
         // Van der Corput should fill space more evenly than random
-        let seq = van_der_corput(32, 2);
+        let seq = generate(32, 2);
 
         // Divide [0,1) into 8 bins and count how many values in each
         let mut bins = vec![0; 8];

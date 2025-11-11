@@ -37,15 +37,15 @@
 //! use tunes::sequences;
 //!
 //! // Bulgarian Rachenitsa: 2+2+3 = 7/8
-//! let pattern = sequences::additive_meter(&[2, 2, 3]);
+//! let pattern = sequences::generate(&[2, 2, 3]);
 //! assert_eq!(pattern, vec![0, 2, 4]); // Strong beats at 0, 2, 4
 //!
 //! // Greek pattern: 2+2+2+3 = 9/8
-//! let pattern = sequences::additive_meter(&[2, 2, 2, 3]);
+//! let pattern = sequences::generate(&[2, 2, 2, 3]);
 //! assert_eq!(pattern, vec![0, 2, 4, 6]);
 //!
 //! // Kopanitsa: 2+2+3+2+2 = 11/8
-//! let pattern = sequences::additive_meter(&[2, 2, 3, 2, 2]);
+//! let pattern = sequences::generate(&[2, 2, 3, 2, 2]);
 //! assert_eq!(pattern, vec![0, 2, 4, 7, 9]);
 //!
 //! // Use in composition:
@@ -54,7 +54,7 @@
 //! // 7/8 Bulgarian pattern with kick on strong beats
 //! comp.track("bulgarian")
 //!     .drum_grid(7, 0.125)
-//!     .kick(&sequences::additive_meter(&[2, 2, 3]));
+//!     .kick(&sequences::generate(&[2, 2, 3]));
 //! ```
 //!
 //! # References
@@ -77,18 +77,18 @@
 /// use tunes::sequences::additive_meter;
 ///
 /// // 7/8 as 2+2+3 (Bulgarian Rachenitsa)
-/// let pattern = additive_meter(&[2, 2, 3]);
+/// let pattern = generate(&[2, 2, 3]);
 /// assert_eq!(pattern, vec![0, 2, 4]);
 ///
 /// // 5/8 as 3+2
-/// let pattern = additive_meter(&[3, 2]);
+/// let pattern = generate(&[3, 2]);
 /// assert_eq!(pattern, vec![0, 3]);
 ///
 /// // 11/8 as 2+2+3+2+2
-/// let pattern = additive_meter(&[2, 2, 3, 2, 2]);
+/// let pattern = generate(&[2, 2, 3, 2, 2]);
 /// assert_eq!(pattern, vec![0, 2, 4, 7, 9]);
 /// ```
-pub fn additive_meter(groupings: &[usize]) -> Vec<usize> {
+pub fn generate(groupings: &[usize]) -> Vec<usize> {
     if groupings.is_empty() {
         return vec![];
     }
@@ -121,7 +121,7 @@ pub fn additive_meter(groupings: &[usize]) -> Vec<usize> {
 /// // Total length: 2+2+3 = 7 steps
 /// ```
 pub fn rachenitsa() -> Vec<usize> {
-    additive_meter(&[2, 2, 3])
+    generate(&[2, 2, 3])
 }
 
 /// Bulgarian Kopanitsa: 11/8 as 2+2+3+2+2
@@ -141,7 +141,7 @@ pub fn rachenitsa() -> Vec<usize> {
 /// // Total length: 2+2+3+2+2 = 11 steps
 /// ```
 pub fn kopanitsa() -> Vec<usize> {
-    additive_meter(&[2, 2, 3, 2, 2])
+    generate(&[2, 2, 3, 2, 2])
 }
 
 /// Greek Kalamatianos: 7/8 as 3+2+2
@@ -161,7 +161,7 @@ pub fn kopanitsa() -> Vec<usize> {
 /// // Total length: 3+2+2 = 7 steps
 /// ```
 pub fn kalamatianos() -> Vec<usize> {
-    additive_meter(&[3, 2, 2])
+    generate(&[3, 2, 2])
 }
 
 /// Turkish/Greek 9/8: 2+2+2+3
@@ -181,7 +181,7 @@ pub fn kalamatianos() -> Vec<usize> {
 /// // Total length: 2+2+2+3 = 9 steps
 /// ```
 pub fn aksak_9_8() -> Vec<usize> {
-    additive_meter(&[2, 2, 2, 3])
+    generate(&[2, 2, 2, 3])
 }
 
 /// Generate all rotations of an additive meter pattern
@@ -229,7 +229,7 @@ pub fn additive_meter_rotations(groupings: &[usize]) -> Vec<Vec<usize>> {
             rotated.push(groupings[idx]);
         }
 
-        rotations.push(additive_meter(&rotated));
+        rotations.push(generate(&rotated));
     }
 
     rotations
@@ -263,27 +263,27 @@ mod tests {
 
     #[test]
     fn test_additive_meter_basic() {
-        let pattern = additive_meter(&[2, 2, 3]);
+        let pattern = generate(&[2, 2, 3]);
         assert_eq!(pattern, vec![0, 2, 4]);
     }
 
     #[test]
     fn test_additive_meter_empty() {
-        let pattern = additive_meter(&[]);
+        let pattern = generate(&[]);
         assert_eq!(pattern, vec![]);
     }
 
     #[test]
     fn test_additive_meter_single_group() {
-        let pattern = additive_meter(&[5]);
+        let pattern = generate(&[5]);
         assert_eq!(pattern, vec![0]);
     }
 
     #[test]
     fn test_additive_meter_various_groupings() {
-        assert_eq!(additive_meter(&[3, 2]), vec![0, 3]);
-        assert_eq!(additive_meter(&[2, 3, 2]), vec![0, 2, 5]);
-        assert_eq!(additive_meter(&[3, 3, 2]), vec![0, 3, 6]);
+        assert_eq!(generate(&[3, 2]), vec![0, 3]);
+        assert_eq!(generate(&[2, 3, 2]), vec![0, 2, 5]);
+        assert_eq!(generate(&[3, 3, 2]), vec![0, 3, 6]);
     }
 
     #[test]
@@ -390,14 +390,14 @@ mod tests {
 
     #[test]
     fn test_additive_meter_with_larger_groups() {
-        let pattern = additive_meter(&[4, 3, 5]);
+        let pattern = generate(&[4, 3, 5]);
         assert_eq!(pattern, vec![0, 4, 7]);
         assert_eq!(additive_meter_length(&[4, 3, 5]), 12);
     }
 
     #[test]
     fn test_additive_meter_all_twos() {
-        let pattern = additive_meter(&[2, 2, 2, 2]);
+        let pattern = generate(&[2, 2, 2, 2]);
         assert_eq!(pattern, vec![0, 2, 4, 6]);
         // This would just be 4/4 with quarter note accents
     }
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_complex_meter_13_8() {
-        let pattern = additive_meter(&[3, 2, 2, 3, 3]);
+        let pattern = generate(&[3, 2, 2, 3, 3]);
         assert_eq!(pattern, vec![0, 3, 5, 7, 10]);
         assert_eq!(additive_meter_length(&[3, 2, 2, 3, 3]), 13);
     }
