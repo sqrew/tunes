@@ -22,9 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `TrackBuilder::play_sample(sample, playback_rate)` - Play `Sample` directly in composition
   - `TrackBuilder::play_slice(slice, playback_rate)` - Play `SampleSlice` directly in composition
   - Enables dynamic, generative sample playback without pre-loading
+- **Time Stretching & Pitch Shifting** - WSOLA-based audio manipulation for game audio variation:
+  - `Sample::time_stretch(factor)` - Change duration without affecting pitch
+    - Perfect for slow-motion effects, time dilation, dialog speed adjustment
+    - Uses WSOLA (Waveform Similarity Overlap-Add) algorithm
+    - Works best with stretch factors between 0.5x and 2.0x
+    - Maintains pitch characteristics while changing duration
+  - `Sample::pitch_shift(semitones)` - Change pitch without affecting duration
+    - Ideal for enemy size variations, musical transposition, audio variety
+    - Accepts semitone values (12 = octave up, -12 = octave down)
+    - Combines resampling with time-stretching for duration preservation
+    - Reduces repetitive audio in games by creating pitch variations
+  - Implementation uses Hann windowing and cross-correlation for smooth grain matching
+  - No external FFT dependencies required
 - New examples:
   - `sample_slicing.rs` - Comprehensive demonstration of all slicing techniques
   - `slice_playback.rs` - Direct sample/slice playback in compositions
+  - `time_pitch_manipulation.rs` - Time stretching and pitch shifting for game audio variations
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance

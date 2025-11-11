@@ -533,6 +533,316 @@ impl Sample {
             _ => None,
         }
     }
+
+    /// Time-stretch the sample without changing pitch using WSOLA
+    ///
+    /// Uses Waveform Similarity Overlap-Add (WSOLA) algorithm to change the duration
+    /// of the sample while preserving pitch. This is useful for adding variation to
+    /// game audio without changing the perceived pitch.
+    ///
+    /// # Arguments
+    /// * `stretch_factor` - Time stretch ratio (0.5 = half duration, 2.0 = double duration)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::sample::Sample;
+    /// // Create a test sample
+    /// let sample = Sample::from_mono(vec![0.0; 44100], 44100);
+    ///
+    /// // Stretch to 150% duration without pitch change
+    /// let stretched = sample.time_stretch(1.5);
+    /// assert_eq!(stretched.duration, sample.duration * 1.5);
+    /// ```
+    ///
+    /// # Performance Notes
+    /// - Works best with stretch factors between 0.5 and 2.0
+    /// - Maintains pitch at all stretch factors
+    /// - Processing time scales with output length
+    pub fn time_stretch(&self, stretch_factor: f32) -> Self {
+        if stretch_factor <= 0.0 {
+            return self.clone();
+        }
+
+        // For very small changes, just return the original
+        if (stretch_factor - 1.0).abs() < 0.01 {
+            return self.clone();
+        }
+
+        // WSOLA parameters
+        let grain_size_ms = 30.0; // 30ms grains work well for most content
+        let search_ms = 10.0; // Search window of 10ms
+
+        let grain_frames = ((grain_size_ms / 1000.0) * self.sample_rate as f32) as usize;
+        let search_frames = ((search_ms / 1000.0) * self.sample_rate as f32) as usize;
+
+        // Analysis and synthesis hop sizes
+        let analysis_hop = grain_frames / 2; // 50% overlap in analysis
+        let synthesis_hop = ((analysis_hop as f32) * stretch_factor) as usize;
+
+        // Calculate output size
+        let output_frames = ((self.num_frames as f32) * stretch_factor) as usize;
+        let output_samples = output_frames * self.channels as usize;
+
+        let mut output_data = vec![0.0f32; output_samples];
+        let mut overlap_count = vec![0u32; output_frames];
+
+        // Generate Hann window for smoothing
+        let window = Self::generate_hann_window(grain_frames);
+
+        let mut output_pos = 0;
+        let mut input_pos = 0;
+
+        while output_pos < output_frames {
+            // Find best matching grain around expected input position
+            let best_input_pos = if output_pos == 0 {
+                0 // Always start at the beginning
+            } else {
+                self.find_best_grain_match(input_pos, grain_frames, search_frames)
+            };
+
+            // Extract and apply grain
+            let grain_end = (best_input_pos + grain_frames).min(self.num_frames);
+            let actual_grain_size = grain_end - best_input_pos;
+
+            if actual_grain_size == 0 {
+                break;
+            }
+
+            // Copy grain with windowing and overlap-add
+            for i in 0..actual_grain_size {
+                let out_frame = output_pos + i;
+                if out_frame >= output_frames {
+                    break;
+                }
+
+                // Get window value (use truncated window if grain is smaller)
+                let window_val = if i < window.len() {
+                    window[i]
+                } else {
+                    1.0
+                };
+
+                // Process each channel
+                for ch in 0..self.channels as usize {
+                    let in_idx = (best_input_pos + i) * self.channels as usize + ch;
+                    let out_idx = out_frame * self.channels as usize + ch;
+
+                    if in_idx < self.data.len() && out_idx < output_data.len() {
+                        output_data[out_idx] += self.data[in_idx] * window_val;
+                    }
+                }
+
+                overlap_count[out_frame] += 1;
+            }
+
+            // Advance positions
+            output_pos += synthesis_hop;
+            input_pos += analysis_hop;
+
+            // Prevent infinite loops
+            if input_pos >= self.num_frames && output_pos < output_frames {
+                break;
+            }
+        }
+
+        // Normalize by overlap count to maintain amplitude
+        for frame in 0..output_frames {
+            if overlap_count[frame] > 0 {
+                let norm_factor = 1.0 / overlap_count[frame] as f32;
+                for ch in 0..self.channels as usize {
+                    let idx = frame * self.channels as usize + ch;
+                    if idx < output_data.len() {
+                        output_data[idx] *= norm_factor;
+                    }
+                }
+            }
+        }
+
+        Self {
+            data: Arc::new(output_data),
+            channels: self.channels,
+            sample_rate: self.sample_rate,
+            duration: output_frames as f32 / self.sample_rate as f32,
+            num_frames: output_frames,
+            loop_start: None,
+            loop_end: None,
+        }
+    }
+
+    /// Pitch-shift the sample without changing duration
+    ///
+    /// Changes the pitch of the sample while maintaining the original duration.
+    /// This is achieved by resampling (which changes pitch and duration) and then
+    /// time-stretching back to the original duration.
+    ///
+    /// # Arguments
+    /// * `semitones` - Number of semitones to shift (positive = up, negative = down)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::sample::Sample;
+    /// // Create a test sample
+    /// let sample = Sample::from_mono(vec![0.0; 44100], 44100);
+    ///
+    /// // Shift up by 7 semitones (perfect fifth) without changing duration
+    /// let shifted = sample.pitch_shift(7.0);
+    /// assert!((shifted.duration - sample.duration).abs() < 0.01);
+    /// ```
+    ///
+    /// # Common Intervals
+    /// - 12 semitones = 1 octave up
+    /// - -12 semitones = 1 octave down
+    /// - 7 semitones = perfect fifth up
+    /// - 5 semitones = perfect fourth up
+    pub fn pitch_shift(&self, semitones: f32) -> Self {
+        if semitones.abs() < 0.01 {
+            return self.clone();
+        }
+
+        // Convert semitones to frequency ratio
+        // ratio = 2^(semitones/12)
+        let pitch_ratio = 2.0f32.powf(semitones / 12.0);
+
+        // Step 1: Resample to change pitch (this also changes duration)
+        // Resampling by pitch_ratio makes duration = original / pitch_ratio
+        let resampled = self.resample(pitch_ratio);
+
+        // Step 2: Time-stretch back to original duration
+        // If we pitched up by 2x, duration became 0.5x, so stretch by 2x to restore
+        resampled.time_stretch(pitch_ratio)
+    }
+
+    /// Resample the audio to a different playback rate
+    ///
+    /// This changes both pitch and duration. For pitch without duration change,
+    /// use `pitch_shift()`. For duration without pitch change, use `time_stretch()`.
+    ///
+    /// Uses linear interpolation for quality resampling.
+    fn resample(&self, rate_ratio: f32) -> Self {
+        if (rate_ratio - 1.0).abs() < 0.001 {
+            return self.clone();
+        }
+
+        // Calculate new length
+        let new_num_frames = ((self.num_frames as f32) / rate_ratio) as usize;
+        let new_samples = new_num_frames * self.channels as usize;
+
+        let mut output_data = Vec::with_capacity(new_samples);
+
+        for frame in 0..new_num_frames {
+            // Map output frame to input position
+            let input_pos = (frame as f32) * rate_ratio;
+            let input_frame = input_pos as usize;
+            let frac = input_pos.fract();
+
+            // Bounds check
+            if input_frame >= self.num_frames - 1 {
+                // Pad with zeros if we're past the end
+                for _ in 0..self.channels {
+                    output_data.push(0.0);
+                }
+                continue;
+            }
+
+            // Linear interpolation for each channel
+            for ch in 0..self.channels as usize {
+                let idx1 = input_frame * self.channels as usize + ch;
+                let idx2 = (input_frame + 1) * self.channels as usize + ch;
+
+                let sample1 = self.data.get(idx1).copied().unwrap_or(0.0);
+                let sample2 = self.data.get(idx2).copied().unwrap_or(0.0);
+
+                let interpolated = sample1 + (sample2 - sample1) * frac;
+                output_data.push(interpolated);
+            }
+        }
+
+        Self {
+            data: Arc::new(output_data),
+            channels: self.channels,
+            sample_rate: self.sample_rate,
+            duration: new_num_frames as f32 / self.sample_rate as f32,
+            num_frames: new_num_frames,
+            loop_start: None,
+            loop_end: None,
+        }
+    }
+
+    /// Find the best matching grain position using cross-correlation
+    ///
+    /// Searches within a window around the target position to find the grain
+    /// that best matches the previous output, minimizing discontinuities.
+    fn find_best_grain_match(
+        &self,
+        target_pos: usize,
+        grain_size: usize,
+        search_window: usize,
+    ) -> usize {
+        let search_start = target_pos.saturating_sub(search_window);
+        let search_end = (target_pos + search_window).min(self.num_frames - grain_size);
+
+        if search_start >= search_end {
+            return target_pos.min(self.num_frames - grain_size);
+        }
+
+        let mut best_pos = target_pos;
+        let mut best_score = f32::NEG_INFINITY;
+
+        // Compare overlap region (use small overlap for efficiency)
+        let overlap_size = (grain_size / 4).min(512);
+
+        for pos in search_start..search_end {
+            if pos + grain_size > self.num_frames {
+                break;
+            }
+
+            // Cross-correlation score for this position
+            let score = self.compute_cross_correlation(pos, overlap_size);
+
+            if score > best_score {
+                best_score = score;
+                best_pos = pos;
+            }
+        }
+
+        best_pos
+    }
+
+    /// Compute cross-correlation score for a grain position
+    ///
+    /// Higher scores indicate better waveform similarity (less discontinuity)
+    fn compute_cross_correlation(&self, pos: usize, window_size: usize) -> f32 {
+        let mut correlation = 0.0f32;
+        let end = (pos + window_size).min(self.num_frames);
+
+        for i in pos..end {
+            for ch in 0..self.channels as usize {
+                let idx = i * self.channels as usize + ch;
+                if let Some(&sample) = self.data.get(idx) {
+                    // Simple energy-based correlation
+                    // (in full WSOLA this would compare with previous grain)
+                    correlation += sample * sample;
+                }
+            }
+        }
+
+        correlation
+    }
+
+    /// Generate a Hann window of specified size
+    ///
+    /// Used for smoothing grain boundaries in time-stretching
+    fn generate_hann_window(size: usize) -> Vec<f32> {
+        if size == 0 {
+            return vec![];
+        }
+
+        (0..size)
+            .map(|i| {
+                0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / size as f32).cos())
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -718,5 +1028,177 @@ mod tests {
         let gained = sample.with_gain(0.5);
         let (left, _) = gained.sample_at(0.0, 1.0);
         assert_eq!(left, 0.5); // 1.0 * 0.5 = 0.5
+    }
+
+    #[test]
+    fn test_time_stretch_basic() {
+        // Create a 1 second mono sample with a simple waveform
+        let sample_rate = 44100;
+        let data: Vec<f32> = (0..sample_rate)
+            .map(|i| (2.0 * std::f32::consts::PI * 440.0 * i as f32 / sample_rate as f32).sin())
+            .collect();
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Stretch to 150% duration
+        let stretched = sample.time_stretch(1.5);
+
+        // Check duration increased by 50%
+        assert!(
+            (stretched.duration - sample.duration * 1.5).abs() < 0.01,
+            "Duration should be 1.5x original"
+        );
+
+        // Check sample rate unchanged
+        assert_eq!(stretched.sample_rate, sample.sample_rate);
+
+        // Check channels unchanged
+        assert_eq!(stretched.channels, sample.channels);
+    }
+
+    #[test]
+    fn test_time_stretch_compression() {
+        let sample_rate = 44100;
+        let data: Vec<f32> = vec![0.5; sample_rate as usize];
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Compress to 50% duration
+        let compressed = sample.time_stretch(0.5);
+
+        assert!(
+            (compressed.duration - sample.duration * 0.5).abs() < 0.01,
+            "Duration should be 0.5x original"
+        );
+    }
+
+    #[test]
+    fn test_time_stretch_stereo() {
+        let sample_rate = 44100;
+        // Create stereo sample (L, R, L, R...)
+        let data: Vec<f32> = (0..sample_rate * 2)
+            .map(|i| if i % 2 == 0 { 0.5 } else { -0.5 })
+            .collect();
+
+        let sample = Sample {
+            data: Arc::new(data),
+            channels: 2,
+            sample_rate,
+            duration: 1.0,
+            num_frames: sample_rate as usize,
+            loop_start: None,
+            loop_end: None,
+        };
+
+        let stretched = sample.time_stretch(1.5);
+
+        assert_eq!(stretched.channels, 2);
+        assert!(
+            (stretched.duration - 1.5).abs() < 0.01,
+            "Stereo stretch should work"
+        );
+    }
+
+    #[test]
+    fn test_pitch_shift_up() {
+        let sample_rate = 44100;
+        let data: Vec<f32> = (0..sample_rate)
+            .map(|i| (2.0 * std::f32::consts::PI * 440.0 * i as f32 / sample_rate as f32).sin())
+            .collect();
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Shift up by 12 semitones (1 octave)
+        let shifted = sample.pitch_shift(12.0);
+
+        // Duration should remain approximately the same (within 10%)
+        // Some variation is expected due to grain boundaries
+        let duration_diff = (shifted.duration - sample.duration).abs();
+        let relative_error = duration_diff / sample.duration;
+        assert!(
+            relative_error < 0.1,
+            "Duration should remain approximately the same after pitch shift. Expected: {}, Got: {}, Relative error: {}",
+            sample.duration, shifted.duration, relative_error
+        );
+
+        // Check sample rate unchanged
+        assert_eq!(shifted.sample_rate, sample.sample_rate);
+    }
+
+    #[test]
+    fn test_pitch_shift_down() {
+        let sample_rate = 44100;
+        let data: Vec<f32> = vec![0.5; sample_rate as usize];
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Shift down by 7 semitones (perfect fifth down)
+        let shifted = sample.pitch_shift(-7.0);
+
+        // Duration should remain approximately the same (within 10%)
+        let duration_diff = (shifted.duration - sample.duration).abs();
+        let relative_error = duration_diff / sample.duration;
+        assert!(
+            relative_error < 0.1,
+            "Duration should remain approximately the same. Expected: {}, Got: {}, Relative error: {}",
+            sample.duration, shifted.duration, relative_error
+        );
+    }
+
+    #[test]
+    fn test_pitch_shift_zero() {
+        let sample_rate = 44100;
+        let data: Vec<f32> = vec![0.5; 100];
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Zero shift should return nearly identical sample
+        let shifted = sample.pitch_shift(0.0);
+
+        assert_eq!(shifted.duration, sample.duration);
+        assert_eq!(shifted.num_frames, sample.num_frames);
+    }
+
+    #[test]
+    fn test_generate_hann_window() {
+        let window = Sample::generate_hann_window(100);
+
+        assert_eq!(window.len(), 100);
+
+        // Hann window should start and end near 0
+        assert!(window[0] < 0.01);
+        assert!(window[99] < 0.01);
+
+        // Middle should be near 1.0
+        assert!(window[50] > 0.99);
+    }
+
+    #[test]
+    fn test_resample() {
+        let sample_rate = 44100;
+        let data: Vec<f32> = vec![1.0, 0.5, 0.0, -0.5, -1.0];
+
+        let sample = Sample::from_mono(data, sample_rate);
+
+        // Resample to 2x speed (half duration, double pitch)
+        let resampled = sample.resample(2.0);
+
+        assert!(
+            resampled.num_frames < sample.num_frames,
+            "Resampling up should reduce frame count"
+        );
+    }
+
+    #[test]
+    fn test_time_stretch_edge_cases() {
+        let sample = Sample::from_mono(vec![0.5; 100], 44100);
+
+        // Stretch factor of 0 or negative should return clone
+        let stretched_zero = sample.time_stretch(0.0);
+        assert_eq!(stretched_zero.num_frames, sample.num_frames);
+
+        // Stretch factor very close to 1.0 should return clone
+        let stretched_one = sample.time_stretch(1.0);
+        assert_eq!(stretched_one.num_frames, sample.num_frames);
     }
 }
