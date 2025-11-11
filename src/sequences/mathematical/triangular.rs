@@ -28,3 +28,20 @@ mod tests {
         assert_eq!(tri, vec![1, 3, 6, 10, 15, 21]);
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short triangular sequence - [1, 3, 6, 10, 15, 21]
+pub fn short() -> Vec<u32> {
+    generate(6)
+}
+
+/// Classic triangular sequence - [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78]
+pub fn classic() -> Vec<u32> {
+    generate(12)
+}
+
+/// Extended triangular sequence - 16 terms
+pub fn extended() -> Vec<u32> {
+    generate(16)
+}

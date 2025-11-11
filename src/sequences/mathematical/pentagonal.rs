@@ -250,3 +250,20 @@ mod tests {
         assert_eq!(seq, vec![1, 5, 12, 22, 35]);
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short pentagonal sequence (8 terms)
+pub fn short() -> Vec<u32> {
+    generate(8)
+}
+
+/// Classic pentagonal sequence (12 terms)
+pub fn classic() -> Vec<u32> {
+    generate(12)
+}
+
+/// Extended pentagonal sequence (16 terms)
+pub fn extended() -> Vec<u32> {
+    generate(16)
+}

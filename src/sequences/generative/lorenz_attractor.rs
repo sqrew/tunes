@@ -34,7 +34,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Lorenz butterfly
-/// let path = sequences::generate(10.0, 28.0, 8.0/3.0, (1.0, 1.0, 1.0), 0.01, 100);
+/// let path = sequences::lorenz_attractor::generate(10.0, 28.0, 8.0/3.0, (1.0, 1.0, 1.0), 0.01, 100);
 ///
 /// // Extract x coordinates for melody and normalize to frequency range
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _, _)| *x).collect();
@@ -239,4 +239,22 @@ mod tests {
         // This verifies the system is not trivially stable
         assert!(distance > 0.01, "Lorenz paths should diverge from different initial conditions, distance was {}", distance);
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic Lorenz attractor (sigma=10, rho=28, beta=8/3)
+pub fn classic() -> Vec<(f32, f32, f32)> {
+    lorenz_butterfly(500)
+}
+
+/// Extended Lorenz - more points for detailed structure
+pub fn extended() -> Vec<(f32, f32, f32)> {
+    lorenz_butterfly(1000)
+}
+
+/// Fast Lorenz - larger time step
+pub fn fast() -> Vec<(f32, f32, f32)> {
+    let full = generate(10.0, 28.0, 8.0/3.0, (1.0, 1.0, 1.0), 0.02, 350);
+    full.into_iter().skip(50).collect()
 }

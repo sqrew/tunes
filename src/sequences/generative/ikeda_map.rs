@@ -41,7 +41,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Ikeda spiral with chaos
-/// let path = sequences::generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
+/// let path = sequences::ikeda_map::generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 100);
 ///
 /// // Extract coordinates for musical use
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _)| *x).collect();
@@ -408,4 +408,21 @@ mod tests {
             distance
         );
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic Ikeda map (a=1.0, b=0.9, c=0.4, d=6.0)
+pub fn classic() -> Vec<(f32, f32)> {
+    generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 150)
+}
+
+/// Chaotic Ikeda (higher nonlinearity d=7.0)
+pub fn chaotic() -> Vec<(f32, f32)> {
+    generate(1.0, 0.9, 0.4, 7.0, (0.0, 0.0), 200)
+}
+
+/// Extended Ikeda (classic parameters, more iterations)
+pub fn extended() -> Vec<(f32, f32)> {
+    generate(1.0, 0.9, 0.4, 6.0, (0.0, 0.0), 300)
 }

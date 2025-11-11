@@ -60,3 +60,35 @@
 pub fn generate(start: u32, step: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start + step * i as u32).collect()
 }
+
+// ========== PRESETS ==========
+
+/// Ascending sequence (1,2,3,4,5...) - 12 terms
+pub fn ascending() -> Vec<u32> {
+    generate(1, 1, 12)
+}
+
+/// Even numbers (2,4,6,8...) - 12 terms
+pub fn evens() -> Vec<u32> {
+    generate(2, 2, 12)
+}
+
+/// Odd numbers (1,3,5,7...) - 12 terms
+pub fn odds() -> Vec<u32> {
+    generate(1, 2, 12)
+}
+
+/// Multiples of 5 (5,10,15,20...) - 12 terms
+pub fn fives() -> Vec<u32> {
+    generate(5, 5, 12)
+}
+
+/// Whole tone steps (0,2,4,6,8,10...) - 8 terms, good for whole tone scale
+pub fn whole_tone() -> Vec<u32> {
+    generate(0, 2, 8)
+}
+
+/// Chromatic steps (0,1,2,3,4...) - 13 terms, full octave
+pub fn chromatic() -> Vec<u32> {
+    generate(0, 1, 13)
+}

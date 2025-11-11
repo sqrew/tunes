@@ -29,7 +29,7 @@
 /// use tunes::sequences;
 ///
 /// // Rule 30 - classic chaotic pattern
-/// let rule30 = sequences::generate(30, 16, 32, None);
+/// let rule30 = sequences::cellular_automaton::generate(30, 16, 32, None);
 /// // Each row is a generation, creates chaotic rhythm patterns
 ///
 /// // Use first row as rhythm
@@ -46,7 +46,7 @@
 ///     .kick(&rhythm);
 ///
 /// // Rule 90 - Sierpinski fractal
-/// let rule90 = sequences::generate(90, 16, 32, None);
+/// let rule90 = sequences::cellular_automaton::generate(90, 16, 32, None);
 /// // Creates self-similar fractal patterns
 /// ```
 ///
@@ -234,4 +234,31 @@ mod tests {
             }
         }
     }
+}
+
+// ========== PRESETS ==========
+
+/// Rule 30 - Chaotic, unpredictable evolution (16 steps, 32 width)
+pub fn rule30() -> Vec<Vec<u32>> {
+    generate(30, 16, 32, None)
+}
+
+/// Rule 110 - Turing complete, complex patterns (20 steps, 40 width)
+pub fn rule110() -> Vec<Vec<u32>> {
+    generate(110, 20, 40, None)
+}
+
+/// Rule 90 - Sierpinski triangle fractal (16 steps, 32 width)
+pub fn rule90() -> Vec<Vec<u32>> {
+    generate(90, 16, 32, None)
+}
+
+/// Rule 184 - Traffic flow patterns (16 steps, 32 width)
+pub fn rule184() -> Vec<Vec<u32>> {
+    generate(184, 16, 32, None)
+}
+
+/// Classic - Rule 30, medium size (24 steps, 48 width)
+pub fn classic() -> Vec<Vec<u32>> {
+    generate(30, 24, 48, None)
 }

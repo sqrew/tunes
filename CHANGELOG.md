@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sample Slicing System** - Comprehensive audio sample slicing with multiple techniques:
+  - `Sample::slice_equal(n)` - Divide sample into N equal parts
+  - `Sample::slice_at_times(times)` - Slice at specific time points
+  - `Sample::slice_at_frames(frames)` - Slice at frame indices
+  - `Sample::slice_at_beats(bpm, beats_per_slice)` - Rhythmic slicing based on tempo
+  - `Sample::detect_transients(threshold, min_gap_ms)` - Energy-based onset detection
+  - `Sample::slice_by_transients(threshold, min_gap_ms)` - Auto-slice at detected hits
+- **SampleSlice** - Lightweight slice reference type that avoids copying audio data
+  - Efficient Arc-based referencing to parent sample
+  - Methods: `sample_at()`, `to_sample()`, `start_time()`, `end_time()`, `num_frames()`
+- New example: `sample_slicing.rs` demonstrating all slicing techniques
+- Exported `Sample` and `SampleSlice` in prelude for convenience
+
 ### Performance
 
 #### Massive Audio Engine Optimization - Production-Grade Real-Time Performance

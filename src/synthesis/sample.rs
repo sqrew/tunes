@@ -516,6 +516,11 @@ impl Sample {
         self.num_frames
     }
 
+    /// Get the sample rate in Hz
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
     /// Check if the sample has looping enabled
     pub fn is_looping(&self) -> bool {
         self.loop_start.is_some() && self.loop_end.is_some()

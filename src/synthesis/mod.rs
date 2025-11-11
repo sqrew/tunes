@@ -7,6 +7,7 @@ pub mod filter;
 pub mod noise;
 pub mod automation;
 pub mod sample;
+pub mod slice;
 pub mod effects;
 pub mod fm_synthesis;
 pub mod granular;
@@ -26,6 +27,7 @@ pub use noise::{
 };
 pub use automation::{Automation, Interpolation};
 pub use sample::Sample;
+pub use slice::SampleSlice;
 pub use effects::*;
 pub use envelope::Envelope;
 pub use fm_synthesis::FMParams;

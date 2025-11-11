@@ -38,7 +38,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Wandering melody in 2-octave range
-/// let melody = sequences::generate(
+/// let melody = sequences::bounded_walk::generate(
 ///     440.0,   // Start at A4
 ///     35.0,    // Steps of up to 35 Hz
 ///     220.0,   // Min: A3
@@ -60,7 +60,7 @@
 /// let mut comp = Composition::new(Tempo::new(140.0));
 ///
 /// // Bass that stays in one octave
-/// let bass = sequences::generate(
+/// let bass = sequences::bounded_walk::generate(
 ///     110.0,  // A2
 ///     8.0,    // Small steps for smooth bass
 ///     82.4,   // E2 (low end)
@@ -143,4 +143,21 @@ mod tests {
             );
         }
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic bounded walk - range -10 to 10, 32 steps
+pub fn classic() -> Vec<f32> {
+    generate(0.0, 2.0, -10.0, 10.0, 32)
+}
+
+/// Narrow range - range -5 to 5, 24 steps
+pub fn narrow() -> Vec<f32> {
+    generate(0.0, 1.5, -5.0, 5.0, 24)
+}
+
+/// Wide range - range -20 to 20, 48 steps
+pub fn wide() -> Vec<f32> {
+    generate(0.0, 3.0, -20.0, 20.0, 48)
 }

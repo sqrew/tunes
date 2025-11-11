@@ -33,7 +33,7 @@
 /// let mut rules = HashMap::new();
 /// rules.insert('A', "AB".to_string());
 /// rules.insert('B', "A".to_string());
-/// let pattern = sequences::generate("A", &rules, 4);
+/// let pattern = sequences::lsystem::generate("A", &rules, 4);
 /// // "A" → "AB" → "ABA" → "ABAAB" → "ABAABABA"
 /// assert_eq!(pattern, "ABAABABA");
 ///
@@ -85,7 +85,7 @@
 /// rules.insert('E', "CG".to_string());   // Third jumps to fifth
 /// rules.insert('G', "C".to_string());    // Fifth returns home
 ///
-/// let melody = sequences::generate("C", &rules, 4);
+/// let melody = sequences::lsystem::generate("C", &rules, 4);
 /// // Evolution: C → CD → CDCE → CDCECG → CDCECGCE...
 ///
 /// // Map to frequencies
@@ -141,7 +141,7 @@ pub fn generate(axiom: &str, rules: &std::collections::HashMap<char, String>, it
 /// let mut rules = HashMap::new();
 /// rules.insert('A', "AB".to_string());
 /// rules.insert('B', "A".to_string());
-/// let pattern = sequences::generate("A", &rules, 4);
+/// let pattern = sequences::lsystem::generate("A", &rules, 4);
 /// let values = sequences::lsystem_to_sequence(&pattern);
 /// // Maps: A=0, B=1 → [0,1,0,0,1]
 /// ```
@@ -196,4 +196,43 @@ mod tests {
         let seq = lsystem_to_sequence(pattern);
         assert_eq!(seq, vec![0, 1, 0, 0, 1]);
     }
+}
+
+// ========== PRESETS ==========
+
+/// Fibonacci/Algae pattern (4 iterations) - classic L-system
+pub fn fibonacci() -> String {
+    let mut rules = std::collections::HashMap::new();
+    rules.insert('A', "AB".to_string());
+    rules.insert('B', "A".to_string());
+    generate("A", &rules, 6)
+}
+
+/// Thue-Morse pattern (4 iterations)
+pub fn thue_morse() -> String {
+    let mut rules = std::collections::HashMap::new();
+    rules.insert('A', "AB".to_string());
+    rules.insert('B', "BA".to_string());
+    generate("A", &rules, 5)
+}
+
+/// Cantor set pattern (3 iterations)
+pub fn cantor() -> String {
+    let mut rules = std::collections::HashMap::new();
+    rules.insert('A', "ABA".to_string());
+    rules.insert('B', "BBB".to_string());
+    generate("A", &rules, 3)
+}
+
+/// Binary tree pattern (3 iterations)
+pub fn binary_tree() -> String {
+    let mut rules = std::collections::HashMap::new();
+    rules.insert('0', "1[0]0".to_string());
+    rules.insert('1', "11".to_string());
+    generate("0", &rules, 3)
+}
+
+/// Classic - Fibonacci at 5 iterations
+pub fn classic() -> String {
+    fibonacci()
 }

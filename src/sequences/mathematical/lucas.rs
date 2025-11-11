@@ -145,3 +145,20 @@ mod tests {
         assert_eq!(lucas_seq[2], 3); // Not 2
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short Lucas sequence (6 terms)
+pub fn short() -> Vec<u32> {
+    generate(6)
+}
+
+/// Classic Lucas sequence (12 terms) - balanced length
+pub fn classic() -> Vec<u32> {
+    generate(12)
+}
+
+/// Extended Lucas sequence (16 terms)
+pub fn extended() -> Vec<u32> {
+    generate(16)
+}

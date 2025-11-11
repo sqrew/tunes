@@ -234,3 +234,20 @@ mod tests {
         assert_eq!(seq[12], 13860); // P(12)
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short Pell sequence (8 terms)
+pub fn short() -> Vec<u32> {
+    generate(8)
+}
+
+/// Classic Pell sequence (10 terms) - balanced, doesn't grow too fast
+pub fn classic() -> Vec<u32> {
+    generate(10)
+}
+
+/// Extended Pell sequence (12 terms)
+pub fn extended() -> Vec<u32> {
+    generate(12)
+}

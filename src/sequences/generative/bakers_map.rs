@@ -29,7 +29,7 @@
 //! use tunes::sequences::bakers_map;
 //!
 //! // Generate 128 points from Baker's map
-//! let (x_vals, y_vals) = generate(0.3, 0.7, 128);
+//! let (x_vals, y_vals) = bakers_map::generate(0.3, 0.7, 128);
 //!
 //! // Use x for pitch (values already in [0, 1])
 //! let pitches: Vec<f32> = x_vals.iter()
@@ -284,4 +284,16 @@ mod tests {
         assert!(count_0_to_0_5 > 10 || count_0_5_to_1 > 10);
         assert!(count_0_to_0_5 + count_0_5_to_1 == 1000);
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic baker's map - 50 iterations
+pub fn classic() -> (Vec<f32>, Vec<f32>) {
+    generate(0.5, 0.5, 50)
+}
+
+/// Extended baker's map - 100 iterations
+pub fn extended() -> (Vec<f32>, Vec<f32>) {
+    generate(0.5, 0.5, 100)
 }

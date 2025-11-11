@@ -156,3 +156,25 @@ mod tests {
         }
     }
 }
+
+// ========== PRESETS ==========
+
+/// Ascending Shepard tone - 24 steps, 12 steps per octave
+pub fn ascending() -> Vec<u32> {
+    generate(24, 12, true)
+}
+
+/// Descending Shepard tone - 24 steps, 12 steps per octave
+pub fn descending() -> Vec<u32> {
+    generate(24, 12, false)
+}
+
+/// Long ascending - 48 steps for extended illusion
+pub fn long_ascending() -> Vec<u32> {
+    generate(48, 12, true)
+}
+
+/// Microtonal ascending - 24 steps per octave for smoother transitions
+pub fn microtonal() -> Vec<u32> {
+    generate(48, 24, true)
+}

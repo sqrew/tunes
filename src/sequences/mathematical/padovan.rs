@@ -216,3 +216,20 @@ mod tests {
         assert_eq!(seq[15], 49); // P(15)
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short Padovan sequence (8 terms)
+pub fn short() -> Vec<u32> {
+    generate(8)
+}
+
+/// Classic Padovan sequence (12 terms)
+pub fn classic() -> Vec<u32> {
+    generate(12)
+}
+
+/// Extended Padovan sequence (16 terms)
+pub fn extended() -> Vec<u32> {
+    generate(16)
+}

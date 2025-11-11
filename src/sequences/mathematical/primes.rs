@@ -104,6 +104,36 @@ fn is_prime(n: u32) -> bool {
     true
 }
 
+// ========== PRESETS ==========
+
+/// Short prime sequence (8 primes) - good for rhythmic patterns
+/// Returns: [2, 3, 5, 7, 11, 13, 17, 19]
+pub fn short() -> Vec<u32> {
+    generate(8)
+}
+
+/// Medium prime sequence (12 primes) - balanced for melodies
+/// Returns: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+pub fn medium() -> Vec<u32> {
+    generate(12)
+}
+
+/// Classic prime sequence (16 primes) - good variety
+pub fn classic() -> Vec<u32> {
+    generate(16)
+}
+
+/// Long prime sequence (24 primes) - extensive patterns
+pub fn long() -> Vec<u32> {
+    generate(24)
+}
+
+/// Polyrhythm primes - first 6 primes for layering rhythms
+/// Returns: [2, 3, 5, 7, 11, 13] - perfect for polyrhythmic complexity
+pub fn polyrhythm() -> Vec<u32> {
+    generate(6)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -32,7 +32,7 @@
 /// let mut comp = Composition::new(Tempo::new(110.0));
 ///
 /// // Generate Recamán spiral
-/// let recaman = sequences::generate(24);
+/// let recaman = sequences::recaman::generate(24);
 ///
 /// // Map to bass range (E2 to E3)
 /// let bass_line = sequences::normalize(&recaman, 82.4, 164.8);
@@ -45,7 +45,7 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let recaman = sequences::generate(20);
+/// let recaman = sequences::recaman::generate(20);
 /// // [0, 1, 3, 6, 2, 7, 13, 20, 12, 21, 11, 22, 10, 23, 9, 24, 8, 25, 43, 62]
 ///
 /// // Use for melodic contours
@@ -54,7 +54,7 @@
 /// // Use for interesting bass lines
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let bass_recaman = sequences::generate(16);
+/// let bass_recaman = sequences::recaman::generate(16);
 /// let bass_freqs = sequences::normalize(&bass_recaman, 55.0, 110.0);
 /// comp.instrument("bass", &Instrument::sub_bass())
 ///     .notes(&bass_freqs, 0.25);
@@ -225,4 +225,26 @@ mod tests {
         // - All values are non-negative (by construction with u32)
         // No assertion needed, u32 guarantees this
     }
+}
+
+// ========== PRESETS ==========
+
+/// Short Recamán (16 terms) - melodic phrase length
+pub fn short() -> Vec<u32> {
+    generate(16)
+}
+
+/// Classic Recamán (32 terms) - medium pattern
+pub fn classic() -> Vec<u32> {
+    generate(32)
+}
+
+/// Long Recamán (64 terms) - extended sequence
+pub fn long() -> Vec<u32> {
+    generate(64)
+}
+
+/// Epic Recamán (100 terms) - long structural use
+pub fn epic() -> Vec<u32> {
+    generate(100)
 }

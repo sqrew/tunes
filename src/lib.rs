@@ -64,7 +64,7 @@ pub mod prelude {
     // Advanced synthesis
     pub use crate::synthesis::{
         AdditiveSynth, Envelope, FMParams, FilterEnvelope, GranularParams, KarplusStrong,
-        NoiseType, Partial, Waveform, Wavetable,
+        NoiseType, Partial, Sample, SampleSlice, Waveform, Wavetable,
     };
 
     // Noise generators

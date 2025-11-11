@@ -34,7 +34,7 @@
 //! let pattern = vec![0, 2, 5, 7];
 //!
 //! // Generate 8 phase steps (each shifts by 1)
-//! let phases = sequences::generate(&pattern, 8, 16);
+//! let phases = sequences::phase_shift::generate(&pattern, 8, 16);
 //!
 //! // phases[0] = [0, 2, 5, 7]        (original)
 //! // phases[1] = [1, 3, 6, 8]        (shift +1)
@@ -43,13 +43,13 @@
 //!
 //! // Reich's "Clapping Music" pattern
 //! let clap_pattern = vec![0, 1, 2, 3, 5, 6, 8, 9, 10];
-//! let clapping_music = sequences::generate(&clap_pattern, 12, 12);
+//! let clapping_music = sequences::phase_shift::generate(&clap_pattern, 12, 12);
 //!
 //! // Use in composition with gradual transition:
 //! # use tunes::prelude::*;
 //! # let mut comp = Composition::new(Tempo::new(120.0));
 //! let pattern = vec![0, 3, 7, 10];
-//! let phases = sequences::generate(&pattern, 8, 16);
+//! let phases = sequences::phase_shift::generate(&pattern, 8, 16);
 //!
 //! // Voice 1: original pattern, repeating
 //! for i in 0..8 {

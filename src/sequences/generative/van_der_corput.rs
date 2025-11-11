@@ -34,7 +34,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Generate quasi-random values
-/// let quasi = sequences::generate(32, 2);
+/// let quasi = sequences::van_der_corput::generate(32, 2);
 ///
 /// // Map to C minor pentatonic
 /// let melody = sequences::map_to_scale_f32(
@@ -54,11 +54,11 @@
 /// use tunes::sequences;
 ///
 /// // Generate quasi-random values
-/// let quasi = sequences::generate(16, 2);
+/// let quasi = sequences::van_der_corput::generate(16, 2);
 /// // More evenly distributed than random!
 ///
 /// // Use for note placement that avoids clumping
-/// let positions = sequences::generate(32, 2);
+/// let positions = sequences::van_der_corput::generate(32, 2);
 /// let note_times: Vec<f32> = positions.iter()
 ///     .map(|&x| x * 4.0)  // Spread over 4 seconds
 ///     .collect();
@@ -66,7 +66,7 @@
 /// // Use for parameter sweeps
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let cutoff_values = sequences::generate(64, 2);
+/// let cutoff_values = sequences::van_der_corput::generate(64, 2);
 /// for (i, &cutoff) in cutoff_values.iter().enumerate() {
 ///     let freq = 200.0 + cutoff * 600.0;  // 200-800 Hz range
 ///     comp.instrument("sweep", &Instrument::synth_lead())
@@ -165,4 +165,31 @@ mod tests {
             assert!(count > 0, "Bin empty - poor distribution");
         }
     }
+}
+
+// ========== PRESETS ==========
+
+/// Short binary sequence (16 terms, base 2)
+pub fn short() -> Vec<f32> {
+    generate(16, 2)
+}
+
+/// Classic binary (32 terms, base 2) - well-distributed
+pub fn classic() -> Vec<f32> {
+    generate(32, 2)
+}
+
+/// Long binary (64 terms, base 2) - extended quasi-random
+pub fn long() -> Vec<f32> {
+    generate(64, 2)
+}
+
+/// Ternary (32 terms, base 3) - different distribution pattern
+pub fn ternary() -> Vec<f32> {
+    generate(32, 3)
+}
+
+/// Pentary (32 terms, base 5) - another distribution variant
+pub fn pentary() -> Vec<f32> {
+    generate(32, 5)
 }

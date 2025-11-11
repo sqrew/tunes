@@ -186,3 +186,20 @@ mod tests {
         // - 5 ways to triangulate a pentagon
     }
 }
+
+// ========== PRESETS ==========
+
+/// Short Catalan sequence (8 terms)
+pub fn short() -> Vec<u32> {
+    generate(8)
+}
+
+/// Classic Catalan sequence (10 terms)
+pub fn classic() -> Vec<u32> {
+    generate(10)
+}
+
+/// Extended Catalan sequence (12 terms)
+pub fn extended() -> Vec<u32> {
+    generate(12)
+}

@@ -34,20 +34,20 @@
 /// use tunes::sequences;
 ///
 /// // Simple smooth noise - slow organic drift
-/// let drift = sequences::generate(42, 0.05, 1, 0.5, 100);
+/// let drift = sequences::perlin_noise::generate(42, 0.05, 1, 0.5, 100);
 /// // Single octave, very smooth
 ///
 /// // Rich textured noise - multiple detail layers
-/// let texture = sequences::generate(123, 0.1, 4, 0.5, 200);
+/// let texture = sequences::perlin_noise::generate(123, 0.1, 4, 0.5, 200);
 /// // 4 octaves create complex but natural variation
 ///
 /// // Fast variation for tremolo/vibrato depth
-/// let vibrato = sequences::generate(7, 0.3, 2, 0.5, 500);
+/// let vibrato = sequences::perlin_noise::generate(7, 0.3, 2, 0.5, 500);
 ///
 /// // Use for filter automation
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let filter_curve = sequences::generate(99, 0.08, 3, 0.5, 64);
+/// let filter_curve = sequences::perlin_noise::generate(99, 0.08, 3, 0.5, 64);
 /// for (i, &cutoff) in filter_curve.iter().enumerate() {
 ///     let freq = 200.0 + cutoff * 1800.0; // Map to 200-2000 Hz
 ///     comp.track("synth")
@@ -320,4 +320,31 @@ mod tests {
         // (This is not always strictly true, but holds on average)
         assert!(complex_var > simple_var * 0.5, "More octaves should add detail");
     }
+}
+
+// ========== PRESETS ==========
+
+/// Smooth drift - slow, simple evolution (1 octave, low frequency)
+pub fn smooth_drift() -> Vec<f32> {
+    generate(42, 0.05, 1, 0.5, 64)
+}
+
+/// Classic texture - balanced evolution (3 octaves, medium frequency)
+pub fn classic() -> Vec<f32> {
+    generate(123, 0.1, 3, 0.5, 100)
+}
+
+/// Rich texture - complex evolution (4 octaves, medium frequency)
+pub fn rich_texture() -> Vec<f32> {
+    generate(99, 0.1, 4, 0.5, 128)
+}
+
+/// Fast modulation - quick changes for tremolo/vibrato (2 octaves, high frequency)
+pub fn fast_modulation() -> Vec<f32> {
+    generate(7, 0.3, 2, 0.5, 200)
+}
+
+/// Ambient pad - very slow evolution (2 octaves, very low frequency)
+pub fn ambient_pad() -> Vec<f32> {
+    generate(555, 0.02, 2, 0.5, 256)
 }

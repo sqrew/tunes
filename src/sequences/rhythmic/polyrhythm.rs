@@ -26,7 +26,7 @@
 /// use tunes::sequences;
 ///
 /// // Simple 3:4 polyrhythm over 12 steps
-/// let patterns = sequences::generate(&[3, 4], 12);
+/// let patterns = sequences::polyrhythm::generate(&[3, 4], 12);
 /// // patterns[0] = [0, 4, 8]     (3 hits)
 /// // patterns[1] = [0, 3, 6, 9]  (4 hits)
 ///
@@ -38,7 +38,7 @@
 ///     .snare(&patterns[1]); // 4 hits
 ///
 /// // Complex triple polyrhythm: 5:6:7 over 210 steps (LCM)
-/// let triple = sequences::generate(&[5, 6, 7], 210);
+/// let triple = sequences::polyrhythm::generate(&[5, 6, 7], 210);
 /// comp.track("poly567")
 ///     .drum_grid(210, 0.125)
 ///     .kick(&triple[0])
@@ -46,7 +46,7 @@
 ///     .hihat(&triple[2]);
 ///
 /// // Hemiola pattern (3:2 over 6 steps)
-/// let hemiola = sequences::generate(&[3, 2], 6);
+/// let hemiola = sequences::polyrhythm::generate(&[3, 2], 6);
 /// ```
 ///
 /// # Musical Applications
@@ -309,4 +309,36 @@ mod tests {
         assert_eq!(patterns.len(), 3);
         assert!(patterns[1].is_empty()); // Zero ratio produces no hits
     }
+}
+
+// ========== PRESETS ==========
+
+/// 3 against 2 - classic hemiola
+pub fn three_two() -> Vec<Vec<usize>> {
+    generate(&[3, 2], 6)
+}
+
+/// 4 against 3 - complex but manageable
+pub fn four_three() -> Vec<Vec<usize>> {
+    generate(&[4, 3], 12)
+}
+
+/// 5 against 4 - jazz polyrhythm
+pub fn five_four() -> Vec<Vec<usize>> {
+    generate(&[5, 4], 20)
+}
+
+/// 5 against 3 - dramatic tension
+pub fn five_three() -> Vec<Vec<usize>> {
+    generate(&[5, 3], 15)
+}
+
+/// 7 against 5 - very complex
+pub fn seven_five() -> Vec<Vec<usize>> {
+    generate(&[7, 5], 35)
+}
+
+/// Triple polyrhythm - 3:4:5
+pub fn triple() -> Vec<Vec<usize>> {
+    generate(&[3, 4, 5], 60)
 }

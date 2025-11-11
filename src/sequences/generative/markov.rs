@@ -213,3 +213,33 @@ mod tests {
         assert_eq!(from_0[0].0, 1);
     }
 }
+
+// ========== PRESETS ==========
+
+/// C major scale melody transitions (16 steps)
+pub fn c_major_melody() -> Vec<u32> {
+    let mut transitions = std::collections::HashMap::new();
+
+    // C (0): likely to D or stay
+    transitions.insert(0, vec![(0, 0.2), (1, 0.5), (2, 0.3)]);
+    // D (1): likely to E or back to C
+    transitions.insert(1, vec![(0, 0.3), (2, 0.6), (3, 0.1)]);
+    // E (2): likely to G or back to D
+    transitions.insert(2, vec![(1, 0.3), (4, 0.5), (0, 0.2)]);
+    // G (4): likely to resolve down
+    transitions.insert(4, vec![(2, 0.4), (0, 0.6)]);
+
+    generate(&transitions, 0, 16)
+}
+
+/// Simple up-down pattern (24 steps)
+pub fn up_down() -> Vec<u32> {
+    let training = vec![0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1];
+    let transitions = build_markov_transitions(&training, 1);
+    generate(&transitions, 0, 24)
+}
+
+/// Classic - C major melody
+pub fn classic() -> Vec<u32> {
+    c_major_melody()
+}

@@ -22,13 +22,13 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let pattern = sequences::generate(16);
+/// let pattern = sequences::golden_ratio_rhythm::generate(16);
 /// // Creates a non-repeating, naturally flowing rhythm over 16 steps
 ///
 /// // Use with drum_grid:
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let phi_rhythm = sequences::generate(32);
+/// let phi_rhythm = sequences::golden_ratio_rhythm::generate(32);
 /// comp.track("phi_drums")
 ///     .drum_grid(32, 0.125)
 ///     .kick(&phi_rhythm);
@@ -89,4 +89,26 @@ mod tests {
         let expected = 1.0 / 1.618033988749;
         assert!((ratio - expected).abs() < 0.05); // Within 5%
     }
+}
+
+// ========== PRESETS ==========
+
+/// Short golden ratio rhythm - 8 steps
+pub fn short() -> Vec<usize> {
+    generate(8)
+}
+
+/// Classic golden ratio rhythm - 16 steps
+pub fn classic() -> Vec<usize> {
+    generate(16)
+}
+
+/// Extended golden ratio rhythm - 32 steps
+pub fn extended() -> Vec<usize> {
+    generate(32)
+}
+
+/// Golden measure - 13 steps (Fibonacci number, natural division)
+pub fn measure() -> Vec<usize> {
+    generate(13)
 }

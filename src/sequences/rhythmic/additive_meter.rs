@@ -37,15 +37,15 @@
 //! use tunes::sequences;
 //!
 //! // Bulgarian Rachenitsa: 2+2+3 = 7/8
-//! let pattern = sequences::generate(&[2, 2, 3]);
+//! let pattern = sequences::additive_meter::generate(&[2, 2, 3]);
 //! assert_eq!(pattern, vec![0, 2, 4]); // Strong beats at 0, 2, 4
 //!
 //! // Greek pattern: 2+2+2+3 = 9/8
-//! let pattern = sequences::generate(&[2, 2, 2, 3]);
+//! let pattern = sequences::additive_meter::generate(&[2, 2, 2, 3]);
 //! assert_eq!(pattern, vec![0, 2, 4, 6]);
 //!
 //! // Kopanitsa: 2+2+3+2+2 = 11/8
-//! let pattern = sequences::generate(&[2, 2, 3, 2, 2]);
+//! let pattern = sequences::additive_meter::generate(&[2, 2, 3, 2, 2]);
 //! assert_eq!(pattern, vec![0, 2, 4, 7, 9]);
 //!
 //! // Use in composition:
@@ -54,7 +54,7 @@
 //! // 7/8 Bulgarian pattern with kick on strong beats
 //! comp.track("bulgarian")
 //!     .drum_grid(7, 0.125)
-//!     .kick(&sequences::generate(&[2, 2, 3]));
+//!     .kick(&sequences::additive_meter::generate(&[2, 2, 3]));
 //! ```
 //!
 //! # References

@@ -36,7 +36,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Clifford attractor
-/// let path = sequences::generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
+/// let path = sequences::clifford_attractor::generate(-1.4, 1.6, 1.0, 0.7, (0.0, 0.0), 100);
 ///
 /// // Extract coordinates for musical use
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _)| *x).collect();
@@ -365,4 +365,28 @@ mod tests {
             assert!(x.abs() < 3.0 && y.abs() < 3.0);
         }
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic Clifford attractor (a=-1.4, b=1.6, c=1.0, d=0.7)
+pub fn classic() -> Vec<(f32, f32)> {
+    clifford_flow(500)
+}
+
+/// Variant 1 - different parameters (tighter, angular)
+pub fn variant1() -> Vec<(f32, f32)> {
+    let full = generate(1.5, -1.8, 1.6, 0.9, (0.0, 0.0), 510);
+    full.into_iter().skip(10).collect()
+}
+
+/// Variant 2 - another interesting configuration (wide sweeps)
+pub fn variant2() -> Vec<(f32, f32)> {
+    let full = generate(-1.7, 1.8, -0.9, -0.4, (0.0, 0.0), 510);
+    full.into_iter().skip(10).collect()
+}
+
+/// Extended - more points with classic parameters
+pub fn extended() -> Vec<(f32, f32)> {
+    clifford_flow(1000)
 }

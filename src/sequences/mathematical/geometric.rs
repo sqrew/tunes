@@ -71,3 +71,30 @@
 pub fn generate(start: u32, ratio: u32, n: usize) -> Vec<u32> {
     (0..n).map(|i| start * ratio.pow(i as u32)).collect()
 }
+
+// ========== PRESETS ==========
+
+/// Doubling sequence (1,2,4,8,16...) - 10 terms, same as powers of 2
+pub fn doubling() -> Vec<u32> {
+    generate(1, 2, 10)
+}
+
+/// Tripling sequence (1,3,9,27,81...) - 8 terms, grows very fast
+pub fn tripling() -> Vec<u32> {
+    generate(1, 3, 8)
+}
+
+/// Exponential growth (2,6,18,54...) - ratio of 3, starting at 2
+pub fn exponential() -> Vec<u32> {
+    generate(2, 3, 8)
+}
+
+/// Moderate growth (1,2,4,8...) - classic doubling, 8 terms
+pub fn moderate() -> Vec<u32> {
+    generate(1, 2, 8)
+}
+
+/// Aggressive growth (1,4,16,64...) - ratio of 4, very dramatic
+pub fn aggressive() -> Vec<u32> {
+    generate(1, 4, 6)
+}

@@ -39,7 +39,7 @@
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Wandering bass around 110 Hz (A2)
-/// let bass_walk = sequences::generate(110.0, 8.0, 16);
+/// let bass_walk = sequences::random_walk::generate(110.0, 8.0, 16);
 ///
 /// comp.instrument("bass", &Instrument::sub_bass())
 ///     .notes(&bass_walk, 0.5);
@@ -52,7 +52,7 @@
 ///
 /// // Generate smooth filter automation
 /// let start_cutoff = 500.0;  // Hz
-/// let walk = sequences::generate(start_cutoff, 40.0, 64);
+/// let walk = sequences::random_walk::generate(start_cutoff, 40.0, 64);
 ///
 /// // Clamp to reasonable filter range
 /// let filter_curve: Vec<f32> = walk.iter()
@@ -113,4 +113,26 @@ mod tests {
         let max_dist = walk.iter().map(|&x| x.abs()).fold(0.0f32, f32::max);
         assert!(max_dist > 20.0, "Walk should have moved away from start");
     }
+}
+
+// ========== PRESETS ==========
+
+/// Short random walk - 16 steps, step size 1
+pub fn short() -> Vec<f32> {
+    generate(0.0, 1.0, 16)
+}
+
+/// Classic random walk - 32 steps, step size 1
+pub fn classic() -> Vec<f32> {
+    generate(0.0, 1.0, 32)
+}
+
+/// Long random walk - 64 steps, step size 1
+pub fn long() -> Vec<f32> {
+    generate(0.0, 1.0, 64)
+}
+
+/// Large steps - 32 steps, step size 3
+pub fn large_steps() -> Vec<f32> {
+    generate(0.0, 3.0, 32)
 }

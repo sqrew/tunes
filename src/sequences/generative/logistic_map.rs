@@ -44,7 +44,7 @@
 /// let mut comp = Composition::new(Tempo::new(140.0));
 ///
 /// // Generate chaotic values
-/// let chaos = sequences::generate(3.9, 0.5, 32);
+/// let chaos = sequences::logistic_map::generate(3.9, 0.5, 32);
 ///
 /// // Map to D minor pentatonic scale
 /// let melody = sequences::map_to_scale_f32(
@@ -68,7 +68,7 @@
 /// fn generate_for_intensity(intensity: f32, n: usize) -> Vec<f32> {
 ///     // intensity: 0.0 (calm) to 1.0 (chaotic)
 ///     let r = 2.5 + intensity * 1.5;  // Maps to r=2.5-4.0
-///     let chaos = sequences::generate(r, 0.5, n);
+///     let chaos = sequences::logistic_map::generate(r, 0.5, n);
 ///     sequences::normalize(
 ///         &chaos.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
 ///         220.0,
@@ -180,4 +180,31 @@ mod tests {
         assert_eq!(seq3.len(), 1);
         assert_eq!(seq3[0], 0.5);
     }
+}
+
+// ========== PRESETS ==========
+
+/// Ordered behavior (r=2.5) - converges to fixed point
+pub fn ordered() -> Vec<f32> {
+    generate(2.5, 0.5, 24)
+}
+
+/// Period-2 oscillation (r=3.2) - alternates between two values
+pub fn oscillating() -> Vec<f32> {
+    generate(3.2, 0.5, 32)
+}
+
+/// Edge of chaos (r=3.56995) - onset of chaos, very interesting
+pub fn edge_of_chaos() -> Vec<f32> {
+    generate(3.56995, 0.5, 48)
+}
+
+/// Chaotic (r=3.9) - fully chaotic, unpredictable
+pub fn chaotic() -> Vec<f32> {
+    generate(3.9, 0.5, 64)
+}
+
+/// Classic chaotic (r=3.7) - balanced chaos
+pub fn classic() -> Vec<f32> {
+    generate(3.7, 0.5, 48)
 }

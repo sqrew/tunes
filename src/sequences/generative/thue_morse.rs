@@ -36,7 +36,7 @@
 /// let mut comp = Composition::new(Tempo::new(128.0));
 ///
 /// // Extract hit positions from Thue-Morse
-/// let tm = sequences::generate(32);
+/// let tm = sequences::thue_morse::generate(32);
 /// let hits: Vec<usize> = tm.iter()
 ///     .enumerate()
 ///     .filter(|(_, &v)| v == 1)
@@ -53,13 +53,13 @@
 /// ```
 /// use tunes::sequences;
 ///
-/// let tm = sequences::generate(16);
+/// let tm = sequences::thue_morse::generate(16);
 /// // [0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0]
 ///
 /// // Use as rhythm pattern (0 = rest, 1 = hit)
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// let pattern: Vec<usize> = sequences::generate(32)
+/// let pattern: Vec<usize> = sequences::thue_morse::generate(32)
 ///     .iter()
 ///     .enumerate()
 ///     .filter(|(_, &v)| v == 1)
@@ -71,7 +71,7 @@
 ///     .kick(&pattern);
 ///
 /// // Use for parameter switching
-/// let tm_seq = sequences::generate(8);
+/// let tm_seq = sequences::thue_morse::generate(8);
 /// for (i, &val) in tm_seq.iter().enumerate() {
 ///     let freq = if val == 0 { 440.0 } else { 554.37 };
 ///     comp.track("alternating").note(&[freq], 0.25);
@@ -199,4 +199,21 @@ mod tests {
         let expected_hits = vec![1, 2, 4, 7, 8, 11, 13, 14];
         assert_eq!(hits, expected_hits);
     }
+}
+
+// ========== PRESETS ==========
+
+/// Short Thue-Morse (16 elements)
+pub fn short() -> Vec<u32> {
+    generate(16)
+}
+
+/// Classic Thue-Morse (32 elements)
+pub fn classic() -> Vec<u32> {
+    generate(32)
+}
+
+/// Extended Thue-Morse (64 elements)
+pub fn extended() -> Vec<u32> {
+    generate(64)
 }

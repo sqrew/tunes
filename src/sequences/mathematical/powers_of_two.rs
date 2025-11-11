@@ -47,3 +47,25 @@
 pub fn generate(n: usize) -> Vec<u32> {
     (0..n).map(|i| 2u32.pow(i as u32)).collect()
 }
+
+// ========== PRESETS ==========
+
+/// Short powers sequence - [1, 2, 4, 8, 16, 32]
+pub fn short() -> Vec<u32> {
+    generate(6)
+}
+
+/// Classic powers sequence - [1, 2, 4, 8, 16, 32, 64, 128]
+pub fn classic() -> Vec<u32> {
+    generate(8)
+}
+
+/// Extended powers sequence - [1, 2, 4, 8...1024]
+pub fn extended() -> Vec<u32> {
+    generate(11)
+}
+
+/// Byte powers - [1, 2, 4, 8, 16, 32, 64, 128, 256] - all byte values
+pub fn byte() -> Vec<u32> {
+    generate(9)
+}

@@ -40,15 +40,15 @@
 /// use tunes::sequences;
 ///
 /// // Pure rotation (K=0) - perfectly periodic
-/// let rotation = sequences::generate(0.25, 0.0, 0.5, 16);
+/// let rotation = sequences::circle_map::generate(0.25, 0.0, 0.5, 16);
 /// // Creates 1:4 rhythm (hits every 4 steps)
 ///
 /// // Critical coupling (K=1) - interesting mode-locking
-/// let critical = sequences::generate(0.333, 1.0, 0.5, 24);
+/// let critical = sequences::circle_map::generate(0.333, 1.0, 0.5, 24);
 /// // Creates 1:3 patterns with slight variation
 ///
 /// // High coupling (K=2) - complex rhythms
-/// let complex = sequences::generate(0.618, 2.0, 0.0, 32);
+/// let complex = sequences::circle_map::generate(0.618, 2.0, 0.0, 32);
 /// // Golden ratio creates non-repeating but structured rhythms
 ///
 /// // Convert to rhythm hits (trigger when crossing threshold)
@@ -256,4 +256,26 @@ mod tests {
             assert!(!complement.contains(&p), "Should not overlap");
         }
     }
+}
+
+// ========== PRESETS ==========
+
+/// Ordered rhythm - low chaos (k=0.5), 16 iterations
+pub fn ordered() -> Vec<f32> {
+    generate(0.5, 0.5, 0.0, 16)
+}
+
+/// Edge of chaos - medium chaos (k=1.0), 24 iterations
+pub fn edge_of_chaos() -> Vec<f32> {
+    generate(0.5, 1.0, 0.0, 24)
+}
+
+/// Chaotic rhythm - high chaos (k=2.0), 32 iterations
+pub fn chaotic() -> Vec<f32> {
+    generate(0.5, 2.0, 0.0, 32)
+}
+
+/// Unstable - very high chaos (k=3.0), 24 iterations
+pub fn unstable() -> Vec<f32> {
+    generate(0.5, 3.0, 0.0, 24)
 }

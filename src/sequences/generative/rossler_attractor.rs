@@ -35,7 +35,7 @@
 /// use tunes::sequences;
 ///
 /// // Classic Rössler spiral
-/// let path = sequences::generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
+/// let path = sequences::rossler_attractor::generate(0.2, 0.2, 5.7, (0.1, 0.0, 0.0), 0.01, 100);
 ///
 /// // Extract x coordinates for melody and normalize to frequency range
 /// let x_vals: Vec<f32> = path.iter().map(|(x, _, _)| *x).collect();
@@ -302,4 +302,22 @@ mod tests {
         assert!(y_changed, "Y coordinate should evolve over time");
         assert!(z_changed, "Z coordinate should evolve over time");
     }
+}
+
+// ========== PRESETS ==========
+
+/// Classic Rössler attractor (a=0.2, b=0.2, c=5.7)
+pub fn classic() -> Vec<(f32, f32, f32)> {
+    rossler_spiral(500)
+}
+
+/// Extended Rössler - more iterations
+pub fn extended() -> Vec<(f32, f32, f32)> {
+    rossler_spiral(1000)
+}
+
+/// Chaotic Rössler (c=5.4)
+pub fn chaotic() -> Vec<(f32, f32, f32)> {
+    let full = generate(0.2, 0.2, 5.4, (0.1, 0.0, 0.0), 0.01, 600);
+    full.into_iter().skip(100).collect()
 }
