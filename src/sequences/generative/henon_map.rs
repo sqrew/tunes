@@ -28,7 +28,7 @@
 //! use tunes::sequences::henon_map;
 //!
 //! // Generate 64 points from the classic Hénon attractor
-//! let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 64);
+//! let (x_vals, y_vals) = henon_map::generate(1.4, 0.3, 0.1, 0.1, 64);
 //!
 //! // Use x values for melody (map to frequency range manually)
 //! let melody: Vec<f32> = x_vals.iter()
@@ -70,7 +70,7 @@
 /// let mut comp = Composition::new(Tempo::new(130.0));
 ///
 /// // Generate classic Hénon attractor
-/// let (x_vals, y_vals) = sequences::generate(1.4, 0.3, 0.1, 0.1, 32);
+/// let (x_vals, y_vals) = sequences::henon_map::generate(1.4, 0.3, 0.1, 0.1, 32);
 ///
 /// // Use x for melody
 /// let melody = sequences::map_to_scale_f32(
@@ -100,12 +100,12 @@
 /// use tunes::sequences::henon_map;
 ///
 /// // Classic Hénon attractor parameters
-/// let (x_vals, y_vals) = generate(1.4, 0.3, 0.1, 0.1, 100);
+/// let (x_vals, y_vals) = henon_map::generate(1.4, 0.3, 0.1, 0.1, 100);
 /// assert_eq!(x_vals.len(), 100);
 /// assert_eq!(y_vals.len(), 100);
 ///
 /// // Different parameters create different patterns
-/// let (x2, y2) = generate(1.2, 0.25, 0.0, 0.0, 50);
+/// let (x2, y2) = henon_map::generate(1.2, 0.25, 0.0, 0.0, 50);
 /// ```
 pub fn generate(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> (Vec<f32>, Vec<f32>) {
     let mut x_vals = Vec::with_capacity(n);

@@ -89,7 +89,7 @@
 ///
 /// # Examples
 /// ```
-/// use tunes::sequences::phase_shift;
+/// use tunes::sequences::phase_shift::generate;
 ///
 /// // Simple 3-note pattern over 8 steps
 /// let pattern = vec![0, 2, 5];

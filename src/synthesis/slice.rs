@@ -179,7 +179,7 @@ impl Sample {
         }
 
         // Convert times to frames and verify they're in order
-        let mut frames: Vec<usize> = times
+        let frames: Vec<usize> = times
             .iter()
             .map(|&t| (t * self.sample_rate as f32) as usize)
             .collect();
@@ -426,7 +426,7 @@ mod tests {
     fn create_test_sample() -> Sample {
         // Create a simple 1-second mono test sample at 44.1kHz
         let sample_rate: u32 = 44100;
-        let duration = 1.0;
+        let _duration = 1.0;
         let num_samples = sample_rate as usize;
 
         // Generate a simple waveform

@@ -29,7 +29,7 @@
 //! use tunes::sequences::tent_map;
 //!
 //! // Generate 64 chaotic values with μ = 2.0 (full chaos)
-//! let sequence = generate(2.0, 0.3, 64);
+//! let sequence = tent_map::generate(2.0, 0.3, 64);
 //!
 //! // Map to musical frequencies (values already in [0, 1])
 //! let notes: Vec<f32> = sequence.iter()
@@ -64,7 +64,7 @@
 /// let mut comp = Composition::new(Tempo::new(130.0));
 ///
 /// // Generate chaotic sequence
-/// let chaos = sequences::generate(2.0, 0.3, 32);
+/// let chaos = sequences::tent_map::generate(2.0, 0.3, 32);
 ///
 /// // Map to E minor scale
 /// let melody = sequences::map_to_scale_f32(
@@ -84,7 +84,7 @@
 /// use tunes::sequences::tent_map;
 ///
 /// // Classic chaotic tent map
-/// let sequence = generate(2.0, 0.3, 100);
+/// let sequence = tent_map::generate(2.0, 0.3, 100);
 /// assert_eq!(sequence.len(), 100);
 ///
 /// // All values should be in [0, 1] for mu = 2.0

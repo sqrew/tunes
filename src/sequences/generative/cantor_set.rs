@@ -18,7 +18,7 @@
 ///
 /// # Example
 /// ```
-/// use tunes::sequences::cantor_set;
+/// use tunes::sequences::cantor_set::generate;
 ///
 /// // Create a Cantor set rhythm pattern
 /// let pattern = generate(2, 27); // 27 = 3^3 for clean divisions

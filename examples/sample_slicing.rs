@@ -9,7 +9,7 @@
 // Run with: cargo run --example sample_slicing
 
 use tunes::prelude::*;
-use tunes::synthesis::{Sample, SampleSlice};
+use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
     println!("🔪 Sample Slicing Techniques Demo\n");
@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
     let equal_slices = sample.slice_equal(16)?;
     println!("   Created {} equal slices", equal_slices.len());
 
-    for (i, slice) in equal_slices.iter().take(4).enumerate() {
+    for (_i, slice) in equal_slices.iter().take(4).enumerate() {
         println!("   Slice {}: {:.3}s - {:.3}s ({:.3}s duration)",
             slice.index,
             slice.start_time(),
@@ -110,10 +110,10 @@ fn main() -> anyhow::Result<()> {
     println!("6️⃣  MUSICAL EXAMPLE - Sliced beat sequencing");
     println!("   Creating composition with sliced samples...\n");
 
-    let mut comp = Composition::new(Tempo::new(140.0));
+    let _comp = Composition::new(Tempo::new(140.0));
 
     // Slice a drum loop into 16 equal parts
-    let drum_slices = sample.slice_equal(16)?;
+    let _drum_slices = sample.slice_equal(16)?;
 
     // Example: Play slices in a pattern (you'd use sample playback API)
     println!("   Pattern using slices: 0, 4, 8, 12 (kick hits)");

@@ -70,11 +70,11 @@ fn main() {
         .notes(&chaos_melody, 0.25);
 
     // Tent map
-    let tent = sequences::tent_map::classic();
+    let tent = sequences::tent_map::generate(2.0, 0.3, 48);
     println!("Tent map: {} values", tent.len());
 
     // Sine map
-    let sine = sequences::sine_map::edge_of_chaos();
+    let sine = sequences::sine_map::generate(3.14159, 0.5, 48); // π for edge of chaos
     println!("Sine map (edge of chaos): {} values", sine.len());
 
     // ========== ATTRACTORS ==========
@@ -101,8 +101,12 @@ fn main() {
     println!("\n2D Map sequences with presets:");
 
     // Hénon map - returns (Vec<f32>, Vec<f32>)
-    let (henon_x, henon_y) = sequences::henon_map::classic();
-    println!("Hénon map: {} x-values, {} y-values", henon_x.len(), henon_y.len());
+    let (henon_x, henon_y) = sequences::henon_map::generate(1.4, 0.3, 0.1, 0.1, 48);
+    println!(
+        "Hénon map: {} x-values, {} y-values",
+        henon_x.len(),
+        henon_y.len()
+    );
     let henon_melody = sequences::normalize_f32(&henon_x[..16], 440.0, 880.0);
     comp.instrument("henon", &Instrument::synth_lead())
         .at(16.0)
@@ -170,7 +174,7 @@ fn main() {
     println!("Markov melody: {:?}", &markov[..10]);
 
     // Cantor set - fractal rhythm
-    let cantor = sequences::cantor_set::classic();
+    let cantor = sequences::cantor_set::generate(3, 27);
     println!("Cantor set: {:?}", &cantor[..12]);
 
     // ========== SUMMARY ==========

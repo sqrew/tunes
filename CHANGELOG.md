@@ -18,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SampleSlice** - Lightweight slice reference type that avoids copying audio data
   - Efficient Arc-based referencing to parent sample
   - Methods: `sample_at()`, `to_sample()`, `start_time()`, `end_time()`, `num_frames()`
-- New example: `sample_slicing.rs` demonstrating all slicing techniques
+- **Direct Sample & Slice Playback API** - Play samples and slices without caching workflow:
+  - `TrackBuilder::play_sample(sample, playback_rate)` - Play `Sample` directly in composition
+  - `TrackBuilder::play_slice(slice, playback_rate)` - Play `SampleSlice` directly in composition
+  - Enables dynamic, generative sample playback without pre-loading
+- New examples:
+  - `sample_slicing.rs` - Comprehensive demonstration of all slicing techniques
+  - `slice_playback.rs` - Direct sample/slice playback in compositions
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance

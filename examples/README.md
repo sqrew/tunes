@@ -1,6 +1,6 @@
 # Tunes Examples
 
-This directory contains **84 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
+This directory contains **86 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
 
 ---
 
@@ -193,6 +193,25 @@ This directory contains **84 example programs** demonstrating all features of th
 
 ---
 
+## 🔪 Sample Manipulation
+
+**Advanced audio sample slicing, processing, and playback techniques.**
+
+| Example | Description |
+|---------|-------------|
+| `sample_slicing.rs` | Complete guide to all slicing techniques (equal, time-based, transient detection, beat-based) |
+| `slice_playback.rs` | Direct sample and slice playback in compositions without caching |
+
+**Key Features:**
+- **Equal Slicing:** Divide samples into N equal parts
+- **Time-Based:** Slice at specific time points
+- **Transient Detection:** Automatically detect hit points in drum loops
+- **Beat-Based:** Slice to BPM and rhythmic subdivisions
+- **Direct Playback:** Play samples and slices without caching workflow
+- **Zero-Copy:** Efficient Arc-based referencing avoids audio data duplication
+
+---
+
 ## 🚀 Advanced & Complete Demos
 
 | Example | Description |
@@ -259,6 +278,7 @@ Most examples will:
 **Sequences:** `sequences_showcase.rs`, `mathematical_sequences.rs`, `chaotic_sequences.rs`
 **Effects:** `effects_showcase.rs`, `sidechaining.rs`, `spatial_audio_demo.rs`
 **Theory:** `theory_demo.rs`, `world_scales_demo.rs`, `progressions_demo.rs`
+**Samples:** `sample_slicing.rs`, `slice_playback.rs`
 **MIDI:** `midi_export.rs`, `midi_import.rs`, `midi_to_flac.rs`
 **Export:** `wav_export_demo.rs`, `flac_export.rs`
 
@@ -266,7 +286,7 @@ Most examples will:
 
 **Game Audio:** `concurrent_playback_demo.rs`, `spatial_audio_demo.rs`, `sample_playback_demo.rs`
 **Generative Music:** `sequences_showcase.rs`, `algorithmic_patterns.rs`, `chaotic_sequences.rs`, `pattern_transformations.rs`, `pattern_physics.rs`
-**Electronic Music:** `drum_808.rs`, `sidechaining.rs`, `wavetable_synthesis.rs`
+**Electronic Music:** `drum_808.rs`, `sidechaining.rs`, `wavetable_synthesis.rs`, `sample_slicing.rs`, `slice_playback.rs`
 **Classical/Acoustic:** `classical_techniques.rs`, `voicing_and_voice_leading.rs`, `ornaments_showcase.rs`
 **Learning:** `master_feature_showcase.rs`, `instrument_showcase.rs`, `effects_showcase.rs`
 

@@ -32,7 +32,7 @@
 //! use tunes::sequences::sine_map;
 //!
 //! // Generate 64 values with chaotic parameter
-//! let sequence = generate(2.7, 0.4, 64);
+//! let sequence = sine_map::generate(2.7, 0.4, 64);
 //!
 //! // Map to musical frequencies (values in range ~[0, 2.7])
 //! let notes: Vec<f32> = sequence.iter()
@@ -69,7 +69,7 @@ use std::f32::consts::PI;
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// // Sine map creates smoother chaos than logistic map
-/// let smooth_chaos = sequences::generate(2.7, 0.5, 32);
+/// let smooth_chaos = sequences::sine_map::generate(2.7, 0.5, 32);
 ///
 /// // Map to major pentatonic
 /// let melody = sequences::map_to_scale_f32(
@@ -90,7 +90,7 @@ use std::f32::consts::PI;
 /// use tunes::sequences::sine_map;
 ///
 /// // Chaotic sine map
-/// let sequence = generate(2.9, 0.5, 100);
+/// let sequence = sine_map::generate(2.9, 0.5, 100);
 /// assert_eq!(sequence.len(), 100);
 ///
 /// // All values should be in [0, 1]

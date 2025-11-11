@@ -74,7 +74,7 @@
 ///
 /// # Examples
 /// ```
-/// use tunes::sequences::additive_meter;
+/// use tunes::sequences::additive_meter::generate;
 ///
 /// // 7/8 as 2+2+3 (Bulgarian Rachenitsa)
 /// let pattern = generate(&[2, 2, 3]);

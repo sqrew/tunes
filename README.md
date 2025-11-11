@@ -24,7 +24,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Sample Import**: Load and manipulate WAV samples
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
-  * [ ] The library includes **1067 comprehensive tests and 362 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **1083 comprehensive tests and 396 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:
@@ -72,7 +72,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.13.0"
+tunes = "0.14.0"
 ```
 
 ### Platform Requirements

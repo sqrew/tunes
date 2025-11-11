@@ -22,7 +22,7 @@
 ///
 /// # Example
 /// ```
-/// use tunes::sequences::shepard_tone;
+/// use tunes::sequences::shepard_tone::generate;
 ///
 /// // Create ascending Shepard tone sequence
 /// let rising = generate(24, 12, true);

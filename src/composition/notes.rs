@@ -96,6 +96,86 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
+    /// Play a Sample directly (without pre-loading into cache)
+    ///
+    /// Use this to play samples or sample slices directly without needing to
+    /// load them into the composition's sample cache first.
+    ///
+    /// # Arguments
+    /// * `sample` - The Sample to play
+    /// * `playback_rate` - Speed multiplier (1.0 = normal, 2.0 = double speed, 0.5 = half speed)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// // Load and slice a sample
+    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let slices = sample.slice_equal(16)?;
+    ///
+    /// // Play slices directly without caching
+    /// comp.track("drums")
+    ///     .play_sample(&slices[0].to_sample()?, 1.0)   // Kick
+    ///     .at(0.5).play_sample(&slices[4].to_sample()?, 1.0)   // Snare
+    ///     .at(1.0).play_sample(&slices[8].to_sample()?, 1.0);  // Kick
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_sample(mut self, sample: &crate::synthesis::Sample, playback_rate: f32) -> Self {
+        let cursor = self.cursor;
+
+        use crate::track::{AudioEvent, SampleEvent};
+        let sample_event =
+            SampleEvent::new(sample.clone(), cursor).with_playback_rate(playback_rate);
+        let duration = sample.duration / playback_rate;
+
+        self.get_track_mut()
+            .events
+            .push(AudioEvent::Sample(sample_event));
+        self.get_track_mut().invalidate_time_cache();
+
+        let swung_duration = self.apply_swing(duration);
+        self.cursor += swung_duration;
+        self.update_section_duration();
+        self
+    }
+
+    /// Play a SampleSlice directly
+    ///
+    /// Convenience method for playing slices. This converts the slice to a Sample
+    /// and plays it, so there's a copy overhead. For repeated playback of the same
+    /// slice, consider converting once with `.to_sample()` and reusing it.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::Sample;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut comp = Composition::new(Tempo::new(140.0));
+    ///
+    /// let sample = Sample::from_wav("drumloop.wav")?;
+    /// let slices = sample.slice_by_transients(0.3, 50.0)?;
+    ///
+    /// // Play each detected hit
+    /// let mut track = comp.track("drums");
+    /// for slice in &slices {
+    ///     let pos = track.peek_cursor() + 0.25;
+    ///     track = track.play_slice(slice, 1.0)?.at(pos);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn play_slice(
+        self,
+        slice: &crate::synthesis::SampleSlice,
+        playback_rate: f32,
+    ) -> Result<Self, crate::error::TunesError> {
+        let sample = slice.to_sample()?;
+        Ok(self.play_sample(&sample, playback_rate))
+    }
+
     /// Play a sample with custom playback rate
     ///
     /// # Arguments

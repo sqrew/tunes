@@ -57,7 +57,7 @@
 ///
 /// # Example
 /// ```
-/// use tunes::sequences::bakers_map;
+/// use tunes::sequences::bakers_map::generate;
 ///
 /// // Start from an arbitrary point
 /// let (x_vals, y_vals) = generate(0.3, 0.7, 100);

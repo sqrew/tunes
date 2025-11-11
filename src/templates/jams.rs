@@ -1,4 +1,3 @@
-#![allow(unused, dead_code)]
 // Tunes Live Coding Template
 //
 // Edit this file and save to hear your changes in real-time!
@@ -18,10 +17,10 @@ use crate::consts::*;
 use crate::engine::AudioEngine;
 use crate::instruments::Instrument;
 
+#[allow(dead_code)]
 fn main() -> anyhow::Result<()> {
     // Create your composition here
     let mut comp = Composition::new(Tempo::new(140.0));
-
     // Convert to mixer
     let mixer = comp.into_mixer();
 

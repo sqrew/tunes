@@ -205,7 +205,7 @@ pub fn bossa_clave() -> Vec<usize> {
 ///
 /// # Example
 /// ```
-/// use tunes::sequences::clave_pattern;
+/// use tunes::sequences::clave::clave_pattern;
 ///
 /// // Create a custom 6/8 clave pattern
 /// let pattern = clave_pattern(&[0, 3, 5, 9, 11], 12);
