@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tweening_demo.rs` - Runtime parameter tweening for volume, pan, and playback rate
   - `streaming_demo.rs` - Memory-efficient audio streaming for long files
   - `doppler_effect_demo.rs` - Realistic doppler effect for moving sound sources (car passing, helicopter flyby, racing)
+  - `new_transforms_demo.rs` - Demonstrations of new unified transforms (range_dilation, shape_contour, echo)
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance
@@ -144,11 +145,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Pattern Transformation Methods for Live Coding
-- **Twenty-four pattern manipulation methods** - Powerful tools for generative music and live coding workflows
+- **Twenty-seven pattern manipulation methods** - Powerful tools for generative music and live coding workflows
 - **NEW: `.transform()` namespace API** - Closure-based scoped access to all transformations
   - Example: `.transform(|t| t.shift(7).humanize(0.01, 0.05).rotate(1))`
   - Provides clean, organized namespace - only see transforms when you need them
-  - Reduces autocomplete pollution - 24 methods are scoped within `.transform()`
+  - Reduces autocomplete pollution - 27 methods are scoped within `.transform()`
   - Fully backward compatible - old direct-call syntax still works: `.shift(7).humanize(0.01, 0.05)`
   - Rust-idiomatic closure-based API with clear visual boundaries
   - Can chain multiple `.transform()` blocks for organized, readable code
@@ -317,9 +318,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Example: `.ripple(0.02)` creates water droplet-like cascading timing and pitch shifts
   - Positive intensity pushes notes forward in time and up in pitch
   - Effect decays over time (70% per note) for natural-sounding cascades
+- **`.range_dilation(factor)`** - **NEW: Unified pitch range expansion/compression** around pattern's center pitch
+  - Example: `.range_dilation(0.5)` compresses range to 50% (tighten melodic contour)
+  - Example: `.range_dilation(2.0)` expands range to 200% (exaggerate melodic motion)
+  - **Unified design:** `factor < 1.0` compress, `factor = 1.0` no change, `factor > 1.0` expand
+  - Replaces need for separate compress/expand functions with single intuitive parameter
+  - Calculates geometric mean as center, scales all pitches' distances from center
+  - Perfect for generative music: compress wild random patterns or expand subtle variations
+  - Great for dynamic control: modulate factor over time for breathing melodies
+  - See `examples/new_transforms_demo.rs` for comprehensive demonstrations
+- **`.shape_contour(factor)`** - **NEW: Unified melodic interval smoothing/exaggeration**
+  - Example: `.shape_contour(0.4)` smooths large jumps to 40% (stepwise motion)
+  - Example: `.shape_contour(2.5)` exaggerates intervals to 250% (dramatic leaps)
+  - **Unified design:** `factor < 1.0` smooth, `factor = 1.0` no change, `factor > 1.0` exaggerate
+  - Replaces need for separate smooth/exaggerate functions with single intuitive parameter
+  - Scales melodic intervals relative to first note (anchor point)
+  - Perfect for melodic control: tame wild generative patterns or add drama to simple melodies
+  - Use cases: fix awkward leaps, create singable melodies, add expressiveness
+  - Combine with `.magnetize()` for scale-constrained smoothing
+  - See `examples/new_transforms_demo.rs` for smooth/exaggerated contour examples
+- **`.echo(delay, repeats, decay)`** - **NEW: Create delay/echo trails with volume decay**
+  - Example: `.echo(0.5, 3, 0.7)` creates 3 echoes, 0.5s apart, each 70% volume of previous
+  - Parameters: delay time (seconds), number of repetitions, decay factor per echo (0.0-1.0)
+  - Duplicates entire pattern multiple times with time offset and exponential volume decay
+  - Perfect for ambient effects, spacious textures, rhythmic delays, dub-style echoes
+  - Works with notes, drums, and samples - all event types get echoed
+  - Decay calculation: echo N is at `decay^N` volume (0.7^3 = 0.343 = 34.3% for 3rd echo)
+  - Combine with other transforms: `.shape_contour(0.6).echo(0.3, 2, 0.5)` for smooth + echo
+  - See `examples/new_transforms_demo.rs` for echo demonstrations
 - **All methods are chainable** and work seamlessly with existing pattern operations
   - Example: `.pattern_start().note(&[C4], 1.0).granularize(16).mutate(4).thin(0.7).shuffle().humanize(0.01, 0.08)`
-- **Fully tested** with 59 new unit tests ensuring correctness and edge cases (includes 2 tests for `.transform()` namespace API)
+  - Example: `.transform(|t| t.range_dilation(0.7).shape_contour(1.3).echo(0.4, 2, 0.6))` combines new transforms
+- **Fully tested** with 69 new unit tests ensuring correctness and edge cases (includes 2 tests for `.transform()` namespace API, 10 tests for new transforms)
 
 #### Professional Bus Architecture and Master Effects Chain
 - **Major architectural refactor** - Complete bus-based mixing system with master effects chain

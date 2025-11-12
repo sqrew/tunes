@@ -19,6 +19,7 @@
 - [AudioEngine Layer](./concepts/engine.md)
 - [Mixer Layer](./concepts/mixer.md)
 - [Composition Layer](./concepts/composition.md)
+- [Tempo and Rhythm](./concepts/tempo-rhythm.md)
 
 ---
 
@@ -43,6 +44,10 @@
 # Advanced Topics
 
 - [Algorithmic Composition](./advanced/algorithmic.md)
+- [Note Generators](./advanced/generators.md)
+- [Pattern Transformations](./advanced/transformations.md)
+- [Importing Audio](./advanced/import.md)
+- [Exporting Audio](./advanced/export.md)
 - [MIDI Import/Export](./advanced/midi.md)
 - [Live Coding](./advanced/live-coding.md)
 - [Performance Optimization](./advanced/performance.md)

@@ -21,6 +21,7 @@ use crate::instruments::Instrument;
 fn main() -> anyhow::Result<()> {
     // Create your composition here
     let mut comp = Composition::new(Tempo::new(140.0));
+
     // Convert to mixer
     let mixer = comp.into_mixer();
 

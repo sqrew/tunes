@@ -106,6 +106,122 @@ mixer.master_limiter(Limiter::new(0.95, 0.05));                        // Protec
 
 ---
 
+## Two Ways to Apply Effects
+
+Similar to generators and transformations, Tunes provides two syntaxes for applying effects: direct method calls and a cleaner namespaced API using `.effects()`.
+
+### Direct Method Calls (Classic Syntax)
+
+You can call effect methods directly on the track builder:
+
+```rust
+use tunes::prelude::*;
+
+let mut comp = Composition::new(Tempo::new(120.0));
+
+comp.track("direct")
+    .filter(Filter::low_pass(1000.0, 0.7))     // Direct call
+    .reverb(Reverb::new(0.8, 0.5, 0.3))        // Direct call
+    .delay(Delay::new(0.25, 0.4, 0.5));        // Direct call
+```
+
+**Pros:**
+- Familiar if you're used to the original API
+- Slightly more concise for single effects
+
+**Cons:**
+- Clutters autocomplete with 17+ effect methods
+- Less organized when applying multiple effects
+
+### Effects Namespace (New Syntax)
+
+Encapsulate effects in an `.effects()` closure for better organization:
+
+```rust
+use tunes::prelude::*;
+
+let mut comp = Composition::new(Tempo::new(120.0));
+
+comp.track("organized")
+    .notes(&[C4, E4, G4], 0.5)
+    .effects(|e| e  // Enter effects namespace
+        .filter(Filter::low_pass(1000.0, 0.7))
+        .reverb(Reverb::new(0.8, 0.5, 0.3))
+        .delay(Delay::new(0.25, 0.4, 0.5))
+    );              // Automatically exits namespace
+```
+
+**Pros:**
+- Cleaner autocomplete - effects only appear inside `.effects()`
+- Better organization - visual grouping of related processing
+- More readable - clear boundaries for effect processing
+- Easy to chain with `.generator()` and `.transform()`
+
+**Cons:**
+- Slightly more verbose for single effects
+
+**Both syntaxes work and are fully compatible!** Choose whichever fits your workflow.
+
+### Complete Example with All Three Namespaces
+
+Here's how generators, transformations, and effects work together:
+
+```rust
+use tunes::prelude::*;
+
+let mut comp = Composition::new(Tempo::new(120.0));
+
+comp.track("complete")
+    // 1. Generate musical patterns
+    .generator(|g| g
+        .chord(C4, &ChordPattern::MAJOR, 0.5)
+        .arpeggiate(&[C5, E5, G5, C6], 0.125)
+    )
+    // 2. Transform the patterns
+    .transform(|t| t
+        .shift(7)
+        .humanize(0.01, 0.05)
+    )
+    // 3. Apply effects
+    .effects(|e| e
+        .filter(Filter::low_pass(2000.0, 0.7))
+        .compressor(Compressor::new(0.6, 3.0, 0.01, 0.1, 1.3))
+        .reverb(Reverb::new(0.4, 0.5, 0.3))
+        .delay(Delay::new(0.375, 0.3, 0.4))
+    );
+```
+
+**Workflow:**
+1. **Generate** musical material (chords, scales, arpeggios)
+2. **Transform** the material (transpose, humanize, etc.)
+3. **Apply effects** (filters, reverb, delay, etc.)
+
+This creates a clear, organized signal flow that's easy to read and modify.
+
+### Multiple Effect Blocks
+
+You can use multiple `.effects()` blocks for organization:
+
+```rust
+comp.track("layered")
+    .notes(&[C4, E4, G4], 0.5)
+    .effects(|e| e  // Filtering and dynamics
+        .filter(Filter::band_pass(1000.0, 0.7))
+        .compressor(Compressor::new(0.6, 3.0, 0.01, 0.1, 1.2))
+        .saturation(Saturation::new(1.5, 0.3, 0.5))
+    )
+    .effects(|e| e  // Modulation
+        .chorus(Chorus::new(1.0, 5.0, 0.4))
+        .phaser(Phaser::new(0.5, 0.7, 0.5, 4, 0.5))
+    )
+    .effects(|e| e  // Time-based effects
+        .delay(Delay::new(0.375, 0.4, 0.5))
+        .reverb(Reverb::new(0.6, 0.5, 0.4))
+    );
+```
+
+---
+
 ## The 16 Effects
 
 ### 1. EQ (3-Band Equalizer)

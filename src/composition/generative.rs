@@ -297,6 +297,24 @@ impl<'a> TransformBuilder<'a> {
         self.inner = self.inner.every_n(n, drum);
         self
     }
+
+    /// Dilate pitch range around center
+    pub fn range_dilation(mut self, factor: f32) -> Self {
+        self.inner = self.inner.range_dilation(factor);
+        self
+    }
+
+    /// Shape melodic contour (smooth/exaggerate)
+    pub fn shape_contour(mut self, factor: f32) -> Self {
+        self.inner = self.inner.shape_contour(factor);
+        self
+    }
+
+    /// Create echo/delay trail
+    pub fn echo(mut self, delay: f32, repeats: usize, decay: f32) -> Self {
+        self.inner = self.inner.echo(delay, repeats, decay);
+        self
+    }
 }
 
 /// Builder for note generators (accessed via `.generator()`)
@@ -2529,6 +2547,355 @@ impl<'a> TrackBuilder<'a> {
 
         self
     }
+
+    /// Dilate (expand/compress) the pitch range around its center
+    ///
+    /// Adjusts the distance of all pitches from the pattern's center pitch.
+    /// - `factor < 1.0` compresses toward center (0.5 = half range)
+    /// - `factor = 1.0` no change
+    /// - `factor > 1.0` expands from center (2.0 = double range)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Compress range to 70% of original
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C3, C5, C2, C6], 0.25)
+    ///     .range_dilation(0.7);
+    ///
+    /// // Expand range to 150% of original
+    /// comp.track("wide")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .range_dilation(1.5);
+    /// ```
+    pub fn range_dilation(mut self, factor: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || factor == 1.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Find center pitch (geometric mean)
+        let mut sum_log_freq = 0.0;
+        let mut count = 0;
+
+        for event in &self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    for i in 0..note.num_freqs {
+                        sum_log_freq += note.frequencies[i].ln();
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        if count == 0 {
+            return self;
+        }
+
+        let center_pitch = (sum_log_freq / count as f32).exp();
+
+        // Apply dilation
+        for event in &mut self.get_track_mut().events {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    for i in 0..note.num_freqs {
+                        let original_freq = note.frequencies[i];
+
+                        // Calculate distance from center in semitones
+                        let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
+
+                        // Scale distance by factor
+                        let new_distance = semitone_distance * factor;
+                        let shift_ratio = 2.0_f32.powf(new_distance / 12.0);
+
+                        note.frequencies[i] = center_pitch * shift_ratio;
+                    }
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Shape melodic contour by scaling interval sizes
+    ///
+    /// Modifies the size of melodic intervals (jumps between consecutive notes).
+    /// - `factor < 1.0` smooths (reduces interval jumps)
+    /// - `factor = 1.0` no change
+    /// - `factor > 1.0` exaggerates (increases interval jumps)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Smooth out large interval jumps
+    /// comp.track("smooth")
+    ///     .pattern_start()
+    ///     .notes(&[C4, C6, C3, C5], 0.25)
+    ///     .shape_contour(0.5);  // 50% of original intervals
+    ///
+    /// // Exaggerate melodic motion
+    /// comp.track("dramatic")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4], 0.25)
+    ///     .shape_contour(2.0);  // Double the intervals
+    /// ```
+    pub fn shape_contour(mut self, factor: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || factor == 1.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect note events in time order
+        let mut note_refs: Vec<(f32, usize)> = Vec::new();
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            if let AudioEvent::Note(note) = event {
+                if note.start_time >= pattern_start && note.start_time < cursor {
+                    note_refs.push((note.start_time, idx));
+                }
+            }
+        }
+
+        if note_refs.len() < 2 {
+            return self;
+        }
+
+        // Sort by time
+        note_refs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Get first note's primary frequency as anchor
+        let first_idx = note_refs[0].1;
+        let anchor_freq = if let AudioEvent::Note(note) = &self.get_track_mut().events[first_idx] {
+            note.frequencies[0]
+        } else {
+            return self;
+        };
+
+        // Shape intervals relative to first note
+        for i in 1..note_refs.len() {
+            let note_idx = note_refs[i].1;
+
+            if let AudioEvent::Note(note) = &mut self.get_track_mut().events[note_idx] {
+                for j in 0..note.num_freqs {
+                    let original_freq = note.frequencies[j];
+
+                    // Calculate interval from anchor in semitones
+                    let semitone_interval = 12.0 * (original_freq / anchor_freq).log2();
+
+                    // Scale interval by factor
+                    let new_interval = semitone_interval * factor;
+                    let shift_ratio = 2.0_f32.powf(new_interval / 12.0);
+
+                    note.frequencies[j] = anchor_freq * shift_ratio;
+                }
+            }
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Create echo/delay trail of the pattern
+    ///
+    /// Duplicates the pattern multiple times with time delay and volume decay.
+    ///
+    /// # Arguments
+    /// * `delay` - Time between echoes in seconds
+    /// * `repeats` - Number of echo repetitions
+    /// * `decay` - Volume reduction per echo (0.0-1.0)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Create 3 echoes, 0.5s apart, each 60% volume of previous
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4], 0.25)
+    ///     .echo(0.5, 3, 0.6);
+    /// ```
+    pub fn echo(mut self, delay: f32, repeats: usize, decay: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || repeats == 0 || delay <= 0.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect original events
+        let original_events: Vec<AudioEvent> = self
+            .get_track_mut()
+            .events
+            .iter()
+            .filter(|event| {
+                let start_time = match event {
+                    AudioEvent::Note(n) => n.start_time,
+                    AudioEvent::Drum(d) => d.start_time,
+                    AudioEvent::Sample(s) => s.start_time,
+                    _ => return false,
+                };
+                start_time >= pattern_start && start_time < cursor
+            })
+            .cloned()
+            .collect();
+
+        // Create echoes
+        for repeat in 1..=repeats {
+            let time_offset = delay * repeat as f32;
+            let volume_scale = decay.powi(repeat as i32);
+
+            for event in &original_events {
+                let mut echoed_event = event.clone();
+
+                match &mut echoed_event {
+                    AudioEvent::Note(note) => {
+                        note.start_time += time_offset;
+                        note.velocity *= volume_scale;
+                    }
+                    AudioEvent::Drum(drum) => {
+                        drum.start_time += time_offset;
+                        // Drums don't have velocity, decay is implicit
+                    }
+                    AudioEvent::Sample(sample) => {
+                        sample.start_time += time_offset;
+                        sample.volume *= volume_scale;
+                    }
+                    _ => {}
+                }
+
+                self.get_track_mut().events.push(echoed_event);
+            }
+        }
+
+        // Update cursor to end of last echo
+        let total_echo_duration = delay * repeats as f32;
+        self.cursor = cursor + total_echo_duration;
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
+
+    /// Apply gradual tempo change (accelerando/ritardando) across pattern
+    ///
+    /// Progressively adjusts note spacing to create tempo acceleration or deceleration.
+    /// - `end_factor < 1.0` ritardando (slow down - notes spread apart)
+    /// - `end_factor = 1.0` no change (constant tempo)
+    /// - `end_factor > 1.0` accelerando (speed up - notes compress together)
+    ///
+    /// # Arguments
+    /// * `end_factor` - Target tempo multiplier at end of pattern
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Ritardando - slow down to 60% of original tempo
+    /// comp.track("slow")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    ///     .tempo_curve(0.6);
+    ///
+    /// // Accelerando - speed up to 150% of original tempo
+    /// comp.track("fast")
+    ///     .pattern_start()
+    ///     .notes(&[C5, B4, A4, G4, F4, E4, D4, C4], 0.25)
+    ///     .tempo_curve(1.5);
+    /// ```
+    pub fn tempo_curve(mut self, end_factor: f32) -> Self {
+        let pattern_duration = self.cursor - self.pattern_start;
+
+        if pattern_duration <= 0.0 || end_factor == 1.0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        // Collect all events with their original relative times
+        let mut events_with_times: Vec<(usize, f32)> = Vec::new();
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            let start_time = match event {
+                AudioEvent::Note(n) => n.start_time,
+                AudioEvent::Drum(d) => d.start_time,
+                AudioEvent::Sample(s) => s.start_time,
+                _ => continue,
+            };
+
+            if start_time >= pattern_start && start_time < cursor {
+                events_with_times.push((idx, start_time));
+            }
+        }
+
+        if events_with_times.is_empty() {
+            return self;
+        }
+
+        // Apply progressive time scaling
+        // Each event's position gets scaled by lerp(1.0, end_factor, progress)
+        for (idx, original_time) in events_with_times {
+            let relative_time = original_time - pattern_start;
+            let progress = relative_time / pattern_duration; // 0.0 to 1.0
+
+            // Linear interpolation from 1.0 (start) to end_factor (end)
+            let time_scale = 1.0 + (end_factor - 1.0) * progress;
+            let new_relative_time = relative_time * time_scale;
+            let new_time = pattern_start + new_relative_time;
+
+            // Update event timing
+            match &mut self.get_track_mut().events[idx] {
+                AudioEvent::Note(note) => note.start_time = new_time,
+                AudioEvent::Drum(drum) => drum.start_time = new_time,
+                AudioEvent::Sample(sample) => sample.start_time = new_time,
+                _ => {}
+            }
+        }
+
+        // Recalculate pattern end time based on last event
+        let new_end_time = self
+            .get_track_mut()
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                AudioEvent::Note(n) if n.start_time >= pattern_start => Some(n.start_time),
+                AudioEvent::Drum(d) if d.start_time >= pattern_start => Some(d.start_time),
+                AudioEvent::Sample(s) if s.start_time >= pattern_start => Some(s.start_time),
+                _ => None,
+            })
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(cursor);
+
+        self.cursor = new_end_time.max(pattern_start);
+
+        self.get_track_mut().invalidate_time_cache();
+        self.update_section_duration();
+        self
+    }
 }
 
 #[cfg(test)]
@@ -4220,5 +4587,240 @@ mod tests {
                 assert_eq!(note.num_freqs, 3);
             }
         }
+    }
+
+    #[test]
+    fn test_range_dilation_compress() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Pattern with wide range: C3, C5 (2 octaves = 24 semitones)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C3, C5], 0.5)
+            .range_dilation(0.5); // Compress to half range (1 octave)
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        // Center should be geometric mean: sqrt(C3 * C5) = C4
+        // C3 is 12 semitones below C4, compressed to 6 = G3
+        // C5 is 12 semitones above C4, compressed to 6 = F#4
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) =
+            (&events[0], &events[1])
+        {
+            let center = C4;
+            let expected_low = center * 2.0_f32.powf(-6.0 / 12.0); // G3
+            let expected_high = center * 2.0_f32.powf(6.0 / 12.0); // F#4
+
+            assert!((note1.frequencies[0] - expected_low).abs() < 1.0);
+            assert!((note2.frequencies[0] - expected_high).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_range_dilation_expand() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Pattern with narrow range: B3, C4 (1 semitone)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[B3, CS4], 0.5)
+            .range_dilation(2.0); // Expand to double range (2 semitones)
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        // Center is geometric mean of B3 and CS4
+        // Intervals should be doubled
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) =
+            (&events[0], &events[1])
+        {
+            // Original interval was 2 semitones, doubled = 4 semitones
+            let interval_semitones = 12.0 * (note2.frequencies[0] / note1.frequencies[0]).log2();
+            assert!((interval_semitones - 4.0).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_range_dilation_no_change() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4, G4], 0.25)
+            .range_dilation(1.0); // Factor 1.0 = no change
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should be unchanged
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.frequencies[0] - E4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_shape_contour_smooth() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Wide intervals: C4, C6 (2 octaves = 24 semitones)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, C6], 0.5)
+            .shape_contour(0.5); // Smooth to 50% of interval = 12 semitones = 1 octave
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) =
+            (&events[0], &events[1])
+        {
+            // First note (anchor) should be unchanged
+            assert!((note1.frequencies[0] - C4).abs() < 0.1);
+
+            // Second note should be 12 semitones above (C5)
+            let expected = C4 * 2.0_f32.powf(12.0 / 12.0); // C5
+            assert!((note2.frequencies[0] - expected).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_shape_contour_exaggerate() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // Small intervals: C4, D4 (2 semitones)
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, D4], 0.5)
+            .shape_contour(2.0); // Exaggerate to 200% = 4 semitones
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 2);
+
+        if let (AudioEvent::Note(note1), AudioEvent::Note(note2)) =
+            (&events[0], &events[1])
+        {
+            // First note (anchor) should be unchanged
+            assert!((note1.frequencies[0] - C4).abs() < 0.1);
+
+            // Second note should be 4 semitones above (E4)
+            let expected = C4 * 2.0_f32.powf(4.0 / 12.0); // E4
+            assert!((note2.frequencies[0] - expected).abs() < 0.5);
+        }
+    }
+
+    #[test]
+    fn test_shape_contour_single_note() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.5)
+            .shape_contour(2.0); // Should do nothing with single note
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 1);
+
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.frequencies[0] - C4).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn test_echo_creates_repetitions() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.25)
+            .echo(0.5, 3, 0.7); // 3 echoes, 0.5s apart, 70% decay
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 1 original + 3 echoes = 4 notes
+        assert_eq!(events.len(), 4);
+
+        // Check timing
+        if let AudioEvent::Note(note) = &events[0] {
+            assert!((note.start_time - 0.0).abs() < 0.01);
+        }
+        if let AudioEvent::Note(note) = &events[1] {
+            assert!((note.start_time - 0.5).abs() < 0.01);
+        }
+        if let AudioEvent::Note(note) = &events[2] {
+            assert!((note.start_time - 1.0).abs() < 0.01);
+        }
+        if let AudioEvent::Note(note) = &events[3] {
+            assert!((note.start_time - 1.5).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_echo_volume_decay() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.25)
+            .echo(0.3, 2, 0.5); // 2 echoes, 50% decay
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+        assert_eq!(events.len(), 3);
+
+        // Check volume decay
+        if let (
+            AudioEvent::Note(note1),
+            AudioEvent::Note(note2),
+            AudioEvent::Note(note3),
+        ) = (&events[0], &events[1], &events[2])
+        {
+            // First echo should be 50% of original
+            assert!((note2.velocity - note1.velocity * 0.5).abs() < 0.01);
+
+            // Second echo should be 25% of original (0.5^2)
+            assert!((note3.velocity - note1.velocity * 0.25).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_echo_with_multiple_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .notes(&[C4, E4], 0.25)
+            .echo(0.5, 2, 0.6);
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should have 2 original + 4 echoes (2 notes × 2 echoes) = 6 notes
+        assert_eq!(events.len(), 6);
+    }
+
+    #[test]
+    fn test_echo_zero_repeats() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        comp.track("melody")
+            .pattern_start()
+            .note(&[C4], 0.25)
+            .echo(0.5, 0, 0.7); // 0 repeats = no echoes
+
+        let mixer = comp.into_mixer();
+        let events = &mixer.tracks()[0].events;
+
+        // Should only have original note
+        assert_eq!(events.len(), 1);
     }
 }
