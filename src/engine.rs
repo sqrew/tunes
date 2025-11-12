@@ -78,10 +78,21 @@ enum AudioCommand {
         id: SoundId,
         position: SpatialPosition,
     },
+    SetSoundVelocity {
+        id: SoundId,
+        vx: f32,
+        vy: f32,
+        vz: f32,
+    },
     SetListenerPosition {
         x: f32,
         y: f32,
         z: f32,
+    },
+    SetListenerVelocity {
+        vx: f32,
+        vy: f32,
+        vz: f32,
     },
     SetListenerForward {
         x: f32,
@@ -616,10 +627,22 @@ impl AudioEngine {
                     sound.spatial_position = Some(position);
                 }
             }
+            AudioCommand::SetSoundVelocity { id, vx, vy, vz } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    if let Some(pos) = &mut sound.spatial_position {
+                        pos.set_velocity(vx, vy, vz);
+                    }
+                }
+            }
             AudioCommand::SetListenerPosition { x, y, z } => {
                 listener.position.x = x;
                 listener.position.y = y;
                 listener.position.z = z;
+            }
+            AudioCommand::SetListenerVelocity { vx, vy, vz } => {
+                listener.velocity.x = vx;
+                listener.velocity.y = vy;
+                listener.velocity.z = vz;
             }
             AudioCommand::SetListenerForward { x, y, z } => {
                 use crate::synthesis::spatial::Vec3;
@@ -846,17 +869,20 @@ impl AudioEngine {
             }
 
             // Calculate spatial audio if runtime position is set
-            let (spatial_volume, spatial_pan) = if let Some(pos) = &sound.spatial_position {
+            let (spatial_volume, spatial_pan, spatial_pitch) = if let Some(pos) = &sound.spatial_position {
                 let result = calculate_spatial(pos, listener, spatial_params);
-                (result.volume, result.pan)
+                (result.volume, result.pan, result.pitch)
             } else {
-                (1.0, sound.pan)
+                (1.0, sound.pan, 1.0)
             };
+
+            // Apply doppler pitch shift to playback rate
+            let effective_playback_rate = sound.playback_rate * spatial_pitch;
 
             // Mix temp buffer into output with volume/pan/fade applied per-sample
             for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
                 let frame_time =
-                    sound.elapsed_time + (frame_idx as f32 * time_delta * sound.playback_rate);
+                    sound.elapsed_time + (frame_idx as f32 * time_delta * effective_playback_rate);
 
                 // Apply fade if active
                 let effective_volume = if let Some(fade_start) = sound.fade_start_time {
@@ -904,10 +930,11 @@ impl AudioEngine {
                 }
             }
 
-            // Advance time
-            sound.elapsed_time += block_duration;
+            // Advance time with doppler-adjusted playback rate
+            // This ensures mixer renders samples at the correct pitch
+            sound.elapsed_time += block_duration * effective_playback_rate;
             sound.sample_clock =
-                (sound.sample_clock + (num_frames as f32 * sound.playback_rate)) % sample_rate;
+                (sound.sample_clock + (num_frames as f32 * effective_playback_rate)) % sample_rate;
         }
 
         // Remove finished sounds
@@ -1545,6 +1572,72 @@ impl AudioEngine {
     pub fn set_listener_forward(&self, x: f32, y: f32, z: f32) -> Result<()> {
         self.command_tx
             .send(AudioCommand::SetListenerForward { x, y, z })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set the velocity of a sound source for Doppler effect
+    ///
+    /// The velocity determines the Doppler shift for moving sound sources.
+    /// Sounds moving toward the listener will have higher pitch, sounds moving
+    /// away will have lower pitch.
+    ///
+    /// Velocity is in units per second (typically meters/second).
+    ///
+    /// # Arguments
+    /// * `id` - The sound to modify
+    /// * `vx` - X velocity component (units per second)
+    /// * `vy` - Y velocity component (units per second)
+    /// * `vz` - Z velocity component (units per second)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("car").note(&[110.0], 5.0);
+    /// let car_id = engine.play_mixer_realtime(&comp.into_mixer())?;
+    ///
+    /// // Set position and velocity for a car passing by
+    /// engine.set_sound_position(car_id, -20.0, 0.0, 5.0)?;
+    /// engine.set_sound_velocity(car_id, 30.0, 0.0, 0.0)?; // 30 m/s to the right
+    ///
+    /// // You'll hear the pitch shift as it approaches and passes
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_sound_velocity(&self, id: SoundId, vx: f32, vy: f32, vz: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetSoundVelocity { id, vx, vy, vz })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set the listener's velocity for Doppler effect
+    ///
+    /// The listener velocity affects Doppler calculations for all sounds.
+    /// Useful when the player/camera is moving through the world.
+    ///
+    /// Velocity is in units per second (typically meters/second).
+    ///
+    /// # Arguments
+    /// * `vx` - X velocity component (units per second)
+    /// * `vy` - Y velocity component (units per second)
+    /// * `vz` - Z velocity component (units per second)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Player is moving forward at 5 m/s
+    /// engine.set_listener_velocity(0.0, 0.0, 5.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_listener_velocity(&self, vx: f32, vy: f32, vz: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetListenerVelocity { vx, vy, vz })
             .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
     }
 

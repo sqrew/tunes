@@ -130,6 +130,124 @@ fn listener_control() -> anyhow::Result<()> {
 }
 ```
 
+### Doppler Effect
+
+Tunes includes a built-in doppler effect system that automatically pitch-shifts sounds based on their velocity relative to the listener. This creates realistic audio for fast-moving objects like cars, aircraft, and projectiles.
+
+```rust
+use tunes::prelude::*;
+use std::thread;
+use std::time::Duration;
+
+fn car_passing_by() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Configure doppler effect
+    use tunes::synthesis::spatial::SpatialParams;
+    let mut params = SpatialParams::default();
+    params.doppler_enabled = true;
+    params.doppler_factor = 1.0;  // 1.0 = realistic, 2.0 = exaggerated
+    engine.set_spatial_params(params)?;
+
+    // Create engine sound
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("car", &Instrument::synth_bass())
+        .filter(Filter::low_pass(400.0, 0.7))
+        .note(&[110.0], 5.0);
+
+    let sound_id = engine.play_looping(&comp.into_mixer())?;
+
+    // Simulate car passing from left to right at 30 m/s (~67 mph)
+    for i in 0..=50 {
+        let t = i as f32 / 50.0;
+        let x = -30.0 + (60.0 * t);  // -30m to +30m
+
+        engine.set_sound_position(sound_id, x, 0.0, 5.0)?;
+        engine.set_sound_velocity(sound_id, 30.0, 0.0, 0.0)?;  // Moving right
+
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    engine.stop(sound_id)?;
+    Ok(())
+}
+```
+
+**Physics:**
+- **Approaching sounds** - Higher pitch (sound waves compressed)
+- **Receding sounds** - Lower pitch (sound waves stretched)
+- **Formula:** `pitch = speed_of_sound / (speed_of_sound - relative_velocity)`
+- **Speed of sound:** 343 m/s (realistic physics)
+- **Pitch range:** Clamped to 0.5x - 2.0x (one octave range)
+
+**Doppler Configuration:**
+
+```rust
+use tunes::synthesis::spatial::SpatialParams;
+
+let mut params = SpatialParams::default();
+params.doppler_enabled = true;      // Enable/disable doppler
+params.doppler_factor = 1.0;        // Strength multiplier:
+                                     // 0.0 = disabled
+                                     // 0.5 = subtle
+                                     // 1.0 = realistic physics
+                                     // 2.0 = exaggerated (arcade games)
+
+engine.set_spatial_params(params)?;
+```
+
+**Setting Velocities:**
+
+```rust
+// Set sound source velocity (m/s)
+engine.set_sound_velocity(sound_id, vx, vy, vz)?;
+
+// Set listener velocity (for moving camera/player)
+engine.set_listener_velocity(vx, vy, vz)?;
+```
+
+**Use Cases:**
+- **Racing games** - Car engine sounds as they pass
+- **Flight simulators** - Aircraft flyby effects
+- **Action games** - Bullets, projectiles, rockets
+- **Open world games** - Vehicles in the distance
+- **VR experiences** - Immersive moving sound sources
+
+**Example: Circular Motion**
+
+```rust
+// Race car circling the listener
+let radius = 20.0;
+let angular_velocity = std::f32::consts::PI;  // rad/s
+
+for i in 0..60 {
+    let t = i as f32 / 60.0;
+    let angle = t * angular_velocity * 6.0;
+
+    let x = radius * angle.cos();
+    let z = radius * angle.sin();
+
+    // Calculate tangential velocity
+    let vx = -radius * angular_velocity * angle.sin();
+    let vz = radius * angular_velocity * angle.cos();
+
+    engine.set_sound_position(sound_id, x, 0.0, z)?;
+    engine.set_sound_velocity(sound_id, vx, 0.0, vz)?;
+
+    thread::sleep(Duration::from_millis(100));
+}
+```
+
+**Complete Example:**
+
+See `examples/doppler_effect_demo.rs` for a comprehensive demonstration with:
+- Car passing by (left to right)
+- Helicopter flyby (front to back)
+- Racing car on circular track
+- Doppler factor comparison (disabled/subtle/realistic/exaggerated)
+
+Run it with: `cargo run --example doppler_effect_demo`
+
 ### Multi-Source Spatial Scene
 
 Create complex 3D soundscapes with multiple positioned instruments.

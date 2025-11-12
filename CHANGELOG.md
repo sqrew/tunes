@@ -58,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Background decoding thread with lock-free ring buffer for smooth playback
   - Multiple concurrent streams supported with independent control
   - Automatic cleanup on stop (decoder thread terminates gracefully)
+- **Doppler Effect** - Realistic pitch shifting for moving sound sources:
+  - `AudioEngine::set_sound_velocity(id, vx, vy, vz)` - Set velocity for doppler effect on sounds
+  - `AudioEngine::set_listener_velocity(vx, vy, vz)` - Set listener velocity for relative doppler
+  - Physics-based pitch shift: higher pitch when approaching, lower when receding
+  - Configurable doppler factor (0.0 = disabled, 1.0 = realistic, 2.0 = exaggerated)
+  - Speed of sound = 343 m/s (realistic physics)
+  - Perfect for racing games (car flyby), flight sims (aircraft), projectiles
+  - **BUG FIX**: Doppler pitch was calculated but not applied to audio timeline - fixed by advancing `elapsed_time` with doppler-adjusted playback rate
 - New examples:
   - `sample_slicing.rs` - Comprehensive demonstration of all slicing techniques
   - `slice_playback.rs` - Direct sample/slice playback in compositions
@@ -65,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `multiformat_import.rs` - Multi-format audio loading (MP3, OGG, FLAC, WAV, AAC)
   - `tweening_demo.rs` - Runtime parameter tweening for volume, pan, and playback rate
   - `streaming_demo.rs` - Memory-efficient audio streaming for long files
+  - `doppler_effect_demo.rs` - Realistic doppler effect for moving sound sources (car passing, helicopter flyby, racing)
 - Exported `Sample` and `SampleSlice` in prelude for convenience
 
 ### Performance

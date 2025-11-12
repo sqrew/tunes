@@ -135,6 +135,217 @@ fn main() -> anyhow::Result<()> {
 
 Samples are automatically converted to match your output sample rate during playback. Load any sample rate, and Tunes handles the conversion.
 
+## Streaming Audio for Long Files
+
+For long audio files (background music, ambience, voice-over narration), loading the entire file into memory can be wasteful. Tunes provides **streaming audio** that decodes files on-the-fly without loading them entirely into RAM.
+
+### When to Use Streaming vs. Loading
+
+**Use `Sample::from_file()` for:**
+- Sound effects (< 5 seconds typically)
+- Samples you'll manipulate (pitch shift, time stretch, slice)
+- Samples used repeatedly
+- Samples you need to process before playback
+
+**Use streaming (`AudioEngine::stream_file()`) for:**
+- Background music (3-10+ minutes)
+- Ambient soundscapes
+- Voice-over narration
+- Any long audio where you don't need real-time manipulation
+- When memory usage is a concern
+
+### Basic Streaming
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Stream a long background music file without loading it all into RAM
+    let music_id = engine.stream_file("assets/background_music.mp3")?;
+
+    // Music plays in the background...
+    std::thread::sleep(std::time::Duration::from_secs(60));
+
+    // Stop when done
+    engine.stop_stream(music_id)?;
+
+    Ok(())
+}
+```
+
+**How it works:**
+- File is decoded in a background thread
+- Decoded audio is buffered in a lock-free ring buffer (~5 seconds of audio)
+- Audio callback reads from the buffer with zero allocations
+- Minimal memory footprint - only buffered audio in RAM, not entire file
+
+### Looping Background Music
+
+Perfect for game music that needs to repeat continuously:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Loop background music indefinitely
+    let music_id = engine.stream_file_looping("assets/music_loop.mp3")?;
+
+    // Music loops until you stop it
+    std::thread::sleep(std::time::Duration::from_secs(120));
+
+    engine.stop_stream(music_id)?;
+
+    Ok(())
+}
+```
+
+The file will seamlessly restart from the beginning when it reaches the end.
+
+### Controlling Streaming Playback
+
+Streams support real-time control without allocations:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+    let music_id = engine.stream_file("assets/music.mp3")?;
+
+    // Volume control
+    engine.set_stream_volume(music_id, 0.5)?;  // 50% volume
+
+    // Pan control
+    engine.set_stream_pan(music_id, -0.5)?;    // Pan left
+
+    // Pause and resume
+    engine.pause_stream(music_id)?;
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    engine.resume_stream(music_id)?;
+
+    // Stop (cleans up decoder thread)
+    engine.stop_stream(music_id)?;
+
+    Ok(())
+}
+```
+
+### Multiple Concurrent Streams
+
+You can stream multiple files simultaneously:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Play multiple streams with independent control
+    let music = engine.stream_file_looping("assets/music.mp3")?;
+    let ambience = engine.stream_file_looping("assets/ambience.ogg")?;
+    let narration = engine.stream_file("assets/voiceover.flac")?;
+
+    // Control each independently
+    engine.set_stream_volume(music, 0.6)?;
+    engine.set_stream_volume(ambience, 0.3)?;
+    engine.set_stream_volume(narration, 0.9)?;
+
+    // Later: stop individual streams
+    engine.stop_stream(music)?;
+    engine.stop_stream(ambience)?;
+    engine.stop_stream(narration)?;
+
+    Ok(())
+}
+```
+
+### Practical Game Audio Example: Dynamic Music System
+
+```rust
+use tunes::prelude::*;
+
+struct MusicSystem {
+    engine: AudioEngine,
+    current_music: Option<SoundId>,
+}
+
+impl MusicSystem {
+    fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            engine: AudioEngine::new()?,
+            current_music: None,
+        })
+    }
+
+    fn play_menu_music(&mut self) -> anyhow::Result<()> {
+        // Stop any current music
+        if let Some(id) = self.current_music {
+            self.engine.stop_stream(id)?;
+        }
+
+        // Start new music
+        let id = self.engine.stream_file_looping("assets/music/menu.mp3")?;
+        self.engine.set_stream_volume(id, 0.7)?;
+        self.current_music = Some(id);
+
+        Ok(())
+    }
+
+    fn play_battle_music(&mut self) -> anyhow::Result<()> {
+        if let Some(id) = self.current_music {
+            self.engine.stop_stream(id)?;
+        }
+
+        let id = self.engine.stream_file_looping("assets/music/battle.mp3")?;
+        self.engine.set_stream_volume(id, 0.8)?;
+        self.current_music = Some(id);
+
+        Ok(())
+    }
+
+    fn fade_out_music(&mut self, duration: f32) -> anyhow::Result<()> {
+        if let Some(id) = self.current_music {
+            // Gradually reduce volume
+            for i in 0..10 {
+                let volume = 1.0 - (i as f32 / 10.0);
+                self.engine.set_stream_volume(id, volume)?;
+                std::thread::sleep(std::time::Duration::from_secs_f32(duration / 10.0));
+            }
+            self.engine.stop_stream(id)?;
+            self.current_music = None;
+        }
+        Ok(())
+    }
+}
+```
+
+### Streaming API Reference
+
+```rust
+// Start streaming
+let id = engine.stream_file("path.mp3")?;           // Play once
+let id = engine.stream_file_looping("path.mp3")?;  // Loop forever
+
+// Control playback
+engine.stop_stream(id)?;                            // Stop and cleanup
+engine.pause_stream(id)?;                           // Pause decoding
+engine.resume_stream(id)?;                          // Resume decoding
+
+// Adjust parameters
+engine.set_stream_volume(id, 0.5)?;                 // 0.0 to 1.0
+engine.set_stream_pan(id, -0.5)?;                   // -1.0 (left) to 1.0 (right)
+```
+
+**Supported formats:** MP3, OGG Vorbis, FLAC, WAV, AAC (same as `Sample::from_file()`)
+
+**Memory usage:** ~5 seconds of buffered audio (~900KB for stereo 44.1kHz), regardless of file length
+
+**Performance:** Background decoding thread, lock-free ring buffer, zero allocations in audio callback
+
 ## Sample Manipulation
 
 Tunes provides powerful tools for transforming samples. All methods return new `Sample` objects, leaving the original unchanged.
@@ -581,6 +792,15 @@ Sample::from_mono(vec![0.0, 0.5, 1.0], 44100)  // Programmatic creation
 comp.load_sample("name", "sample.mp3")?
 comp.track("t").sample("name")?
 comp.track("t").play_sample(&sample, 1.0)
+
+// Streaming (for long files - background music, ambience)
+let id = engine.stream_file("music.mp3")?         // Stream once
+let id = engine.stream_file_looping("music.mp3")? // Loop forever
+engine.set_stream_volume(id, 0.5)?                // Control volume
+engine.set_stream_pan(id, -0.5)?                  // Control pan
+engine.pause_stream(id)?                          // Pause
+engine.resume_stream(id)?                         // Resume
+engine.stop_stream(id)?                           // Stop & cleanup
 
 // Manipulation
 sample.time_stretch(1.5)        // 1.5x duration, same pitch

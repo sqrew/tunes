@@ -24,6 +24,7 @@
 
 # Game Audio Patterns
 
+- [Working with Samples](./game-audio/samples.md)
 - [Concurrent Sound Effects](./game-audio/concurrent-sfx.md)
 - [Dynamic Music Systems](./game-audio/dynamic-music.md)
 - [Spatial Audio](./game-audio/spatial-audio.md)
