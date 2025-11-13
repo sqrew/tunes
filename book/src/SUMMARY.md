@@ -8,8 +8,9 @@
 
 - [Installation & First Sound](./getting-started/installation.md)
   - [Level 1: Your First Sound](./getting-started/first-sound.md)
-  - [Level 2: Making Music](./getting-started/making-music.md)
-  - [Level 3: Algorithmic Music](./getting-started/algorithmic.md)
+  - [Level 2: Playing Samples](./getting-started/playing-samples.md)
+  - [Level 3: Making Music](./getting-started/making-music.md)
+  - [Level 4: Algorithmic Music](./getting-started/algorithmic.md)
 
 ---
 

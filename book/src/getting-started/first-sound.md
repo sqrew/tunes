@@ -33,4 +33,4 @@ Simple, but you've just synthesized sound from scratch in Rust!
 
 ---
 
-**Next:** [Level 2: Making Music](./making-music.md) →
+**Next:** [Level 2: Playing Samples](./playing-samples.md) →

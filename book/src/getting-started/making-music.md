@@ -1,4 +1,4 @@
-# Level 2: Making Music (Chord Progression)
+# Level 3: Making Music (Chord Progression)
 
 Now let's make something musical. Instead of raw frequencies, we'll use note names and create a chord progression:
 
@@ -31,4 +31,4 @@ This is the foundation of musical composition in Tunes – clear, readable code 
 
 ---
 
-**Next:** [Level 3: Algorithmic Music](./algorithmic.md) →
+**Next:** [Level 4: Algorithmic Music](./algorithmic.md) →

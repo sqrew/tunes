@@ -1,4 +1,4 @@
-# Level 3: Algorithmic Music (The Collatz Hook)
+# Level 4: Algorithmic Music (The Collatz Hook)
 
 Here's where Tunes gets interesting. Let's generate a melody from the **Collatz sequence** – a mathematical pattern that creates surprisingly musical results:
 
