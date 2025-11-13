@@ -54,4 +54,5 @@
 
 ---
 
+[Comparisons](./comparisons.md)
 [API Reference](./api-reference.md)

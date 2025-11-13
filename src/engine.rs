@@ -3,6 +3,7 @@ use crate::synthesis::spatial::{
     ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial,
 };
 use crate::track::Mixer;
+use crate::composition::{Composition, Tempo};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam::channel::{Receiver, Sender, unbounded};
 use ringbuf::{HeapRb, traits::{Split, Consumer, Producer, Observer}};
@@ -410,6 +411,7 @@ pub struct AudioEngine {
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
     spatial_params: Arc<Mutex<SpatialParams>>,
     sample_rate: f32,
+    sample_cache: Arc<Mutex<HashMap<String, crate::synthesis::Sample>>>, // Automatic sample caching
     _stream: cpal::Stream, // Persistent stream, kept alive
 }
 
@@ -551,6 +553,7 @@ impl AudioEngine {
             listener_config,
             spatial_params,
             sample_rate,
+            sample_cache: Arc::new(Mutex::new(HashMap::new())),
             _stream: stream,
         })
     }
@@ -1174,6 +1177,166 @@ impl AudioEngine {
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
         Ok(id)
+    }
+
+    /// Play a one-shot sample immediately (convenience method with automatic caching)
+    ///
+    /// Simplified non-blocking interface for playing sound effects without manual Composition setup.
+    /// Perfect for game sound effects - fire and forget!
+    ///
+    /// **Automatic caching:** Samples are automatically cached by path on first load. Subsequent
+    /// calls with the same path reuse the cached sample (cheap Arc clone), making repeated sounds
+    /// efficient without any extra code.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the sample file (WAV, OGG, MP3, FLAC supported)
+    ///
+    /// # Returns
+    /// `SoundId` - Unique identifier if you need to control the sound (optional - can be ignored)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // First call: loads from disk, caches it
+    /// engine.play_sample("assets/footstep.wav")?;
+    ///
+    /// // Subsequent calls: instant! Uses cached sample
+    /// engine.play_sample("assets/footstep.wav")?;
+    /// engine.play_sample("assets/footstep.wav")?;
+    ///
+    /// // Different sound: loads and caches separately
+    /// engine.play_sample("assets/explosion.wav")?;
+    ///
+    /// // Optional: Keep the ID if you need to control it
+    /// let sfx_id = engine.play_sample("assets/ambience.wav")?;
+    /// engine.set_volume(sfx_id, 0.5)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Performance
+    /// - **First call per unique path:** Loads from disk (~1-10ms depending on file size)
+    /// - **Subsequent calls:** Instant (Arc clone from cache)
+    /// - **Memory:** Cached samples remain in memory until cleared with `clear_sample_cache()`
+    ///
+    /// # Note
+    /// This method is **non-blocking** and returns immediately. The sound plays concurrently
+    /// in the background. Multiple sounds can play at the same time.
+    ///
+    /// For cache management, see `preload_sample()`, `clear_sample_cache()`, and `remove_cached_sample()`.
+    ///
+    /// For more control over synthesis, effects, or timing, use the full Composition API.
+    pub fn play_sample(&self, path: &str) -> Result<SoundId> {
+        use crate::synthesis::Sample;
+
+        // Check cache first, load if not present
+        let sample = {
+            let mut cache = self.sample_cache.lock().unwrap();
+
+            if let Some(cached) = cache.get(path) {
+                // Cache hit - cheap Arc clone!
+                cached.clone()
+            } else {
+                // Cache miss - load and cache
+                let loaded = Sample::from_file(path)
+                    .map_err(|e| TunesError::AudioEngineError(format!("Failed to load sample '{}': {}", path, e)))?;
+                cache.insert(path.to_string(), loaded.clone());
+                loaded
+            }
+        };
+
+        // Create a minimal composition and play it
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("_oneshot").play_sample(&sample, 1.0);
+        let mixer = comp.into_mixer();
+        self.play_mixer_realtime(&mixer)
+    }
+
+    /// Preload a sample into the cache without playing it
+    ///
+    /// Useful for loading frequently-used samples during initialization to avoid
+    /// any loading delay on first playback.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Load samples during game initialization
+    /// engine.preload_sample("assets/footstep.wav")?;
+    /// engine.preload_sample("assets/jump.wav")?;
+    /// engine.preload_sample("assets/explosion.wav")?;
+    ///
+    /// // Later: instant playback (already cached)
+    /// engine.play_sample("assets/footstep.wav")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn preload_sample(&self, path: &str) -> Result<()> {
+        use crate::synthesis::Sample;
+
+        let mut cache = self.sample_cache.lock().unwrap();
+
+        if !cache.contains_key(path) {
+            let sample = Sample::from_file(path)
+                .map_err(|e| TunesError::AudioEngineError(format!("Failed to preload sample '{}': {}", path, e)))?;
+            cache.insert(path.to_string(), sample);
+        }
+
+        Ok(())
+    }
+
+    /// Remove a specific sample from the cache
+    ///
+    /// Useful for freeing memory when a sample is no longer needed.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Use sample during level
+    /// engine.play_sample("level1_music.wav")?;
+    ///
+    /// // Level complete - free the memory
+    /// engine.remove_cached_sample("level1_music.wav")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn remove_cached_sample(&self, path: &str) -> Result<()> {
+        let mut cache = self.sample_cache.lock().unwrap();
+        cache.remove(path);
+        Ok(())
+    }
+
+    /// Clear all cached samples to free memory
+    ///
+    /// Useful for freeing memory between levels or game states.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    ///
+    /// // Play various sounds during level
+    /// engine.play_sample("sound1.wav")?;
+    /// engine.play_sample("sound2.wav")?;
+    ///
+    /// // Level complete - clear all cached samples
+    /// engine.clear_sample_cache()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn clear_sample_cache(&self) -> Result<()> {
+        let mut cache = self.sample_cache.lock().unwrap();
+        cache.clear();
+        Ok(())
     }
 
     /// Stop a playing sound

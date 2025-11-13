@@ -62,16 +62,65 @@ fn main() -> anyhow::Result<()> {
     );
     engine.play_mixer(&mixer)?;
 
+    println!("\n=== Convenience Method Demo ===\n");
+    println!("🎮 NEW: play_sample() - Fire-and-forget sound effects!");
+    println!("\nBefore play_sample() existed:");
+    println!("  let mut comp = Composition::new(Tempo::new(120.0));");
+    println!("  comp.track(\"sfx\").sample(\"boom.wav\");");
+    println!("  engine.play_mixer_realtime(&comp.into_mixer())?;");
+    println!("\nNow you can simply write:");
+    println!("  engine.play_sample(\"boom.wav\")?;");
+    println!("\nPerfect for game sound effects - non-blocking and concurrent!\n");
+
+    // Create a quick test sound effect
+    create_test_sample("sfx_beep.wav", 880.0, 0.1)?;
+    create_test_sample("sfx_boop.wav", 440.0, 0.1)?;
+
+    println!("Example 4: Fire-and-forget SFX");
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    // Game-like scenario - rapid concurrent sound effects
+    println!("  [Player jumps]");
+    engine.play_sample("sfx_beep.wav")?; // Returns immediately!
+    std::thread::sleep(std::time::Duration::from_millis(200));
+
+    println!("  [Collects coin]");
+    engine.play_sample("sfx_boop.wav")?;
+    std::thread::sleep(std::time::Duration::from_millis(150));
+
+    println!("  [Another coin]");
+    engine.play_sample("sfx_boop.wav")?;
+    std::thread::sleep(std::time::Duration::from_millis(150));
+
+    println!("  [Three beeps simultaneously!]");
+    engine.play_sample("sfx_beep.wav")?;
+    engine.play_sample("sfx_beep.wav")?;
+    engine.play_sample("sfx_beep.wav")?;
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    // Optional: Keep the ID for control
+    println!("\n  You can still control sounds if needed:");
+    let sfx_id = engine.play_sample("sfx_boop.wav")?;
+    engine.set_volume(sfx_id, 0.3)?;
+    println!("  Playing at 30% volume...");
+
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
     println!("\n✅ Demo complete!");
     println!("\nKey features demonstrated:");
     println!("  • Loading WAV files as samples");
     println!("  • Basic sample playback");
     println!("  • Pitch shifting via playback_rate");
     println!("  • Creating rhythmic/melodic patterns with samples");
+    println!("  • Fire-and-forget sound effects with play_sample()");
+    println!("  • Concurrent sound playback (no blocking!)");
     println!("\nYou can now use your own drum samples, vocals, or any WAV files!");
 
-    // Clean up test file
+    // Clean up test files
     std::fs::remove_file("test_tone.wav").ok();
+    std::fs::remove_file("sfx_beep.wav").ok();
+    std::fs::remove_file("sfx_boop.wav").ok();
 
     Ok(())
 }

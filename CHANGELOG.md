@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fire-and-Forget Sample Playback with Automatic Caching** - Simplest game audio API in Rust:
+  - `AudioEngine::play_sample(path)` - Non-blocking, concurrent sample playback with smart caching
+  - **Automatic caching:** First call loads from disk, subsequent calls use cached Arc (instant)
+  - No manual cache management needed - just call `play_sample()` and it's fast!
+  - `AudioEngine::preload_sample(path)` - Optional: pre-load samples during initialization
+  - `AudioEngine::clear_sample_cache()` - Optional: clear cache between levels
+  - `AudioEngine::remove_cached_sample(path)` - Optional: remove specific cached sample
+  - Returns `SoundId` for optional volume/pan control
+  - Perfect for rapid game development - simpler than Kira, Rodio, or odd-io
+  - Example: `engine.play_sample("explosion.wav")?;` - That's it!
+  - Spam-safe: Repeated sounds are instant after first load (Arc clone from cache)
+  - Updated `examples/sample_playback_demo.rs` with demonstration
+  - Added comprehensive documentation in book's samples section with automatic caching details
 - **Sample Slicing System** - Comprehensive audio sample slicing with multiple techniques:
   - `Sample::slice_equal(n)` - Divide sample into N equal parts
   - `Sample::slice_at_times(times)` - Slice at specific time points

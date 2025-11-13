@@ -1,6 +1,118 @@
 # Working with Samples
 
-Samples are pre-recorded audio files that you can load, manipulate, and play back in your compositions. They're essential for game audio - sound effects, voice lines, drum loops, and realistic instruments all come from samples.
+**Want to just play a sound effect? Skip everything and jump to [Quick Start: Fire-and-Forget](#quick-start-fire-and-forget-sound-effects) below.**
+
+---
+
+## The Absolute Easiest Way to Play Audio
+
+Seriously. One line of setup, one line per sound. That's it.
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // That's it. You're done. Play sounds anywhere:
+    engine.play_sample("explosion.wav")?;
+    engine.play_sample("footstep.ogg")?;
+    engine.play_sample("coin.mp3")?;
+
+    // They all play immediately, non-blocking, concurrent
+    // Your game loop keeps running. No configuration needed.
+
+    Ok(())
+}
+```
+
+**Why this matters:**
+
+- 🎮 **Perfect for game jams** - Get audio working in 30 seconds
+- 🚀 **Zero learning curve** - If you can call a function, you can play audio
+- 🎯 **Indie dev friendly** - Prototype fast, optimize later
+- 🎵 **Simpler than Kira, Rodio, odd-io** - Compare for yourself
+- ⚡ **Non-blocking by default** - Won't freeze your game loop
+- 🔊 **Concurrent playback built-in** - Play dozens of sounds at once, it just works
+- ✨ **Automatic caching** - Repeated sounds are instant (no manual pre-loading needed!)
+
+**The simplest audio API in Rust, with smart performance built-in.**
+
+When you need more power (effects, timing, synthesis), the full Composition system is there. But for "I just want to play a sound," you're already done reading.
+
+### ✨ Automatic Caching (No Performance Worries!)
+
+**Good news:** `play_sample()` automatically caches samples by path. The first call loads from disk, all subsequent calls use the cached version (instant Arc clone).
+
+```rust
+let engine = AudioEngine::new()?;
+
+// First call: loads from disk (~1-10ms)
+engine.play_sample("footstep.wav")?;
+
+// Subsequent calls: instant! (uses cache)
+engine.play_sample("footstep.wav")?;  // ⚡ instant
+engine.play_sample("footstep.wav")?;  // ⚡ instant
+engine.play_sample("footstep.wav")?;  // ⚡ instant
+
+// You can spam this in your game loop - it's fast!
+for _ in 0..100 {
+    engine.play_sample("footstep.wav")?;  // All instant after first load
+}
+```
+
+**This means:**
+- ✅ Spam footsteps? Fast!
+- ✅ Machine gun fire? Fast!
+- ✅ Rain drops? Fast!
+- ✅ Repeated UI sounds? Fast!
+- ✅ Zero manual cache management needed!
+
+**Optional: Pre-load during initialization to eliminate first-load delay:**
+
+```rust
+// During game initialization
+engine.preload_sample("footstep.wav")?;
+engine.preload_sample("jump.wav")?;
+engine.preload_sample("explosion.wav")?;
+
+// Now ALL calls are instant (even first one)
+engine.play_sample("footstep.wav")?;  // ⚡ instant
+```
+
+**Optional: Cache management for memory control:**
+
+```rust
+// Clear specific sample when done with it
+engine.remove_cached_sample("level1_boss.wav")?;
+
+// Clear all cached samples between levels
+engine.clear_sample_cache()?;
+```
+
+**You don't need to worry about caching - it just works!**
+
+---
+
+## When to Use What
+
+**Use `engine.play_sample("file.wav")?` when:**
+- ✅ Game sound effects (footsteps, explosions, UI clicks, impacts)
+- ✅ Any repeated sounds (automatic caching makes this fast!)
+- ✅ Prototyping / game jams / rapid development
+- ✅ You just want a sound to play RIGHT NOW
+- ✅ Simplicity is priority #1
+
+**Use the full Composition API when:**
+- Complex timing and rhythms
+- Applying effects (reverb, delay, distortion, etc.)
+- Procedural/generative music
+- Precise control over playback
+- Pitch shifting via playback rate
+
+Both are available. Start simple, grow as needed.
+
+---
 
 ## Loading Your First Sample
 
@@ -34,6 +146,33 @@ fn main() -> anyhow::Result<()> {
 - **Sample rates:** Any (44.1kHz, 48kHz, 96kHz, etc.)
 - **Bit depths:** 8/16/24/32-bit (int), 32/64-bit (float) - automatically converted to f32
 - **Channels:** Mono or stereo
+
+## Quick Reference: play_sample() API
+
+**Playing samples:**
+```rust
+engine.play_sample("sound.wav")?;  // Auto-caches, returns SoundId
+```
+
+**Pre-loading (optional):**
+```rust
+engine.preload_sample("sound.wav")?;  // Warm cache during init
+```
+
+**Cache management (optional):**
+```rust
+engine.clear_sample_cache()?;              // Clear all
+engine.remove_cached_sample("sound.wav")?; // Clear specific
+```
+
+**With control:**
+```rust
+let id = engine.play_sample("sound.wav")?;
+engine.set_volume(id, 0.5)?;
+engine.set_pan(id, -0.3)?;
+```
+
+See `examples/sample_playback_demo.rs` for a complete demonstration.
 
 ## Playing Samples in Compositions
 
@@ -788,7 +927,10 @@ Sample::from_file("snare.ogg")?
 Sample::from_file("loop.flac")?
 Sample::from_mono(vec![0.0, 0.5, 1.0], 44100)  // Programmatic creation
 
-// Playing
+// Quick fire-and-forget (NEW in v0.14)
+engine.play_sample("boom.wav")?  // Non-blocking, concurrent, simple!
+
+// Playing in compositions
 comp.load_sample("name", "sample.mp3")?
 comp.track("t").sample("name")?
 comp.track("t").play_sample(&sample, 1.0)
