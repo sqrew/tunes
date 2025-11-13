@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **AudioEngine now silent by default** - No automatic terminal output on initialization
+  - `AudioEngine::new()` and `AudioEngine::with_buffer_size()` no longer print to stdout
+  - New `AudioEngine::print_info()` method for opt-in verbose initialization output
+  - `.print_info()` displays: device name, sample rate, buffer size, latency, channels, **SIMD detection** (AVX2/SSE/NEON), and concurrent mixing status
+  - Better library citizen behavior - respects downstream users' output preferences
+  - Addresses user feedback about unwanted terminal output in production use cases
+  - Example: `examples/print_info_demo.rs` demonstrates the opt-in verbose output
+
 ### Added
 - **SIMD Acceleration** - 2-8x performance boost for DSP operations using portable SIMD (stable Rust):
   - Runtime CPU detection with lazy_static (detects once at startup, zero overhead after)

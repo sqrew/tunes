@@ -413,6 +413,10 @@ pub struct AudioEngine {
     sample_rate: f32,
     sample_cache: Arc<Mutex<HashMap<String, crate::synthesis::Sample>>>, // Automatic sample caching
     _stream: cpal::Stream, // Persistent stream, kept alive
+    // Info for optional printing
+    device_name: String,
+    buffer_size: u32,
+    channels: usize,
 }
 
 impl AudioEngine {
@@ -445,19 +449,7 @@ impl AudioEngine {
 
         let sample_rate = config.sample_rate().0 as f32;
         let channels = config.channels() as usize;
-        let latency_ms = (buffer_size as f32 / sample_rate) * 1000.0;
-
-        println!("Audio Engine initialized:");
-        println!(
-            "  Device: {}",
-            device.name().unwrap_or_else(|_| "Unknown".to_string())
-        );
-        println!("  Sample rate: {}", config.sample_rate().0);
-        println!(
-            "  Buffer size: {} samples ({:.1}ms latency)",
-            buffer_size, latency_ms
-        );
-        println!("  Concurrent mixing: enabled");
+        let device_name = device.name().unwrap_or_else(|_| "Unknown".to_string());
 
         // Create command channel for communication with audio thread
         let (command_tx, command_rx): (Sender<AudioCommand>, Receiver<AudioCommand>) = unbounded();
@@ -555,7 +547,53 @@ impl AudioEngine {
             sample_rate,
             sample_cache: Arc::new(Mutex::new(HashMap::new())),
             _stream: stream,
+            device_name,
+            buffer_size,
+            channels,
         })
+    }
+
+    /// Print audio engine initialization information
+    ///
+    /// Displays device name, sample rate, buffer size, latency, and configuration.
+    /// This is an opt-in method - call it if you want to see engine initialization details.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    /// engine.print_info(); // Optional - only if you want to see initialization info
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn print_info(&self) {
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        let latency_ms = (self.buffer_size as f32 / self.sample_rate) * 1000.0;
+        let simd_width = SIMD.simd_width();
+        let simd_lanes = SIMD.width();
+        let simd_name = match simd_width {
+            SimdWidth::X8 => "AVX2",
+            SimdWidth::X4 => {
+                #[cfg(target_arch = "x86_64")]
+                { "SSE" }
+                #[cfg(not(target_arch = "x86_64"))]
+                { "NEON" }
+            }
+            SimdWidth::Scalar => "Scalar (no SIMD)",
+        };
+
+        println!("Audio Engine initialized:");
+        println!("  Device: {}", self.device_name);
+        println!("  Sample rate: {} Hz", self.sample_rate as u32);
+        println!(
+            "  Buffer size: {} samples ({:.1}ms latency)",
+            self.buffer_size, latency_ms
+        );
+        println!("  Channels: {}", self.channels);
+        println!("  SIMD: {} ({} lanes)", simd_name, simd_lanes);
+        println!("  Concurrent mixing: enabled");
     }
 
     /// Handle commands from the main thread (called from audio thread)
