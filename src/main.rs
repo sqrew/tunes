@@ -30,7 +30,6 @@ fn main() -> Result<(), anyhow::Error> {
     let eighth = comp.tempo().eighth_note();
 
     let engine = AudioEngine::new()?;
-    engine.print_info();
     engine.play_mixer(&comp.into_mixer())?;
 
     Ok(())

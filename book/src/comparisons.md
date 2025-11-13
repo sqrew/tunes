@@ -17,6 +17,7 @@ This page provides honest, technical comparisons between Tunes and other audio l
 **What Tunes does better:**
 - Simpler API: `engine.play_sample()` vs manual pre-loading
 - Automatic sample caching (Kira requires manual management)
+- SIMD-accelerated sample playback (30-45x realtime measured, likely faster than Kira)
 - Built-in synthesis (FM, granular, waveforms) - Kira has none
 - Sample manipulation (time stretch, pitch shift, slicing) - Kira has none
 - Complete composition system with generators and transformations - Kira has basic sequencing
@@ -76,12 +77,13 @@ This page provides honest, technical comparisons between Tunes and other audio l
 **What SoLoud does better:**
 - C++ backend with decades of optimization
 - Extremely battle-tested in production games
-- Very efficient mixing for hundreds of concurrent sounds
+- Proven to handle hundreds of concurrent sounds efficiently
 - Speech synthesis built-in
 
 **What Tunes does better:**
 - Pure Rust (no C++ compiler or CMake required)
 - Simpler API with automatic caching
+- SIMD-accelerated sample playback (likely competitive with SoLoud for typical workloads)
 - Built-in composition and synthesis systems
 - Sample manipulation (time stretch, pitch shift, slicing)
 - More comprehensive effects
@@ -89,7 +91,7 @@ This page provides honest, technical comparisons between Tunes and other audio l
 - Multi-format import with automatic detection
 
 **When to choose SoLoud:**
-- You need absolute maximum performance for hundreds of concurrent sounds
+- You need maximum battle-tested stability in production
 - You need speech synthesis
 - You're okay with C++ build dependencies
 

@@ -927,6 +927,22 @@ impl Mixer {
         // We need to search at the start of the block
         let (start_idx, end_idx) = track.find_active_range(start_time);
 
+        // Pre-render sample events with SIMD for better performance
+        // This processes whole blocks instead of per-sample, enabling vectorization
+        let mut sample_buffer = vec![0.0f32; buffer.len()];
+        for event in &track.events[start_idx..end_idx] {
+            if let AudioEvent::Sample(sample_event) = event {
+                sample_event.sample.fill_buffer_simd_mono(
+                    &mut sample_buffer,
+                    sample_event.start_time,
+                    start_time,
+                    time_delta,
+                    sample_event.playback_rate,
+                    sample_event.volume,
+                );
+            }
+        }
+
         // For each sample in the block
         for (i, sample_out) in buffer.iter_mut().enumerate() {
             let time = start_time + (i as f32 * time_delta);
@@ -988,21 +1004,16 @@ impl Mixer {
                             track_value += drum_event.drum_type.sample(sample_index, sample_rate);
                         }
                     }
-                    AudioEvent::Sample(sample_event) => {
-                        let time_in_sample = time - sample_event.start_time;
-                        let sample_duration =
-                            sample_event.sample.duration / sample_event.playback_rate;
-
-                        if time_in_sample >= 0.0 && time_in_sample < sample_duration {
-                            let (sample_left, sample_right) = sample_event
-                                .sample
-                                .sample_at_interpolated(time_in_sample, sample_event.playback_rate);
-                            track_value += (sample_left + sample_right) * 0.5 * sample_event.volume;
-                        }
+                    AudioEvent::Sample(_) => {
+                        // Samples are pre-rendered above with SIMD for better performance
+                        // They'll be added to track_value after this loop
                     }
                     _ => {} // Tempo/time/key signatures don't generate audio
                 }
             }
+
+            // Add pre-rendered samples (processed with SIMD above)
+            track_value += sample_buffer[i];
 
             // Apply track volume
             track_value *= track.volume;

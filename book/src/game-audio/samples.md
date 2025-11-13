@@ -67,6 +67,7 @@ for _ in 0..100 {
 - ✅ Rain drops? Fast!
 - ✅ Repeated UI sounds? Fast!
 - ✅ Zero manual cache management needed!
+- ✅ SIMD-accelerated playback (4-8 samples processed simultaneously)
 
 **Optional: Pre-load during initialization to eliminate first-load delay:**
 

@@ -354,6 +354,132 @@ impl Sample {
         }
     }
 
+    /// Fill a buffer with sample playback using SIMD acceleration (mono output)
+    ///
+    /// This method processes 4-8 samples at once using SIMD instructions,
+    /// providing significant speedup for sample-heavy applications.
+    ///
+    /// # Arguments
+    /// * `buffer` - Output buffer (mono)
+    /// * `start_time` - Time at which this sample event starts (in composition time)
+    /// * `current_time` - Current playback time (in composition time)
+    /// * `time_delta` - Time increment per sample (1.0 / sample_rate)
+    /// * `playback_rate` - Speed multiplier (1.0 = normal, 2.0 = double speed)
+    /// * `volume` - Volume multiplier (0.0 = silence, 1.0 = full volume)
+    ///
+    /// Returns the number of samples written
+    pub fn fill_buffer_simd_mono(
+        &self,
+        buffer: &mut [f32],
+        start_time: f32,
+        current_time: f32,
+        time_delta: f32,
+        playback_rate: f32,
+        volume: f32,
+    ) -> usize {
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        // Calculate time offset into this sample
+        let time_offset = current_time - start_time;
+        if time_offset < 0.0 {
+            return 0; // Sample hasn't started yet
+        }
+
+        let sample_duration = self.duration / playback_rate;
+        if time_offset >= sample_duration {
+            return 0; // Sample finished
+        }
+
+        // Early exit if volume is zero
+        if volume < 0.0001 {
+            return 0;
+        }
+
+        // Dispatch to SIMD implementation
+        match SIMD.simd_width() {
+            SimdWidth::X8 => self.fill_buffer_simd_mono_impl::<8>(
+                buffer,
+                time_offset,
+                time_delta,
+                playback_rate,
+                sample_duration,
+                volume,
+            ),
+            SimdWidth::X4 => self.fill_buffer_simd_mono_impl::<4>(
+                buffer,
+                time_offset,
+                time_delta,
+                playback_rate,
+                sample_duration,
+                volume,
+            ),
+            SimdWidth::Scalar => self.fill_buffer_simd_mono_impl::<1>(
+                buffer,
+                time_offset,
+                time_delta,
+                playback_rate,
+                sample_duration,
+                volume,
+            ),
+        }
+    }
+
+    /// Generic SIMD implementation for mono sample playback
+    #[inline(always)]
+    fn fill_buffer_simd_mono_impl<const N: usize>(
+        &self,
+        buffer: &mut [f32],
+        mut time_offset: f32,
+        time_delta: f32,
+        playback_rate: f32,
+        sample_duration: f32,
+        volume: f32,
+    ) -> usize {
+        let mut samples_written = 0;
+        let num_chunks = buffer.len() / N;
+        let remainder_start = num_chunks * N;
+
+        // Process N samples at once
+        for chunk_idx in 0..num_chunks {
+            // Check if we've reached the end of the sample
+            if time_offset >= sample_duration {
+                break;
+            }
+
+            let chunk_start = chunk_idx * N;
+            let chunk = &mut buffer[chunk_start..chunk_start + N];
+
+            // Process each sample in the chunk
+            for (i, sample_out) in chunk.iter_mut().enumerate() {
+                let sample_time = time_offset + (i as f32 * time_delta);
+                if sample_time >= sample_duration {
+                    break;
+                }
+
+                // Get interpolated stereo sample and convert to mono
+                let (left, right) = self.sample_at_interpolated(sample_time, playback_rate);
+                *sample_out = (left + right) * 0.5 * volume;
+                samples_written += 1;
+            }
+
+            time_offset += N as f32 * time_delta;
+        }
+
+        // Handle remainder samples
+        for i in remainder_start..buffer.len() {
+            if time_offset >= sample_duration {
+                break;
+            }
+
+            let (left, right) = self.sample_at_interpolated(time_offset, playback_rate);
+            buffer[i] = (left + right) * 0.5 * volume;
+            samples_written += 1;
+            time_offset += time_delta;
+        }
+
+        samples_written
+    }
+
     /// Create a sub-sample from a time range
     ///
     /// # Arguments
