@@ -84,6 +84,30 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
+    /// Jump to a previously saved marker position (alias for `at_mark`)
+    ///
+    /// This is an alias for `.at_mark()` that matches the naming convention
+    /// of the composition-level marker API (`.mark_at()`, `.marker_time()`).
+    ///
+    /// # Arguments
+    /// * `name` - The name of the marker to jump to
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Mark important points at the composition level
+    /// comp.mark_at("drop", 16.0);
+    ///
+    /// // Jump to that marker from a track
+    /// comp.track("bass")
+    ///     .at_marker("drop")  // Start at the drop
+    ///     .notes(&[C1, C1, E2], 0.5);
+    /// ```
+    pub fn at_marker(self, name: &str) -> Self {
+        self.at_mark(name)
+    }
+
     /// Get the current cursor position without modifying the builder
     ///
     /// Useful for debugging or conditional logic based on timing.

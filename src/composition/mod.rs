@@ -628,6 +628,227 @@ impl Composition {
 
         section.tracks.entry(track_name.to_string()).or_default()
     }
+
+    // === MARKER MANAGEMENT ===
+
+    /// Mark a specific time with a name for easy reference
+    ///
+    /// Markers provide named sync points in your composition, making it easier
+    /// to align tracks without manual time calculations.
+    ///
+    /// # Arguments
+    /// * `name` - Name for this marker (e.g., "verse_start", "drop", "chorus")
+    /// * `time` - Time position in seconds
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    ///
+    /// // Mark important points in the composition
+    /// comp.mark_at("intro_end", 8.0);
+    /// comp.mark_at("drop", 16.0);
+    /// comp.mark_at("outro", 48.0);
+    ///
+    /// // Use markers to position tracks
+    /// comp.track("bass")
+    ///     .at_marker("drop")
+    ///     .notes(&[C2, E2, G2], 0.5);
+    /// ```
+    pub fn mark_at(&mut self, name: &str, time: f32) {
+        self.markers.insert(name.to_string(), time);
+    }
+
+    /// Get the time position of a marker
+    ///
+    /// Returns `None` if the marker doesn't exist.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.mark_at("drop", 16.0);
+    ///
+    /// if let Some(time) = comp.marker_time("drop") {
+    ///     println!("Drop happens at {}s", time);
+    /// }
+    /// ```
+    pub fn marker_time(&self, name: &str) -> Option<f32> {
+        self.markers.get(name).copied()
+    }
+
+    /// List all markers with their times
+    ///
+    /// Returns a vector of (name, time) tuples.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.mark_at("verse", 8.0);
+    /// comp.mark_at("chorus", 16.0);
+    ///
+    /// for (name, time) in comp.markers() {
+    ///     println!("{}: {}s", name, time);
+    /// }
+    /// ```
+    pub fn markers(&self) -> Vec<(&str, f32)> {
+        self.markers
+            .iter()
+            .map(|(k, v)| (k.as_str(), *v))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod marker_tests {
+    use super::*;
+    use crate::consts::notes::*;
+
+    #[test]
+    fn test_mark_at_sets_marker() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("drop", 16.0);
+
+        assert_eq!(comp.marker_time("drop"), Some(16.0));
+    }
+
+    #[test]
+    fn test_marker_time_returns_none_for_missing() {
+        let comp = Composition::new(Tempo::new(120.0));
+        assert_eq!(comp.marker_time("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_multiple_markers() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("intro", 0.0);
+        comp.mark_at("verse", 8.0);
+        comp.mark_at("chorus", 16.0);
+        comp.mark_at("outro", 32.0);
+
+        assert_eq!(comp.marker_time("intro"), Some(0.0));
+        assert_eq!(comp.marker_time("verse"), Some(8.0));
+        assert_eq!(comp.marker_time("chorus"), Some(16.0));
+        assert_eq!(comp.marker_time("outro"), Some(32.0));
+    }
+
+    #[test]
+    fn test_markers_returns_all() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("a", 1.0);
+        comp.mark_at("b", 2.0);
+        comp.mark_at("c", 3.0);
+
+        let markers = comp.markers();
+        assert_eq!(markers.len(), 3);
+
+        // HashMap iteration order is not guaranteed, so check all exist
+        assert!(markers.iter().any(|(name, time)| name == &"a" && *time == 1.0));
+        assert!(markers.iter().any(|(name, time)| name == &"b" && *time == 2.0));
+        assert!(markers.iter().any(|(name, time)| name == &"c" && *time == 3.0));
+    }
+
+    #[test]
+    fn test_marker_can_be_overwritten() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("position", 5.0);
+        comp.mark_at("position", 10.0);
+
+        assert_eq!(comp.marker_time("position"), Some(10.0));
+    }
+
+    #[test]
+    fn test_track_at_marker_uses_composition_marker() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("drop", 16.0);
+
+        comp.track("bass")
+            .at_marker("drop")
+            .note(&[C2], 0.5);
+
+        let mixer = comp.into_mixer();
+        let track = &mixer.tracks()[0];
+
+        if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+            assert_eq!(note.start_time, 16.0);
+        } else {
+            panic!("Expected note event");
+        }
+    }
+
+    #[test]
+    fn test_multiple_tracks_sync_to_same_marker() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("drop", 16.0);
+
+        comp.track("bass").at_marker("drop").note(&[C2], 0.5);
+        comp.track("lead").at_marker("drop").note(&[C5], 0.25);
+        comp.track("drums").at_marker("drop").note(&[100.0], 0.125);
+
+        let mixer = comp.into_mixer();
+
+        // All three tracks should have notes starting at 16.0
+        for track in &mixer.tracks() {
+            if let crate::track::AudioEvent::Note(note) = &track.events[0] {
+                assert_eq!(note.start_time, 16.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_marker_with_builder_mark_integration() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+
+        // TrackBuilder can create markers with .mark()
+        comp.track("structure")
+            .wait(8.0)
+            .mark("verse")
+            .wait(16.0)
+            .mark("chorus");
+
+        // Composition can query those markers
+        assert_eq!(comp.marker_time("verse"), Some(8.0));
+        assert_eq!(comp.marker_time("chorus"), Some(24.0));
+
+        // And set its own
+        comp.mark_at("outro", 48.0);
+        assert_eq!(comp.marker_time("outro"), Some(48.0));
+    }
+
+    #[test]
+    fn test_at_marker_alias_works_same_as_at_mark() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.mark_at("drop", 16.0);
+
+        // Test .at_marker()
+        comp.track("track1")
+            .at_marker("drop")
+            .note(&[C4], 0.5);
+
+        // Test .at_mark()
+        comp.track("track2")
+            .at_mark("drop")
+            .note(&[E4], 0.5);
+
+        let mixer = comp.into_mixer();
+
+        // Both should start at the same time
+        let times: Vec<f32> = mixer.tracks()
+            .iter()
+            .filter_map(|track| {
+                if let Some(crate::track::AudioEvent::Note(note)) = track.events.first() {
+                    Some(note.start_time)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(times.len(), 2);
+        assert_eq!(times[0], 16.0);
+        assert_eq!(times[1], 16.0);
+    }
 }
 
 /// Context for where the TrackBuilder is building
