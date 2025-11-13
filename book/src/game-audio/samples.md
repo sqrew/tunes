@@ -175,11 +175,13 @@ engine.set_pan(id, -0.3)?;
 
 See `examples/sample_playback_demo.rs` for a complete demonstration.
 
-## Playing Samples in Compositions
+## Advanced: Playing Samples in Compositions
 
-Once loaded, you can play samples in your compositions. There are two main approaches:
+**Note:** For most game audio, use `engine.play_sample()` shown above. Use the composition API below when you need precise timing, synchronization with synthesized music, or complex arrangements.
 
-### Method 1: Cached Samples (Recommended for Repeated Use)
+There are two main approaches:
+
+### Method 1: Cached Samples (for Repeated Use)
 
 Load samples once and reference them by name:
 

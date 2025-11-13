@@ -739,9 +739,11 @@ verse_mixer.export_wav("verse.wav", 44100)?;
 
 ## Sample Loading and Playback
 
+**Note:** For simple game audio, use `engine.play_sample("file.wav")?` instead (see [Samples chapter](../game-audio/samples.md)). The API below is for precise timing and mixing samples with synthesis.
+
 ### Loading Samples
 
-Load WAV files into the composition:
+Load audio files into the composition:
 
 ```rust
 comp.load_sample("kick", "samples/kick.wav")?;

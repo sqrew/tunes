@@ -161,28 +161,27 @@ For realistic game audio, use WAV samples:
 ```rust
 use tunes::prelude::*;
 
-fn setup_sample_based_audio() -> anyhow::Result<Mixer> {
-    let mut comp = Composition::new(Tempo::new(120.0));
+fn play_game_audio() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
 
-    // Load samples once
-    comp.load_sample("footstep_concrete", "assets/footstep_concrete.wav")?;
-    comp.load_sample("footstep_grass", "assets/footstep_grass.wav")?;
-    comp.load_sample("door_open", "assets/door_open.wav")?;
-    comp.load_sample("door_close", "assets/door_close.wav")?;
+    // Play samples with automatic caching and SIMD acceleration
+    engine.play_sample("assets/footstep_concrete.wav")?;  // Loads and caches
+    std::thread::sleep(std::time::Duration::from_millis(300));
 
-    // Play them
-    comp.track("sfx")
-        .sample("footstep_concrete")
-        .rest(0.3)
-        .sample("footstep_concrete")
-        .rest(0.5)
-        .sample("door_open")
-        .rest(1.0)
-        .sample("door_close");
+    engine.play_sample("assets/footstep_concrete.wav")?;  // Uses cache (instant)
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
-    Ok(comp.into_mixer())
+    engine.play_sample("assets/door_open.wav")?;
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    engine.play_sample("assets/door_close.wav")?;
+
+    // All samples play concurrently with automatic mixing and SIMD
+    Ok(())
 }
 ```
+
+**Note:** For precise timing in compositions, you can use the composition API (see [Composition chapter](../concepts/composition.md)).
 
 ## Controlling Active Sounds
 

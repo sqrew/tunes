@@ -29,6 +29,7 @@
 - [Concurrent Sound Effects](./game-audio/concurrent-sfx.md)
 - [Dynamic Music Systems](./game-audio/dynamic-music.md)
 - [Spatial Audio](./game-audio/spatial-audio.md)
+- [Bevy Integration](./game-audio/bevy-integration.md)
 
 ---
 

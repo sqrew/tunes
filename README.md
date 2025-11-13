@@ -139,7 +139,28 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-### Sample Playback
+### Sample Playback (Game Audio - Simple!)
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let engine = AudioEngine::new()?;
+
+    // That's it! Play samples with automatic caching and SIMD acceleration
+    engine.play_sample("explosion.wav")?;  // Loads once, caches, plays with SIMD
+    engine.play_sample("footstep.wav")?;   // Loads once, caches
+    engine.play_sample("footstep.wav")?;   // Instant! Uses cache, SIMD playback
+    engine.play_sample("jump.wav")?;
+
+    // All samples play concurrently with automatic mixing
+    Ok(())
+}
+```
+
+**Advanced: Sample Playback in Compositions**
+
+For precise timing and mixing with synthesis:
 
 ```rust
 use tunes::prelude::*;
@@ -147,16 +168,15 @@ use tunes::prelude::*;
 fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
-    // Load samples (drums, vocals, any WAV file)
+    // Load samples into composition
     comp.load_sample("kick", "samples/kick.wav")?;
     comp.load_sample("snare", "samples/snare.wav")?;
 
-    // Use samples in your composition
+    // Use samples with precise timing
     comp.track("drums")
         .sample("kick")                    // Play at normal speed
         .sample("snare")
-        .sample("kick")
-        .sample_with_rate("snare", 2.0);   // Double speed (pitch up)
+        .sample_with_rate("kick", 1.5);    // 1.5x speed (pitch up)
 
     // Mix samples with synthesis
     comp.instrument("bass", &Instrument::sub_bass())
