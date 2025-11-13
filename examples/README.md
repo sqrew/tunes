@@ -46,7 +46,7 @@ This directory contains **92 example programs** demonstrating all features of th
 - ✅ **Concurrent mixing** - Hundreds of sounds playing at once
 - ✅ **Non-blocking** - Returns immediately, no game loop stalls
 - ✅ **3D spatial audio** - Position sounds in game worlds
-- ✅ **Bevy integration** - See [book/game-audio/bevy-integration.md](../book/src/game-audio/bevy-integration.md)
+- ✅ **Game engine integration** - See [book/game-audio/game-engine-integration.md](../book/src/game-audio/game-engine-integration.md) (Bevy, ggez, macroquad, etc)
 
 ---
 
@@ -299,7 +299,7 @@ Most examples will:
 - Simple: `sample_playback_demo.rs` - Just 2 lines of code!
 - Concurrent: `concurrent_playback_demo.rs` - Many sounds at once
 - 3D Audio: `spatial_audio_demo.rs`, `doppler_effect_demo.rs`
-- Integration: See [book/game-audio/bevy-integration.md](../book/src/game-audio/bevy-integration.md)
+- Integration: See [book/game-audio/game-engine-integration.md](../book/src/game-audio/game-engine-integration.md)
 
 **Generative Music:**
 - Sequences: `sequences_showcase.rs` (50+ algorithms)

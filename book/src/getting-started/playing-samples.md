@@ -77,7 +77,7 @@ This is perfect for:
 - Rapid prototyping without complex setup
 - Any situation where you just need to play a sound
 
-See the [Bevy Integration](../game-audio/bevy-integration.md) chapter for how to use this in a real game engine.
+See the [Game Engine Integration](../game-audio/game-engine-integration.md) chapter for how to use this in any Rust game engine (Bevy, ggez, macroquad, bracket-lib, etc).
 
 ---
 
