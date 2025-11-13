@@ -349,6 +349,30 @@ impl Composition {
         mixer
     }
 
+    /// Convert this composition into a mixer with cache and GPU acceleration enabled
+    ///
+    /// This is a convenience wrapper for the common pattern of enabling both cache and GPU.
+    /// Equivalent to calling `into_mixer()` followed by `enable_cache_and_gpu()`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums").note(&[C4], 0.5);
+    ///
+    /// // One call for maximum performance!
+    /// let mut mixer = comp.into_mixer_with_gpu();
+    ///
+    /// # let engine = AudioEngine::new()?;
+    /// engine.play_mixer(&mixer)?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    pub fn into_mixer_with_gpu(self) -> Mixer {
+        let mut mixer = self.into_mixer();
+        mixer.enable_cache_and_gpu();
+        mixer
+    }
+
     /// Validate that all events in a track have the same spatial position
     ///
     /// Panics if a track has events with multiple different spatial positions.

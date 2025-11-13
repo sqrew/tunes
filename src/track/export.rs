@@ -48,32 +48,26 @@ impl Mixer {
         let duration = self.total_duration();
         let total_samples = (duration * sample_rate as f32).ceil() as usize;
 
-        let sample_rate_f32 = sample_rate as f32;
-        let mut sample_clock = 0.0;
-
         println!("Rendering to WAV...");
         println!("  Duration: {:.2}s", duration);
         println!("  Sample rate: {} Hz", sample_rate);
         println!("  Total samples: {}", total_samples);
 
-        for i in 0..total_samples {
-            let time = i as f32 / sample_rate_f32;
+        // 🚀 GPU-accelerated batch rendering!
+        // This uses GPU pre-rendering if enabled (mixer.enable_gpu())
+        let buffer = self.render_to_buffer(sample_rate as f32);
 
-            // Generate stereo sample (no spatial audio for export)
-            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock, None, None);
+        println!("  Encoding to WAV...");
 
+        // Write samples to WAV file (interleaved stereo: L, R, L, R, ...)
+        for (i, sample) in buffer.iter().enumerate() {
             // Convert from f32 (-1.0 to 1.0) to i16 (-32768 to 32767)
-            let left_i16 = (left.clamp(-1.0, 1.0) * 32767.0) as i16;
-            let right_i16 = (right.clamp(-1.0, 1.0) * 32767.0) as i16;
-
-            writer.write_sample(left_i16)?;
-            writer.write_sample(right_i16)?;
-
-            sample_clock = (sample_clock + 1.0) % sample_rate_f32;
+            let sample_i16 = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
+            writer.write_sample(sample_i16)?;
 
             // Progress indicator every second
-            if i % sample_rate as usize == 0 {
-                let progress = (i as f32 / total_samples as f32) * 100.0;
+            if i % (sample_rate as usize * 2) == 0 {
+                let progress = (i as f32 / buffer.len() as f32) * 100.0;
                 print!("\r  Progress: {:.0}%", progress);
                 use std::io::Write;
                 std::io::stdout().flush().ok();
@@ -131,42 +125,38 @@ impl Mixer {
 
         let duration = self.total_duration();
         let total_samples = (duration * sample_rate as f32).ceil() as usize;
-        let sample_rate_f32 = sample_rate as f32;
-        let mut sample_clock = 0.0;
 
         println!("Rendering to FLAC...");
         println!("  Duration: {:.2}s", duration);
         println!("  Sample rate: {} Hz", sample_rate);
         println!("  Total samples: {}", total_samples);
 
-        // Collect all samples in i32 format (interleaved stereo)
-        let mut samples_i32: Vec<i32> = Vec::with_capacity(total_samples * 2);
+        // 🚀 GPU-accelerated batch rendering!
+        // This uses GPU pre-rendering if enabled (mixer.enable_gpu())
+        let buffer = self.render_to_buffer(sample_rate as f32);
 
-        for i in 0..total_samples {
-            let time = i as f32 / sample_rate_f32;
+        println!("  Converting to 24-bit...");
 
-            // Generate stereo sample (no spatial audio for export)
-            let (left, right) = self.sample_at(time, sample_rate_f32, sample_clock, None, None);
+        // Convert f32 samples to i32 (24-bit) for FLAC encoding
+        // We use 24-bit as it provides better quality than 16-bit while keeping file size reasonable
+        const SCALE: f32 = 8388607.0; // 2^23 - 1
+        let samples_i32: Vec<i32> = buffer
+            .iter()
+            .enumerate()
+            .map(|(i, &sample)| {
+                let sample_i32 = (sample.clamp(-1.0, 1.0) * SCALE) as i32;
 
-            // Convert from f32 (-1.0 to 1.0) to i32 (-2^23 to 2^23-1 for 24-bit)
-            // We use 24-bit as it provides better quality than 16-bit while keeping file size reasonable
-            const SCALE: f32 = 8388607.0; // 2^23 - 1
-            let left_i32 = (left.clamp(-1.0, 1.0) * SCALE) as i32;
-            let right_i32 = (right.clamp(-1.0, 1.0) * SCALE) as i32;
+                // Progress indicator every second
+                if i % (sample_rate as usize * 2) == 0 {
+                    let progress = (i as f32 / buffer.len() as f32) * 100.0;
+                    print!("\r  Progress: {:.0}%", progress);
+                    use std::io::Write;
+                    std::io::stdout().flush().ok();
+                }
 
-            samples_i32.push(left_i32);
-            samples_i32.push(right_i32);
-
-            sample_clock = (sample_clock + 1.0) % sample_rate_f32;
-
-            // Progress indicator every second
-            if i % sample_rate as usize == 0 {
-                let progress = (i as f32 / total_samples as f32) * 100.0;
-                print!("\r  Progress: {:.0}%", progress);
-                use std::io::Write;
-                std::io::stdout().flush().ok();
-            }
-        }
+                sample_i32
+            })
+            .collect();
 
         println!("\r  Progress: 100%");
         println!("  Encoding FLAC...");

@@ -1,9 +1,11 @@
 #![allow(unused, dead_code)]
 
+mod cache;
 mod composition;
 mod consts;
 mod engine;
 mod error;
+mod gpu;
 mod instruments;
 mod midi;
 mod sequences;

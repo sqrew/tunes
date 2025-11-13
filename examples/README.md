@@ -1,6 +1,8 @@
 # Tunes Examples
 
-This directory contains **86 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
+This directory contains **92 example programs** demonstrating all features of the Tunes audio library. Examples are organized from beginner to advanced topics.
+
+**Note:** Benchmark programs have been moved to `benches/`. Manual test programs are in `tests/integration/`.
 
 ---
 
@@ -8,14 +10,43 @@ This directory contains **86 example programs** demonstrating all features of th
 
 **Start here if you're new to Tunes!**
 
+### Quick Start (2 Lines of Code!)
+
 | Example | Description |
 |---------|-------------|
+| `sample_playback_demo.rs` | **START HERE** - Play audio files with automatic caching (game audio) |
+
+### Basic Synthesis
+
+| Example | Description |
+|---------|-------------|
+| `synthesis_demo.rs` | Introduction to synthesis: AM, FM, filters |
 | `notes_and_chords.rs` | Play individual notes and chord arrays |
 | `waveforms.rs` | Explore sine, square, sawtooth, and triangle waves |
 | `envelopes.rs` | ADSR envelope shaping for dynamic sounds |
 | `filters.rs` | Low-pass, high-pass, and band-pass filtering |
-| `synthesis_demo.rs` | Introduction to basic synthesis concepts |
-| `instrument_showcase.rs` | Tour of all built-in instrument presets |
+| `instrument_showcase.rs` | Tour of all 150+ built-in instrument presets |
+
+---
+
+## 🎮 Game Audio & Real-Time
+
+**Perfect for game developers! Simple, fast, and powerful.**
+
+| Example | Description |
+|---------|-------------|
+| `sample_playback_demo.rs` | **Fire-and-forget audio:** `engine.play_sample("boom.wav")?` |
+| `concurrent_playback_demo.rs` | Multiple simultaneous audio streams (50+ concurrent samples) |
+| `spatial_audio_demo.rs` | **3D positional audio** with distance attenuation and panning |
+| `doppler_effect_demo.rs` | **Doppler effect** for moving sound sources (cars, bullets) |
+
+**Key Features for Games:**
+- ✅ **Automatic caching** - Load once, play many times (instant)
+- ✅ **SIMD acceleration** - 4-8 samples processed simultaneously
+- ✅ **Concurrent mixing** - Hundreds of sounds playing at once
+- ✅ **Non-blocking** - Returns immediately, no game loop stalls
+- ✅ **3D spatial audio** - Position sounds in game worlds
+- ✅ **Bevy integration** - See [book/game-audio/bevy-integration.md](../book/src/game-audio/bevy-integration.md)
 
 ---
 
@@ -23,6 +54,7 @@ This directory contains **86 example programs** demonstrating all features of th
 
 | Example | Description |
 |---------|-------------|
+| `synthesis_demo.rs` | AM, FM, and subtractive synthesis overview |
 | `additive_synthesis_demo.rs` | Build complex timbres from sine wave harmonics |
 | `wavetable_synthesis.rs` | Wavetable oscillators with morphing |
 | `wavetable_demo.rs` | Additional wavetable synthesis examples |
@@ -61,15 +93,6 @@ This directory contains **86 example programs** demonstrating all features of th
 | `drum_variations_demo.rs` | Velocity, tuning, and timing variations |
 | `expanded_percussion_demo.rs` | Extended percussion instruments |
 | `midi_percussion_demo.rs` | MIDI percussion (General MIDI channel 10) |
-
----
-
-## 🎸 Instruments & Presets
-
-| Example | Description |
-|---------|-------------|
-| `instrument_showcase.rs` | All instrument presets with audio examples |
-| `noise_generator_showcase.rs` | Noise-based instruments and textures |
 | `808_909_complete_demo.rs` | Complete drum machine instrument suite |
 
 ---
@@ -78,11 +101,15 @@ This directory contains **86 example programs** demonstrating all features of th
 
 | Example | Description |
 |---------|-------------|
-| `effects_showcase.rs` | All 16 effects demonstrated with audio |
+| `effects_showcase.rs` | **All 16 effects demonstrated with audio** |
+| `effect_presets_demo.rs` | Preset API: `Delay::quarter_note()`, `Reverb::hall()` |
 | `parametric_eq_demo.rs` | Multi-band parametric EQ for precise frequency control |
+| `multiband_compression_demo.rs` | **Frequency-specific dynamics control** |
 | `sidechaining.rs` | Sidechain compression for pumping/ducking effects |
-| `spatial_audio_demo.rs` | 3D positional audio and Doppler effect |
+| `spatial_audio_demo.rs` | 3D positional audio and distance attenuation |
+| `doppler_effect_demo.rs` | **Doppler pitch shifting** for moving sound sources |
 | `stereo_panning.rs` | Stereo field positioning and width control |
+| `automation_demo.rs` | Automate volume, pan, filter, effect parameters |
 
 ---
 
@@ -109,15 +136,15 @@ This directory contains **86 example programs** demonstrating all features of th
 | `templates_demo.rs` | Reusable composition templates |
 | `classical_techniques.rs` | Canon, fugue, counterpoint, retrograde |
 | `expressive_techniques.rs` | Dynamics, articulation, phrasing |
-| `pattern_transformations.rs` | **21 pattern tools: shift, humanize, rotate, retrograde, reverse, shuffle, thin, stack, mutate, stretch, compress, quantize, palindrome, stutter, stutter_every, granularize, magnetize, gravity, ripple, invert, invert_constrained** |
+| `pattern_transformations.rs` | **21 pattern tools: shift, humanize, rotate, retrograde, and more** |
 | `pattern_physics.rs` | **Physics-inspired transformations: magnetize, gravity, ripple** |
-| `transform_namespace.rs` | **Closure-based `.transform()` API for organized pattern transformations** |
-| `sieve_demo.rs` | **Frequency-based filtering transforms: sieve_inclusive, sieve_exclusive** |
-| `generator_namespace.rs` | **Closure-based `.generator()` API for organized note generation** |
-| `orbit_demo.rs` | **Orbit generator - sinusoidal pitch patterns around a center frequency** |
-| `bounce_demo.rs` | **Bounce generator - physics-based bouncing ball effect with damping** |
-| `sprinkle_demo.rs` | **Sprinkle generator - completely random f32 frequencies with no snapping** |
-| `namespace_api.rs` | **Complete namespace API guide - `.generator()`, `.transform()`, and `.effects()` closure patterns** |
+| `transform_namespace.rs` | **Closure-based `.transform()` API** |
+| `sieve_demo.rs` | **Frequency-based filtering transforms** |
+| `generator_namespace.rs` | **Closure-based `.generator()` API** |
+| `orbit_demo.rs` | **Orbit generator** - sinusoidal pitch patterns |
+| `bounce_demo.rs` | **Bounce generator** - physics-based bouncing |
+| `sprinkle_demo.rs` | **Sprinkle generator** - random frequencies |
+| `namespace_api.rs` | **Complete namespace API guide** |
 | `pattern_modifiers.rs` | Transform patterns: reverse, invert, transpose |
 | `pattern_repeat.rs` | Loop and repeat musical patterns |
 | `reverse_patterns.rs` | Retrograde melodies and rhythms |
@@ -135,6 +162,7 @@ This directory contains **86 example programs** demonstrating all features of th
 | `musical_time.rs` | Bars, beats, and timing helpers |
 | `every_n_demo.rs` | Play events every N steps/bars |
 | `markers_demo.rs` | Timeline markers for navigation |
+| `tweening_demo.rs` | **Smooth parameter transitions** |
 
 ---
 
@@ -151,17 +179,9 @@ This directory contains **86 example programs** demonstrating all features of th
 
 ---
 
-## 🤖 Automation & Modulation
+## 💿 MIDI & Import/Export
 
-| Example | Description |
-|---------|-------------|
-| `automation_demo.rs` | Automate volume, pan, filter, effect parameters |
-| `lfo_modulation.rs` | LFO-driven parameter modulation (vibrato, tremolo) |
-| `pitch_bend.rs` | Pitch automation and bending |
-
----
-
-## 💿 MIDI Import/Export
+### MIDI
 
 | Example | Description |
 |---------|-------------|
@@ -169,27 +189,14 @@ This directory contains **86 example programs** demonstrating all features of th
 | `midi_import.rs` | Import MIDI files and play them |
 | `midi_to_flac.rs` | Convert MIDI files to high-quality FLAC audio |
 | `midi_percussion_demo.rs` | MIDI drum mapping (General MIDI standard) |
-| `test_roundtrip.rs` | Test MIDI export/import fidelity |
 
----
-
-## 📁 Audio Export
+### Audio Export
 
 | Example | Description |
 |---------|-------------|
 | `wav_export_demo.rs` | Export compositions as WAV files |
-| `flac_export.rs` | Export as lossless FLAC (smaller file size) |
-| `midi_to_flac.rs` | MIDI → Audio conversion pipeline |
-
----
-
-## 🎮 Game Audio & Real-Time
-
-| Example | Description |
-|---------|-------------|
-| `concurrent_playback_demo.rs` | Multiple simultaneous audio streams |
-| `spatial_audio_demo.rs` | 3D positional audio for game worlds |
-| `sample_playback_demo.rs` | Trigger audio samples dynamically |
+| `flac_export.rs` | Export as lossless FLAC (50-60% smaller than WAV) |
+| `multiformat_import.rs` | Import MP3, OGG, FLAC, WAV, AAC files |
 
 ---
 
@@ -199,16 +206,18 @@ This directory contains **86 example programs** demonstrating all features of th
 
 | Example | Description |
 |---------|-------------|
-| `sample_slicing.rs` | Complete guide to all slicing techniques (equal, time-based, transient detection, beat-based) |
-| `slice_playback.rs` | Direct sample and slice playback in compositions without caching |
+| `sample_playback_demo.rs` | **Simple sample playback** with automatic caching |
+| `sample_slicing.rs` | All slicing techniques (equal, time, transient, beat-based) |
+| `slice_playback.rs` | Direct sample and slice playback in compositions |
+| `time_pitch_manipulation.rs` | **Time stretch and pitch shift** samples independently |
+| `streaming_demo.rs` | **Memory-efficient streaming** for long audio files |
 
 **Key Features:**
-- **Equal Slicing:** Divide samples into N equal parts
-- **Time-Based:** Slice at specific time points
-- **Transient Detection:** Automatically detect hit points in drum loops
-- **Beat-Based:** Slice to BPM and rhythmic subdivisions
-- **Direct Playback:** Play samples and slices without caching workflow
-- **Zero-Copy:** Efficient Arc-based referencing avoids audio data duplication
+- **Simple API:** `engine.play_sample("file.wav")?` - automatic caching, SIMD-accelerated
+- **Slicing:** Equal, time-based, transient detection, beat-based
+- **Manipulation:** Time stretch, pitch shift (independent control)
+- **Streaming:** Long files without loading entire audio into RAM
+- **Zero-Copy:** Efficient Arc-based referencing avoids duplication
 
 ---
 
@@ -216,11 +225,12 @@ This directory contains **86 example programs** demonstrating all features of th
 
 | Example | Description |
 |---------|-------------|
-| `master_feature_showcase.rs` | **Comprehensive demo of major features** |
+| `master_feature_showcase.rs` | **Comprehensive demo of major features (19K)** |
+| `sequences_showcase.rs` | **Complete tour of 50+ algorithmic sequences (19K)** |
+| `pattern_transformations.rs` | **All 21 pattern transformation tools (13K)** |
+| `effects_showcase.rs` | **All 16 audio effects with examples (12K)** |
 | `claude_composition.rs` | Full composition example (Claude-generated) |
 | `claude_composition_algorithms.rs` | Algorithmic composition example |
-| `stress_test.rs` | Performance test with many concurrent tracks |
-| `volume_test.rs` | Audio level testing and calibration |
 
 ---
 
@@ -232,9 +242,16 @@ Run any example with:
 cargo run --example <name>
 
 # Examples:
-cargo run --example sequences_showcase
-cargo run --example euclidean_rhythms
+cargo run --example sample_playback_demo    # Start here!
+cargo run --example synthesis_demo
 cargo run --example effects_showcase
+cargo run --example sequences_showcase
+```
+
+**For complex synthesis examples, use `--release` to avoid audio underruns:**
+
+```bash
+cargo run --release --example master_feature_showcase
 ```
 
 Most examples will:
@@ -246,49 +263,76 @@ Most examples will:
 
 ## 🎓 Learning Path
 
-### Beginner Track
+### Beginner Track (Game Developers)
+1. `sample_playback_demo.rs` - **Dead-simple game audio** (2 lines!)
+2. `concurrent_playback_demo.rs` - Multiple sounds at once
+3. `spatial_audio_demo.rs` - 3D positioned audio
+
+### Beginner Track (Music Composers)
 1. `notes_and_chords.rs` - Understand basic note playback
 2. `waveforms.rs` - Hear different waveform types
-3. `drum_grid.rs` - Create simple drum patterns
-4. `instrument_showcase.rs` - Explore available sounds
-5. `effects_showcase.rs` - Learn about audio effects
+3. `synthesis_demo.rs` - Learn synthesis basics
+4. `drum_grid.rs` - Create simple drum patterns
+5. `instrument_showcase.rs` - Explore 150+ instruments
 
 ### Intermediate Track
 6. `theory_demo.rs` - Music theory concepts
 7. `arrangement_demo.rs` - Structure complete songs
 8. `automation_demo.rs` - Dynamic parameter changes
-9. `euclidean_rhythms.rs` - Algorithmic rhythm patterns
-10. `midi_export.rs` - Export to MIDI for DAWs
+9. `effects_showcase.rs` - All audio effects
+10. `euclidean_rhythms.rs` - Algorithmic rhythm patterns
 
 ### Advanced Track
 11. `sequences_showcase.rs` - Master algorithmic composition
-12. `spatial_audio_demo.rs` - 3D audio positioning
+12. `pattern_transformations.rs` - 21 pattern manipulation tools
 13. `sidechaining.rs` - Professional mixing techniques
-14. `master_feature_showcase.rs` - Everything together
-15. `stress_test.rs` - Performance optimization
+14. `multiband_compression_demo.rs` - Frequency-specific dynamics
+15. `master_feature_showcase.rs` - Everything together
 
 ---
 
 ## 💡 Quick Reference
 
-### By Feature
-
-**Drums:** `drum_grid.rs`, `drum_808.rs`, `euclidean_rhythms.rs`
-**Synthesis:** `synthesis_demo.rs`, `additive_synthesis_demo.rs`, `wavetable_synthesis.rs`
-**Sequences:** `sequences_showcase.rs`, `mathematical_sequences.rs`, `chaotic_sequences.rs`
-**Effects:** `effects_showcase.rs`, `sidechaining.rs`, `spatial_audio_demo.rs`
-**Theory:** `theory_demo.rs`, `world_scales_demo.rs`, `progressions_demo.rs`
-**Samples:** `sample_slicing.rs`, `slice_playback.rs`
-**MIDI:** `midi_export.rs`, `midi_import.rs`, `midi_to_flac.rs`
-**Export:** `wav_export_demo.rs`, `flac_export.rs`
-
 ### By Use Case
 
-**Game Audio:** `concurrent_playback_demo.rs`, `spatial_audio_demo.rs`, `sample_playback_demo.rs`
-**Generative Music:** `sequences_showcase.rs`, `algorithmic_patterns.rs`, `chaotic_sequences.rs`, `pattern_transformations.rs`, `pattern_physics.rs`
-**Electronic Music:** `drum_808.rs`, `sidechaining.rs`, `wavetable_synthesis.rs`, `sample_slicing.rs`, `slice_playback.rs`
-**Classical/Acoustic:** `classical_techniques.rs`, `voicing_and_voice_leading.rs`, `ornaments_showcase.rs`
-**Learning:** `master_feature_showcase.rs`, `instrument_showcase.rs`, `effects_showcase.rs`
+**Game Audio (Start Here!):**
+- Simple: `sample_playback_demo.rs` - Just 2 lines of code!
+- Concurrent: `concurrent_playback_demo.rs` - Many sounds at once
+- 3D Audio: `spatial_audio_demo.rs`, `doppler_effect_demo.rs`
+- Integration: See [book/game-audio/bevy-integration.md](../book/src/game-audio/bevy-integration.md)
+
+**Generative Music:**
+- Sequences: `sequences_showcase.rs` (50+ algorithms)
+- Patterns: `pattern_transformations.rs` (21 tools)
+- Chaos: `chaotic_sequences.rs` (Lorenz, logistic map)
+- Physics: `pattern_physics.rs` (magnetize, gravity, ripple)
+
+**Electronic Music:**
+- Drums: `drum_808.rs`, `808_909_complete_demo.rs`
+- Mixing: `sidechaining.rs`, `multiband_compression_demo.rs`
+- Synthesis: `wavetable_synthesis.rs`, `additive_synthesis_demo.rs`
+- Samples: `sample_slicing.rs`, `time_pitch_manipulation.rs`
+
+**Classical/Acoustic:**
+- Theory: `classical_techniques.rs`, `voicing_and_voice_leading.rs`
+- Expression: `ornaments_showcase.rs`, `expressive_techniques.rs`
+- Instruments: `instrument_showcase.rs` (150+ presets)
+
+**Learning:**
+- Start: `sample_playback_demo.rs` (simplest), `synthesis_demo.rs`
+- Complete: `master_feature_showcase.rs` (everything)
+- Reference: `effects_showcase.rs`, `sequences_showcase.rs`
+
+### By Feature
+
+**Synthesis:** `synthesis_demo.rs`, `additive_synthesis_demo.rs`, `wavetable_synthesis.rs`
+**Effects:** `effects_showcase.rs`, `effect_presets_demo.rs`, `sidechaining.rs`, `spatial_audio_demo.rs`
+**Drums:** `drum_grid.rs`, `drum_808.rs`, `euclidean_rhythms.rs`, `808_909_complete_demo.rs`
+**Sequences:** `sequences_showcase.rs`, `mathematical_sequences.rs`, `chaotic_sequences.rs`
+**Theory:** `theory_demo.rs`, `world_scales_demo.rs`, `progressions_demo.rs`
+**Samples:** `sample_playback_demo.rs`, `sample_slicing.rs`, `time_pitch_manipulation.rs`
+**MIDI:** `midi_export.rs`, `midi_import.rs`, `midi_to_flac.rs`
+**Export:** `wav_export_demo.rs`, `flac_export.rs`
 
 ---
 
@@ -301,9 +345,12 @@ When adding new examples:
 3. **Print output:** Help users understand what they're hearing
 4. **Keep focused:** One concept per example (usually)
 5. **Update this README:** Add your example to the appropriate category
+6. **Test with `--release`:** Complex synthesis should run smoothly
 
 ---
 
 **Happy composing! 🎵**
 
-For more information, see the [Tunes Documentation](../book).
+For more information, see the [Tunes Documentation Book](../book).
+
+**New to Tunes?** Start with `sample_playback_demo.rs` (game audio) or `synthesis_demo.rs` (music composition).

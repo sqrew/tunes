@@ -2,6 +2,31 @@
 
 Position sounds in 3D space using panning and volume attenuation. Tunes provides real-time control of sound positioning for immersive game audio.
 
+## Quick Start: Spatial Sample Playback
+
+Position samples in 3D space with automatic caching:
+
+```rust
+use tunes::prelude::*;
+
+fn play_positioned_sample() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Play sample with automatic caching
+    let sound_id = engine.play_sample("footstep.wav")?;
+
+    // Position it in 3D space (5m right, ground level, 10m forward)
+    engine.set_sound_position(sound_id, 5.0, 0.0, 10.0)?;
+
+    // Move it in real-time
+    engine.set_sound_position(sound_id, 10.0, 0.0, 5.0)?;
+
+    Ok(())
+}
+```
+
+Perfect for game audio - simple sample playback with full spatial control!
+
 ## Built-in 3D Spatial Audio
 
 Tunes includes a comprehensive 3D spatial audio system with automatic distance attenuation, azimuth-based panning, and listener orientation. This is ideal for games, VR/AR applications, and interactive installations.

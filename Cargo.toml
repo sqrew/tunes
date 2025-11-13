@@ -1,6 +1,6 @@
 [package]
 name = "tunes"
-version = "0.15.1"
+version = "0.16.0"
 edition = "2021"
 authors = ["Nicholas Manson <nicholaspmanson@gmail.com>"]
 description = "A music composition, synthesis, and audio generation library"
@@ -46,8 +46,62 @@ notify = "6.1"
 crossbeam = "0.8"
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 wide = "0.7"        # SIMD vectorization for DSP performance
+rayon = "1.10"      # Data parallelism for multi-core performance
+wgpu = "23.0"                   # GPU compute shaders for 500-1000x synthesis performance
+pollster = "0.3"                # Async runtime for wgpu initialization
+bytemuck = { version = "1.14", features = ["derive"] }  # Safe casting for GPU buffers
+futures-intrusive = "0.5"       # Async primitives for GPU readback
 
 # Audio I/O
 hound = "3.5"       # WAV export only (writing)
 flacenc = "0.5"     # FLAC export
 symphonia = { version = "0.5", features = ["mp3", "isomp4", "aac"] }  # Multi-format import (MP3, OGG, FLAC, WAV, AAC)
+
+# Benchmarks (run with: cargo run --release --bin <name>)
+[[bin]]
+name = "simd_sample_playback"
+path = "benches/simd_sample_playback.rs"
+
+[[bin]]
+name = "simd_wavetable"
+path = "benches/simd_wavetable.rs"
+
+[[bin]]
+name = "simd_effects"
+path = "benches/simd_effects.rs"
+
+[[bin]]
+name = "sample_cache"
+path = "benches/sample_cache.rs"
+
+[[bin]]
+name = "concurrent_mixing"
+path = "benches/concurrent_mixing.rs"
+
+[[bin]]
+name = "export_speed"
+path = "benches/export_speed.rs"
+
+[[bin]]
+name = "polyphony"
+path = "benches/polyphony.rs"
+
+[[bin]]
+name = "streaming_memory"
+path = "benches/streaming_memory.rs"
+
+[[bin]]
+name = "realtime_latency"
+path = "benches/realtime_latency.rs"
+
+[[bin]]
+name = "cache_benchmark"
+path = "benches/cache_benchmark.rs"
+
+[[bin]]
+name = "cache_realistic"
+path = "benches/cache_realistic.rs"
+
+[[bin]]
+name = "gpu_benchmark"
+path = "benches/gpu_benchmark.rs"

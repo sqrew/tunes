@@ -2,6 +2,7 @@
 /// This module provides functionality to load audio samples from various formats
 /// (WAV, MP3, OGG, FLAC, AAC) and play them back with pitch shifting, looping, and effects.
 use crate::error::{Result, TunesError};
+use rayon::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
@@ -600,11 +601,12 @@ impl Sample {
     ///
     /// Scales the sample so the loudest point reaches ±1.0 without clipping.
     pub fn normalize(&self) -> Self {
+        // Parallel max-finding for large samples
         let max_amp = self
             .data
-            .iter()
+            .par_iter()
             .map(|&x| x.abs())
-            .fold(0.0f32, |a, b| a.max(b));
+            .reduce(|| 0.0f32, |a, b| a.max(b));
 
         if max_amp < 0.0001 {
             // Sample is silent or nearly silent
@@ -612,7 +614,8 @@ impl Sample {
         }
 
         let gain = 1.0 / max_amp;
-        let normalized_data: Vec<f32> = self.data.iter().map(|&x| x * gain).collect();
+        // Parallel scaling for large samples
+        let normalized_data: Vec<f32> = self.data.par_iter().map(|&x| x * gain).collect();
 
         Self {
             data: Arc::new(normalized_data),
@@ -630,7 +633,8 @@ impl Sample {
     /// # Arguments
     /// * `gain` - Gain multiplier (1.0 = unchanged, 0.5 = half volume, 2.0 = double volume)
     pub fn with_gain(&self, gain: f32) -> Self {
-        let gained_data: Vec<f32> = self.data.iter().map(|&x| x * gain).collect();
+        // Parallel gain application for large samples
+        let gained_data: Vec<f32> = self.data.par_iter().map(|&x| x * gain).collect();
 
         Self {
             data: Arc::new(gained_data),
@@ -691,15 +695,21 @@ impl Sample {
         let fade_frames = (fade_duration * self.sample_rate as f32) as usize;
         let fade_frames = fade_frames.min(self.num_frames);
 
-        let mut faded_data = self.data.as_ref().clone();
-
-        for frame_idx in 0..fade_frames {
-            let gain = frame_idx as f32 / fade_frames as f32;
-            let sample_idx = frame_idx * self.channels as usize;
-            for ch in 0..self.channels as usize {
-                faded_data[sample_idx + ch] *= gain;
-            }
-        }
+        // Parallel fade-in processing using par_iter + enumerate
+        let channels = self.channels as usize;
+        let faded_data: Vec<f32> = self.data
+            .par_iter()
+            .enumerate()
+            .map(|(idx, &sample)| {
+                let frame_idx = idx / channels;
+                if frame_idx < fade_frames {
+                    let gain = frame_idx as f32 / fade_frames as f32;
+                    sample * gain
+                } else {
+                    sample
+                }
+            })
+            .collect();
 
         Self {
             data: Arc::new(faded_data),
@@ -721,16 +731,22 @@ impl Sample {
         let fade_frames = fade_frames.min(self.num_frames);
         let fade_start = self.num_frames - fade_frames;
 
-        let mut faded_data = self.data.as_ref().clone();
-
-        for frame_idx in fade_start..self.num_frames {
-            let progress = (frame_idx - fade_start) as f32 / fade_frames as f32;
-            let gain = 1.0 - progress;
-            let sample_idx = frame_idx * self.channels as usize;
-            for ch in 0..self.channels as usize {
-                faded_data[sample_idx + ch] *= gain;
-            }
-        }
+        // Parallel fade-out processing using par_iter + enumerate
+        let channels = self.channels as usize;
+        let faded_data: Vec<f32> = self.data
+            .par_iter()
+            .enumerate()
+            .map(|(idx, &sample)| {
+                let frame_idx = idx / channels;
+                if frame_idx >= fade_start {
+                    let progress = (frame_idx - fade_start) as f32 / fade_frames as f32;
+                    let gain = 1.0 - progress;
+                    sample * gain
+                } else {
+                    sample
+                }
+            })
+            .collect();
 
         Self {
             data: Arc::new(faded_data),

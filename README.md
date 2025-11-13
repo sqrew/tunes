@@ -61,7 +61,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.15.1"
+tunes = "0.16.0"
 ```
 
 ### Platform Requirements
@@ -332,7 +332,7 @@ cargo test
 
 ## Examples
 
-Run the included **75+ examples** to hear the library in action:
+Run the included **99 examples** to hear the library in action:
 
 ```bash
 # Sample playback (WAV file loading and playback)

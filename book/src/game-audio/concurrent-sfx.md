@@ -2,6 +2,8 @@
 
 Game audio requires playing multiple sounds simultaneously—footsteps, gunshots, ambient effects, and UI sounds all at once. Tunes provides a concurrent audio engine designed exactly for this use case.
 
+**Quick Start:** For simple sample playback, just use `engine.play_sample("sound.wav")?` - it handles everything automatically. See [Working with Samples](./samples.md) for details.
+
 ## The Core Pattern: Realtime Playback
 
 Unlike traditional music composition where you wait for playback to finish, games need **non-blocking** audio:
