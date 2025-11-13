@@ -18,7 +18,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
-- **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing
+- **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD with auto caching for quick, easy, efficient samples on the fly
 - **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
@@ -40,18 +40,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
         DAW dwellers
         DSP engineers
         live-repl-first musicians
-        beginners to programming
 
-## What this is and isn't for:
-    Is:
-        A fun, batteries-included domain specific language for digital signal processing
-        Aimed at making creative music using DSP fundamentals, music theory helpers and generative algorithmic sequences accessible
-        tunes is also under active development
-    Isn't:
-        A truly professional grade implementation of DSP or a AAA quality audio sample playback engine.
-        Tunes does pre-rendered and real-time synthesis, sample playback and spatial audio but it is NOT the most efficient implementation of "play x at y when z" audio playback needs
-        However, the crate has handled 5000 concurrent synthesis events with heavy effects on decade old hardware. 
-        Whether or not that's good enough depends on your use case
 ## PROS
     rust
     music theory integration
@@ -63,7 +52,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     no "instant feedback" outside of hot-reloading segments
     no external control or input (no live line recording, midi in, osc or network controls) or hardware control
     no plugin system
-    not multithreaded audio (and no simd)
+    not multithreaded audio
     rust (not as beginner friendly as something like sonic pi)
 
 ## Installation
