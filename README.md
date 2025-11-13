@@ -12,7 +12,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
 - **Instruments**: 150+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
 - **Rhythm & Drums**: 100+ pre-configured drum sounds, drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor, bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
+- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor (with multiband support), bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, and many classical techniques and patterns built-in
 - **Algorithmic Sequences**: 50+ algorithms, including Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
@@ -347,6 +347,36 @@ cargo run -- example example-name-here
 ```
 
 **Note:** Use `--release` for examples with very complex synthesis to avoid audio underruns.
+
+## Documentation Book
+
+**📚 Comprehensive Guide Available!**
+
+Tunes includes a complete book with tutorials, examples, and in-depth comparisons with other audio libraries.
+
+**Find it at:** `book/` directory in the repository
+
+**To read locally:**
+```bash
+# Install mdbook if you don't have it
+cargo install mdbook
+
+# Serve the book locally
+cd book
+mdbook serve --open
+```
+
+The book includes:
+- 🚀 **Getting Started** - From first sound to algorithmic music
+- 🎵 **Core Concepts** - Architecture, engine, mixer, composition layers
+- 🎮 **Game Audio Patterns** - Samples, concurrent SFX, dynamic music, spatial audio
+- 🎹 **Synthesis & Effects** - FM synthesis, granular, effects chains
+- 🔬 **Advanced Topics** - Generators, transformations, MIDI, optimization
+- ⚖️ **Comparisons** - Clinical, honest comparisons with Kira, Rodio, SoLoud, TidalCycles, Sonic Pi, and more
+
+**Not sure if Tunes is right for you?** Check the [Comparisons](book/src/comparisons.md) page for honest, technical comparisons with other libraries.
+
+---
 
 ## License
 

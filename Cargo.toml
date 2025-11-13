@@ -45,6 +45,7 @@ midly = "0.5"
 notify = "6.1"
 crossbeam = "0.8"
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
+wide = "0.7"        # SIMD vectorization for DSP performance
 
 # Audio I/O
 hound = "3.5"       # WAV export only (writing)

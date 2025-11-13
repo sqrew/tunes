@@ -382,6 +382,116 @@ The implementation uses `process_stereo_linked()` internally for all bus and mas
 - Drum bus compression (maintains stereo width of overheads/rooms)
 - Sidechained compression (EDM pump stays centered)
 
+#### Multiband Compression
+
+**New feature!** Tunes now supports multiband compression - splitting the signal into frequency bands and applying different compression to each band independently. This is a professional mastering tool unavailable in most Rust audio libraries.
+
+**Why multiband compression?**
+
+Standard compression affects all frequencies equally:
+- Problem: Loud bass makes the entire mix duck, including highs
+- Problem: Compressing vocals also affects background instruments
+- Solution: Compress each frequency range independently
+
+**Quick example:**
+```rust
+// 3-band multiband compressor
+comp.track("master")
+    .compressor(
+        Compressor::multiband_3way(200.0, 2000.0)  // Low-mid and mid-high crossovers
+            .with_band_low(0.3, 4.0)    // Tight bass control (threshold, ratio)
+            .with_band_mid(0.5, 2.5)    // Gentle mids
+            .with_band_high(0.6, 2.0)   // Transparent highs
+    );
+```
+
+**How it works:**
+1. Signal is split into frequency bands using Butterworth bandpass filters
+2. Each band gets its own compressor with independent settings
+3. Bands are summed back together at the output
+
+**API Options:**
+
+**Option 1: Convenience 3-way split**
+```rust
+Compressor::multiband_3way(200.0, 2000.0)  // Low/mid and mid/high crossovers
+    .with_band_low(0.3, 4.0)               // Adjust low band
+    .with_band_mid(0.5, 2.5)               // Adjust mid band
+    .with_band_high(0.6, 2.0)              // Adjust high band
+```
+
+**Option 2: Add single band**
+```rust
+Compressor::new(0.5, 3.0, 0.01, 0.1, 1.0)
+    .with_multiband(CompressorBand::new(
+        40.0,   // Low freq
+        150.0,  // High freq
+        Compressor::new(0.3, 4.0, 0.005, 0.05, 1.0)  // Bass compression
+    ))
+```
+
+**Option 3: Full custom configuration**
+```rust
+let bands = vec![
+    CompressorBand::new(0.0, 80.0,
+        Compressor::new(0.25, 5.0, 0.003, 0.03, 1.0)),  // Sub bass - aggressive
+    CompressorBand::new(80.0, 250.0,
+        Compressor::new(0.35, 3.5, 0.005, 0.05, 1.0)),  // Bass - moderate
+    CompressorBand::new(250.0, 2000.0,
+        Compressor::new(0.5, 2.5, 0.01, 0.1, 1.0)),     // Mids - gentle
+    CompressorBand::new(2000.0, 8000.0,
+        Compressor::new(0.6, 2.0, 0.01, 0.1, 1.0)),     // Presence - transparent
+    CompressorBand::new(8000.0, 20000.0,
+        Compressor::new(0.7, 1.5, 0.02, 0.15, 1.0)),    // Air - very gentle
+];
+
+comp.track("master")
+    .compressor(Compressor::new(0.5, 1.0, 0.01, 0.1, 1.0)
+        .with_multibands(bands));
+```
+
+**Common frequency ranges:**
+- **Sub bass**: 0-80 Hz (rumble, kick fundamentals)
+- **Bass**: 80-250 Hz (bass guitars, kick body)
+- **Low mids**: 250-500 Hz (fundamental of vocals/guitars)
+- **Mids**: 500-2000 Hz (vocals, snare, most instruments)
+- **High mids/Presence**: 2000-8000 Hz (clarity, definition)
+- **Highs/Air**: 8000-20000 Hz (cymbals, shimmer, space)
+
+**Mastering workflow example:**
+```rust
+// Professional mastering chain with multiband
+mixer.master_parametric_eq(ParametricEQ::new()
+    .band(60.0, -3.0, 0.7)      // Cut rumble
+    .band(3000.0, 2.0, 1.5));   // Presence boost
+
+// Multiband compression for frequency-specific control
+mixer.master_compressor(
+    Compressor::multiband_3way(200.0, 2000.0)
+        .with_band_low(0.3, 4.0)    // Tight bass (prevents mud)
+        .with_band_mid(0.5, 2.5)    // Gentle mids (natural vocals)
+        .with_band_high(0.6, 2.0)   // Transparent highs (preserves air)
+);
+
+mixer.master_saturation(Saturation::new(1.5, 0.15, 0.3));  // Warmth
+mixer.master_limiter(Limiter::new(0.95, 0.05));             // Ceiling
+```
+
+**Use cases:**
+- **Master bus**: Control each frequency range independently for transparent mastering
+- **Bass tracks**: Compress sub frequencies tightly without affecting upper harmonics
+- **Vocals**: Control body (200-500Hz) without affecting presence (3-5kHz)
+- **Drums bus**: Compress low end (kick) separately from high end (cymbals)
+
+**Comparison to parametric EQ:**
+- **Parametric EQ**: Static frequency adjustments (always boost/cut)
+- **Multiband Compressor**: Dynamic frequency-specific compression (reacts to input level)
+- **Use together**: EQ to shape tone, multiband comp to control dynamics per band
+
+See `examples/multiband_compression_demo.rs` for complete demonstrations of single-band vs 3-band vs 5-band configurations with audible comparisons.
+
+**Technical note:** Each band uses a 2nd-order Butterworth bandpass filter (highpass + lowpass cascade) for clean frequency separation. The existing Compressor logic is reused for each band - elegant composition of functionality.
+
 ### 4. Gate
 
 Noise gate - silences audio below a threshold.

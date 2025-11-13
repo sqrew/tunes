@@ -16,6 +16,7 @@ pub mod filter_envelope;
 pub mod karplus_strong;
 pub mod additive;
 pub mod spatial;
+pub mod simd;
 
 // Re-export main types for convenience
 pub use waveform::Waveform;
@@ -41,3 +42,4 @@ pub use spatial::{
     calculate_spatial, calculate_attenuation, calculate_azimuth, azimuth_to_pan,
     calculate_doppler,
 };
+pub use simd::{SimdDispatcher, SimdLanes, SimdWidth, SIMD};

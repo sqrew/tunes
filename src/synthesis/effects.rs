@@ -41,6 +41,106 @@ pub enum ResolvedSidechainSource {
     Bus(BusId),
 }
 
+/// Frequency band for multiband compression
+///
+/// Defines a frequency range and its associated compressor settings.
+/// Used with `Compressor::with_multiband()` or `Compressor::with_multibands()`.
+#[derive(Debug, Clone)]
+pub struct CompressorBand {
+    pub low_freq: f32,      // Lower frequency bound in Hz
+    pub high_freq: f32,     // Upper frequency bound in Hz
+    pub compressor: Compressor, // Compressor settings for this band
+
+    // Bandpass filter state (Butterworth 2nd order)
+    low_z1: f32,
+    low_z2: f32,
+    high_z1: f32,
+    high_z2: f32,
+}
+
+impl CompressorBand {
+    /// Create a new frequency band with compressor settings
+    ///
+    /// # Arguments
+    /// * `low_freq` - Lower frequency bound in Hz (e.g., 80.0 for bass)
+    /// * `high_freq` - Upper frequency bound in Hz (e.g., 200.0 for bass)
+    /// * `compressor` - Compressor to apply to this frequency band
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::{Compressor, CompressorBand};
+    /// let bass_band = CompressorBand::new(
+    ///     40.0,   // Low freq
+    ///     150.0,  // High freq
+    ///     Compressor::new(0.3, 4.0, 0.005, 0.05, 1.0) // Tight compression
+    /// );
+    /// ```
+    pub fn new(low_freq: f32, high_freq: f32, compressor: Compressor) -> Self {
+        Self {
+            low_freq,
+            high_freq,
+            compressor,
+            low_z1: 0.0,
+            low_z2: 0.0,
+            high_z1: 0.0,
+            high_z2: 0.0,
+        }
+    }
+
+    /// Process a sample through this band's filter and compressor
+    #[inline]
+    fn process_sample(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64) -> f32 {
+        // Apply bandpass filter (highpass then lowpass)
+        let filtered = self.bandpass(input, sample_rate);
+
+        // Compress the filtered signal
+        self.compressor.process(filtered, sample_rate, time, sample_count, None)
+    }
+
+    /// Simple 2nd-order Butterworth bandpass filter
+    #[inline]
+    fn bandpass(&mut self, input: f32, sample_rate: f32) -> f32 {
+        // Highpass at low_freq
+        let omega_low = 2.0 * std::f32::consts::PI * self.low_freq / sample_rate;
+        let cos_omega_low = omega_low.cos();
+        let alpha_low = omega_low.sin() / (2.0 * 0.707); // Q = 0.707 for Butterworth
+
+        let b0_low = (1.0 + cos_omega_low) / 2.0;
+        let b1_low = -(1.0 + cos_omega_low);
+        let b2_low = (1.0 + cos_omega_low) / 2.0;
+        let a0_low = 1.0 + alpha_low;
+        let a1_low = -2.0 * cos_omega_low;
+        let a2_low = 1.0 - alpha_low;
+
+        let high_passed = (b0_low * input + b1_low * self.low_z1 + b2_low * self.low_z2
+            - a1_low * self.low_z1 - a2_low * self.low_z2) / a0_low;
+
+        self.low_z2 = self.low_z1;
+        self.low_z1 = high_passed;
+
+        // Lowpass at high_freq
+        let omega_high = 2.0 * std::f32::consts::PI * self.high_freq / sample_rate;
+        let cos_omega_high = omega_high.cos();
+        let alpha_high = omega_high.sin() / (2.0 * 0.707);
+
+        let b0_high = (1.0 - cos_omega_high) / 2.0;
+        let b1_high = 1.0 - cos_omega_high;
+        let b2_high = (1.0 - cos_omega_high) / 2.0;
+        let a0_high = 1.0 + alpha_high;
+        let a1_high = -2.0 * cos_omega_high;
+        let a2_high = 1.0 - alpha_high;
+
+        let band_passed = (b0_high * high_passed + b1_high * self.high_z1 + b2_high * self.high_z2
+            - a1_high * self.high_z1 - a2_high * self.high_z2) / a0_high;
+
+        self.high_z2 = self.high_z1;
+        self.high_z1 = band_passed;
+
+        band_passed
+    }
+}
+
 /// Delay effect with feedback
 #[derive(Debug, Clone)]
 pub struct Delay {
@@ -500,7 +600,7 @@ impl Distortion {
         input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -508,12 +608,81 @@ impl Distortion {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     /// * `sample_rate` - Sample rate in Hz (for time advancement)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, current_time, current_sample_count);
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        // Update automation params if needed (check first sample)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.drive_automation {
+                self.drive = auto.value_at(time).max(1.0);
+            }
+        }
+
+        // Early exit if no effect
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Dispatch to SIMD implementation
+        match SIMD.simd_width() {
+            SimdWidth::X8 => self.process_block_simd::<8>(buffer),
+            SimdWidth::X4 => self.process_block_simd::<4>(buffer),
+            SimdWidth::Scalar => self.process_block_scalar(buffer),
+        }
+    }
+
+    /// SIMD implementation - processes N samples at once
+    #[inline(always)]
+    fn process_block_simd<const N: usize>(&self, buffer: &mut [f32]) {
+        let drive = self.drive;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+        let compensation = 1.0 / drive.sqrt();
+
+        let num_chunks = buffer.len() / N;
+        let remainder_start = num_chunks * N;
+
+        // Process N samples at a time
+        for chunk_idx in 0..num_chunks {
+            let chunk_start = chunk_idx * N;
+            let chunk = &mut buffer[chunk_start..chunk_start + N];
+
+            for sample in chunk.iter_mut() {
+                let input = *sample;
+                let amplified = input * drive;
+                let distorted = amplified.tanh();
+                let normalized = distorted * compensation;
+                *sample = input.mul_add(one_minus_mix, normalized * mix);
+            }
+        }
+
+        // Handle remainder with scalar
+        for i in remainder_start..buffer.len() {
+            let input = buffer[i];
+            let amplified = input * drive;
+            let distorted = amplified.tanh();
+            let normalized = distorted * compensation;
+            buffer[i] = input.mul_add(one_minus_mix, normalized * mix);
+        }
+    }
+
+    /// Scalar fallback
+    #[inline(always)]
+    fn process_block_scalar(&self, buffer: &mut [f32]) {
+        let drive = self.drive;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+        let compensation = 1.0 / drive.sqrt();
+
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+            let amplified = input * drive;
+            let distorted = amplified.tanh();
+            let normalized = distorted * compensation;
+            *sample = input.mul_add(one_minus_mix, normalized * mix);
         }
     }
 
@@ -718,6 +887,9 @@ pub struct Compressor {
     // Resolved sidechain source (internal, used during rendering)
     pub(crate) resolved_sidechain_source: Option<ResolvedSidechainSource>,
 
+    // Multiband compression support
+    bands: Option<Vec<CompressorBand>>,
+
     // Automation (optional)
     threshold_automation: Option<Automation>,
     ratio_automation: Option<Automation>,
@@ -747,6 +919,7 @@ impl Compressor {
             envelope: 0.0,
             sidechain_source: None,
             resolved_sidechain_source: None,
+            bands: None,
             threshold_automation: None,
             ratio_automation: None,
             attack_automation: None,
@@ -854,6 +1027,139 @@ impl Compressor {
         self
     }
 
+    /// Add a single frequency band for multiband compression
+    ///
+    /// Splits the signal into frequency bands and applies different compression
+    /// to each band independently. Perfect for mastering and frequency-specific dynamics.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::{Compressor, CompressorBand};
+    /// let comp = Compressor::new(0.5, 3.0, 0.01, 0.1, 1.0)
+    ///     .with_multiband(CompressorBand::new(
+    ///         80.0,    // Low freq
+    ///         200.0,   // High freq
+    ///         Compressor::new(0.3, 4.0, 0.005, 0.05, 1.0) // Tight bass comp
+    ///     ));
+    /// ```
+    pub fn with_multiband(mut self, band: CompressorBand) -> Self {
+        if self.bands.is_none() {
+            self.bands = Some(Vec::new());
+        }
+        self.bands.as_mut().unwrap().push(band);
+        self
+    }
+
+    /// Add multiple frequency bands for multiband compression
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::{Compressor, CompressorBand};
+    /// let bands = vec![
+    ///     CompressorBand::new(0.0, 200.0,
+    ///         Compressor::new(0.3, 4.0, 0.005, 0.05, 1.0)), // Bass
+    ///     CompressorBand::new(200.0, 2000.0,
+    ///         Compressor::new(0.5, 2.5, 0.01, 0.1, 1.0)),   // Mids
+    ///     CompressorBand::new(2000.0, 20000.0,
+    ///         Compressor::new(0.6, 2.0, 0.01, 0.1, 1.0)),   // Highs
+    /// ];
+    ///
+    /// let comp = Compressor::new(0.5, 1.0, 0.01, 0.1, 1.0)
+    ///     .with_multibands(bands);
+    /// ```
+    pub fn with_multibands(mut self, bands: Vec<CompressorBand>) -> Self {
+        self.bands = Some(bands);
+        self
+    }
+
+    /// Convenience: Create a 3-band multiband compressor (low/mid/high)
+    ///
+    /// Creates a standard 3-way split with default compression settings.
+    /// Use `.with_band_low()`, `.with_band_mid()`, and `.with_band_high()`
+    /// to customize each band's compression.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::Compressor;
+    /// let comp = Compressor::multiband_3way(200.0, 2000.0)
+    ///     .with_band_low(0.3, 4.0)    // Tight bass control
+    ///     .with_band_mid(0.5, 2.5)    // Gentle mids
+    ///     .with_band_high(0.6, 2.0);  // Transparent highs
+    /// ```
+    pub fn multiband_3way(low_mid_crossover: f32, mid_high_crossover: f32) -> Self {
+        let bands = vec![
+            CompressorBand::new(
+                0.0,
+                low_mid_crossover,
+                Compressor::new(0.5, 3.0, 0.01, 0.1, 1.0),
+            ),
+            CompressorBand::new(
+                low_mid_crossover,
+                mid_high_crossover,
+                Compressor::new(0.5, 3.0, 0.01, 0.1, 1.0),
+            ),
+            CompressorBand::new(
+                mid_high_crossover,
+                20000.0,
+                Compressor::new(0.5, 3.0, 0.01, 0.1, 1.0),
+            ),
+        ];
+
+        Self {
+            threshold: 0.5,
+            ratio: 1.0, // Disabled when using bands
+            attack: 0.01,
+            release: 0.1,
+            makeup_gain: 1.0,
+            priority: PRIORITY_EARLY,
+            envelope: 0.0,
+            sidechain_source: None,
+            resolved_sidechain_source: None,
+            bands: Some(bands),
+            threshold_automation: None,
+            ratio_automation: None,
+            attack_automation: None,
+            release_automation: None,
+            makeup_gain_automation: None,
+        }
+    }
+
+    /// Adjust low band compression (for use with `multiband_3way`)
+    pub fn with_band_low(mut self, threshold: f32, ratio: f32) -> Self {
+        if let Some(bands) = &mut self.bands {
+            if let Some(band) = bands.get_mut(0) {
+                band.compressor.threshold = threshold;
+                band.compressor.ratio = ratio;
+            }
+        }
+        self
+    }
+
+    /// Adjust mid band compression (for use with `multiband_3way`)
+    pub fn with_band_mid(mut self, threshold: f32, ratio: f32) -> Self {
+        if let Some(bands) = &mut self.bands {
+            if let Some(band) = bands.get_mut(1) {
+                band.compressor.threshold = threshold;
+                band.compressor.ratio = ratio;
+            }
+        }
+        self
+    }
+
+    /// Adjust high band compression (for use with `multiband_3way`)
+    pub fn with_band_high(mut self, threshold: f32, ratio: f32) -> Self {
+        if let Some(bands) = &mut self.bands {
+            if let Some(band) = bands.get_mut(2) {
+                band.compressor.threshold = threshold;
+                band.compressor.ratio = ratio;
+            }
+        }
+        self
+    }
+
     /// Process a single sample at given sample rate
     ///
     /// # Arguments
@@ -864,6 +1170,16 @@ impl Compressor {
     /// * `sidechain_envelope` - Optional external envelope for sidechaining (overrides input level detection)
     #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32, time: f32, sample_count: u64, sidechain_envelope: Option<f32>) -> f32 {
+        // If multiband is enabled, process through bands instead
+        if let Some(bands) = &mut self.bands {
+            let mut output = 0.0;
+            for band in bands.iter_mut() {
+                output += band.process_sample(input, sample_rate, time, sample_count);
+            }
+            return output.clamp(-2.0, 2.0);
+        }
+
+        // Standard single-band compression below
         // Quantized automation lookups (every 64 samples = 1.45ms @ 44.1kHz)
         // Use bitwise AND instead of modulo for power-of-2
         if sample_count & 63 == 0 {
@@ -1520,7 +1836,7 @@ impl Saturation {
         input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -1528,12 +1844,113 @@ impl Saturation {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     /// * `sample_rate` - Sample rate in Hz (for time advancement)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, current_time, current_sample_count);
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        // Update automation params if needed
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.drive_automation {
+                self.drive = auto.value_at(time).clamp(1.0, 20.0);
+            }
+            if let Some(auto) = &self.character_automation {
+                self.character = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
+        // Early exit if no effect
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Dispatch to SIMD implementation
+        match SIMD.simd_width() {
+            SimdWidth::X8 => self.process_block_simd::<8>(buffer),
+            SimdWidth::X4 => self.process_block_simd::<4>(buffer),
+            SimdWidth::Scalar => self.process_block_scalar(buffer),
+        }
+    }
+
+    /// SIMD implementation - processes N samples at once
+    #[inline(always)]
+    fn process_block_simd<const N: usize>(&self, buffer: &mut [f32]) {
+        let drive = self.drive;
+        let character = self.character;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+        let one_minus_character = 1.0 - character;
+        let compensation = 1.0 / drive.sqrt();
+
+        let num_chunks = buffer.len() / N;
+        let remainder_start = num_chunks * N;
+
+        // Process N samples at a time
+        for chunk_idx in 0..num_chunks {
+            let chunk_start = chunk_idx * N;
+            let chunk = &mut buffer[chunk_start..chunk_start + N];
+
+            for sample in chunk.iter_mut() {
+                let input = *sample;
+                let amplified = input * drive;
+
+                // Blend between soft (tanh) and hard (cubic) saturation
+                let soft = amplified.tanh();
+                let hard = if amplified.abs() <= 1.0 {
+                    amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
+                } else {
+                    amplified.signum()
+                };
+
+                let saturated = soft.mul_add(one_minus_character, hard * character);
+                let normalized = saturated * compensation;
+                *sample = input.mul_add(one_minus_mix, normalized * mix);
+            }
+        }
+
+        // Handle remainder with scalar
+        for i in remainder_start..buffer.len() {
+            let input = buffer[i];
+            let amplified = input * drive;
+
+            let soft = amplified.tanh();
+            let hard = if amplified.abs() <= 1.0 {
+                amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
+            } else {
+                amplified.signum()
+            };
+
+            let saturated = soft.mul_add(one_minus_character, hard * character);
+            let normalized = saturated * compensation;
+            buffer[i] = input.mul_add(one_minus_mix, normalized * mix);
+        }
+    }
+
+    /// Scalar fallback
+    #[inline(always)]
+    fn process_block_scalar(&self, buffer: &mut [f32]) {
+        let drive = self.drive;
+        let character = self.character;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+        let one_minus_character = 1.0 - character;
+        let compensation = 1.0 / drive.sqrt();
+
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+            let amplified = input * drive;
+
+            let soft = amplified.tanh();
+            let hard = if amplified.abs() <= 1.0 {
+                amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
+            } else {
+                amplified.signum()
+            };
+
+            let saturated = soft.mul_add(one_minus_character, hard * character);
+            let normalized = saturated * compensation;
+            *sample = input.mul_add(one_minus_mix, normalized * mix);
         }
     }
 
@@ -2086,7 +2503,7 @@ impl RingModulator {
         input.mul_add(1.0 - self.mix, modulated * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -2095,11 +2512,100 @@ impl RingModulator {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        // Update automation params if needed
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.carrier_freq_automation {
+                self.carrier_freq = auto.value_at(time).clamp(20.0, 10000.0);
+            }
+        }
+
+        // Early exit if no effect
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Dispatch to SIMD implementation
+        match SIMD.simd_width() {
+            SimdWidth::X8 => self.process_block_simd::<8>(buffer, sample_rate),
+            SimdWidth::X4 => self.process_block_simd::<4>(buffer, sample_rate),
+            SimdWidth::Scalar => self.process_block_scalar(buffer, sample_rate),
+        }
+    }
+
+    /// SIMD implementation - processes N samples at once
+    #[inline(always)]
+    fn process_block_simd<const N: usize>(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        let phase_increment = self.carrier_freq / sample_rate;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+
+        let num_chunks = buffer.len() / N;
+        let remainder_start = num_chunks * N;
+
+        // Process N samples at a time
+        for chunk_idx in 0..num_chunks {
+            let chunk_start = chunk_idx * N;
+            let chunk = &mut buffer[chunk_start..chunk_start + N];
+
+            // Generate N carrier phases
+            let mut phases = [0.0f32; 8]; // Max size for N=8
+            for i in 0..N {
+                phases[i] = self.phase + (i as f32) * phase_increment;
+                if phases[i] >= 1.0 {
+                    phases[i] -= 1.0;
+                }
+            }
+
+            // Process N samples
+            for i in 0..N {
+                let carrier = crate::synthesis::wavetable::WAVETABLE.sample(phases[i]);
+                let input = chunk[i];
+                let modulated = input * carrier;
+                chunk[i] = input.mul_add(one_minus_mix, modulated * mix);
+            }
+
+            self.phase += (N as f32) * phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+
+        // Handle remainder with scalar
+        for i in remainder_start..buffer.len() {
+            let carrier = crate::synthesis::wavetable::WAVETABLE.sample(self.phase);
+            let input = buffer[i];
+            let modulated = input * carrier;
+            buffer[i] = input.mul_add(one_minus_mix, modulated * mix);
+
+            self.phase += phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+    }
+
+    /// Scalar fallback
+    #[inline(always)]
+    fn process_block_scalar(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        let phase_increment = self.carrier_freq / sample_rate;
+        let mix = self.mix;
+        let one_minus_mix = 1.0 - mix;
+
+        for sample in buffer.iter_mut() {
+            let carrier = crate::synthesis::wavetable::WAVETABLE.sample(self.phase);
+            let input = *sample;
+            let modulated = input * carrier;
+            *sample = input.mul_add(one_minus_mix, modulated * mix);
+
+            self.phase += phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
         }
     }
 
@@ -2241,7 +2747,7 @@ impl Tremolo {
         input * modulation
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -2250,11 +2756,99 @@ impl Tremolo {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        use crate::synthesis::simd::{SimdWidth, SIMD};
+
+        // Update automation params if needed
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 100.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
+        // Early exit if no effect
+        if self.depth < 0.0001 {
+            return;
+        }
+
+        // Dispatch to SIMD implementation
+        match SIMD.simd_width() {
+            SimdWidth::X8 => self.process_block_simd::<8>(buffer, sample_rate),
+            SimdWidth::X4 => self.process_block_simd::<4>(buffer, sample_rate),
+            SimdWidth::Scalar => self.process_block_scalar(buffer, sample_rate),
+        }
+    }
+
+    /// SIMD implementation - processes N samples at once
+    #[inline(always)]
+    fn process_block_simd<const N: usize>(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        use std::f32::consts::PI;
+        let phase_increment = self.rate / sample_rate;
+        let depth = self.depth;
+        let two_pi = 2.0 * PI;
+
+        let num_chunks = buffer.len() / N;
+        let remainder_start = num_chunks * N;
+
+        // Process N samples at a time
+        for chunk_idx in 0..num_chunks {
+            let chunk_start = chunk_idx * N;
+            let chunk = &mut buffer[chunk_start..chunk_start + N];
+
+            // Generate N phases
+            let mut phases = [0.0f32; 8]; // Max size for N=8
+            for i in 0..N {
+                phases[i] = self.phase + (i as f32) * phase_increment;
+                if phases[i] >= 1.0 {
+                    phases[i] -= 1.0;
+                }
+            }
+
+            // Process N samples
+            for i in 0..N {
+                let lfo = (phases[i] * two_pi).sin();
+                let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
+                chunk[i] *= modulation;
+            }
+
+            self.phase += (N as f32) * phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+
+        // Handle remainder with scalar
+        for i in remainder_start..buffer.len() {
+            let lfo = (self.phase * two_pi).sin();
+            let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
+            buffer[i] *= modulation;
+
+            self.phase += phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+    }
+
+    /// Scalar fallback
+    #[inline(always)]
+    fn process_block_scalar(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        use std::f32::consts::PI;
+        let phase_increment = self.rate / sample_rate;
+        let depth = self.depth;
+        let two_pi = 2.0 * PI;
+
+        for sample in buffer.iter_mut() {
+            let lfo = (self.phase * two_pi).sin();
+            let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
+            *sample *= modulation;
+
+            self.phase += phase_increment;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
         }
     }
 
