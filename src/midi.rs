@@ -932,7 +932,7 @@ impl Mixer {
         };
 
         // Create mixer with the initial tempo
-        let mut mixer = Mixer::new(crate::composition::rhythm::Tempo::new(current_tempo));
+        let mut mixer = Mixer::new(crate::composition::timing::Tempo::new(current_tempo));
         let mut audio_tracks: Vec<Track> = Vec::new();
 
         // Second pass: Convert MIDI tracks to audio tracks

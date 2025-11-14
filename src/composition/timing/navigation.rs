@@ -1,4 +1,4 @@
-use super::TrackBuilder;
+use crate::composition::TrackBuilder;
 
 impl<'a> TrackBuilder<'a> {
     /// Set swing/groove timing (0.5 = straight, 0.67 = triplet swing, 0.75 = heavy swing)
@@ -221,7 +221,7 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use crate::composition::Composition;
     use crate::consts::notes::{C3, C4, E3, E4, G3, G4};
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
 
     #[test]
     fn test_swing_sets_value() {

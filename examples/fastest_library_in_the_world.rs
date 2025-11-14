@@ -46,15 +46,15 @@ fn main() -> anyhow::Result<()> {
     // ============================================================
     // EXAMPLE 3: The absolute shortest way
     // ============================================================
-    println!("=== Example 3: Export in 2 Lines (GPU Accelerated) ===\n");
+    println!("=== Example 3: Export in 2 Lines ===\n");
     {
         let engine = AudioEngine::new()?;
 
         let mut comp = Composition::new(Tempo::new(140.0));
         comp.track("drums").note(&[C4], 0.5);
 
-        engine.export_wav(&mut comp.into_mixer_with_gpu(), "output.wav")?;
-        println!("✅ Exported at 500-5000x realtime in 1 line!\n");
+        engine.export_wav(&mut comp.into_mixer(), "output.wav")?;
+        println!("✅ Exported at 50-200x realtime in 1 line!\n");
 
         // Cleanup
         std::fs::remove_file("output.wav").ok();

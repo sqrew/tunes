@@ -5,6 +5,7 @@ mod composition;
 mod consts;
 mod engine;
 mod error;
+#[cfg(feature = "gpu")]
 mod gpu;
 mod instruments;
 mod midi;

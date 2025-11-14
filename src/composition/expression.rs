@@ -52,7 +52,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano")
@@ -83,7 +83,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("melody")
@@ -119,7 +119,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("violin", &Instrument::synth_lead())
@@ -151,7 +151,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("pad", &Instrument::warm_pad())
@@ -188,7 +188,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
@@ -225,7 +225,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # use tunes::synthesis::filter::Filter;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
@@ -250,7 +250,7 @@ mod tests {
     use crate::composition::Composition;
     use crate::synthesis::envelope::Envelope;
     use crate::consts::notes::*;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
     use crate::synthesis::waveform::Waveform;
 
     #[test]

@@ -7,7 +7,7 @@ use super::bus::{Bus, BusBuilder};
 use super::events::*;
 use super::track::Track;
 use crate::cache::{CacheKey, SampleCache, CachedSample};
-use crate::composition::rhythm::Tempo;
+use crate::composition::timing::Tempo;
 #[cfg(feature = "gpu")]
 use crate::gpu::GpuSynthesizer;
 use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource};
@@ -742,7 +742,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::engine::AudioEngine;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
@@ -1764,7 +1764,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Compressor;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1787,7 +1787,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Limiter;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1808,7 +1808,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::EQ;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1830,7 +1830,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::ParametricEQ;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1866,7 +1866,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Delay;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1888,7 +1888,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Gate;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1909,7 +1909,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Saturation;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1931,7 +1931,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::BitCrusher;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1952,7 +1952,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Distortion;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1973,7 +1973,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Chorus;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -1994,7 +1994,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Phaser;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -2015,7 +2015,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Flanger;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -2036,7 +2036,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::RingModulator;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -2057,7 +2057,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::Tremolo;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
@@ -2079,7 +2079,7 @@ impl Mixer {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::synthesis::effects::AutoPan;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();

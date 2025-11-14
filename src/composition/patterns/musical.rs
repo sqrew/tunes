@@ -1,4 +1,4 @@
-use super::TrackBuilder;
+use crate::composition::TrackBuilder;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -44,7 +44,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::theory::core::ScalePattern;
@@ -83,7 +83,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::theory::core::ScalePattern;
@@ -117,7 +117,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::theory::core::{progression, ScalePattern, ProgressionType};
@@ -157,7 +157,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
@@ -173,7 +173,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
@@ -212,7 +212,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
@@ -272,7 +272,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
     /// comp.instrument("run", &Instrument::pluck())
@@ -328,7 +328,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::chords::C4_MAJOR;
@@ -345,7 +345,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::chords::C4_MAJOR;
@@ -384,7 +384,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::chords::C4_MAJOR;
@@ -444,7 +444,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::consts::chords::C4_MAJOR;
@@ -504,7 +504,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("thicc", &Instrument::saw_lead())
@@ -543,7 +543,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("harmony", &Instrument::pluck())
@@ -587,7 +587,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("organ", &Instrument::warm_pad())
@@ -644,7 +644,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// use tunes::sequences;
     /// use tunes::consts::scales::C4_MAJOR_SCALE;
@@ -1050,7 +1050,7 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
     use crate::consts::notes::*;
     use crate::prelude::Instrument;
     use crate::track::AudioEvent;

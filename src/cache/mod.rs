@@ -14,14 +14,14 @@
 //!
 //! ```no_run
 //! use tunes::prelude::*;
+//! use tunes::cache::SampleCache;
 //!
-//! let mut cache = SampleCache::new()
-//!     .max_memory_mb(500)
-//!     .enable_disk_cache(false);  // RAM only, no persistence
+//! let cache = SampleCache::new()
+//!     .with_max_size_mb(500)
+//!     .with_disk_cache(false);  // RAM only, no persistence
 //!
 //! // Cache is automatically used during synthesis
-//! let mut comp = Composition::new(Tempo::new(120.0))
-//!     .with_cache(cache);
+//! let mut comp = Composition::new(Tempo::new(120.0));
 //! ```
 
 pub mod key;

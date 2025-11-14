@@ -20,27 +20,23 @@ use crate::synthesis::lfo::ModRoute;
 // Module declarations
 pub mod drums;
 pub mod drum_grid;
-pub mod rhythm;
+pub mod patterns;
+pub mod timing;
 mod chords;
-mod classical_patterns;
 mod effects;
 mod expression;
 pub mod generative;
-mod musical_patterns;
-mod musical_time;
 mod notes;
 mod ornaments;
-mod patterns;
 mod portamento;
 mod sections;
 mod synthesis;
-mod timing;
 mod tuplets;
 
 // Re-export main types for public API
 pub use drums::DrumType;
 pub use drum_grid::DrumGrid;
-pub use rhythm::Tempo;
+pub use timing::Tempo;
 pub use sections::{Section, SectionBuilder};
 
 /// Template for reusing track settings across multiple tracks
@@ -554,7 +550,7 @@ impl Composition {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # use tunes::instruments::Instrument;
     /// # use tunes::composition::drums::DrumType;
@@ -597,7 +593,7 @@ impl Composition {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// # comp.section("intro").track("drums").note(&[100.0], 1.0);
@@ -1113,7 +1109,7 @@ impl<'a> TrackBuilder<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
@@ -1148,7 +1144,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.section("verse")

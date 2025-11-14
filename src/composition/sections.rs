@@ -8,7 +8,7 @@ use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::instruments::Instrument;
-use crate::composition::rhythm::Tempo;
+use crate::composition::timing::Tempo;
 use crate::track::{AudioEvent, Track};
 use crate::synthesis::waveform::Waveform;
 use std::collections::HashMap;
@@ -107,7 +107,7 @@ impl<'a> SectionBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.section("verse")
@@ -142,7 +142,7 @@ impl<'a> SectionBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::composition::rhythm::Tempo;
+    /// # use tunes::composition::timing::Tempo;
     /// # use tunes::instruments::Instrument;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));

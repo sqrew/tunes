@@ -113,3 +113,12 @@ path = "benches/cache_realistic.rs"
 name = "gpu_benchmark"
 path = "benches/gpu_benchmark.rs"
 required-features = ["gpu"]
+
+# GPU examples require the gpu feature to be enabled
+[[example]]
+name = "gpu_export_demo"
+required-features = ["gpu"]
+
+[[example]]
+name = "two_line_gpu"
+required-features = ["gpu"]

@@ -1,5 +1,4 @@
 //! GPU device initialization and management
-
 use anyhow::{Context, Result};
 use std::sync::Arc;
 
@@ -101,28 +100,36 @@ impl GpuDevice {
         let name_lower = info.name.to_lowercase();
 
         // Check for integrated GPU keywords
-        if name_lower.contains("intel") && (
-            name_lower.contains("hd graphics") ||
-            name_lower.contains("uhd graphics") ||
-            name_lower.contains("iris") ||
-            name_lower.contains("integrated")
-        ) {
+        if name_lower.contains("intel")
+            && (name_lower.contains("hd graphics")
+                || name_lower.contains("uhd graphics")
+                || name_lower.contains("iris")
+                || name_lower.contains("integrated"))
+        {
             return GpuType::Integrated;
         }
 
-        if name_lower.contains("amd") && (
-            name_lower.contains("radeon(tm) graphics") ||
-            name_lower.contains("vega") && !name_lower.contains("rx")
-        ) {
+        if name_lower.contains("amd")
+            && (name_lower.contains("radeon(tm) graphics")
+                || name_lower.contains("vega") && !name_lower.contains("rx"))
+        {
             return GpuType::Integrated;
         }
 
         // Check for discrete GPU keywords
-        if name_lower.contains("nvidia") || name_lower.contains("geforce") || name_lower.contains("rtx") || name_lower.contains("gtx") {
+        if name_lower.contains("nvidia")
+            || name_lower.contains("geforce")
+            || name_lower.contains("rtx")
+            || name_lower.contains("gtx")
+        {
             return GpuType::Discrete;
         }
 
-        if name_lower.contains("amd") && (name_lower.contains("radeon rx") || name_lower.contains("radeon r9") || name_lower.contains("radeon r7")) {
+        if name_lower.contains("amd")
+            && (name_lower.contains("radeon rx")
+                || name_lower.contains("radeon r9")
+                || name_lower.contains("radeon r7"))
+        {
             return GpuType::Discrete;
         }
 

@@ -138,7 +138,7 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use super::*;
     use crate::composition::Composition;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
     use crate::consts::notes::*;
     use crate::instruments::Instrument;
     use crate::track::AudioEvent;

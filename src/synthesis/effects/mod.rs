@@ -32,7 +32,7 @@ pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 /// use tunes::prelude::*;
 ///
 /// let chain = EffectChain::new()
-///     .with_eq(EQ::new(1.0, 1.0, 1.0))
+///     .with_eq(EQ::new(1.0, 1.0, 1.0, 250.0, 4000.0))
 ///     .with_compressor(Compressor::new(0.5, 4.0, 0.01, 0.1, 1.0))
 ///     .with_reverb(Reverb::hall());
 /// ```

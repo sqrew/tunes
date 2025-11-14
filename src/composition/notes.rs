@@ -313,7 +313,7 @@ mod tests {
     use super::*;
     use crate::composition::Composition;
     use crate::consts::notes::*;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
     use crate::track::AudioEvent;
 
     #[test]

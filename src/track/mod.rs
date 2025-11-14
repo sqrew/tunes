@@ -99,7 +99,7 @@ mod tests {
     use super::*;
     use crate::consts::notes::*;
     use crate::composition::drums::DrumType;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
 
     #[test]
     fn test_note_event_construction() {

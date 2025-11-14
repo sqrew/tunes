@@ -46,7 +46,7 @@
 /// # Examples
 /// ```
 /// # use tunes::composition::Composition;
-/// # use tunes::composition::rhythm::Tempo;
+/// # use tunes::composition::timing::Tempo;
 /// use tunes::sequences;
 ///
 /// // Classic Cuban tresillo pattern

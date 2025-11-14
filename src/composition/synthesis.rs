@@ -304,7 +304,7 @@ impl<'a> TrackBuilder<'a> {
 mod tests {
     use crate::composition::Composition;
     use crate::consts::notes::*;
-    use crate::composition::rhythm::Tempo;
+    use crate::composition::timing::Tempo;
     use crate::track::AudioEvent;
     use crate::synthesis::wavetable::{DEFAULT_TABLE_SIZE, Wavetable};
 
