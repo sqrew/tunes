@@ -1328,11 +1328,13 @@ impl AudioEngine {
         comp.track("_oneshot").play_sample(&sample, 1.0);
 
         // Enable GPU if requested via new_with_gpu()
-        let mut mixer = if self.enable_gpu_for_samples {
-            comp.into_mixer_with_gpu()
-        } else {
-            comp.into_mixer()
-        };
+        let mut mixer = comp.into_mixer();
+        #[cfg(feature = "gpu")]
+        {
+            if self.enable_gpu_for_samples {
+                mixer.enable_cache_and_gpu();
+            }
+        }
 
         self.play_mixer_realtime(&mixer)
     }

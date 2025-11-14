@@ -1,13 +1,13 @@
 # Performance Optimizations
 
-Tunes achieves exceptional real-time audio performance through a comprehensive suite of optimizations spanning CPU SIMD, multi-core parallelism, GPU compute shaders, and intelligent caching.
+Tunes achieves exceptional real-time audio performance through CPU SIMD, multi-core parallelism, and optional experimental GPU compute shaders.
 
 **Performance at a Glance (Measured on i5-6500):**
 - **CPU Synthesis:** 81x realtime (measured baseline)
 - **+ SIMD:** 47x realtime for sample playback (measured: 50 concurrent samples)
 - **+ Rayon:** 54x realtime with multi-core parallelism (measured: 16% speedup)
 - **+ GPU Compute (Integrated):** 17x realtime (measured: **slower** due to cache overhead!)
-- **+ GPU Compute (Discrete - projected):** 500-5000x realtime (not yet measured)
+- **+ GPU Compute (Discrete):** **Not yet measured** - experimental feature for complex workloads
 
 ---
 
@@ -172,7 +172,7 @@ engine.play_mixer_realtime(&mixer)?;
 
 ## GPU Compute Shaders
 
-**GPU compute shaders** render complete audio notes on the GPU using WGSL shaders via wgpu. This can achieve **500-5000x realtime (projected)** on discrete GPUs.
+**GPU compute shaders** render complete audio notes on the GPU using WGSL shaders via wgpu. This is an **experimental feature** (requires `gpu` feature flag) designed for complex synthesis workloads on discrete GPUs.
 
 ### Architecture
 
@@ -209,24 +209,23 @@ mixer.enable_gpu();    // Automatic detection
 ### Performance Expectations
 
 **Discrete GPUs (RTX 3060+, RX 6000+):**
-- **50-500x faster** than integrated graphics (projected)
-- **500-5000x realtime** for complex compositions (projected)
+- **Not yet measured** - GPU acceleration is experimental
+- Designed for complex workloads (100+ unique sounds)
 - 3000+ compute cores vs 24 on integrated
-- 300+ GB/s memory bandwidth
+- Requires `gpu` feature flag in Cargo.toml
 
 **Integrated GPUs (Intel HD/UHD, AMD Vega):**
-- **Often slower than CPU** due to limited compute units
-- **76-150 notes/second** vs 1500+ notes/second on CPU
-- Library automatically warns and falls back if needed
+- **Often slower than CPU** due to limited compute units and overhead
+- **76 notes/second** vs 1500+ notes/second on CPU (measured)
+- Library automatically warns when integrated GPU detected
 
 **Benchmark Results (16-bar drum pattern, 192 notes):**
 
-| Hardware | Notes/Second | Realtime Ratio | Comments |
-|----------|--------------|----------------|----------|
-| i5-6500 CPU | 1500+ | 81x | Measured baseline (no GPU, no cache) |
-| Intel HD 530 | 76 | 17x | Measured (integrated GPU + cache) |
-| RTX 3060 | ~30,000+ | ~5000x | Projected (discrete GPU + cache) |
-| RX 6700 XT | ~25,000+ | ~4000x | Projected (discrete GPU + cache) |
+| Hardware | Notes/Second | Realtime Ratio | Status |
+|----------|--------------|----------------|--------|
+| i5-6500 CPU | 1500+ | 81x | Measured (baseline) |
+| Intel HD 530 GPU | 76 | 17x | Measured (slower than CPU) |
+| Discrete GPUs | N/A | N/A | Not yet measured |
 
 ### What Gets GPU Acceleration
 
@@ -259,13 +258,19 @@ GPU is **slower** when:
 
 ### Usage
 
+First, enable the `gpu` feature in Cargo.toml:
+```toml
+tunes = { version = "0.16.0", features = ["gpu"] }
+```
+
+Then in code:
 ```rust
 let mut mixer = comp.into_mixer();
 
 // Enable caching (required for GPU)
 mixer.enable_cache();
 
-// Enable GPU acceleration
+// Enable GPU acceleration (experimental)
 mixer.enable_gpu();  // Automatic detection and warnings
 
 // Check if GPU is actually being used
@@ -295,11 +300,13 @@ mixer.disable_gpu();
 
 ### Target Audience
 
-GPU acceleration is designed for:
-- **Game developers** with discrete GPUs
-- **Real-time audio** with many concurrent sounds
-- **Large sample libraries** (drum kits, SFX collections)
-- **Interactive applications** requiring instant audio generation
+GPU acceleration is **experimental** and designed for:
+- **Developers with discrete GPUs** (RTX, RX series)
+- **Complex synthesis workloads** (100+ unique sounds)
+- **Batch pre-rendering** scenarios
+- **Experimentation** with GPU audio synthesis
+
+**Note:** Most users should use the default CPU synthesis (81x realtime is already very fast).
 
 ---
 
@@ -387,10 +394,10 @@ mixer.print_cache_stats();
 - CPU + cache: 19x realtime (measured - overhead dominates!)
 - GPU + cache (Intel HD 530): 17x realtime (measured - integrated GPU is slower!)
 
-**Large Workloads (100+ unique notes, projected):**
+**Large Workloads (100+ unique notes):**
 - CPU only: 10-20x realtime (estimated)
 - CPU + cache: 30-50x realtime (estimated - 2-5x faster)
-- GPU + cache (discrete): 500-5000x realtime (projected - 50-100x faster!)
+- GPU + cache (discrete): **Not yet measured** - experimental feature
 
 **Conclusion:** Cache benefits scale with workload size and GPU power.
 
@@ -530,11 +537,11 @@ Different optimizations excel in different scenarios:
 | Scenario | Best Optimization | Expected Performance | Notes |
 |----------|-------------------|---------------------|-------|
 | **Game Audio** | SIMD + Rayon | 100-500x realtime (estimated) | Many concurrent samples |
-| **Game Audio (Discrete GPU)** | GPU + Cache | 500-5000x realtime (projected) | With RTX/RX GPU |
+| **Game Audio (Discrete GPU)** | GPU + Cache (experimental) | Not yet measured | Requires `gpu` feature |
 | **Live Performance** | SIMD + Block Processing | 50-200x realtime (estimated) | Low latency critical |
 | **Music Production** | Rayon + Cache | 100-300x realtime (estimated) | Complex compositions |
 | **Web/Mobile** | SIMD only | 30-100x realtime (estimated) | Limited CPU/no GPU |
-| **Batch Export** | GPU + Cache | 1000-5000x realtime (projected) | Offline, discrete GPU |
+| **Batch Export** | Rayon + Cache | 100-300x realtime (estimated) | CPU-based is reliable |
 
 ### Optimization Flowchart
 
@@ -559,12 +566,12 @@ Different optimizations excel in different scenarios:
 Have discrete GPU?   Have multi-core CPU?
     │                │
     v                v
-  Add GPU        Expect 2-8x
-  + Cache        speedup
+Try GPU (exp.)   Expect 2-8x
++ Cache          speedup
     │
     v
-Expect 50-500x
-speedup
+Experimental
+(not yet measured)
 ```
 
 ### Recommendations by Use Case
@@ -573,7 +580,8 @@ speedup
 ```rust
 let mut mixer = comp.into_mixer();
 mixer.enable_cache();  // Pre-render unique sounds
-mixer.enable_gpu();    // If discrete GPU available
+// GPU is experimental - enable "gpu" feature if you want to try it
+// mixer.enable_gpu();
 
 engine.play_mixer(&mixer)?;  // Uses SIMD + Rayon automatically
 ```
@@ -622,8 +630,9 @@ Streaming: 17x realtime (measured - cache overhead dominates)
 
 **Projected with Discrete GPU (RTX 3060):**
 ```
-Pre-rendering: 30,000+ notes/second (projected - 40x faster than integrated!)
-Streaming: 500-5000x realtime (projected - not yet measured)
+Pre-rendering: Not yet measured
+Streaming: Not yet measured
+Note: GPU acceleration is experimental - CPU baseline (81x) is already fast
 ```
 
 ### Optimization Impact Summary
@@ -632,8 +641,8 @@ Streaming: 500-5000x realtime (projected - not yet measured)
 |--------------|---------|----------|----------|
 | **SIMD** | 1.5-4x (measured) | Sample playback, oscillators | ~0% (automatic) |
 | **Rayon** | 1.16-8x (measured: 1.16x, estimated up to 8x) | Multi-core CPUs, many tracks | ~2-5% (threading) |
-| **GPU (discrete)** | 50-500x (projected) | Discrete GPUs, batch rendering | ~10-20% (cache) |
-| **GPU (integrated)** | 0.2-0.4x (measured: 0.21x) | ❌ None - slower than CPU! | ~10-20% (cache) |
+| **GPU (discrete)** | Not yet measured (experimental) | Complex workloads, discrete GPUs | ~10-20% (cache) |
+| **GPU (integrated)** | 0.2x (measured) | ❌ None - slower than CPU! | ~10-20% (cache) |
 | **Cache** | 0.2-5x (measured: 0.23x for small, estimated 2-5x for large) | Repeated notes, batch export | ~10-20% (small workloads) |
 | **Block Processing** | 1.2-1.4x (estimated) | All scenarios | ~0% (architectural) |
 | **Integer IDs** | 2-5x (estimated) | Sidechain routing, buses | ~0% (architectural) |
@@ -644,7 +653,7 @@ Streaming: 500-5000x realtime (projected - not yet measured)
 ```
 Without optimization: 50x realtime (estimated)
 With SIMD + Rayon:    200x realtime (estimated)
-With GPU (discrete):  2000x realtime (projected)
+(CPU baseline is sufficient for most games)
 ```
 
 **Scenario 2: Music Production (200 tracks, complex effects)**
@@ -652,14 +661,14 @@ With GPU (discrete):  2000x realtime (projected)
 Without optimization: 10x realtime (estimated)
 With SIMD + Rayon:    40x realtime (estimated)
 With Cache:           80x realtime (estimated)
-With GPU (discrete):  500x realtime (projected)
+(CPU performance is excellent for production)
 ```
 
 **Scenario 3: Live Coding Performance (10 tracks, real-time)**
 ```
 Without optimization: 100x realtime (estimated)
 With SIMD + Block:    300x realtime (estimated)
-(GPU not needed - CPU is sufficient)
+(GPU not needed - CPU is more than sufficient)
 ```
 
 ---
@@ -694,15 +703,15 @@ mixer.bus("default")
     .reverb(Reverb::new(0.3, 0.5, 0.3));
 ```
 
-### 3. Enable GPU for Discrete GPUs Only
+### 3. GPU is Experimental - Most Users Should Skip It
 
 ```rust
-// Check GPU type before enabling
 let mut mixer = comp.into_mixer();
-mixer.enable_cache();  // Always beneficial
+mixer.enable_cache();  // Beneficial for large workloads
 
-// GPU auto-detects and warns on integrated GPUs
-mixer.enable_gpu();  // Will warn if slow
+// GPU is experimental and requires "gpu" feature flag
+// Most users should stick with CPU (81x is already very fast!)
+// mixer.enable_gpu();  // Only if you have discrete GPU and want to experiment
 ```
 
 ### 4. Profile Before Optimizing
@@ -789,14 +798,14 @@ Tunes provides **multiple layers of optimization** that work together:
 
 1. **SIMD (automatic):** 1.5-4x speedup for sample playback and oscillators
 2. **Rayon (automatic):** 1.5-8x speedup on multi-core CPUs
-3. **GPU Compute (opt-in):** 50-500x speedup on discrete GPUs
-4. **Sample Cache (opt-in):** 2-5x speedup for repeated sounds
+3. **GPU Compute (opt-in, experimental):** Requires `gpu` feature, best for discrete GPUs
+4. **Sample Cache (opt-in):** 2-5x speedup for repeated sounds in large workloads
 5. **Architecture (built-in):** Block processing, integer IDs, pre-allocated buffers
 
-**Default Performance:** 50-200x realtime (estimated - no configuration needed)
-**With GPU (discrete):** 500-5000x realtime (projected - enable GPU + cache)
+**Default Performance:** 50-200x realtime (no configuration needed)
+**Measured CPU Baseline:** 81x realtime (measured on i5-6500)
 
-The library is designed for **game developers** who need real-time audio with many concurrent sounds. GPU acceleration provides massive speedups on discrete GPUs, while maintaining excellent CPU-only performance for other use cases.
+The library is designed for **game developers** and **music programmers** who need real-time audio with many concurrent sounds. CPU performance is excellent for most use cases - GPU acceleration is experimental and optional.
 
 **Next Steps:**
 - Run benchmarks on your hardware

@@ -4,7 +4,7 @@ A standalone Rust library for music composition, synthesis, and audio generation
 Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
-> **🚀 Performance Highlight:** The only Rust audio library with GPU compute shader acceleration. Change one word (`new()` → `new_with_gpu()`) and go from 50x to 5000x realtime on discrete GPUs.
+> **🚀 Performance Highlight:** The only Rust audio library with optional GPU compute shader acceleration (requires `gpu` feature). Measured at 81x realtime on CPU, with GPU acceleration available for users with discrete GPUs.
 
 ## Features
 
@@ -21,7 +21,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
 - **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD (47x realtime measured) with auto caching for quick, easy, efficient samples on the fly
-- **GPU Acceleration**: Optional GPU compute shader acceleration (500-5000x realtime projected on discrete GPUs) via wgpu - first Rust audio library with GPU synthesis
+- **GPU Acceleration** (optional `gpu` feature): Experimental GPU compute shader acceleration via wgpu - first Rust audio library with GPU synthesis (best results with discrete GPUs)
 - **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
@@ -49,10 +49,10 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     music theory integration
     composition first
     code first environment (rust's ide integration and your choice of ide is everything here)
-    exceptional performance (50-200x realtime default, 500-5000x with GPU)
+    exceptional performance (50-200x realtime default on CPU)
     automatic SIMD acceleration (47x realtime measured)
     multi-core parallelism (automatic via Rayon)
-    optional GPU compute shader acceleration (first in Rust)
+    optional GPU compute shader acceleration (first in Rust, experimental)
 ## CONS
     no gui or graphical elements
     no "instant feedback" outside of hot-reloading segments
@@ -67,6 +67,9 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 tunes = "0.16.0"
+
+# Optional: Enable GPU acceleration (requires discrete GPU for best results)
+# tunes = { version = "0.16.0", features = ["gpu"] }
 ```
 
 ### Platform Requirements
@@ -163,21 +166,22 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-**With GPU Acceleration (500-5000x faster on discrete GPUs):**
+**With GPU Acceleration (experimental, requires `gpu` feature):**
 
 ```rust
 use tunes::prelude::*;
 
 fn main() -> Result<(), anyhow::Error> {
-    // Change ONE WORD for 100x speedup!
+    // Note: Requires "gpu" feature in Cargo.toml
+    // Best results with discrete GPUs (RTX, RX series)
     let engine = AudioEngine::new_with_gpu()?;  // <-- GPU enabled
 
-    // Every sample now GPU-accelerated automatically
-    engine.play_sample("explosion.wav")?;   // 500-5000x realtime
-    engine.play_sample("laser.wav")?;       // 500-5000x realtime
-    engine.play_sample("footstep.wav")?;    // 500-5000x realtime
+    // GPU accelerates synthesis, not sample playback
+    // Sample playback already uses CPU SIMD (47x realtime)
+    engine.play_sample("explosion.wav")?;
+    engine.play_sample("laser.wav")?;
+    engine.play_sample("footstep.wav")?;
 
-    // Perfect for games with hundreds of concurrent sounds
     Ok(())
 }
 ```
@@ -424,20 +428,19 @@ Tunes is designed for exceptional performance with automatic optimizations:
 - SIMD sample playback: **47x realtime** with 50 concurrent samples (measured)
 - Multi-core parallelism: **54x realtime** with Rayon (measured: 16% speedup)
 
-**GPU Acceleration (wgpu compute shaders):**
-- Intel HD 530 (integrated): **17x realtime** (measured - slower than CPU, auto-detected with warning)
-- RTX 3060 (discrete): **~500-5000x realtime** (projected - not yet measured)
-- Synthesis speed: **1,500 notes/second** CPU vs **~10,000-30,000 notes/second** discrete GPU (projected)
+**GPU Acceleration** (optional `gpu` feature, experimental):
+- Intel HD 530 (integrated): **17x realtime** (measured - slower than CPU due to overhead)
+- Discrete GPUs (RTX/RX): **Not yet measured** - projected improvements for large workloads
+- **Note:** GPU acceleration is experimental and best suited for discrete GPUs with complex synthesis workloads
 
 ### What This Means
 
 **For a 16-bar drum pattern (192 notes, 13.6 seconds of audio):**
 - CPU renders in: **0.18 seconds** (81x realtime)
-- GPU (discrete) renders in: **~0.003 seconds** (5000x realtime - projected)
 
-**For game audio with 1,000 unique sound effects:**
-- CPU pre-render time: **~0.67 seconds** at 1,500 notes/sec
-- GPU pre-render time: **~0.03-0.10 seconds** at 10,000-30,000 notes/sec (projected)
+**For game audio with concurrent samples:**
+- SIMD sample playback handles 50 concurrent samples at **47x realtime**
+- Automatic caching and multi-core parallelism optimize performance
 
 ### Automatic Optimizations
 
@@ -450,20 +453,27 @@ Tunes automatically applies:
 
 ### Optional GPU Acceleration
 
-Enable with one constructor change:
+Enable with the `gpu` feature flag in Cargo.toml:
+```toml
+tunes = { version = "0.16.0", features = ["gpu"] }
+```
+
+Then use in code:
 ```rust
-// Default: 50-200x realtime
+// Default: 50-200x realtime (CPU + SIMD + Rayon)
 let engine = AudioEngine::new()?;
 
-// GPU: 500-5000x realtime (discrete GPUs)
+// GPU: Experimental acceleration (discrete GPUs only)
 let engine = AudioEngine::new_with_gpu()?;
 ```
 
 **GPU acceleration is:**
-- ✅ Automatic (just change constructor)
+- ⚠️  Experimental (first Rust audio library with GPU synthesis)
+- ✅ Optional (requires `gpu` feature flag)
 - ✅ Fallback-safe (uses CPU if GPU unavailable)
-- ✅ Smart (warns on integrated GPUs that are slower than CPU)
+- ✅ Smart (warns on integrated GPUs that may be slower than CPU)
 - ✅ Cross-platform (wgpu: Vulkan, Metal, DX12, WebGPU)
+- ⚠️  Best for discrete GPUs (RTX, RX series) with complex synthesis workloads
 
 ### Run Benchmarks Yourself
 
@@ -471,8 +481,8 @@ let engine = AudioEngine::new_with_gpu()?;
 # SIMD sample playback benchmark
 cargo run --release --bin simd_sample_playback
 
-# GPU vs CPU comparison
-cargo run --release --bin gpu_benchmark
+# GPU vs CPU comparison (requires "gpu" feature)
+cargo run --release --features gpu --bin gpu_benchmark
 
 # Multi-core parallelism test
 cargo run --release --bin concurrent_mixing
@@ -489,21 +499,22 @@ ls benches/
 === Test 2: CPU Synthesis + Cache ===
   Render time: 0.576s (19x realtime)
 
-=== Test 3: GPU Synthesis + Cache 🚀 ===
+=== Test 3: GPU Synthesis + Cache ===
   GPU enabled: true
-  Render time: 0.003s (5000x realtime) [with discrete GPU]
+  Render time: varies by GPU (integrated GPUs may be slower than CPU)
+  ⚠️  Note: Best results require discrete GPUs
 ```
 
 ### Comparison with Other Rust Audio Libraries
 
 | Library | SIMD | Multi-core | GPU | Performance |
 |---------|------|------------|-----|-------------|
-| **Tunes** | ✅ (47x) | ✅ (54x) | ✅ (500-5000x projected) | **81x baseline, 5000x with GPU** |
+| **Tunes** | ✅ (47x) | ✅ (54x) | ✅ (experimental) | **81x baseline CPU** |
 | Kira | Unknown | No | No | ~10-30x (estimated) |
 | Rodio | Unknown | No | No | ~10-20x (estimated) |
 | SoLoud (C++) | ✅ | Yes | No | ~10-50x (estimated) |
 
-**Tunes is the only Rust audio library with GPU compute shader acceleration.**
+**Tunes is the only Rust audio library with optional GPU compute shader acceleration (experimental).**
 
 ### Why This Matters for Games
 
@@ -511,16 +522,17 @@ ls benches/
 - Pre-record all sound variations → Large asset files
 - Limited variations → Repetitive audio
 
-**With Tunes + GPU:**
-- Generate 1,000 sound variations at startup in ~100ms
-- Each variation unique (procedural synthesis)
+**With Tunes:**
+- Generate sound variations at runtime (procedural synthesis)
+- Each variation unique
 - Zero disk space for variations
+- 81x realtime on CPU (fast enough for most games)
 
-**Example: Bullet hell game with 1,000 projectiles**
-- Each projectile gets unique synthesized sound
-- Pre-render time: **50-100ms** (GPU)
-- Memory: **Shared waveforms** via cache
-- Result: **Unique audio for every projectile with zero performance cost**
+**Example: Procedural game audio**
+- Synthesize unique sounds per enemy type
+- Dynamic music that responds to gameplay
+- Algorithmic sound effects with variations
+- Result: **Unique audio without large asset files**
 
 ---
 

@@ -27,6 +27,7 @@ pub mod composition;
 pub mod consts;
 pub mod engine;
 pub mod error;
+#[cfg(feature = "gpu")]
 pub mod gpu;
 pub mod instruments;
 pub mod live_coding;

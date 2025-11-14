@@ -36,6 +36,11 @@ lto = false             # Disable Link Time Optimization for faster linking
 incremental = true      # Enable incremental compilation
 codegen-units = 256     # More parallel compilation (faster)
 
+# Feature flags
+[features]
+default = []
+gpu = ["wgpu", "pollster", "bytemuck", "futures-intrusive"]
+
 [dependencies]
 cpal = "0.15"
 anyhow = "1.0"
@@ -47,10 +52,12 @@ crossbeam = "0.8"
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 wide = "0.7"        # SIMD vectorization for DSP performance
 rayon = "1.10"      # Data parallelism for multi-core performance
-wgpu = "23.0"                   # GPU compute shaders for 500-1000x synthesis performance
-pollster = "0.3"                # Async runtime for wgpu initialization
-bytemuck = { version = "1.14", features = ["derive"] }  # Safe casting for GPU buffers
-futures-intrusive = "0.5"       # Async primitives for GPU readback
+
+# GPU acceleration (optional - enable with "gpu" feature)
+wgpu = { version = "23.0", optional = true }
+pollster = { version = "0.3", optional = true }
+bytemuck = { version = "1.14", features = ["derive"], optional = true }
+futures-intrusive = { version = "0.5", optional = true }
 
 # Audio I/O
 hound = "3.5"       # WAV export only (writing)
@@ -105,3 +112,4 @@ path = "benches/cache_realistic.rs"
 [[bin]]
 name = "gpu_benchmark"
 path = "benches/gpu_benchmark.rs"
+required-features = ["gpu"]

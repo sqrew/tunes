@@ -18,7 +18,7 @@ This page provides honest, technical comparisons between Tunes and other audio l
 - Simpler API: `engine.play_sample()` vs manual pre-loading
 - Automatic sample caching (Kira requires manual management)
 - SIMD-accelerated sample playback (47x realtime measured on i5-6500 with 50 concurrent samples)
-- Optional GPU compute shader acceleration (500-5000x realtime projected on discrete GPUs)
+- Optional GPU compute shader acceleration (experimental, requires `gpu` feature)
 - Built-in synthesis (FM, wavetable, drums) - Kira has none
 - Sample manipulation (time stretch, pitch shift, slicing) - Kira has none
 - Complete composition system with generators and transformations - Kira has basic sequencing
@@ -551,25 +551,24 @@ Tunes prioritizes:
 
 **Test: 16-bar drum pattern (192 note events, 3 unique sounds)**
 
-| Configuration | Realtime Ratio | Notes |
-|---------------|----------------|-------|
-| CPU only | 81x realtime | Baseline (measured) |
-| CPU + cache | 19x realtime | Cache overhead dominates for small workloads (measured) |
-| GPU (Intel HD 530) + cache | 17x realtime | Integrated GPU slower than CPU (measured) |
+| Configuration | Realtime Ratio | Status |
+|---------------|----------------|--------|
+| CPU only | 81x realtime | Measured (baseline) |
+| CPU + cache | 19x realtime | Measured (cache overhead for small workloads) |
+| GPU (Intel HD 530) + cache | 17x realtime | Measured (integrated GPU slower than CPU) |
+| GPU (discrete) | N/A | Not yet measured (experimental) |
 
 **GPU Synthesis Speed:**
 - Intel HD 530 (integrated): 75 notes/second (measured)
 - i5-6500 CPU: 1,500 notes/second (measured)
-- RTX 3060 (discrete): ~10,000-30,000 notes/second (projected, not measured)
+- Discrete GPUs (RTX, RX): Not yet measured (experimental feature)
 
 **Key Findings:**
 1. Integrated GPUs (Intel HD, AMD Vega) are often slower than CPU for synthesis
-2. Discrete GPUs (RTX, RX series) should provide 50-500x speedup over CPU (not yet measured)
+2. GPU acceleration is experimental - requires `gpu` feature flag
 3. Cache overhead is significant for small workloads (<100 unique sounds)
-4. GPU acceleration most beneficial for:
-   - Large workloads (100+ unique sounds)
-   - Discrete GPUs only
-   - Batch pre-rendering at startup
+4. CPU performance (81x realtime) is already excellent for most use cases
+5. GPU might benefit very large workloads on discrete GPUs (not yet measured)
 
 **Tunes automatically detects integrated GPUs and displays warnings.**
 
@@ -577,7 +576,7 @@ Tunes prioritizes:
 
 | Library | GPU Acceleration | Performance |
 |---------|------------------|-------------|
-| Tunes | Yes (wgpu compute shaders) | 81x CPU, 17x integrated GPU, 500-5000x discrete GPU (projected) |
+| Tunes | Yes (experimental, optional) | 81x CPU (measured), GPU experimental |
 | Kira | No | ~10-30x realtime (estimated) |
 | Rodio | No | ~10-20x realtime (estimated) |
 | SoLoud | No | ~10-50x realtime (estimated) |
@@ -758,19 +757,20 @@ Tunes aims to provide a complete, ergonomic solution for Rust game audio with op
 - Complete feature set (synthesis, composition, effects, playback)
 - Simple API (2 lines for basic playback)
 - SIMD acceleration (47x realtime measured)
-- GPU compute shaders (first Rust audio library)
+- Optional GPU compute shaders (first Rust audio library, experimental)
+- Excellent CPU performance (81x realtime)
 
 **Measured limitations:**
 - Less battle-tested than Kira or SoLoud
 - Smaller community and ecosystem
-- GPU acceleration only beneficial with discrete GPUs
-- Larger compile times than minimal libraries (Rodio)
+- GPU acceleration is experimental and untested on discrete GPUs
+- Larger compile times than minimal libraries (Rodio) when `gpu` feature enabled
 
 **Performance summary:**
 - CPU baseline: 81x realtime (measured)
 - SIMD sample playback: 47x realtime (measured)
-- GPU on integrated graphics: 17x realtime (measured - slower than CPU)
-- GPU on discrete graphics: 500-5000x realtime (projected - not yet measured)
+- Multi-core: 54x realtime with Rayon (measured)
+- GPU: Experimental feature (integrated GPUs measured slower than CPU)
 
 **Recommendation:** Evaluate based on your specific requirements. If you need only playback, Kira or Rodio may be simpler. If you need synthesis + composition + GPU acceleration, Tunes provides unique capabilities not available elsewhere.
 

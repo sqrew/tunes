@@ -367,6 +367,7 @@ impl Composition {
     /// engine.play_mixer(&mixer)?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    #[cfg(feature = "gpu")]
     pub fn into_mixer_with_gpu(self) -> Mixer {
         let mut mixer = self.into_mixer();
         mixer.enable_cache_and_gpu();

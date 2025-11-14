@@ -8,6 +8,7 @@ use super::events::*;
 use super::track::Track;
 use crate::cache::{CacheKey, SampleCache, CachedSample};
 use crate::composition::rhythm::Tempo;
+#[cfg(feature = "gpu")]
 use crate::gpu::GpuSynthesizer;
 use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource};
 use crate::track::ids::{BusId, TrackId};
@@ -138,7 +139,8 @@ pub struct Mixer {
     // Sample cache for pre-rendered synthesis (thread-safe for Rayon)
     cache: Option<Arc<Mutex<SampleCache>>>,
 
-    // GPU synthesizer for 500-1000x faster rendering (optional, falls back to CPU)
+    // GPU synthesizer for experimental acceleration (optional, falls back to CPU)
+    #[cfg(feature = "gpu")]
     gpu_synthesizer: Option<Arc<GpuSynthesizer>>,
 
     // Track if we've pre-rendered notes (skip cache checks during streaming)
@@ -167,6 +169,7 @@ impl Mixer {
             bus_outputs: Vec::with_capacity(INITIAL_BUS_CAPACITY),
             envelope_cache: EnvelopeCache::new(INITIAL_TRACK_CAPACITY, INITIAL_BUS_CAPACITY),
             cache: None, // Cache disabled by default
+            #[cfg(feature = "gpu")]
             gpu_synthesizer: None, // GPU disabled by default (requires explicit enable_gpu call)
             prerendered: false,
             tempo,
@@ -222,7 +225,8 @@ impl Mixer {
         // Check if bus already exists
         if let Some(&bus_id) = self.bus_name_to_id.get(name) {
             // Bus exists, return mutable reference
-            return self.buses[bus_id as usize].as_mut().unwrap();
+            return self.buses[bus_id as usize].as_mut()
+                .expect("Internal error: bus_name_to_id points to empty bus slot");
         }
 
         // Bus doesn't exist, create it
@@ -232,7 +236,8 @@ impl Mixer {
         self.add_bus(new_bus);
 
         // Return reference to the newly added bus
-        self.buses[new_bus_id as usize].as_mut().unwrap()
+        self.buses[new_bus_id as usize].as_mut()
+            .expect("Internal error: bus not found immediately after adding")
     }
 
     /// Get a bus by name
@@ -432,13 +437,13 @@ impl Mixer {
     ///
     /// Returns `None` if caching is disabled.
     pub fn cache_stats(&self) -> Option<crate::cache::storage::CacheStats> {
-        self.cache.as_ref().map(|c| c.lock().unwrap().stats().clone())
+        self.cache.as_ref().map(|c| c.lock().unwrap_or_else(|e| e.into_inner()).stats().clone())
     }
 
     /// Print cache statistics (if caching is enabled)
     pub fn print_cache_stats(&self) {
         if let Some(cache) = &self.cache {
-            cache.lock().unwrap().print_stats();
+            cache.lock().unwrap_or_else(|e| e.into_inner()).print_stats();
         } else {
             println!("Sample caching is disabled");
         }
@@ -447,7 +452,7 @@ impl Mixer {
     /// Clear the sample cache (if caching is enabled)
     pub fn clear_cache(&mut self) {
         if let Some(cache) = &mut self.cache {
-            cache.lock().unwrap().clear();
+            cache.lock().unwrap_or_else(|e| e.into_inner()).clear();
         }
     }
 
@@ -474,11 +479,13 @@ impl Mixer {
     /// mixer.enable_cache();  // Required!
     /// mixer.enable_gpu();    // Try GPU acceleration
     /// ```
+    #[cfg(feature = "gpu")]
     pub fn enable_gpu(&mut self) -> &mut Self {
         self.enable_gpu_with_output(true)
     }
 
     /// Enable GPU with optional console output
+    #[cfg(feature = "gpu")]
     pub fn enable_gpu_with_output(&mut self, print_info: bool) -> &mut Self {
         use crate::gpu::{GpuDevice, GpuSynthesizer};
 
@@ -512,12 +519,14 @@ impl Mixer {
     }
 
     /// Disable GPU synthesis (fall back to CPU)
+    #[cfg(feature = "gpu")]
     pub fn disable_gpu(&mut self) -> &mut Self {
         self.gpu_synthesizer = None;
         self
     }
 
     /// Check if GPU synthesis is enabled
+    #[cfg(feature = "gpu")]
     pub fn gpu_enabled(&self) -> bool {
         self.gpu_synthesizer.is_some()
     }
@@ -535,13 +544,14 @@ impl Mixer {
     /// comp.track("drums").note(&[C4], 0.5);
     ///
     /// let mut mixer = comp.into_mixer();
-    /// mixer.enable_cache_and_gpu();  // One line for 500-5000x speedup!
+    /// mixer.enable_cache_and_gpu();  // Experimental GPU acceleration
     ///
     /// // Now export or play with GPU acceleration
     /// # let engine = AudioEngine::new()?;
     /// engine.export_wav(&mut mixer, "output.wav")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    #[cfg(feature = "gpu")]
     pub fn enable_cache_and_gpu(&mut self) -> &mut Self {
         self.enable_cache();
         self.enable_gpu();
@@ -597,7 +607,7 @@ impl Mixer {
 
         for (cache_key, note_event) in unique_notes {
             // Check if already cached
-            if cache.lock().unwrap().get(&cache_key).is_some() {
+            if cache.lock().unwrap_or_else(|e| e.into_inner()).get(&cache_key).is_some() {
                 continue; // Already in cache
             }
 
@@ -608,6 +618,7 @@ impl Mixer {
                 let rendered_samples = Self::render_note_to_buffer(
                     &note_event,
                     sample_rate,
+                    #[cfg(feature = "gpu")]
                     self.gpu_synthesizer.as_ref(),
                 );
 
@@ -618,18 +629,25 @@ impl Mixer {
                     note_event.frequencies[0],
                 );
 
-                cache.lock().unwrap().insert(cache_key, cached_sample);
+                cache.lock().unwrap_or_else(|e| e.into_inner()).insert(cache_key, cached_sample);
                 rendered_count += 1;
             }
         }
 
         let elapsed = start.elapsed();
 
-        if self.gpu_enabled() {
-            let notes_per_second = rendered_count as f32 / elapsed.as_secs_f32();
-            println!("   ✅ Pre-rendered {} notes in {:.3}s ({:.0} notes/sec)",
-                rendered_count, elapsed.as_secs_f32(), notes_per_second);
-        } else {
+        #[cfg(feature = "gpu")]
+        {
+            if self.gpu_enabled() {
+                let notes_per_second = rendered_count as f32 / elapsed.as_secs_f32();
+                println!("   ✅ Pre-rendered {} notes in {:.3}s ({:.0} notes/sec)",
+                    rendered_count, elapsed.as_secs_f32(), notes_per_second);
+            } else {
+                println!("   ✅ Pre-rendered {} notes in {:.3}s", rendered_count, elapsed.as_secs_f32());
+            }
+        }
+        #[cfg(not(feature = "gpu"))]
+        {
             println!("   ✅ Pre-rendered {} notes in {:.3}s", rendered_count, elapsed.as_secs_f32());
         }
 
@@ -1049,6 +1067,7 @@ impl Mixer {
 
                 // Clone the Arc to share the cache across threads (cheap - just incrementing ref count)
                 let cache_clone = self.cache.clone();
+                #[cfg(feature = "gpu")]
                 let gpu_clone = self.gpu_synthesizer.clone();
                 let prerendered = self.prerendered;
 
@@ -1068,6 +1087,7 @@ impl Mixer {
                             start_time,
                             start_sample_count,
                             cache_clone.as_ref(),
+                            #[cfg(feature = "gpu")]
                             gpu_clone.as_ref(),
                             prerendered,
                         );
@@ -1209,13 +1229,15 @@ impl Mixer {
     /// Render a complete note into a buffer
     ///
     /// This synthesizes an entire note from start to finish, used for caching.
-    /// If GPU synthesizer is provided, uses GPU (500-1000x faster), otherwise falls back to CPU.
+    /// If GPU synthesizer is provided, uses GPU, otherwise falls back to CPU.
     fn render_note_to_buffer(
         note: &NoteEvent,
         sample_rate: f32,
+        #[cfg(feature = "gpu")]
         gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
     ) -> Vec<f32> {
         // Try GPU first if available
+        #[cfg(feature = "gpu")]
         if let Some(gpu) = gpu_synthesizer {
             if let Ok(samples) = gpu.synthesize_note(note, sample_rate) {
                 return samples;
@@ -1291,6 +1313,7 @@ impl Mixer {
         start_time: f32,
         start_sample_count: u64,
         cache: Option<&Arc<Mutex<SampleCache>>>,
+        #[cfg(feature = "gpu")]
         gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
         prerendered: bool,
     ) {
@@ -1322,7 +1345,8 @@ impl Mixer {
         // SKIP if already pre-rendered (batch rendering already populated cache)
         if !prerendered && cache.is_some() {
             let cache_arc = cache.unwrap();
-            let mut cache_lock = cache_arc.lock().unwrap();
+            // Handle poisoned mutex gracefully (don't panic in audio thread)
+            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
             for event in &track.events[start_idx..end_idx] {
                 if let AudioEvent::Note(note_event) = event {
                     // Compute cache key for this note
@@ -1339,6 +1363,7 @@ impl Mixer {
                             let rendered_samples = Self::render_note_to_buffer(
                                 note_event,
                                 sample_rate,
+                                #[cfg(feature = "gpu")]
                                 gpu_synthesizer,
                             );
 
@@ -1368,7 +1393,8 @@ impl Mixer {
             }
         } else if let Some(cache_arc) = cache {
             // Not pre-rendered, check cache for each note (slower path)
-            let mut cache_lock = cache_arc.lock().unwrap();
+            // Handle poisoned mutex gracefully (don't panic in audio thread)
+            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
             for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
                 if let AudioEvent::Note(note_event) = event {
                     let cache_key = CacheKey::from_note_event(note_event, sample_rate);
@@ -1382,7 +1408,8 @@ impl Mixer {
         // Pre-render cached notes into buffer (if cache is enabled)
         let mut cached_notes_buffer = vec![0.0f32; buffer.len()];
         if let Some(cache_arc) = cache {
-            let mut cache_lock = cache_arc.lock().unwrap();
+            // Handle poisoned mutex gracefully (don't panic in audio thread)
+            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
             for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
                 if let AudioEvent::Note(note_event) = event {
                     let cache_key = CacheKey::from_note_event(note_event, sample_rate);
@@ -1678,7 +1705,15 @@ impl Mixer {
 
         // 🚀 KEY OPTIMIZATION: Pre-render all unique notes before streaming
         // This eliminates per-block cache lookups and unleashes GPU performance!
-        if self.cache.is_some() || self.gpu_synthesizer.is_some() {
+        let should_prerender = self.cache.is_some()
+            || {
+                #[cfg(feature = "gpu")]
+                { self.gpu_synthesizer.is_some() }
+                #[cfg(not(feature = "gpu"))]
+                { false }
+            };
+
+        if should_prerender {
             self.prerender_notes(sample_rate);
         }
 
