@@ -11,6 +11,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["music", "audio", "synthesis", "composition", "midi"]
 categories = ["multimedia::audio", "multimedia", "algorithms"]
+autobenches = false  # Disable auto-discovery; benchmarks are declared as bins
 exclude = [
     ".github/*",
     "*.wav",

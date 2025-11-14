@@ -2,8 +2,6 @@
 
 use rand::Rng;
 use crate::composition::TrackBuilder;
-use crate::synthesis::waveform::Waveform;
-use crate::synthesis::envelope::Envelope;
 
 /// Generate a random walk sequence that can be used with sequence_from()
 ///

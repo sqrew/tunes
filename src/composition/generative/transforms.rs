@@ -1,10 +1,9 @@
 //! Pattern transformation methods
 
 use crate::composition::TrackBuilder;
-use crate::track::AudioEvent;
-use crate::synthesis::waveform::Waveform;
 use crate::synthesis::envelope::Envelope;
-use rand::Rng;
+use crate::synthesis::waveform::Waveform;
+use crate::track::AudioEvent;
 
 impl<'a> TrackBuilder<'a> {
     /// Add human feel to pattern by randomizing timing and velocity
@@ -60,7 +59,8 @@ impl<'a> TrackBuilder<'a> {
                         note.start_time = (note.start_time + timing_offset).max(0.0);
 
                         // Randomize velocity
-                        let velocity_offset = rng.random_range(-velocity_variance..=velocity_variance);
+                        let velocity_offset =
+                            rng.random_range(-velocity_variance..=velocity_variance);
                         note.velocity = (note.velocity + velocity_offset).clamp(0.0, 1.0);
                     }
                     AudioEvent::Drum(drum) => {
@@ -130,10 +130,7 @@ impl<'a> TrackBuilder<'a> {
         }
 
         // Extract frequencies in order
-        let freqs: Vec<([f32; 8], usize)> = note_events
-            .iter()
-            .map(|(_, f, n)| (*f, *n))
-            .collect();
+        let freqs: Vec<([f32; 8], usize)> = note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
 
         // Rotate the frequencies
         let len = freqs.len() as i32;
@@ -280,7 +277,8 @@ impl<'a> TrackBuilder<'a> {
                         // Duplicate each original frequency
                         for i in 0..original_count {
                             if note.num_freqs < 8 {
-                                note.frequencies[note.num_freqs] = note.frequencies[i] * shift_ratio;
+                                note.frequencies[note.num_freqs] =
+                                    note.frequencies[i] * shift_ratio;
                                 note.num_freqs += 1;
                             } else {
                                 // Max 8 frequencies - silently stop if we hit the limit
@@ -818,9 +816,7 @@ impl<'a> TrackBuilder<'a> {
                     grain.start_time = note.start_time + (grain_duration * i as f32);
                     grain.duration = grain_duration * 0.9; // Slight gap between grains
 
-                    self.get_track_mut()
-                        .events
-                        .push(AudioEvent::Note(grain));
+                    self.get_track_mut().events.push(AudioEvent::Note(grain));
                 }
             }
         }
@@ -1052,10 +1048,8 @@ impl<'a> TrackBuilder<'a> {
         }
 
         // Extract and shuffle frequencies
-        let mut freqs: Vec<([f32; 8], usize)> = note_events
-            .iter()
-            .map(|(_, f, n)| (*f, *n))
-            .collect();
+        let mut freqs: Vec<([f32; 8], usize)> =
+            note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
 
         // Shuffle using Fisher-Yates
         use rand::Rng;
@@ -1133,7 +1127,7 @@ impl<'a> TrackBuilder<'a> {
                         true // Keep notes outside pattern
                     }
                 }
-                _ => true // Keep non-note events
+                _ => true, // Keep non-note events
             }
         });
 
@@ -1184,10 +1178,7 @@ impl<'a> TrackBuilder<'a> {
         }
 
         // Extract frequencies in order
-        let freqs: Vec<([f32; 8], usize)> = note_events
-            .iter()
-            .map(|(_, f, n)| (*f, *n))
-            .collect();
+        let freqs: Vec<([f32; 8], usize)> = note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
 
         // Reverse the frequencies
         let reversed_freqs: Vec<([f32; 8], usize)> = freqs.into_iter().rev().collect();
@@ -1252,7 +1243,9 @@ impl<'a> TrackBuilder<'a> {
                         AudioEvent::Note(note) => {
                             // Shift each frequency in the note/chord
                             let mut shifted_freqs = [0.0f32; 8];
-                            for (i, freq) in shifted_freqs.iter_mut().enumerate().take(note.num_freqs) {
+                            for (i, freq) in
+                                shifted_freqs.iter_mut().enumerate().take(note.num_freqs)
+                            {
                                 *freq = note.frequencies[i] * shift_ratio;
                             }
 
@@ -1350,7 +1343,9 @@ impl<'a> TrackBuilder<'a> {
                         AudioEvent::Note(note) => {
                             // Invert each frequency in the note/chord
                             let mut inverted_freqs = [0.0f32; 8];
-                            for (i, inv_freq) in inverted_freqs.iter_mut().enumerate().take(note.num_freqs) {
+                            for (i, inv_freq) in
+                                inverted_freqs.iter_mut().enumerate().take(note.num_freqs)
+                            {
                                 let freq = note.frequencies[i];
                                 // Calculate distance from axis in semitones
                                 let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
@@ -1448,7 +1443,9 @@ impl<'a> TrackBuilder<'a> {
                     match event {
                         AudioEvent::Note(note) => {
                             let mut inverted_freqs = [0.0f32; 8];
-                            for (i, inv_freq_slot) in inverted_freqs.iter_mut().enumerate().take(note.num_freqs) {
+                            for (i, inv_freq_slot) in
+                                inverted_freqs.iter_mut().enumerate().take(note.num_freqs)
+                            {
                                 let freq = note.frequencies[i];
                                 let semitones_from_axis = 12.0 * (freq / axis_freq).log2();
                                 let inverted_semitones = -semitones_from_axis;

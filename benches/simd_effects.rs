@@ -1,5 +1,5 @@
-use tunes::prelude::*;
 use std::time::Instant;
+use tunes::prelude::*;
 
 /// Benchmark SIMD-accelerated effects
 ///
@@ -33,9 +33,21 @@ fn main() -> anyhow::Result<()> {
     // Test each SIMD-accelerated effect
     let effects_configs = [
         ("Distortion", vec![("heavy", 0.9, 0.0, 0.0)]),
-        ("Saturation", vec![("soft", 2.0, 0.3, 0.5), ("hard", 3.5, 0.7, 0.7)]),
-        ("Tremolo", vec![("slow", 4.0, 0.0, 0.0), ("fast", 8.0, 0.0, 0.0)]),
-        ("Ring Modulator", vec![("harmonic", 440.0, 0.0, 0.0), ("inharmonic", 333.0, 0.0, 0.0)]),
+        (
+            "Saturation",
+            vec![("soft", 2.0, 0.3, 0.5), ("hard", 3.5, 0.7, 0.7)],
+        ),
+        (
+            "Tremolo",
+            vec![("slow", 4.0, 0.0, 0.0), ("fast", 8.0, 0.0, 0.0)],
+        ),
+        (
+            "Ring Modulator",
+            vec![
+                ("harmonic", 440.0, 0.0, 0.0),
+                ("inharmonic", 333.0, 0.0, 0.0),
+            ],
+        ),
     ];
 
     for (effect_name, configs) in &effects_configs {
@@ -50,7 +62,8 @@ fn main() -> anyhow::Result<()> {
                 let track_name = format!("track_{}", i);
                 let freq = 200.0 + (i as f32 * 50.0);
 
-                let mut track = comp.instrument(&track_name, &Instrument::synth_lead())
+                let mut track = comp
+                    .instrument(&track_name, &Instrument::synth_lead())
                     .at(0.0);
 
                 // Apply the specific effect
@@ -66,7 +79,6 @@ fn main() -> anyhow::Result<()> {
             }
 
             let mut mixer = comp.into_mixer();
-            let duration = mixer.total_duration();
 
             // Benchmark rendering
             let start = Instant::now();
@@ -105,10 +117,12 @@ fn main() -> anyhow::Result<()> {
         .saturation(Saturation::new(2.5, 0.5, 0.7))
         .tremolo(Tremolo::new(6.0, 0.5))
         .ring_mod(RingModulator::new(440.0, 0.8))
-        .notes(&[440.0, 494.0, 523.0, 587.0, 659.0, 698.0, 784.0, 880.0], 0.5);
+        .notes(
+            &[440.0, 494.0, 523.0, 587.0, 659.0, 698.0, 784.0, 880.0],
+            0.5,
+        );
 
     let mut mixer = comp.into_mixer();
-    let duration = mixer.total_duration();
 
     let start = Instant::now();
     let buffer = engine.render_to_buffer(&mut mixer);

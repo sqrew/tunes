@@ -4,7 +4,7 @@
 //! Handles f32 hashing by converting to bits (avoiding NaN issues).
 
 use crate::synthesis::envelope::Envelope;
-use crate::synthesis::filter::{Filter, FilterType};
+use crate::synthesis::filter::Filter;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::synthesis::waveform::Waveform;

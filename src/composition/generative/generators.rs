@@ -8,6 +8,5 @@
 //! This file exists as a placeholder for potential future refactoring where those methods
 //! could be moved here if needed.
 
-use crate::composition::TrackBuilder;
 
 // Generator method implementations would go here, but they are currently in other module files

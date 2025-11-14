@@ -7,6 +7,4 @@ pub mod musical_time;
 pub mod tempo;
 
 // Re-export everything from submodules to maintain API compatibility
-pub use navigation::*;
-pub use musical_time::*;
 pub use tempo::*;

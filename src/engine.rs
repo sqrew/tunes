@@ -1,16 +1,19 @@
+use crate::composition::{Composition, Tempo};
 use crate::error::{Result, TunesError};
 use crate::synthesis::spatial::{
     ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial,
 };
 use crate::track::Mixer;
-use crate::composition::{Composition, Tempo};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam::channel::{Receiver, Sender, unbounded};
-use ringbuf::{HeapRb, traits::{Split, Consumer, Producer, Observer}};
+use ringbuf::{
+    HeapRb,
+    traits::{Consumer, Observer, Producer, Split},
+};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use symphonia::core::audio::{AudioBufferRef, Signal};
@@ -67,8 +70,8 @@ enum AudioCommand {
     },
     TweenPan {
         id: SoundId,
-        target_pan: f32,  // Target pan (-1.0 to 1.0)
-        duration: f32,    // Duration in seconds
+        target_pan: f32, // Target pan (-1.0 to 1.0)
+        duration: f32,   // Duration in seconds
     },
     TweenPlaybackRate {
         id: SoundId,
@@ -177,6 +180,7 @@ struct StreamingSound {
     /// Current pan (-1.0 left, 0.0 center, 1.0 right)
     pan: f32,
     /// Whether the stream is looping
+    #[allow(dead_code)]
     looping: bool,
 }
 
@@ -305,7 +309,12 @@ fn decoder_thread_func(
         let metadata_opts = MetadataOptions::default();
         let decoder_opts = DecoderOptions::default();
 
-        let probed = match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
+        let probed = match symphonia::default::get_probe().format(
+            &hint,
+            mss,
+            &format_opts,
+            &metadata_opts,
+        ) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!("Streaming: Failed to probe file {:?}: {}", path, e);
@@ -322,13 +331,14 @@ fn decoder_thread_func(
             }
         };
 
-        let mut decoder = match symphonia::default::get_codecs().make(&track.codec_params, &decoder_opts) {
-            Ok(d) => d,
-            Err(e) => {
-                eprintln!("Streaming: Failed to create decoder for {:?}: {}", path, e);
-                break;
-            }
-        };
+        let mut decoder =
+            match symphonia::default::get_codecs().make(&track.codec_params, &decoder_opts) {
+                Ok(d) => d,
+                Err(e) => {
+                    eprintln!("Streaming: Failed to create decoder for {:?}: {}", path, e);
+                    break;
+                }
+            };
 
         let mut samples = Vec::new();
 
@@ -418,6 +428,7 @@ pub struct AudioEngine {
     buffer_size: u32,
     channels: usize,
     // GPU acceleration flag for play_sample()
+    #[allow(dead_code)]
     enable_gpu_for_samples: bool,
 }
 
@@ -553,12 +564,7 @@ impl AudioEngine {
                     );
 
                     // Mix streaming sounds into the output buffer
-                    Self::mix_streaming_sounds(
-                        data,
-                        streaming_sounds,
-                        finished_streams,
-                        channels,
-                    );
+                    Self::mix_streaming_sounds(data, streaming_sounds, finished_streams, channels);
 
                     // Unlock at end of scope
                 },
@@ -605,7 +611,7 @@ impl AudioEngine {
     /// # }
     /// ```
     pub fn print_info(&self) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
+        use crate::synthesis::simd::{SIMD, SimdWidth};
 
         let latency_ms = (self.buffer_size as f32 / self.sample_rate) * 1000.0;
         let simd_width = SIMD.simd_width();
@@ -614,9 +620,13 @@ impl AudioEngine {
             SimdWidth::X8 => "AVX2",
             SimdWidth::X4 => {
                 #[cfg(target_arch = "x86_64")]
-                { "SSE" }
+                {
+                    "SSE"
+                }
                 #[cfg(not(target_arch = "x86_64"))]
-                { "NEON" }
+                {
+                    "NEON"
+                }
             }
             SimdWidth::Scalar => "Scalar (no SIMD)",
         };
@@ -807,7 +817,13 @@ impl AudioEngine {
                 let stop_signal_clone = Arc::clone(&stop_signal);
                 let pause_signal_clone = Arc::clone(&pause_signal);
                 let decoder_thread = thread::spawn(move || {
-                    decoder_thread_func(path, ring_producer, stop_signal_clone, pause_signal_clone, looping);
+                    decoder_thread_func(
+                        path,
+                        ring_producer,
+                        stop_signal_clone,
+                        pause_signal_clone,
+                        looping,
+                    );
                 });
 
                 // Add to streaming sounds
@@ -947,12 +963,13 @@ impl AudioEngine {
             }
 
             // Calculate spatial audio if runtime position is set
-            let (spatial_volume, spatial_pan, spatial_pitch) = if let Some(pos) = &sound.spatial_position {
-                let result = calculate_spatial(pos, listener, spatial_params);
-                (result.volume, result.pan, result.pitch)
-            } else {
-                (1.0, sound.pan, 1.0)
-            };
+            let (spatial_volume, spatial_pan, spatial_pitch) =
+                if let Some(pos) = &sound.spatial_position {
+                    let result = calculate_spatial(pos, listener, spatial_params);
+                    (result.volume, result.pan, result.pitch)
+                } else {
+                    (1.0, sound.pan, 1.0)
+                };
 
             // Apply doppler pitch shift to playback rate
             let effective_playback_rate = sound.playback_rate * spatial_pitch;
@@ -1072,16 +1089,8 @@ impl AudioEngine {
 
                 // Apply volume and pan
                 let pan = stream.pan;
-                let left_gain = if pan <= 0.0 {
-                    1.0
-                } else {
-                    1.0 - pan
-                } * stream.volume;
-                let right_gain = if pan >= 0.0 {
-                    1.0
-                } else {
-                    1.0 + pan
-                } * stream.volume;
+                let left_gain = if pan <= 0.0 { 1.0 } else { 1.0 - pan } * stream.volume;
+                let right_gain = if pan >= 0.0 { 1.0 } else { 1.0 + pan } * stream.volume;
 
                 // Mix into output (additively)
                 if i < output.len() {
@@ -1316,8 +1325,9 @@ impl AudioEngine {
                 cached.clone()
             } else {
                 // Cache miss - load and cache
-                let loaded = Sample::from_file(path)
-                    .map_err(|e| TunesError::AudioEngineError(format!("Failed to load sample '{}': {}", path, e)))?;
+                let loaded = Sample::from_file(path).map_err(|e| {
+                    TunesError::AudioEngineError(format!("Failed to load sample '{}': {}", path, e))
+                })?;
                 cache.insert(path.to_string(), loaded.clone());
                 loaded
             }
@@ -1328,7 +1338,7 @@ impl AudioEngine {
         comp.track("_oneshot").play_sample(&sample, 1.0);
 
         // Enable GPU if requested via new_with_gpu()
-        let mut mixer = comp.into_mixer();
+        let mixer = comp.into_mixer();
         #[cfg(feature = "gpu")]
         {
             if self.enable_gpu_for_samples {
@@ -1366,8 +1376,9 @@ impl AudioEngine {
         let mut cache = self.sample_cache.lock().unwrap();
 
         if !cache.contains_key(path) {
-            let sample = Sample::from_file(path)
-                .map_err(|e| TunesError::AudioEngineError(format!("Failed to preload sample '{}': {}", path, e)))?;
+            let sample = Sample::from_file(path).map_err(|e| {
+                TunesError::AudioEngineError(format!("Failed to preload sample '{}': {}", path, e))
+            })?;
             cache.insert(path.to_string(), sample);
         }
 

@@ -6,7 +6,7 @@
 use super::bus::{Bus, BusBuilder};
 use super::events::*;
 use super::track::Track;
-use crate::cache::{CacheKey, SampleCache, CachedSample};
+use crate::cache::{CacheKey, CachedSample, SampleCache};
 use crate::composition::timing::Tempo;
 #[cfg(feature = "gpu")]
 use crate::gpu::GpuSynthesizer;
@@ -225,7 +225,8 @@ impl Mixer {
         // Check if bus already exists
         if let Some(&bus_id) = self.bus_name_to_id.get(name) {
             // Bus exists, return mutable reference
-            return self.buses[bus_id as usize].as_mut()
+            return self.buses[bus_id as usize]
+                .as_mut()
                 .expect("Internal error: bus_name_to_id points to empty bus slot");
         }
 
@@ -236,7 +237,8 @@ impl Mixer {
         self.add_bus(new_bus);
 
         // Return reference to the newly added bus
-        self.buses[new_bus_id as usize].as_mut()
+        self.buses[new_bus_id as usize]
+            .as_mut()
             .expect("Internal error: bus not found immediately after adding")
     }
 
@@ -437,13 +439,18 @@ impl Mixer {
     ///
     /// Returns `None` if caching is disabled.
     pub fn cache_stats(&self) -> Option<crate::cache::storage::CacheStats> {
-        self.cache.as_ref().map(|c| c.lock().unwrap_or_else(|e| e.into_inner()).stats().clone())
+        self.cache
+            .as_ref()
+            .map(|c| c.lock().unwrap_or_else(|e| e.into_inner()).stats().clone())
     }
 
     /// Print cache statistics (if caching is enabled)
     pub fn print_cache_stats(&self) {
         if let Some(cache) = &self.cache {
-            cache.lock().unwrap_or_else(|e| e.into_inner()).print_stats();
+            cache
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .print_stats();
         } else {
             println!("Sample caching is disabled");
         }
@@ -491,22 +498,20 @@ impl Mixer {
 
         // Try to initialize GPU
         match GpuDevice::new() {
-            Ok(device) => {
-                match GpuSynthesizer::new(device) {
-                    Ok(synthesizer) => {
-                        self.gpu_synthesizer = Some(Arc::new(synthesizer));
-                        if print_info {
-                            println!("✅ GPU synthesis enabled");
-                        }
-                    }
-                    Err(e) => {
-                        if print_info {
-                            eprintln!("⚠️  Failed to create GPU synthesizer: {}", e);
-                            eprintln!("   Falling back to CPU synthesis");
-                        }
+            Ok(device) => match GpuSynthesizer::new(device) {
+                Ok(synthesizer) => {
+                    self.gpu_synthesizer = Some(Arc::new(synthesizer));
+                    if print_info {
+                        println!("✅ GPU synthesis enabled");
                     }
                 }
-            }
+                Err(e) => {
+                    if print_info {
+                        eprintln!("⚠️  Failed to create GPU synthesizer: {}", e);
+                        eprintln!("   Falling back to CPU synthesis");
+                    }
+                }
+            },
             Err(e) => {
                 if print_info {
                     eprintln!("⚠️  GPU not available: {}", e);
@@ -568,8 +573,6 @@ impl Mixer {
     /// streaming (causing overhead), we render everything upfront and stream
     /// from a fully-populated cache.
     pub fn prerender_notes(&mut self, sample_rate: f32) {
-        use std::collections::HashSet;
-
         // Only prerender if cache is enabled
         let cache = match &self.cache {
             Some(c) => c,
@@ -607,7 +610,12 @@ impl Mixer {
 
         for (cache_key, note_event) in unique_notes {
             // Check if already cached
-            if cache.lock().unwrap_or_else(|e| e.into_inner()).get(&cache_key).is_some() {
+            if cache
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .get(&cache_key)
+                .is_some()
+            {
                 continue; // Already in cache
             }
 
@@ -629,7 +637,10 @@ impl Mixer {
                     note_event.frequencies[0],
                 );
 
-                cache.lock().unwrap_or_else(|e| e.into_inner()).insert(cache_key, cached_sample);
+                cache
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .insert(cache_key, cached_sample);
                 rendered_count += 1;
             }
         }
@@ -640,15 +651,27 @@ impl Mixer {
         {
             if self.gpu_enabled() {
                 let notes_per_second = rendered_count as f32 / elapsed.as_secs_f32();
-                println!("   ✅ Pre-rendered {} notes in {:.3}s ({:.0} notes/sec)",
-                    rendered_count, elapsed.as_secs_f32(), notes_per_second);
+                println!(
+                    "   ✅ Pre-rendered {} notes in {:.3}s ({:.0} notes/sec)",
+                    rendered_count,
+                    elapsed.as_secs_f32(),
+                    notes_per_second
+                );
             } else {
-                println!("   ✅ Pre-rendered {} notes in {:.3}s", rendered_count, elapsed.as_secs_f32());
+                println!(
+                    "   ✅ Pre-rendered {} notes in {:.3}s",
+                    rendered_count,
+                    elapsed.as_secs_f32()
+                );
             }
         }
         #[cfg(not(feature = "gpu"))]
         {
-            println!("   ✅ Pre-rendered {} notes in {:.3}s", rendered_count, elapsed.as_secs_f32());
+            println!(
+                "   ✅ Pre-rendered {} notes in {:.3}s",
+                rendered_count,
+                elapsed.as_secs_f32()
+            );
         }
 
         // Mark as pre-rendered so streaming skips cache lookups
@@ -1037,10 +1060,10 @@ impl Mixer {
         self.envelope_cache.clear();
 
         // Temporary mono buffer for track processing (will be reused)
-        let mut track_buffer = vec![0.0f32; num_frames];
+        let track_buffer = vec![0.0f32; num_frames];
 
         // Temporary stereo buffers for bus outputs
-        let mut bus_buffer = vec![0.0f32; buffer.len()];
+        let bus_buffer = vec![0.0f32; buffer.len()];
 
         // TWO-PASS BUS PROCESSING for parallelization with sidechain support:
         // Pass 1: Render all bus audio + calculate envelopes (can be parallel)
@@ -1054,7 +1077,8 @@ impl Mixer {
             track_envelopes: Vec<(TrackId, f32)>,
         }
 
-        let bus_results: Vec<BusRenderResult> = self.buses
+        let bus_results: Vec<BusRenderResult> = self
+            .buses
             .par_iter_mut()
             .filter_map(|bus_opt| {
                 let bus = bus_opt.as_mut()?;
@@ -1072,7 +1096,8 @@ impl Mixer {
                 let prerendered = self.prerendered;
 
                 // Process each track in this bus IN PARALLEL using Rayon
-                let track_results: Vec<_> = bus.tracks
+                let track_results: Vec<_> = bus
+                    .tracks
                     .par_iter_mut()
                     .map(|track| {
                         let track_id = track.id;
@@ -1143,7 +1168,8 @@ impl Mixer {
             for (track_id, envelope) in &result.track_envelopes {
                 self.envelope_cache.cache_track(*track_id, *envelope);
             }
-            self.envelope_cache.cache_bus(result.bus_id, result.bus_envelope);
+            self.envelope_cache
+                .cache_bus(result.bus_id, result.bus_envelope);
         }
 
         // PASS 2: Apply effects and mix to output (can still check for parallelization)
@@ -1152,7 +1178,8 @@ impl Mixer {
             let mut bus_buffer = result.bus_buffer;
 
             // Find the original bus to apply effects
-            let bus = self.buses
+            let bus = self
+                .buses
                 .iter_mut()
                 .find_map(|b| b.as_mut().filter(|bus| bus.id == result.bus_id))
                 .expect("Bus should exist");
@@ -1233,8 +1260,7 @@ impl Mixer {
     fn render_note_to_buffer(
         note: &NoteEvent,
         sample_rate: f32,
-        #[cfg(feature = "gpu")]
-        gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
+        #[cfg(feature = "gpu")] gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
     ) -> Vec<f32> {
         // Try GPU first if available
         #[cfg(feature = "gpu")]
@@ -1265,9 +1291,8 @@ impl Mixer {
 
                 let freq = if note.pitch_bend_semitones != 0.0 {
                     let bend_progress = (time_in_note / note.duration).min(1.0);
-                    let bend_multiplier = 2.0f32.powf(
-                        (note.pitch_bend_semitones * bend_progress) / 12.0,
-                    );
+                    let bend_multiplier =
+                        2.0f32.powf((note.pitch_bend_semitones * bend_progress) / 12.0);
                     base_freq * bend_multiplier
                 } else {
                     base_freq
@@ -1313,8 +1338,7 @@ impl Mixer {
         start_time: f32,
         start_sample_count: u64,
         cache: Option<&Arc<Mutex<SampleCache>>>,
-        #[cfg(feature = "gpu")]
-        gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
+        #[cfg(feature = "gpu")] gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
         prerendered: bool,
     ) {
         // Clear output buffer
@@ -1355,7 +1379,8 @@ impl Mixer {
                     // Check if we have this note cached
                     if cache_lock.get(&cache_key).is_none() {
                         // Cache miss - render the full note and store it
-                        let total_duration = note_event.envelope.total_duration(note_event.duration);
+                        let total_duration =
+                            note_event.envelope.total_duration(note_event.duration);
 
                         // Only cache notes with reasonable duration
                         if total_duration > 0.0 && total_duration < 10.0 {
@@ -1371,7 +1396,7 @@ impl Mixer {
                                 rendered_samples,
                                 sample_rate,
                                 total_duration,
-                                note_event.frequencies[0],  // Reference frequency
+                                note_event.frequencies[0], // Reference frequency
                             );
                             cache_lock.insert(cache_key, cached_sample);
                         }
@@ -1410,7 +1435,7 @@ impl Mixer {
         if let Some(cache_arc) = cache {
             // Handle poisoned mutex gracefully (don't panic in audio thread)
             let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
-            for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
+            for (_idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
                 if let AudioEvent::Note(note_event) = event {
                     let cache_key = CacheKey::from_note_event(note_event, sample_rate);
 
@@ -1420,7 +1445,9 @@ impl Mixer {
                         let note_end = note_start + cached_sample.duration;
 
                         // Skip if note doesn't overlap with current block
-                        if note_end < start_time || note_start >= start_time + (buffer.len() as f32 / sample_rate) {
+                        if note_end < start_time
+                            || note_start >= start_time + (buffer.len() as f32 / sample_rate)
+                        {
                             continue;
                         }
 
@@ -1435,12 +1462,19 @@ impl Mixer {
                         };
 
                         // Calculate how many samples to copy
-                        let samples_remaining_in_cache = cached_sample.samples.len().saturating_sub(cache_start_sample);
-                        let samples_remaining_in_buffer = buffer.len().saturating_sub(buffer_start_sample);
-                        let num_samples_to_copy = samples_remaining_in_cache.min(samples_remaining_in_buffer);
+                        let samples_remaining_in_cache = cached_sample
+                            .samples
+                            .len()
+                            .saturating_sub(cache_start_sample);
+                        let samples_remaining_in_buffer =
+                            buffer.len().saturating_sub(buffer_start_sample);
+                        let num_samples_to_copy =
+                            samples_remaining_in_cache.min(samples_remaining_in_buffer);
 
                         // Bulk copy with addition (vectorizable)
-                        if num_samples_to_copy > 0 && cache_start_sample < cached_sample.samples.len() {
+                        if num_samples_to_copy > 0
+                            && cache_start_sample < cached_sample.samples.len()
+                        {
                             for i in 0..num_samples_to_copy {
                                 cached_notes_buffer[buffer_start_sample + i] +=
                                     cached_sample.samples[cache_start_sample + i];
@@ -1705,13 +1739,16 @@ impl Mixer {
 
         // 🚀 KEY OPTIMIZATION: Pre-render all unique notes before streaming
         // This eliminates per-block cache lookups and unleashes GPU performance!
-        let should_prerender = self.cache.is_some()
-            || {
-                #[cfg(feature = "gpu")]
-                { self.gpu_synthesizer.is_some() }
-                #[cfg(not(feature = "gpu"))]
-                { false }
-            };
+        let should_prerender = self.cache.is_some() || {
+            #[cfg(feature = "gpu")]
+            {
+                self.gpu_synthesizer.is_some()
+            }
+            #[cfg(not(feature = "gpu"))]
+            {
+                false
+            }
+        };
 
         if should_prerender {
             self.prerender_notes(sample_rate);
