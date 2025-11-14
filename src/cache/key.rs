@@ -163,13 +163,7 @@ mod tests {
             start_time: 0.0,
             duration: 1.0,
             waveform: Waveform::Sine,
-            envelope: Envelope {
-                attack: 0.01,
-                decay: 0.1,
-                sustain: 0.7,
-                release: 0.2,
-                curve: EnvelopeCurve::Linear,
-            },
+            envelope: Envelope::with_curve(0.01, 0.1, 0.7, 0.2, EnvelopeCurve::Linear),
             filter_envelope: FilterEnvelope::default(),
             fm_params: FMParams::default(),
             pitch_bend_semitones: 0.0,
@@ -194,13 +188,7 @@ mod tests {
             start_time: 0.0,
             duration: 1.0,
             waveform: Waveform::Sine,
-            envelope: Envelope {
-                attack: 0.01,
-                decay: 0.1,
-                sustain: 0.7,
-                release: 0.2,
-                curve: EnvelopeCurve::Linear,
-            },
+            envelope: Envelope::with_curve(0.01, 0.1, 0.7, 0.2, EnvelopeCurve::Linear),
             filter_envelope: FilterEnvelope::default(),
             fm_params: FMParams::default(),
             pitch_bend_semitones: 0.0,
@@ -210,7 +198,7 @@ mod tests {
         };
 
         let mut note2 = note1.clone();
-        note2.envelope.attack = 0.05; // Different attack
+        note2.envelope = Envelope::with_curve(0.05, 0.1, 0.7, 0.2, EnvelopeCurve::Linear); // Different attack
 
         let key1 = CacheKey::from_note_event(&note1, 44100.0);
         let key2 = CacheKey::from_note_event(&note2, 44100.0);
