@@ -8,7 +8,7 @@ use crate::synthesis::filter::Filter;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::synthesis::waveform::Waveform;
-use crate::track::NoteEvent;  // Re-exported from track module
+use crate::track::NoteEvent; // Re-exported from track module
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -80,11 +80,7 @@ impl CacheKey {
     /// Use this when you want to cache the filtered output.
     /// Note: Most users should cache the raw oscillator output and apply
     /// filters at runtime for more flexibility.
-    pub fn from_note_with_filter(
-        note: &NoteEvent,
-        filter: &Filter,
-        sample_rate: f32,
-    ) -> Self {
+    pub fn from_note_with_filter(note: &NoteEvent, filter: &Filter, sample_rate: f32) -> Self {
         let mut hasher = DefaultHasher::new();
 
         // Start with the base note hash
@@ -182,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_different_envelope_different_key() {
-        let mut note1 = NoteEvent {
+        let note1 = NoteEvent {
             frequencies: [440.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             num_freqs: 1,
             start_time: 0.0,
@@ -208,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_frequency_not_in_key() {
-        let mut note1 = NoteEvent {
+        let note1 = NoteEvent {
             frequencies: [440.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             num_freqs: 1,
             start_time: 0.0,

@@ -1,6 +1,6 @@
 [package]
 name = "tunes"
-version = "0.16.0"
+version = "0.17.0"
 edition = "2021"
 authors = ["Nicholas Manson <nicholaspmanson@gmail.com>"]
 description = "A music composition, synthesis, and audio generation library"
@@ -11,7 +11,6 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["music", "audio", "synthesis", "composition", "midi"]
 categories = ["multimedia::audio", "multimedia", "algorithms"]
-autobenches = false  # Disable auto-discovery; benchmarks are declared as bins
 exclude = [
     ".github/*",
     "*.wav",
@@ -53,6 +52,7 @@ crossbeam = "0.8"
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 wide = "0.7"        # SIMD vectorization for DSP performance
 rayon = "1.10"      # Data parallelism for multi-core performance
+rustfft = "6.2"     # Fast FFT library for convolution reverb
 
 # GPU acceleration (optional - enable with "gpu" feature)
 wgpu = { version = "23.0", optional = true }
@@ -65,64 +65,64 @@ hound = "3.5"       # WAV export only (writing)
 flacenc = "0.5"     # FLAC export
 symphonia = { version = "0.5", features = ["mp3", "isomp4", "aac"] }  # Multi-format import (MP3, OGG, FLAC, WAV, AAC)
 
-# Benchmarks (run with: cargo run --release --bin <name>)
-[[bin]]
+# Benchmarks (run with: cargo bench)
+[[bench]]
 name = "simd_sample_playback"
-path = "benches/simd_sample_playback.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "simd_wavetable"
-path = "benches/simd_wavetable.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "simd_effects"
-path = "benches/simd_effects.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "sample_cache"
-path = "benches/sample_cache.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "concurrent_mixing"
-path = "benches/concurrent_mixing.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "export_speed"
-path = "benches/export_speed.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "polyphony"
-path = "benches/polyphony.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "streaming_memory"
-path = "benches/streaming_memory.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "realtime_latency"
-path = "benches/realtime_latency.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "cache_benchmark"
-path = "benches/cache_benchmark.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "cache_realistic"
-path = "benches/cache_realistic.rs"
+harness = false
 
-[[bin]]
+[[bench]]
 name = "gpu_benchmark"
-path = "benches/gpu_benchmark.rs"
+harness = false
 required-features = ["gpu"]
 
-[[bin]]
+[[bench]]
 name = "pipeline_benchmark"
-path = "benches/pipeline_benchmark.rs"
+harness = false
 required-features = ["gpu"]
 
-[[bin]]
+[[bench]]
 name = "gpu_stress_test"
-path = "benches/gpu_stress_test.rs"
+harness = false
 
 # GPU examples require the gpu feature to be enabled
 [[example]]

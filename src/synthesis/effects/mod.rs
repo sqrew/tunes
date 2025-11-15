@@ -11,6 +11,7 @@ pub mod dynamics;
 pub mod modulation;
 pub mod spatial;
 pub mod eq;
+pub mod convolution;
 
 // Re-export all effect types
 pub use delay::Delay;
@@ -20,6 +21,7 @@ pub use dynamics::{Compressor, CompressorBand, Gate, Limiter, SidechainSource, R
 pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
+pub use convolution::{Convolution, ConvolutionReverb, IRParams};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -53,13 +55,14 @@ pub struct EffectChain {
     pub autopan: Option<AutoPan>,
     pub delay: Option<Delay>,
     pub reverb: Option<Reverb>,
+    pub convolution_reverb: Option<ConvolutionReverb>,
     pub limiter: Option<Limiter>,
     pub parametric_eq: Option<ParametricEQ>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
     //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
-    //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ
+    //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -82,6 +85,7 @@ impl EffectChain {
             autopan: None,
             delay: None,
             reverb: None,
+            convolution_reverb: None,
             limiter: None,
             parametric_eq: None,
             effect_order: Vec::new(),
@@ -140,6 +144,9 @@ impl EffectChain {
         }
         if let Some(ref parametric_eq) = self.parametric_eq {
             effects.push((parametric_eq.priority, 14));
+        }
+        if let Some(ref convolution_reverb) = self.convolution_reverb {
+            effects.push((convolution_reverb.priority, 15));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -295,6 +302,14 @@ impl EffectChain {
                         signal
                     }
                 }
+                15 => {
+                    // ConvolutionReverb
+                    if let Some(ref mut convolution_reverb) = self.convolution_reverb {
+                        convolution_reverb.process(signal)
+                    } else {
+                        signal
+                    }
+                }
                 _ => signal,
             };
         }
@@ -409,6 +424,12 @@ impl EffectChain {
                     // ParametricEQ
                     if let Some(ref mut parametric_eq) = self.parametric_eq {
                         parametric_eq.process_block(buffer, time, sample_count as usize, sample_rate);
+                    }
+                }
+                15 => {
+                    // ConvolutionReverb
+                    if let Some(ref mut convolution_reverb) = self.convolution_reverb {
+                        convolution_reverb.process_block_direct(buffer);
                     }
                 }
                 _ => {}

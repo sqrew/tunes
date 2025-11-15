@@ -14,7 +14,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
 - **Instruments**: 150+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
 - **Rhythm & Drums**: 100+ pre-configured drum sounds, drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Effects, Automation and Filters**: Delay, reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor (with multiband support), bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
+- **Effects, Automation and Filters**: Delay, convolution reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor (with multiband support), bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, and many classical techniques and patterns built-in
 - **Algorithmic Sequences**: 50+ algorithms, including Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
@@ -27,7 +27,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
-  * [ ] The library includes **1118 comprehensive tests and 424 doc tests** ensuring reliability and correctness.
+  * [ ] The library includes **1117 comprehensive tests and 444 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:
@@ -47,9 +47,9 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 ## PROS
     rust
     music theory integration
-    composition first
-    code first environment (rust's ide integration and your choice of ide is everything here)
-    high CPU performance (70x realtime uncached, 18-22x cached on complex compositions)
+    batteries included approach
+    composition and code first environment (rust's ide integration and your choice of ide is everything here)
+    high CPU performance (~70x realtime synthesis uncached, ~20x cached on complex compositions)
     automatic SIMD acceleration for sample playback
     multi-core parallelism (automatic via Rayon)
     optional GPU compute shader acceleration with transparent API
@@ -66,10 +66,10 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.16.0"
+tunes = "0.17.0"
 
 # Optional: Enable GPU acceleration (requires discrete GPU for best results)
-# tunes = { version = "0.16.0", features = ["gpu"] }
+# tunes = { version = "0.17.0", features = ["gpu"] }
 ```
 
 ### Platform Requirements

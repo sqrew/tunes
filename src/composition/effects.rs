@@ -1,7 +1,7 @@
 use super::TrackBuilder;
 use crate::synthesis::effects::{
-    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, Flanger, Gate, Limiter, Phaser,
-    Reverb, RingModulator, Saturation, Tremolo,
+    AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
+    Gate, Limiter, Phaser, Reverb, RingModulator, Saturation, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
@@ -50,6 +50,12 @@ impl<'a> EffectsBuilder<'a> {
     /// Add reverb effect
     pub fn reverb(mut self, reverb: Reverb) -> Self {
         self.inner = self.inner.reverb(reverb);
+        self
+    }
+
+    /// Add convolution reverb effect
+    pub fn convolution_reverb(mut self, convolution_reverb: ConvolutionReverb) -> Self {
+        self.inner = self.inner.convolution_reverb(convolution_reverb);
         self
     }
 
@@ -188,6 +194,33 @@ impl<'a> TrackBuilder<'a> {
     pub fn reverb(mut self, reverb: Reverb) -> Self {
         let track = self.get_track_mut();
         track.effects.reverb = Some(reverb);
+        track.effects.compute_effect_order();
+        self
+    }
+    /// Add convolution reverb effect to this track
+    ///
+    /// Convolution reverb uses impulse responses to apply realistic room acoustics.
+    /// More computationally expensive than algorithmic reverb but more realistic.
+    ///
+    /// # Arguments
+    /// * `convolution_reverb` - ConvolutionReverb effect instance
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::convolution;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("piano", &Instrument::acoustic_piano())
+    ///     .convolution_reverb(convolution::presets::cathedral(0.5).unwrap())
+    ///     .note(&[C4], 1.0);
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    pub fn convolution_reverb(mut self, convolution_reverb: ConvolutionReverb) -> Self {
+        let track = self.get_track_mut();
+        track.effects.convolution_reverb = Some(convolution_reverb);
         track.effects.compute_effect_order();
         self
     }

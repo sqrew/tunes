@@ -47,6 +47,7 @@ pub struct TrackTemplate {
     pub filter: Filter,
     pub delay: Option<Delay>,
     pub reverb: Option<Reverb>,
+    pub convolution_reverb: Option<crate::synthesis::effects::ConvolutionReverb>,
     pub distortion: Option<Distortion>,
     pub bitcrusher: Option<BitCrusher>,
     pub compressor: Option<Compressor>,
@@ -210,6 +211,7 @@ impl Composition {
                     filter: Filter::default(),
                     delay: None,
                     reverb: None,
+                    convolution_reverb: None,
                     distortion: None,
                     bitcrusher: None,
                     compressor: None,
@@ -265,6 +267,7 @@ impl Composition {
         track.filter = template.filter;
         track.effects.delay = template.delay;
         track.effects.reverb = template.reverb;
+        track.effects.convolution_reverb = template.convolution_reverb;
         track.effects.distortion = template.distortion;
         track.effects.bitcrusher = template.bitcrusher;
         track.effects.compressor = template.compressor;
@@ -1042,6 +1045,7 @@ impl<'a> TrackBuilder<'a> {
         let filter = track.filter;
         let delay = track.effects.delay.clone();
         let reverb = track.effects.reverb.clone();
+        let convolution_reverb = track.effects.convolution_reverb.clone();
         let distortion = track.effects.distortion.clone();
         let bitcrusher = track.effects.bitcrusher.clone();
         let compressor = track.effects.compressor.clone();
@@ -1065,6 +1069,7 @@ impl<'a> TrackBuilder<'a> {
             filter,
             delay,
             reverb,
+            convolution_reverb,
             distortion,
             bitcrusher,
             compressor,

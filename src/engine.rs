@@ -461,9 +461,9 @@ impl AudioEngine {
     ///
     /// // Transparent GPU acceleration for export and playback
     /// let mut comp = Composition::new(Tempo::new(120.0));
-    /// comp.track("synth").sine(440.0, 1.0);
-    /// engine.export_wav(&mut comp.into_mixer(), "output.wav")?;  // GPU accelerated
-    /// engine.play_mixer_realtime(&comp.into_mixer())?;  // GPU accelerated
+    /// comp.track("synth").note(&[440.0], 1.0);
+    /// let mut mixer = comp.into_mixer();
+    /// engine.export_wav(&mut mixer, "output.wav")?;  // GPU accelerated
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     ///
