@@ -5,7 +5,7 @@
 //! - NoteEvent, DrumEvent, SampleEvent
 //! - TempoChangeEvent, TimeSignatureEvent, KeySignatureEvent
 
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;

@@ -53,6 +53,7 @@
 - [MIDI Import/Export](./advanced/midi.md)
 - [Live Coding](./advanced/live-coding.md)
 - [Performance Optimization](./advanced/performance.md)
+- [GPU Acceleration](./advanced/gpu.md)
 
 ---
 

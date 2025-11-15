@@ -115,6 +115,15 @@ name = "gpu_benchmark"
 path = "benches/gpu_benchmark.rs"
 required-features = ["gpu"]
 
+[[bin]]
+name = "pipeline_benchmark"
+path = "benches/pipeline_benchmark.rs"
+required-features = ["gpu"]
+
+[[bin]]
+name = "gpu_stress_test"
+path = "benches/gpu_stress_test.rs"
+
 # GPU examples require the gpu feature to be enabled
 [[example]]
 name = "gpu_export_demo"

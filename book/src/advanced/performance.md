@@ -2,12 +2,12 @@
 
 Tunes achieves exceptional real-time audio performance through CPU SIMD, multi-core parallelism, and optional experimental GPU compute shaders.
 
-**Performance at a Glance (Measured on i5-6500):**
-- **CPU Synthesis:** 81x realtime (measured baseline)
-- **+ SIMD:** 47x realtime for sample playback (measured: 50 concurrent samples)
-- **+ Rayon:** 54x realtime with multi-core parallelism (measured: 16% speedup)
-- **+ GPU Compute (Integrated):** 17x realtime (measured: **slower** due to cache overhead!)
-- **+ GPU Compute (Discrete):** **Not yet measured** - experimental feature for complex workloads
+**Performance at a Glance (Measured on i5-6500, Intel HD 530):**
+- **CPU Synthesis (uncached):** 70.2x realtime
+- **CPU Synthesis (cached):** 18.3-21.9x realtime (complex compositions)
+- **WAV Export:** 7.6x realtime (30-second multi-track)
+- **GPU (Intel HD 530 integrated):** 15.9x realtime (1.1x speedup vs CPU)
+- **GPU (discrete):** Performance scales with compute capacity and memory bandwidth
 
 ---
 
@@ -172,21 +172,37 @@ engine.play_mixer_realtime(&mixer)?;
 
 ## GPU Compute Shaders
 
-**GPU compute shaders** render complete audio notes on the GPU using WGSL shaders via wgpu. This is an **experimental feature** (requires `gpu` feature flag) designed for complex synthesis workloads on discrete GPUs.
+**GPU compute shaders** enable GPU-accelerated synthesis and export via wgpu. Requires `gpu` feature flag.
+
+### Two Integration Methods
+
+**1. Transparent API (Recommended):**
+```rust
+// Automatic GPU acceleration for all operations
+let engine = AudioEngine::new_with_gpu()?;
+engine.export_wav(&mut comp.into_mixer(), "output.wav")?;  // GPU accelerated
+engine.play_mixer_realtime(&mixer)?;  // GPU accelerated
+```
+
+**2. Manual Control:**
+```rust
+let mut mixer = comp.into_mixer();
+mixer.enable_cache();  // Required for GPU
+mixer.enable_gpu();    // Explicit GPU enablement
+```
 
 ### Architecture
 
 ```text
-CPU → Upload Note Params → GPU Compute Shader → Render Audio → Download → Cache → Stream
-      (struct NoteEvent)    (WGSL kernel)        (parallel)    (samples)   (Arc)     (playback)
+CPU → Upload Params → GPU Compute → Download → Cache → Playback
+      (waveform)      (WGSL shader)  (samples)   (Arc)    (zero-copy)
 ```
 
 **Key Features:**
-- ✅ WGSL compute shaders for parallel synthesis
+- ✅ Transparent API integration
 - ✅ Automatic CPU fallback if GPU unavailable
-- ✅ Thread-safe batch pre-rendering
 - ✅ Smart GPU detection (integrated vs discrete)
-- ✅ Works with Vulkan, Metal, DX12, WebGPU
+- ✅ Cross-platform (Vulkan, Metal, DX12, WebGPU)
 
 ### GPU Type Detection
 
@@ -206,26 +222,25 @@ mixer.enable_gpu();    // Automatic detection
 //    ✅ GPU synthesis enabled
 ```
 
-### Performance Expectations
+### Performance Characteristics
 
-**Discrete GPUs (RTX 3060+, RX 6000+):**
-- **Not yet measured** - GPU acceleration is experimental
-- Designed for complex workloads (100+ unique sounds)
-- 3000+ compute cores vs 24 on integrated
-- Requires `gpu` feature flag in Cargo.toml
+**Measured Results (Intel HD 530 integrated GPU):**
+- Synthesis + cache: 15.9x realtime (vs 18.3x CPU)
+- WAV export: 8.4x realtime (1.1x speedup vs 7.6x CPU)
+- Transparent API export: 73.9x realtime (simple patterns)
 
-**Integrated GPUs (Intel HD/UHD, AMD Vega):**
-- **Often slower than CPU** due to limited compute units and overhead
-- **76 notes/second** vs 1500+ notes/second on CPU (measured)
-- Library automatically warns when integrated GPU detected
+**Performance Scaling:**
+- **Integrated GPUs:** 1.0-1.2x speedup (marginal improvement)
+- **Discrete GPUs:** Performance scales with compute units and memory bandwidth
+- **Note:** Integrated GPU matches full CPU performance using fraction of system resources
 
-**Benchmark Results (16-bar drum pattern, 192 notes):**
+**Hardware Comparison:**
 
-| Hardware | Notes/Second | Realtime Ratio | Status |
-|----------|--------------|----------------|--------|
-| i5-6500 CPU | 1500+ | 81x | Measured (baseline) |
-| Intel HD 530 GPU | 76 | 17x | Measured (slower than CPU) |
-| Discrete GPUs | N/A | N/A | Not yet measured |
+| Hardware | Type | Compute Units | Expected Performance |
+|----------|------|---------------|----------------------|
+| Intel HD 530 | Integrated | 24 | 1.0-1.2x vs CPU |
+| RTX 3060 | Discrete | 3584 | Scales with hardware |
+| RX 6700 XT | Discrete | 2560 | Scales with hardware |
 
 ### What Gets GPU Acceleration
 
@@ -258,55 +273,51 @@ GPU is **slower** when:
 
 ### Usage
 
-First, enable the `gpu` feature in Cargo.toml:
+**Enable the `gpu` feature:**
 ```toml
 tunes = { version = "0.16.0", features = ["gpu"] }
 ```
 
-Then in code:
+**Transparent API (recommended):**
+```rust
+// Automatic GPU for all operations
+let engine = AudioEngine::new_with_gpu()?;
+
+// Export automatically uses GPU
+engine.export_wav(&mut comp.into_mixer(), "output.wav")?;
+
+// Playback automatically uses GPU
+engine.play_mixer_realtime(&mixer)?;
+```
+
+**Manual control:**
 ```rust
 let mut mixer = comp.into_mixer();
+mixer.enable_cache();  // Required
+mixer.enable_gpu();    // Explicit enablement
 
-// Enable caching (required for GPU)
-mixer.enable_cache();
-
-// Enable GPU acceleration (experimental)
-mixer.enable_gpu();  // Automatic detection and warnings
-
-// Check if GPU is actually being used
 if mixer.gpu_enabled() {
-    println!("Using GPU acceleration!");
+    println!("GPU enabled!");
 }
-
-// Render (GPU pre-renders all unique notes, then streams)
-engine.play_mixer(&mixer)?;
 ```
 
-**Pre-rendering Output:**
-```
-🔄 Pre-rendering unique notes...
-   Found 3 unique notes to render
-   ✅ Pre-rendered 3 notes in 0.038s (76 notes/sec)
-```
-
-### Disabling GPU
-
+**Disabling GPU:**
 ```rust
-// Disable GPU synthesis (use CPU)
-mixer.disable_gpu();
-
-// Or don't call enable_gpu() at all
+mixer.disable_gpu();  // Use CPU instead
 ```
 
-### Target Audience
+### When to Use GPU
 
-GPU acceleration is **experimental** and designed for:
-- **Developers with discrete GPUs** (RTX, RX series)
-- **Complex synthesis workloads** (100+ unique sounds)
-- **Batch pre-rendering** scenarios
-- **Experimentation** with GPU audio synthesis
+**Good use cases:**
+- Discrete GPU hardware available
+- Complex synthesis workloads
+- Batch export operations
+- When CPU is bottleneck
 
-**Note:** Most users should use the default CPU synthesis (81x realtime is already very fast).
+**Skip GPU if:**
+- Using integrated graphics
+- Simple synthesis
+- CPU performance is sufficient (70x realtime)
 
 ---
 
@@ -802,10 +813,10 @@ Tunes provides **multiple layers of optimization** that work together:
 4. **Sample Cache (opt-in):** 2-5x speedup for repeated sounds in large workloads
 5. **Architecture (built-in):** Block processing, integer IDs, pre-allocated buffers
 
-**Default Performance:** 50-200x realtime (no configuration needed)
-**Measured CPU Baseline:** 81x realtime (measured on i5-6500)
+**Default CPU Performance:** 70x realtime uncached, 18-22x cached (measured on i5-6500)
+**GPU Performance:** 1.0-1.2x speedup on integrated GPUs, scales with discrete hardware
 
-The library is designed for **game developers** and **music programmers** who need real-time audio with many concurrent sounds. CPU performance is excellent for most use cases - GPU acceleration is experimental and optional.
+The library is designed for **game developers** and **music programmers** who need real-time audio with many concurrent sounds. CPU performance is excellent for most use cases - GPU acceleration provides additional performance scaling with discrete hardware.
 
 **Next Steps:**
 - Run benchmarks on your hardware

@@ -98,7 +98,7 @@ pub use ids::{BusId, TrackId, BusIdGenerator, TrackIdGenerator};
 mod tests {
     use super::*;
     use crate::consts::notes::*;
-    use crate::composition::drums::DrumType;
+    use crate::instruments::drums::DrumType;
     use crate::composition::timing::Tempo;
 
     #[test]

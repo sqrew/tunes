@@ -447,26 +447,31 @@ impl AudioEngine {
 
     /// Create a new audio engine with GPU acceleration enabled
     ///
-    /// This enables GPU compute shaders for `play_sample()` and related methods,
-    /// providing 500-5000x realtime performance on discrete GPUs.
+    /// Enables transparent GPU acceleration for synthesis and export operations.
+    /// GPU performance scales with hardware capabilities - discrete GPUs show
+    /// significantly better performance than integrated GPUs.
     ///
-    /// **This is the recommended constructor for game audio with discrete GPUs.**
+    /// Automatically enables GPU for `export_wav()`, `export_flac()`, and
+    /// `play_mixer_realtime()` operations without requiring manual `enable_gpu()` calls.
     ///
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
     /// let engine = AudioEngine::new_with_gpu()?;
     ///
-    /// // GPU acceleration automatic for all samples!
-    /// engine.play_sample("explosion.wav")?;  // 500-5000x realtime
-    /// engine.play_sample("footstep.wav")?;   // 500-5000x realtime
+    /// // Transparent GPU acceleration for export and playback
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth").sine(440.0, 1.0);
+    /// engine.export_wav(&mut comp.into_mixer(), "output.wav")?;  // GPU accelerated
+    /// engine.play_mixer_realtime(&comp.into_mixer())?;  // GPU accelerated
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     ///
     /// # Performance
-    /// - Discrete GPUs (RTX/RX): 500-5000x realtime
-    /// - Integrated GPUs: May be slower than CPU (auto-detected with warning)
+    /// - Integrated GPUs: 1.0-1.2x speedup (measured on Intel HD 530)
+    /// - Discrete GPUs: Performance scales with compute capacity and memory bandwidth
     /// - CPU fallback: Automatic if GPU unavailable
+    /// - Warning: Auto-detects integrated GPUs and displays performance advisory
     pub fn new_with_gpu() -> Result<Self> {
         Self::with_buffer_size_and_gpu(4096, true)
     }
@@ -1149,10 +1154,22 @@ impl AudioEngine {
     /// ```
     pub fn play_mixer_realtime(&self, mixer: &Mixer) -> Result<SoundId> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+
+        // Clone mixer and automatically enable GPU if engine was created with GPU support
+        #[cfg(feature = "gpu")]
+        let mut mixer_clone = mixer.clone();
+        #[cfg(not(feature = "gpu"))]
+        let mixer_clone = mixer.clone();
+
+        #[cfg(feature = "gpu")]
+        if self.enable_gpu_for_samples {
+            mixer_clone.enable_gpu();
+        }
+
         self.command_tx
             .send(AudioCommand::Play {
                 id,
-                mixer: mixer.clone(),
+                mixer: mixer_clone,
                 looping: false,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
@@ -1253,10 +1270,22 @@ impl AudioEngine {
     /// ```
     pub fn play_looping(&self, mixer: &Mixer) -> Result<SoundId> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+
+        // Clone mixer and automatically enable GPU if engine was created with GPU support
+        #[cfg(feature = "gpu")]
+        let mut mixer_clone = mixer.clone();
+        #[cfg(not(feature = "gpu"))]
+        let mixer_clone = mixer.clone();
+
+        #[cfg(feature = "gpu")]
+        if self.enable_gpu_for_samples {
+            mixer_clone.enable_gpu();
+        }
+
         self.command_tx
             .send(AudioCommand::Play {
                 id,
-                mixer: mixer.clone(),
+                mixer: mixer_clone,
                 looping: true,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
@@ -1338,7 +1367,11 @@ impl AudioEngine {
         comp.track("_oneshot").play_sample(&sample, 1.0);
 
         // Enable GPU if requested via new_with_gpu()
+        #[cfg(feature = "gpu")]
+        let mut mixer = comp.into_mixer();
+        #[cfg(not(feature = "gpu"))]
         let mixer = comp.into_mixer();
+
         #[cfg(feature = "gpu")]
         {
             if self.enable_gpu_for_samples {
@@ -2162,6 +2195,11 @@ impl AudioEngine {
     /// If you need a specific sample rate (e.g., for upsampling/downsampling),
     /// use `mixer.export_wav(path, sample_rate)` directly.
     pub fn export_wav(&self, mixer: &mut crate::track::Mixer, path: &str) -> anyhow::Result<()> {
+        // Automatically enable GPU if engine was created with GPU support
+        #[cfg(feature = "gpu")]
+        if self.enable_gpu_for_samples {
+            mixer.enable_gpu();
+        }
         mixer.export_wav(path, self.sample_rate as u32)
     }
 
@@ -2191,6 +2229,11 @@ impl AudioEngine {
     /// # Note
     /// If you need a specific sample rate, use `mixer.export_flac(path, sample_rate)` directly.
     pub fn export_flac(&self, mixer: &mut crate::track::Mixer, path: &str) -> anyhow::Result<()> {
+        // Automatically enable GPU if engine was created with GPU support
+        #[cfg(feature = "gpu")]
+        if self.enable_gpu_for_samples {
+            mixer.enable_gpu();
+        }
         mixer.export_flac(path, self.sample_rate as u32)
     }
 

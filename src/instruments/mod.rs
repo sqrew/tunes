@@ -9,6 +9,7 @@ pub mod fx;
 pub mod synths;
 pub mod ethnic;
 pub mod percussion;
+pub mod drums;
 pub mod guitars;
 pub mod strings;
 pub mod vocal;

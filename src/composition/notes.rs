@@ -1,5 +1,5 @@
 use super::TrackBuilder;
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 
 impl<'a> TrackBuilder<'a> {
     /// Add a note or chord at the current cursor position

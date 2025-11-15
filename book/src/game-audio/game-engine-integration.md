@@ -68,7 +68,7 @@ fn setup_audio(mut commands: Commands) {
 }
 ```
 
-**Option C: With GPU Acceleration (500-5000x faster)**
+**Option C: With GPU Acceleration (Optional)**
 
 ```rust
 fn main() {
@@ -80,7 +80,7 @@ fn main() {
 }
 ```
 
-> **💡 GPU Tip:** Use `new_with_gpu()` if you have a discrete GPU (RTX, RX series). Tunes will automatically detect integrated GPUs and warn if they're slower than CPU.
+> **💡 GPU Tip:** GPU acceleration provides marginal benefit for typical game audio workloads. Integrated GPUs (Intel HD, AMD Vega) show ~1.0x performance vs CPU. Discrete GPUs (RTX, RX series) may show 2-5x improvement for synthesis-heavy workloads. For most games, CPU performance (50-70x realtime) is already excellent.
 
 **3. Play audio from any system:**
 
@@ -108,7 +108,7 @@ That's it! The AudioEngine automatically handles:
 - ✅ SIMD acceleration (47x realtime measured)
 - ✅ Multi-core parallelism (Rayon, 54x realtime measured)
 - ✅ Automatic mixing (zero-copy where possible)
-- ✅ Optional GPU acceleration (500-5000x realtime with discrete GPUs)
+- ✅ Optional GPU acceleration (marginal benefit on most hardware)
 
 ## Complete Example
 
@@ -245,8 +245,9 @@ Tunes is designed for exceptional real-time game audio performance:
 **Measured on i5-6500 @ 3.2GHz:**
 - **47x realtime** with 50 concurrent samples (SIMD acceleration)
 - **54x realtime** with multi-core parallelism (Rayon)
-- **81x realtime** for CPU synthesis baseline
-- **500-5000x realtime** with GPU acceleration (discrete GPUs - projected)
+- **68x realtime** for CPU synthesis baseline
+- **50x realtime** with GPU acceleration on Intel HD 530 (integrated)
+- **~100-300x realtime** with GPU acceleration on discrete GPUs (estimated)
 
 **Technical details:**
 - Zero allocations in audio callback
@@ -259,7 +260,7 @@ Tunes is designed for exceptional real-time game audio performance:
 
 ## GPU Acceleration for Games
 
-If you have a discrete GPU (RTX, RX series), enable GPU acceleration for massive performance gains:
+GPU acceleration is available but provides marginal benefit for typical game audio workloads:
 
 ```rust
 fn main() {
@@ -271,12 +272,17 @@ fn main() {
 }
 ```
 
-**What this enables:**
-- Pre-render 1,000+ unique sound variations at startup in ~100ms
-- Procedural sound generation without performance cost
-- Unique audio for every game object (bullets, enemies, projectiles)
+**Performance reality:**
+- **Integrated GPUs (Intel HD, AMD Vega)**: ~1.0x vs CPU (no benefit)
+- **Discrete GPUs (RTX, RX)**: ~2-5x vs CPU for synthesis (modest benefit)
+- **CPU baseline**: Already 50-70x realtime (excellent!)
 
-**Example: Bullet hell game**
+**When GPU helps:**
+- Pre-rendering 100+ unique sounds at startup
+- Extreme polyphony (500+ simultaneous synthesized voices)
+- Synthesis-heavy procedural audio
+
+**Example: Procedural laser sounds**
 
 ```rust
 use tunes::synthesis::fm_synthesis::FMParams;
@@ -285,11 +291,10 @@ fn spawn_projectiles(
     mut commands: Commands,
     engine: Res<AudioEngine>,
 ) {
-    for i in 0..1000 {
+    for i in 0..100 {
         // Each projectile gets a unique synthesized sound
         let freq = 200.0 + (i as f32 * 5.0);
 
-        // GPU renders this instantly (projected: 10,000-30,000 notes/sec)
         let mut comp = Composition::new(Tempo::new(140.0));
         comp.track("laser")
             .note(&[freq], 0.05)
@@ -303,11 +308,11 @@ fn spawn_projectiles(
 ```
 
 **Performance comparison:**
-- CPU: ~1,500 notes/second (still fast!)
-- GPU (discrete): ~10,000-30,000 notes/second (projected)
-- Result: 1,000 unique sounds generated in 50-100ms
+- **CPU**: ~1,500 notes/second (Intel HD 530 measured: 243 notes/sec cached)
+- **GPU (integrated)**: ~243 notes/second (1.0x speedup)
+- **GPU (discrete, estimated)**: ~500-1,200 notes/second (2-5x speedup)
 
-**Note:** Integrated GPUs (Intel HD, AMD Vega) may be slower than CPU. Tunes detects this and displays a warning automatically.
+**For most games**: Use `AudioEngine::new()` (CPU-only). The 50-70x realtime performance is already excellent for typical game audio needs. GPU acceleration is optional and provides limited benefit unless you're doing extreme synthesis workloads.
 
 ## Advanced: Using Composition System
 
@@ -556,8 +561,9 @@ Performance is identical across all engines:
 **Measured on i5-6500 @ 3.2GHz:**
 - **47x realtime** with 50 concurrent samples (SIMD acceleration)
 - **54x realtime** with multi-core parallelism (Rayon)
-- **81x realtime** for CPU synthesis baseline
-- **500-5000x realtime** with GPU acceleration (discrete GPUs - projected)
+- **68x realtime** for CPU synthesis baseline
+- **50x realtime** with GPU acceleration on Intel HD 530 (integrated)
+- **~100-300x realtime** with GPU acceleration on discrete GPUs (estimated)
 
 **Your choice of engine doesn't affect Tunes performance.** The audio runs on a dedicated thread with lock-free communication regardless of which engine you use.
 

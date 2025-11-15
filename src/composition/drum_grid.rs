@@ -1,4 +1,4 @@
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::track::Track;
 
 /// A step sequencer-style drum grid for easy drum pattern programming
@@ -32,7 +32,7 @@ impl<'a> DrumGrid<'a> {
     /// ```
     /// # use tunes::composition::Composition;
     /// # use tunes::composition::timing::Tempo;
-    /// # use tunes::composition::drums::DrumType;
+    /// # use tunes::instruments::drums::DrumType;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)

@@ -1,5 +1,5 @@
 use crate::composition::TrackBuilder;
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::track::AudioEvent;
 
 impl<'a> TrackBuilder<'a> {
@@ -605,7 +605,7 @@ impl<'a> TrackBuilder<'a> {
                                 note.waveform,
                                 note.envelope,
                                 note.pitch_bend_semitones,
-                                crate::composition::drums::DrumType::Kick,
+                                crate::instruments::drums::DrumType::Kick,
                                 None,
                             ))
                         }
@@ -630,7 +630,7 @@ impl<'a> TrackBuilder<'a> {
                             crate::synthesis::waveform::Waveform::Sine,
                             crate::synthesis::envelope::Envelope::new(0.0, 0.0, 0.0, 0.0),
                             0.0,
-                            crate::composition::drums::DrumType::Kick,
+                            crate::instruments::drums::DrumType::Kick,
                             Some((
                                 sample.sample.clone(),
                                 sample.playback_rate * factor,
@@ -810,7 +810,7 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::composition::Composition;
     /// # use tunes::instruments::Instrument;
     /// # use tunes::composition::timing::Tempo;
-    /// # use tunes::composition::drums::DrumType;
+    /// # use tunes::instruments::drums::DrumType;
     /// # use tunes::consts::notes::*;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Add crash every 4th hihat
@@ -870,7 +870,7 @@ impl<'a> TrackBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crate::composition::Composition;
-    use crate::composition::drums::DrumType;
+    use crate::instruments::drums::DrumType;
     use crate::consts::notes::*;
     use crate::composition::timing::Tempo;
     use crate::track::AudioEvent;

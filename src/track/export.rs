@@ -386,7 +386,7 @@ impl Mixer {
 mod tests {
     use super::*;
     use crate::composition::timing::Tempo;
-    use crate::composition::drums::DrumType;
+    use crate::instruments::drums::DrumType;
 
     #[test]
     fn test_export_wav_creates_file() {

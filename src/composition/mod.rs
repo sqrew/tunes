@@ -18,7 +18,6 @@ use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
 
 // Module declarations
-pub mod drums;
 pub mod drum_grid;
 pub mod patterns;
 pub mod timing;
@@ -34,7 +33,7 @@ mod synthesis;
 mod tuplets;
 
 // Re-export main types for public API
-pub use drums::DrumType;
+pub use crate::instruments::drums::DrumType;
 pub use drum_grid::DrumGrid;
 pub use timing::Tempo;
 pub use sections::{Section, SectionBuilder};
@@ -553,7 +552,7 @@ impl Composition {
     /// # use tunes::composition::timing::Tempo;
     /// # use tunes::consts::notes::*;
     /// # use tunes::instruments::Instrument;
-    /// # use tunes::composition::drums::DrumType;
+    /// # use tunes::instruments::drums::DrumType;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// // Define a verse section

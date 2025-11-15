@@ -192,11 +192,73 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    // Test 4: Transparent GPU API (NEW!)
+    println!("\n=== Test 4: Transparent GPU API with AudioEngine 🎯 ===");
+    {
+        #[cfg(feature = "gpu")]
+        {
+            println!("Testing AudioEngine::new_with_gpu() for automatic acceleration...\n");
+
+            let engine_gpu = AudioEngine::new_with_gpu()?;
+
+            let mut comp = Composition::new(Tempo::new(140.0));
+            for bar in 0..16 {
+                let bar_start = bar as f32 * 4.0 * 0.428;
+                comp.track("kick")
+                    .at(bar_start)
+                    .note(&[C2], 0.15)
+                    .fm(FMParams::new(2.0, 8.0));
+                comp.track("kick")
+                    .at(bar_start + 2.0 * 0.428)
+                    .note(&[C2], 0.15)
+                    .fm(FMParams::new(2.0, 8.0));
+                comp.track("snare")
+                    .at(bar_start + 1.0 * 0.428)
+                    .note(&[D2], 0.12)
+                    .fm(FMParams::new(3.5, 6.0));
+                comp.track("snare")
+                    .at(bar_start + 3.0 * 0.428)
+                    .note(&[D2], 0.12)
+                    .fm(FMParams::new(3.5, 6.0));
+                for eighth in 0..8 {
+                    comp.track("hihat")
+                        .at(bar_start + (eighth as f32) * 0.214)
+                        .note(&[FS2], 0.08)
+                        .fm(FMParams::new(4.0, 3.0));
+                }
+            }
+
+            let mut mixer = comp.into_mixer();
+            let duration = mixer.total_duration();
+
+            println!("  Exporting with automatic GPU acceleration...");
+            let start = Instant::now();
+            engine_gpu.export_wav(&mut mixer, "/tmp/gpu_auto_test.wav")?;
+            let export_time = start.elapsed();
+
+            println!("  ✓ Export time: {:.3}s", export_time.as_secs_f32());
+            println!("  ✓ Realtime ratio: {:.1}x", duration / export_time.as_secs_f32());
+            println!("\n  🎯 GPU automatically enabled - no mixer.enable_gpu() needed!");
+            println!("  🎯 Just use AudioEngine::new_with_gpu() and everything is accelerated!");
+
+            std::fs::remove_file("/tmp/gpu_auto_test.wav").ok();
+        }
+        #[cfg(not(feature = "gpu"))]
+        {
+            println!("  (Compile with --features gpu to test transparent API)");
+        }
+    }
+
     println!("\n=== Summary ===");
     println!("GPU compute shaders accelerate synthesis by rendering complete");
     println!("notes instantly on the GPU, then caching for instant playback.");
     println!("\nExpected speedup: 50-500x faster than CPU-only rendering!");
-    println!("\nIf GPU is not available, the library automatically falls back");
+    println!("\nNEW: Transparent GPU API!");
+    println!("  • AudioEngine::new_with_gpu() - Automatic GPU for everything");
+    println!("  • engine.export_wav() - GPU-accelerated export");
+    println!("  • engine.play_mixer_realtime() - GPU-accelerated playback");
+    println!("  • No API changes needed - just works!\n");
+    println!("If GPU is not available, the library automatically falls back");
     println!("to fast CPU synthesis. Either way, you get great performance!");
 
     Ok(())

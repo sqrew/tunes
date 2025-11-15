@@ -5,7 +5,7 @@
 //! volume, pan, filter, and effects.
 
 use super::events::*;
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::synthesis::effects::{Delay, Distortion, EffectChain, Reverb};
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::filter::Filter;

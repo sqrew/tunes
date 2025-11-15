@@ -4,7 +4,7 @@
 //! and generator methods using the builder pattern with closures.
 
 use crate::composition::TrackBuilder;
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::theory::core::ChordPattern;
 
 /// Builder for pattern transformations (accessed via `.transform()`)

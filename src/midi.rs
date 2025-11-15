@@ -1,7 +1,7 @@
 /// MIDI export functionality
 /// Converts compositions to Standard MIDI Files (SMF).
 /// Supports notes, drums, tempo, but not samples or effects (MIDI limitations).
-use crate::composition::drums::DrumType;
+use crate::instruments::drums::DrumType;
 use crate::error::{Result, TunesError};
 use crate::track::{AudioEvent, Mixer};
 use midly::{
@@ -258,7 +258,7 @@ pub fn drum_type_to_midi_note(drum_type: DrumType) -> u8 {
 /// # Examples
 /// ```
 /// # use tunes::midi::midi_note_to_drum_type;
-/// # use tunes::composition::drums::DrumType;
+/// # use tunes::instruments::drums::DrumType;
 /// assert_eq!(midi_note_to_drum_type(36), Some(DrumType::Kick));
 /// assert_eq!(midi_note_to_drum_type(38), Some(DrumType::Snare));
 /// assert_eq!(midi_note_to_drum_type(42), Some(DrumType::HiHatClosed));

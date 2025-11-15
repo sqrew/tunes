@@ -199,7 +199,7 @@ impl Track {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::composition::drums::DrumType;
+    use crate::instruments::drums::DrumType;
     use crate::consts::notes::*;
 
     #[test]

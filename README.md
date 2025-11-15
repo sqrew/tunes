@@ -4,7 +4,7 @@ A standalone Rust library for music composition, synthesis, and audio generation
 Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
-> **🚀 Performance Highlight:** The only Rust audio library with optional GPU compute shader acceleration (requires `gpu` feature). Measured at 81x realtime on CPU, with GPU acceleration available for users with discrete GPUs.
+> **Performance:** CPU synthesis measured at 70x realtime (uncached) and 18-22x realtime (cached complex compositions) on modern hardware. Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.1x) but scales with discrete GPU hardware.
 
 ## Features
 
@@ -20,8 +20,8 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
-- **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD (47x realtime measured) with auto caching for quick, easy, efficient samples on the fly
-- **GPU Acceleration** (optional `gpu` feature): Experimental GPU compute shader acceleration via wgpu - first Rust audio library with GPU synthesis (best results with discrete GPUs)
+- **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD with auto caching for efficient sample playback
+- **GPU Acceleration** (optional `gpu` feature): GPU compute shader acceleration via wgpu for synthesis and export. Transparent API integration - enable with `AudioEngine::new_with_gpu()`. Performance scales with GPU hardware; integrated GPUs show minimal improvement while discrete GPUs can provide significant acceleration
 - **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
@@ -49,10 +49,10 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     music theory integration
     composition first
     code first environment (rust's ide integration and your choice of ide is everything here)
-    exceptional performance (50-200x realtime default on CPU)
-    automatic SIMD acceleration (47x realtime measured)
+    high CPU performance (70x realtime uncached, 18-22x cached on complex compositions)
+    automatic SIMD acceleration for sample playback
     multi-core parallelism (automatic via Rayon)
-    optional GPU compute shader acceleration (first in Rust, experimental)
+    optional GPU compute shader acceleration with transparent API
 ## CONS
     no gui or graphical elements
     no "instant feedback" outside of hot-reloading segments
@@ -166,21 +166,24 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-**With GPU Acceleration (experimental, requires `gpu` feature):**
+**With GPU Acceleration (requires `gpu` feature):**
 
 ```rust
 use tunes::prelude::*;
 
 fn main() -> Result<(), anyhow::Error> {
-    // Note: Requires "gpu" feature in Cargo.toml
-    // Best results with discrete GPUs (RTX, RX series)
-    let engine = AudioEngine::new_with_gpu()?;  // <-- GPU enabled
+    // Transparent GPU acceleration - enable at engine creation
+    let engine = AudioEngine::new_with_gpu()?;
 
-    // GPU accelerates synthesis, not sample playback
-    // Sample playback already uses CPU SIMD (47x realtime)
-    engine.play_sample("explosion.wav")?;
-    engine.play_sample("laser.wav")?;
-    engine.play_sample("footstep.wav")?;
+    // All operations automatically GPU-accelerated when possible
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.track("synth").sine(440.0, 1.0);
+
+    // Export uses GPU acceleration
+    engine.export_wav(&mut comp.into_mixer(), "output.wav")?;
+
+    // Playback uses GPU acceleration
+    engine.play_sample("output.wav")?;
 
     Ok(())
 }
@@ -421,17 +424,23 @@ The book includes:
 
 Tunes is designed for exceptional performance with automatic optimizations:
 
-### Measured Performance (i5-6500 @ 3.2GHz)
+### Measured Performance (i5-6500 @ 3.2GHz, Intel HD 530)
 
-**Baseline CPU Performance:**
-- CPU synthesis: **81x realtime** (measured)
-- SIMD sample playback: **47x realtime** with 50 concurrent samples (measured)
-- Multi-core parallelism: **54x realtime** with Rayon (measured: 16% speedup)
+**CPU Performance (SIMD + Rayon):**
+- Uncached synthesis: 70.2x realtime (192 FM notes with effects)
+- Cached complex composition: 18.3-21.9x realtime
+- WAV export: 7.6x realtime (30-second multi-track composition)
+- FLAC export: 4.1x realtime (includes compression overhead)
 
-**GPU Acceleration** (optional `gpu` feature, experimental):
-- Intel HD 530 (integrated): **17x realtime** (measured - slower than CPU due to overhead)
-- Discrete GPUs (RTX/RX): **Not yet measured** - projected improvements for large workloads
-- **Note:** GPU acceleration is experimental and best suited for discrete GPUs with complex synthesis workloads
+**GPU Performance (Intel HD 530 integrated):**
+- Synthesis + cache: 15.9x realtime
+- WAV export: 8.4x realtime (1.1x speedup vs CPU)
+- Transparent API export: 73.9x realtime (simple patterns)
+
+**Hardware Scaling:**
+- Integrated GPUs show 1.0-1.2x speedup (marginal improvement)
+- Discrete GPUs: Performance scales with compute capacity and memory bandwidth
+- Note: Integrated GPU matches full CPU performance while using a fraction of system resources
 
 ### What This Means
 
@@ -458,63 +467,54 @@ Enable with the `gpu` feature flag in Cargo.toml:
 tunes = { version = "0.16.0", features = ["gpu"] }
 ```
 
-Then use in code:
+**Transparent API (recommended):**
 ```rust
-// Default: 50-200x realtime (CPU + SIMD + Rayon)
-let engine = AudioEngine::new()?;
-
-// GPU: Experimental acceleration (discrete GPUs only)
+// Automatic GPU acceleration for all operations
 let engine = AudioEngine::new_with_gpu()?;
+engine.export_wav(&mut comp.into_mixer(), "output.wav")?;  // GPU accelerated
+engine.play_mixer_realtime(&mixer)?;  // GPU accelerated
 ```
 
-**GPU acceleration is:**
-- ⚠️  Experimental (first Rust audio library with GPU synthesis)
-- ✅ Optional (requires `gpu` feature flag)
-- ✅ Fallback-safe (uses CPU if GPU unavailable)
-- ✅ Smart (warns on integrated GPUs that may be slower than CPU)
-- ✅ Cross-platform (wgpu: Vulkan, Metal, DX12, WebGPU)
-- ⚠️  Best for discrete GPUs (RTX, RX series) with complex synthesis workloads
+**Manual control:**
+```rust
+let mut mixer = comp.into_mixer();
+mixer.enable_gpu();  // Explicit GPU enablement
+```
+
+**Performance characteristics:**
+- Integrated GPUs: 1.0-1.2x speedup (minimal benefit)
+- Discrete GPUs: Performance scales with hardware capabilities
+- Fallback-safe: Automatically uses CPU if GPU unavailable
+- Transparent: No API changes required beyond engine initialization
+- Cross-platform: wgpu supports Vulkan, Metal, DX12, WebGPU
 
 ### Run Benchmarks Yourself
 
 ```bash
-# SIMD sample playback benchmark
-cargo run --release --bin simd_sample_playback
-
-# GPU vs CPU comparison (requires "gpu" feature)
+# GPU vs CPU comparison with transparent API
 cargo run --release --features gpu --bin gpu_benchmark
 
-# Multi-core parallelism test
+# Export performance (CPU and GPU)
+cargo run --release --features gpu --bin export_speed
+
+# Two-stage GPU pipeline demonstration
+cargo run --release --features gpu --bin pipeline_benchmark
+
+# Additional benchmarks
+cargo run --release --bin simd_sample_playback
 cargo run --release --bin concurrent_mixing
-
-# See all benchmarks
-ls benches/
-```
-
-**Expected output from gpu_benchmark:**
-```
-=== Test 1: CPU Synthesis (No Cache) ===
-  Render time: 0.179s (81x realtime)
-
-=== Test 2: CPU Synthesis + Cache ===
-  Render time: 0.576s (19x realtime)
-
-=== Test 3: GPU Synthesis + Cache ===
-  GPU enabled: true
-  Render time: varies by GPU (integrated GPUs may be slower than CPU)
-  ⚠️  Note: Best results require discrete GPUs
 ```
 
 ### Comparison with Other Rust Audio Libraries
 
-| Library | SIMD | Multi-core | GPU | Performance |
-|---------|------|------------|-----|-------------|
-| **Tunes** | ✅ (47x) | ✅ (54x) | ✅ (experimental) | **81x baseline CPU** |
+| Library | SIMD | Multi-core | GPU | CPU Performance |
+|---------|------|------------|-----|-----------------|
+| **Tunes** | ✅ | ✅ (Rayon) | ✅ (wgpu) | 70x realtime (uncached) |
 | Kira | Unknown | No | No | ~10-30x (estimated) |
 | Rodio | Unknown | No | No | ~10-20x (estimated) |
 | SoLoud (C++) | ✅ | Yes | No | ~10-50x (estimated) |
 
-**Tunes is the only Rust audio library with optional GPU compute shader acceleration (experimental).**
+Tunes is the only Rust audio library with GPU compute shader acceleration via wgpu.
 
 ### Why This Matters for Games
 
@@ -526,7 +526,7 @@ ls benches/
 - Generate sound variations at runtime (procedural synthesis)
 - Each variation unique
 - Zero disk space for variations
-- 81x realtime on CPU (fast enough for most games)
+- 70x realtime on CPU (fast enough for most games)
 
 **Example: Procedural game audio**
 - Synthesize unique sounds per enemy type
