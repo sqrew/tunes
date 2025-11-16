@@ -12,8 +12,11 @@ use crate::composition::timing::Tempo;
 use crate::gpu::GpuSynthesizer;
 use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource};
 use crate::track::ids::{BusId, TrackId};
-use rayon::prelude::*;
 use std::collections::HashMap;
+
+// Use rayon for parallel processing on native platforms
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
 /// Envelope cache for sidechaining (OPTIMIZED: Vec-based for O(1) access)
@@ -1077,6 +1080,8 @@ impl Mixer {
             track_envelopes: Vec<(TrackId, f32)>,
         }
 
+        // Parallel bus processing on native, sequential on web
+        #[cfg(not(target_arch = "wasm32"))]
         let bus_results: Vec<BusRenderResult> = self
             .buses
             .par_iter_mut()
@@ -1105,6 +1110,92 @@ impl Mixer {
 
                         // Generate mono track audio using block processing
                         // Cache is thread-safe via Arc<Mutex>, GPU synthesizer via Arc
+                        Self::process_track_block(
+                            track,
+                            &mut track_buffer,
+                            sample_rate,
+                            start_time,
+                            start_sample_count,
+                            cache_clone.as_ref(),
+                            #[cfg(feature = "gpu")]
+                            gpu_clone.as_ref(),
+                            prerendered,
+                        );
+
+                        // Calculate RMS envelope for this track
+                        let mut sum_squares = 0.0;
+                        for &sample in track_buffer.iter() {
+                            sum_squares += sample * sample;
+                        }
+                        let track_envelope = (sum_squares / num_frames as f32).sqrt();
+
+                        (track_id, track_buffer, track_envelope, track.pan)
+                    })
+                    .collect();
+
+                // Mix track results into bus buffer
+                let mut track_envelopes = Vec::new();
+                for (track_id, track_buffer, track_envelope, pan) in track_results {
+                    track_envelopes.push((track_id, track_envelope));
+
+                    // Apply stereo panning and mix
+                    let pan_angle = (pan + 1.0) * 0.25 * std::f32::consts::PI;
+                    let left_gain = pan_angle.cos();
+                    let right_gain = pan_angle.sin();
+
+                    for (frame_idx, &mono_sample) in track_buffer.iter().enumerate() {
+                        let stereo_idx = frame_idx * 2;
+                        bus_buffer[stereo_idx] += mono_sample * left_gain;
+                        bus_buffer[stereo_idx + 1] += mono_sample * right_gain;
+                    }
+                }
+
+                // Calculate bus envelope (before effects)
+                let mut bus_sum_squares = 0.0;
+                for chunk in bus_buffer.chunks_exact(2) {
+                    let left = chunk[0];
+                    let right = chunk[1];
+                    bus_sum_squares += (left * left + right * right) / 2.0;
+                }
+                let bus_envelope = (bus_sum_squares / num_frames as f32).sqrt();
+
+                Some(BusRenderResult {
+                    bus_id,
+                    bus_buffer,
+                    bus_envelope,
+                    track_envelopes,
+                })
+            })
+            .collect();
+
+        #[cfg(target_arch = "wasm32")]
+        let bus_results: Vec<BusRenderResult> = self
+            .buses
+            .iter_mut()
+            .filter_map(|bus_opt| {
+                let bus = bus_opt.as_mut()?;
+                if bus.muted {
+                    return None;
+                }
+
+                let bus_id = bus.id;
+                let mut bus_buffer = vec![0.0f32; buffer.len()];
+
+                // Clone the Arc to share the cache (not actually across threads on web)
+                let cache_clone = self.cache.clone();
+                #[cfg(feature = "gpu")]
+                let gpu_clone = self.gpu_synthesizer.clone();
+                let prerendered = self.prerendered;
+
+                // Process each track in this bus SEQUENTIALLY on web
+                let track_results: Vec<_> = bus
+                    .tracks
+                    .iter_mut()
+                    .map(|track| {
+                        let track_id = track.id;
+                        let mut track_buffer = vec![0.0f32; num_frames];
+
+                        // Generate mono track audio using block processing
                         Self::process_track_block(
                             track,
                             &mut track_buffer,

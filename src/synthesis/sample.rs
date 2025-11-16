@@ -2,10 +2,13 @@
 /// This module provides functionality to load audio samples from various formats
 /// (WAV, MP3, OGG, FLAC, AAC) and play them back with pitch shifting, looping, and effects.
 use crate::error::{Result, TunesError};
-use rayon::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
+
+// Use rayon for parallel processing on native platforms
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 use symphonia::core::audio::{AudioBuffer, AudioBufferRef, Signal};
 use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::conv::{FromSample, IntoSample};
@@ -210,6 +213,114 @@ impl Sample {
                 output.push(sample.into_sample());
             }
         }
+    }
+
+    /// Load a sample from raw byte data (for web/WASM usage)
+    ///
+    /// This method allows loading audio samples from byte arrays, which is essential
+    /// for web applications where files are fetched via JavaScript fetch() API.
+    ///
+    /// Supports all formats that symphonia supports: WAV, MP3, OGG, FLAC, AAC
+    ///
+    /// # Arguments
+    /// * `bytes` - Raw audio file data as bytes
+    ///
+    /// # Returns
+    /// A loaded Sample or an error if decoding fails
+    ///
+    /// # Example (WASM/JavaScript integration)
+    /// ```no_run
+    /// # use tunes::synthesis::Sample;
+    /// // In JavaScript:
+    /// // const response = await fetch('sound.wav');
+    /// // const bytes = new Uint8Array(await response.arrayBuffer());
+    /// // pass bytes to Rust...
+    ///
+    /// // In Rust:
+    /// let bytes: &[u8] = &[/* ... bytes from JS ... */];
+    /// let sample = Sample::from_bytes(bytes)?;
+    /// # Ok::<(), tunes::error::TunesError>(())
+    /// ```
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        use std::io::Cursor;
+
+        // Create a cursor over owned bytes (needed for 'static lifetime)
+        let cursor = Cursor::new(bytes.to_vec());
+
+        // Create a media source stream from the cursor
+        let mss = MediaSourceStream::new(Box::new(cursor), Default::default());
+
+        // We don't have a file extension, so symphonia will probe the format
+        let hint = Hint::new();
+
+        // Probe the media source for a format
+        let format_opts = FormatOptions::default();
+        let metadata_opts = MetadataOptions::default();
+        let probed = symphonia::default::get_probe()
+            .format(&hint, mss, &format_opts, &metadata_opts)
+            .map_err(|e| TunesError::WavReadError(format!("Format detection failed: {}", e)))?;
+
+        let mut format = probed.format;
+
+        // Get the default track
+        let track = format
+            .default_track()
+            .ok_or_else(|| TunesError::WavReadError("No audio tracks found".to_string()))?;
+
+        // Get the sample rate and channel count
+        let sample_rate = track.codec_params.sample_rate
+            .ok_or_else(|| TunesError::WavReadError("Sample rate not found".to_string()))?;
+        let channels = track.codec_params.channels
+            .ok_or_else(|| TunesError::WavReadError("Channel count not found".to_string()))?
+            .count() as u16;
+
+        // Create a decoder
+        let decoder_opts = DecoderOptions::default();
+        let mut decoder = symphonia::default::get_codecs()
+            .make(&track.codec_params, &decoder_opts)
+            .map_err(|e| TunesError::WavReadError(format!("Decoder creation failed: {}", e)))?;
+
+        // Decode all packets and collect samples (same as from_file)
+        let mut samples = Vec::new();
+        let track_id = track.id;
+
+        loop {
+            let packet = match format.next_packet() {
+                Ok(packet) => packet,
+                Err(SymphoniaError::IoError(e))
+                    if e.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    break;
+                }
+                Err(e) => {
+                    return Err(TunesError::WavReadError(format!("Packet read error: {}", e)))
+                }
+            };
+
+            if packet.track_id() != track_id {
+                continue;
+            }
+
+            let decoded = decoder
+                .decode(&packet)
+                .map_err(|e| TunesError::WavReadError(format!("Decode error: {}", e)))?;
+
+            // Convert to f32 samples
+            Self::convert_audio_buffer_to_f32(&decoded, &mut samples);
+        }
+
+        let num_frames = samples.len() / channels as usize;
+        let duration = num_frames as f32 / sample_rate as f32;
+
+        Ok(Self {
+            data: Arc::new(samples),
+            channels,
+            sample_rate,
+            duration,
+            num_frames,
+            loop_start: None,
+            loop_end: None,
+        })
     }
 
     /// Create a sample from raw mono audio data
@@ -601,12 +712,20 @@ impl Sample {
     ///
     /// Scales the sample so the loudest point reaches ±1.0 without clipping.
     pub fn normalize(&self) -> Self {
-        // Parallel max-finding for large samples
+        // Parallel max-finding for large samples (sequential on web)
+        #[cfg(not(target_arch = "wasm32"))]
         let max_amp = self
             .data
             .par_iter()
             .map(|&x| x.abs())
             .reduce(|| 0.0f32, |a, b| a.max(b));
+
+        #[cfg(target_arch = "wasm32")]
+        let max_amp = self
+            .data
+            .iter()
+            .map(|&x| x.abs())
+            .fold(0.0f32, |a, b| a.max(b));
 
         if max_amp < 0.0001 {
             // Sample is silent or nearly silent
@@ -614,8 +733,12 @@ impl Sample {
         }
 
         let gain = 1.0 / max_amp;
-        // Parallel scaling for large samples
+        // Parallel scaling for large samples (sequential on web)
+        #[cfg(not(target_arch = "wasm32"))]
         let normalized_data: Vec<f32> = self.data.par_iter().map(|&x| x * gain).collect();
+
+        #[cfg(target_arch = "wasm32")]
+        let normalized_data: Vec<f32> = self.data.iter().map(|&x| x * gain).collect();
 
         Self {
             data: Arc::new(normalized_data),
@@ -633,8 +756,12 @@ impl Sample {
     /// # Arguments
     /// * `gain` - Gain multiplier (1.0 = unchanged, 0.5 = half volume, 2.0 = double volume)
     pub fn with_gain(&self, gain: f32) -> Self {
-        // Parallel gain application for large samples
+        // Parallel gain application for large samples (sequential on web)
+        #[cfg(not(target_arch = "wasm32"))]
         let gained_data: Vec<f32> = self.data.par_iter().map(|&x| x * gain).collect();
+
+        #[cfg(target_arch = "wasm32")]
+        let gained_data: Vec<f32> = self.data.iter().map(|&x| x * gain).collect();
 
         Self {
             data: Arc::new(gained_data),
@@ -695,10 +822,27 @@ impl Sample {
         let fade_frames = (fade_duration * self.sample_rate as f32) as usize;
         let fade_frames = fade_frames.min(self.num_frames);
 
-        // Parallel fade-in processing using par_iter + enumerate
+        // Parallel fade-in processing using par_iter + enumerate (sequential on web)
         let channels = self.channels as usize;
+
+        #[cfg(not(target_arch = "wasm32"))]
         let faded_data: Vec<f32> = self.data
             .par_iter()
+            .enumerate()
+            .map(|(idx, &sample)| {
+                let frame_idx = idx / channels;
+                if frame_idx < fade_frames {
+                    let gain = frame_idx as f32 / fade_frames as f32;
+                    sample * gain
+                } else {
+                    sample
+                }
+            })
+            .collect();
+
+        #[cfg(target_arch = "wasm32")]
+        let faded_data: Vec<f32> = self.data
+            .iter()
             .enumerate()
             .map(|(idx, &sample)| {
                 let frame_idx = idx / channels;
@@ -731,10 +875,28 @@ impl Sample {
         let fade_frames = fade_frames.min(self.num_frames);
         let fade_start = self.num_frames - fade_frames;
 
-        // Parallel fade-out processing using par_iter + enumerate
+        // Parallel fade-out processing using par_iter + enumerate (sequential on web)
         let channels = self.channels as usize;
+
+        #[cfg(not(target_arch = "wasm32"))]
         let faded_data: Vec<f32> = self.data
             .par_iter()
+            .enumerate()
+            .map(|(idx, &sample)| {
+                let frame_idx = idx / channels;
+                if frame_idx >= fade_start {
+                    let progress = (frame_idx - fade_start) as f32 / fade_frames as f32;
+                    let gain = 1.0 - progress;
+                    sample * gain
+                } else {
+                    sample
+                }
+            })
+            .collect();
+
+        #[cfg(target_arch = "wasm32")]
+        let faded_data: Vec<f32> = self.data
+            .iter()
             .enumerate()
             .map(|(idx, &sample)| {
                 let frame_idx = idx / channels;

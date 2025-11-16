@@ -15,6 +15,9 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+
+// Threading only available on native platforms
+#[cfg(not(target_arch = "wasm32"))]
 use std::thread::{self, JoinHandle};
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::codecs::DecoderOptions;
@@ -106,7 +109,8 @@ enum AudioCommand {
     SetSpatialParams {
         params: SpatialParams,
     },
-    // Streaming commands
+    // Streaming commands (only available on native platforms - no FS on web)
+    #[cfg(not(target_arch = "wasm32"))]
     StreamFile {
         id: SoundId,
         path: PathBuf,
@@ -114,19 +118,24 @@ enum AudioCommand {
         volume: f32,
         pan: f32,
     },
+    #[cfg(not(target_arch = "wasm32"))]
     StopStream {
         id: SoundId,
     },
+    #[cfg(not(target_arch = "wasm32"))]
     PauseStream {
         id: SoundId,
     },
+    #[cfg(not(target_arch = "wasm32"))]
     ResumeStream {
         id: SoundId,
     },
+    #[cfg(not(target_arch = "wasm32"))]
     SetStreamVolume {
         id: SoundId,
         volume: f32,
     },
+    #[cfg(not(target_arch = "wasm32"))]
     SetStreamPan {
         id: SoundId,
         pan: f32,
@@ -161,11 +170,12 @@ struct ActiveSound {
     rate_tween_target_value: f32,
 }
 
-/// State for a streaming audio source
+/// State for a streaming audio source (native only)
 ///
 /// Streams audio from disk using a background decoder thread and lock-free ring buffer.
 /// This allows playing long audio files (background music, ambience) without loading
 /// the entire file into memory.
+#[cfg(not(target_arch = "wasm32"))]
 struct StreamingSound {
     /// Ring buffer consumer (audio thread reads from this)
     ring_consumer: ringbuf::HeapCons<f32>,
@@ -184,6 +194,7 @@ struct StreamingSound {
     looping: bool,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Drop for StreamingSound {
     fn drop(&mut self) {
         // Signal thread to stop and wait for it to finish
@@ -201,14 +212,16 @@ impl Drop for StreamingSound {
 struct AudioCallbackState {
     /// Active sounds being mixed
     active_sounds: HashMap<SoundId, ActiveSound>,
-    /// Streaming sounds (separate from pre-rendered sounds)
+    /// Streaming sounds (separate from pre-rendered sounds, native only)
+    #[cfg(not(target_arch = "wasm32"))]
     streaming_sounds: HashMap<SoundId, StreamingSound>,
     /// Pre-allocated temp buffer for mixing (stereo interleaved)
     /// Size is determined by the maximum buffer size we expect
     temp_buffer: Vec<f32>,
     /// Pre-allocated list for tracking finished sounds (avoids allocation during cleanup)
     finished_sounds: Vec<SoundId>,
-    /// Pre-allocated list for tracking finished streams
+    /// Pre-allocated list for tracking finished streams (native only)
+    #[cfg(not(target_arch = "wasm32"))]
     finished_streams: Vec<SoundId>,
 }
 
@@ -216,10 +229,12 @@ impl AudioCallbackState {
     fn new() -> Self {
         Self {
             active_sounds: HashMap::new(),
+            #[cfg(not(target_arch = "wasm32"))]
             streaming_sounds: HashMap::new(),
             // Pre-allocate for a reasonably large buffer (2048 frames stereo = 4096 samples)
             temp_buffer: vec![0.0; 4096],
             finished_sounds: Vec::with_capacity(16),
+            #[cfg(not(target_arch = "wasm32"))]
             finished_streams: Vec::with_capacity(16),
         }
     }
@@ -233,10 +248,11 @@ impl AudioCallbackState {
     }
 }
 
-/// Decoder thread function for streaming audio
+/// Decoder thread function for streaming audio (native only)
 ///
 /// Runs in a background thread, decodes audio from file, and pushes samples to ring buffer.
 /// The audio callback reads from the ring buffer, creating a lock-free streaming pipeline.
+#[cfg(not(target_arch = "wasm32"))]
 fn decoder_thread_func(
     path: PathBuf,
     mut ring_producer: ringbuf::HeapProd<f32>,
@@ -538,9 +554,11 @@ impl AudioEngine {
                     // Destructure state FIRST to get separate mutable references (satisfies borrow checker)
                     let AudioCallbackState {
                         ref mut active_sounds,
+                        #[cfg(not(target_arch = "wasm32"))]
                         ref mut streaming_sounds,
                         ref mut temp_buffer,
                         ref mut finished_sounds,
+                        #[cfg(not(target_arch = "wasm32"))]
                         ref mut finished_streams,
                     } = *state;
 
@@ -549,6 +567,7 @@ impl AudioEngine {
                         Self::handle_command(
                             cmd,
                             active_sounds,
+                            #[cfg(not(target_arch = "wasm32"))]
                             streaming_sounds,
                             &mut listener,
                             &mut spatial,
@@ -569,6 +588,7 @@ impl AudioEngine {
                     );
 
                     // Mix streaming sounds into the output buffer
+                    #[cfg(not(target_arch = "wasm32"))]
                     Self::mix_streaming_sounds(data, streaming_sounds, finished_streams, channels);
 
                     // Unlock at end of scope
@@ -652,6 +672,7 @@ impl AudioEngine {
     fn handle_command(
         cmd: AudioCommand,
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        #[cfg(not(target_arch = "wasm32"))]
         streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
         listener: &mut ListenerConfig,
         spatial: &mut SpatialParams,
@@ -801,7 +822,8 @@ impl AudioEngine {
                     sound.rate_tween_target_value = target_rate.max(0.1); // Prevent division by zero
                 }
             }
-            // Streaming commands
+            // Streaming commands (native only)
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::StreamFile {
                 id,
                 path,
@@ -845,25 +867,30 @@ impl AudioEngine {
                     },
                 );
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::StopStream { id } => {
                 // Removing from HashMap will trigger Drop, which signals thread to stop
                 streaming_sounds.remove(&id);
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::PauseStream { id } => {
                 if let Some(stream) = streaming_sounds.get_mut(&id) {
                     stream.pause_signal.store(true, Ordering::Relaxed);
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::ResumeStream { id } => {
                 if let Some(stream) = streaming_sounds.get_mut(&id) {
                     stream.pause_signal.store(false, Ordering::Relaxed);
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::SetStreamVolume { id, volume } => {
                 if let Some(stream) = streaming_sounds.get_mut(&id) {
                     stream.volume = volume.clamp(0.0, 1.0);
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::SetStreamPan { id, pan } => {
                 if let Some(stream) = streaming_sounds.get_mut(&id) {
                     stream.pan = pan.clamp(-1.0, 1.0);
@@ -1048,6 +1075,7 @@ impl AudioEngine {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Mix streaming sounds into the output buffer (called from audio thread)
     ///
     /// Reads decoded samples from ring buffers and mixes them into the output.
@@ -1939,6 +1967,7 @@ impl AudioEngine {
     // Streaming Audio Methods
     // ============================================================================
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Stream an audio file from disk without loading it entirely into memory
     ///
     /// Ideal for long background music, ambient sounds, or any audio where memory
@@ -1984,6 +2013,7 @@ impl AudioEngine {
         Ok(id)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Stream an audio file in a loop
     ///
     /// Like `stream_file()`, but automatically restarts the file from the beginning
@@ -2023,6 +2053,7 @@ impl AudioEngine {
         Ok(id)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Stop a streaming audio file
     ///
     /// Stops the decoder thread and removes the stream. The sound will stop immediately.
@@ -2036,6 +2067,7 @@ impl AudioEngine {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Pause a streaming audio file
     ///
     /// Pauses playback without stopping the decoder thread. Use `resume_stream()` to continue.
@@ -2049,6 +2081,7 @@ impl AudioEngine {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Resume a paused streaming audio file
     ///
     /// Resumes playback of a stream that was paused with `pause_stream()`.
@@ -2062,6 +2095,7 @@ impl AudioEngine {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Set the volume of a streaming audio file
     ///
     /// # Arguments
@@ -2074,6 +2108,7 @@ impl AudioEngine {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Set the stereo pan of a streaming audio file
     ///
     /// # Arguments

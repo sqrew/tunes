@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunes WebAssembly Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #output {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #74c0fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Tunes WebAssembly Demo</h1>
+        <p class="subtitle">Audio synthesis and processing in your browser</p>
+
+        <button id="runDemo">Play 440Hz Tone (2 seconds)</button>
+
+        <div id="output">
+            <div class="log-entry info">Click the button above to run the demo...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { run_web_demo } from '../pkg/tunes.js';
+
+        const output = document.getElementById('output');
+        const button = document.getElementById('runDemo');
+
+        // Intercept console.log to display in our output div
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry info';
+            logEntry.textContent = '> ' + message;
+            output.appendChild(logEntry);
+            output.scrollTop = output.scrollHeight;
+        };
+
+        // Intercept console.error
+        const originalError = console.error;
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry error';
+            logEntry.textContent = '❌ ' + message;
+            output.appendChild(logEntry);
+            output.scrollTop = output.scrollHeight;
+        };
+
+        async function runAudioDemo() {
+            try {
+                button.disabled = true;
+                output.innerHTML = '<div class="log-entry info">Initializing WebAssembly module...</div>';
+
+                // Initialize the WASM module
+                await init();
+                console.log('WASM module loaded successfully!');
+
+                // Run the demo
+                await run_web_demo();
+
+                const successEntry = document.createElement('div');
+                successEntry.className = 'log-entry success';
+                successEntry.textContent = '✅ Demo completed successfully!';
+                output.appendChild(successEntry);
+
+            } catch (error) {
+                console.error('Demo failed:', error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        button.addEventListener('click', runAudioDemo);
+
+        // Initialize WASM on page load
+        (async () => {
+            try {
+                await init();
+                console.log('Tunes WASM ready! Click the button to play audio.');
+            } catch (error) {
+                console.error('Failed to initialize WASM:', error);
+            }
+        })();
+    </script>
+</body>
+</html>
