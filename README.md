@@ -23,7 +23,8 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Live Audio Recording**: Record from microphone or line-in to WAV files, then process with full effects pipeline
 - **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD with auto caching for efficient sample playback
 - **GPU Acceleration** (optional `gpu` feature): GPU compute shader acceleration via wgpu for synthesis and export. Transparent API integration - enable with `AudioEngine::new_with_gpu()`. Performance scales with GPU hardware; integrated GPUs show minimal improvement while discrete GPUs can provide significant acceleration
-- **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
+- **WebAssembly Support** (optional `web` feature): Full browser support via WebAssembly - synthesis, effects, sample playback, and real-time audio in web applications. Powered by Web Audio API through cpal's wasm-bindgen integration
+- **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM (native-only)
 - **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
@@ -72,6 +73,9 @@ tunes = "0.19.0"
 
 # Optional: Enable GPU acceleration (requires discrete GPU for best results)
 # tunes = { version = "0.19.0", features = ["gpu"] }
+
+# Optional: Enable WebAssembly support for browser-based applications
+# tunes = { version = "0.19.0", features = ["web"] }
 ```
 
 ### Platform Requirements
@@ -86,6 +90,14 @@ sudo dnf install alsa-lib-devel
 ```
 
 **macOS and Windows** work out of the box with no additional dependencies.
+
+**WebAssembly** requires wasm-pack for building:
+```bash
+cargo install wasm-pack
+wasm-pack build --target web --features web
+```
+
+See [WEB_DEMO.md](WEB_DEMO.md) for complete WebAssembly setup and usage guide.
 
 ## Quick Start: Super simple!!
 ### Real-time Playback
@@ -316,6 +328,7 @@ fn main() -> anyhow::Result<()> {
 | **Type safety**          | No            | No              | No (Clojure)    | Partial (TS)      | **Yes (Rust)**     | No      |
 | **Real-time audio**      | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
 | **Sample playback**      | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
+| **WebAssembly support**  | No            | No              | No              | Yes (JS native)   | **Yes (Rust)**     | No      |
 | **GPU acceleration**     | No            | No              | No              | No                | **Yes (wgpu)**     | No      |
 | **SIMD acceleration**    | Some          | No              | Via Overtone    | No                | **Yes (11-17x)**   | No      |
 | **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
@@ -334,6 +347,7 @@ fn main() -> anyhow::Result<()> {
 
 **tunes excels at:**
 - Building Rust applications with music generation (games, art installations, tools)
+- Browser-based music applications and interactive web demos
 - Algorithmic composition with type-safe APIs
 - Offline music generation and batch processing
 - Learning music programming without complex setup
@@ -348,8 +362,9 @@ fn main() -> anyhow::Result<()> {
 
 ### tunes' unique position
 
-`tunes` is the only **standalone, embeddable, type-safe** music library with synthesis + sample playback. It compiles to a single binary with no runtime dependencies, making it ideal for:
+`tunes` is the only **standalone, embeddable, type-safe** music library with synthesis + sample playback that works on both **native and WebAssembly**. It compiles to a single binary with no runtime dependencies, making it ideal for:
 - Rust game developers (Bevy, ggez, etc.)
+- Browser-based music applications and web audio tools
 - Desktop music applications
 - Command-line music tools
 - Embedded audio systems

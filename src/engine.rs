@@ -672,8 +672,7 @@ impl AudioEngine {
     fn handle_command(
         cmd: AudioCommand,
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
-        #[cfg(not(target_arch = "wasm32"))]
-        streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
+        #[cfg(not(target_arch = "wasm32"))] streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
         listener: &mut ListenerConfig,
         spatial: &mut SpatialParams,
         sample_rate: f32,
@@ -1398,7 +1397,7 @@ impl AudioEngine {
     /// engine.preload_sample("assets/explosion.wav")?;
     ///
     /// // Later: instant playback (already cached)
-    /// engine.play_sample("assets/footstep.wav")?;
+    /// engine.play_sample("assets/footstep.wav");
     /// # Ok(())
     /// # }
     /// ```
@@ -1428,7 +1427,7 @@ impl AudioEngine {
     /// let engine = AudioEngine::new()?;
     ///
     /// // Use sample during level
-    /// engine.play_sample("level1_music.wav")?;
+    /// engine.play_sample("level1_music.wav");
     ///
     /// // Level complete - free the memory
     /// engine.remove_cached_sample("level1_music.wav")?;
@@ -1452,8 +1451,8 @@ impl AudioEngine {
     /// let engine = AudioEngine::new()?;
     ///
     /// // Play various sounds during level
-    /// engine.play_sample("sound1.wav")?;
-    /// engine.play_sample("sound2.wav")?;
+    /// engine.play_sample("sound1.wav");
+    /// engine.play_sample("sound2.wav");
     ///
     /// // Level complete - clear all cached samples
     /// engine.clear_sample_cache()?;
@@ -2446,7 +2445,10 @@ impl<'a> SamplePlaybackBuilder<'a> {
     }
 
     /// Add convolution reverb effect
-    pub fn convolution_reverb(mut self, conv_reverb: crate::synthesis::effects::ConvolutionReverb) -> Self {
+    pub fn convolution_reverb(
+        mut self,
+        conv_reverb: crate::synthesis::effects::ConvolutionReverb,
+    ) -> Self {
         self.effects.convolution_reverb = Some(conv_reverb);
         self.effects.compute_effect_order();
         self
@@ -2548,7 +2550,8 @@ impl<'a> SamplePlaybackBuilder<'a> {
     ///     .fade_in(2.0);  // 2 second fade in
     /// ```
     pub fn fade_in(mut self, duration: f32) -> Self {
-        self.sample_transforms.push(SampleTransform::FadeIn(duration));
+        self.sample_transforms
+            .push(SampleTransform::FadeIn(duration));
         self
     }
 
@@ -2565,7 +2568,8 @@ impl<'a> SamplePlaybackBuilder<'a> {
     ///     .fade_out(3.0);  // 3 second fade out
     /// ```
     pub fn fade_out(mut self, duration: f32) -> Self {
-        self.sample_transforms.push(SampleTransform::FadeOut(duration));
+        self.sample_transforms
+            .push(SampleTransform::FadeOut(duration));
         self
     }
 
@@ -2585,7 +2589,8 @@ impl<'a> SamplePlaybackBuilder<'a> {
     ///     .time_stretch(2.0);
     /// ```
     pub fn time_stretch(mut self, factor: f32) -> Self {
-        self.sample_transforms.push(SampleTransform::TimeStretch(factor));
+        self.sample_transforms
+            .push(SampleTransform::TimeStretch(factor));
         self
     }
 
@@ -2605,7 +2610,8 @@ impl<'a> SamplePlaybackBuilder<'a> {
     ///     .pitch_shift(12.0);
     /// ```
     pub fn pitch_shift(mut self, semitones: f32) -> Self {
-        self.sample_transforms.push(SampleTransform::PitchShift(semitones));
+        self.sample_transforms
+            .push(SampleTransform::PitchShift(semitones));
         self
     }
 
@@ -2621,7 +2627,10 @@ impl<'a> SamplePlaybackBuilder<'a> {
                 cached.clone()
             } else {
                 let loaded = Sample::from_file(&self.path).map_err(|e| {
-                    TunesError::AudioEngineError(format!("Failed to load sample '{}': {}", self.path, e))
+                    TunesError::AudioEngineError(format!(
+                        "Failed to load sample '{}': {}",
+                        self.path, e
+                    ))
                 })?;
                 cache.insert(self.path.clone(), loaded.clone());
                 loaded

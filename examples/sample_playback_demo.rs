@@ -81,28 +81,27 @@ fn main() -> anyhow::Result<()> {
 
     // Game-like scenario - rapid concurrent sound effects
     println!("  [Player jumps]");
-    engine.play_sample("sfx_beep.wav")?; // Returns immediately!
+    engine.play_sample("sfx_beep.wav"); // Returns immediately!
     std::thread::sleep(std::time::Duration::from_millis(200));
 
     println!("  [Collects coin]");
-    engine.play_sample("sfx_boop.wav")?;
+    engine.play_sample("sfx_boop.wav");
     std::thread::sleep(std::time::Duration::from_millis(150));
 
     println!("  [Another coin]");
-    engine.play_sample("sfx_boop.wav")?;
+    engine.play_sample("sfx_boop.wav");
     std::thread::sleep(std::time::Duration::from_millis(150));
 
     println!("  [Three beeps simultaneously!]");
-    engine.play_sample("sfx_beep.wav")?;
-    engine.play_sample("sfx_beep.wav")?;
-    engine.play_sample("sfx_beep.wav")?;
+    engine.play_sample("sfx_beep.wav");
+    engine.play_sample("sfx_beep.wav");
+    engine.play_sample("sfx_beep.wav");
 
     std::thread::sleep(std::time::Duration::from_millis(500));
 
     // Optional: Keep the ID for control
     println!("\n  You can still control sounds if needed:");
-    let sfx_id = engine.play_sample("sfx_boop.wav")?;
-    engine.set_volume(sfx_id, 0.3)?;
+    engine.play_sample("sfx_boop.wav").volume(0.3);
     println!("  Playing at 30% volume...");
 
     std::thread::sleep(std::time::Duration::from_secs(1));
