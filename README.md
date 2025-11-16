@@ -68,10 +68,10 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.18.0"
+tunes = "0.19.0"
 
 # Optional: Enable GPU acceleration (requires discrete GPU for best results)
-# tunes = { version = "0.18.0", features = ["gpu"] }
+# tunes = { version = "0.19.0", features = ["gpu"] }
 ```
 
 ### Platform Requirements
@@ -473,7 +473,7 @@ Tunes automatically applies:
 
 Enable with the `gpu` feature flag in Cargo.toml:
 ```toml
-tunes = { version = "0.18.0", features = ["gpu"] }
+tunes = { version = "0.19.0", features = ["gpu"] }
 ```
 
 **Transparent API (recommended):**
