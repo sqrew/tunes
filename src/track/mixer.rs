@@ -1365,26 +1365,35 @@ impl Mixer {
         // We need to search at the start of the block
         let (start_idx, end_idx) = track.find_active_range(start_time);
 
-        // Check cache for NoteEvents and render on miss (if cache is enabled)
-        // SKIP if already pre-rendered (batch rendering already populated cache)
-        if !prerendered && cache.is_some() {
-            let cache_arc = cache.unwrap();
-            // Handle poisoned mutex gracefully (don't panic in audio thread)
+        // OPTIMIZED: Single mutex lock for ALL cache operations
+        // Combines: cache miss handling, index building, and sample copying
+        let mut cached_note_indices = std::collections::HashSet::new();
+
+        if let Some(cache_arc) = cache {
+            // Lock cache ONCE for ALL operations - minimize mutex overhead!
             let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
-            for event in &track.events[start_idx..end_idx] {
+
+            // Special case: if pre-rendered, all notes are cached
+            if prerendered {
+                for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
+                    if let AudioEvent::Note(_) = event {
+                        cached_note_indices.insert(start_idx + idx);
+                    }
+                }
+            }
+
+            // Single pass through events: check misses, build indices, copy samples
+            for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
                 if let AudioEvent::Note(note_event) = event {
-                    // Compute cache key for this note
                     let cache_key = CacheKey::from_note_event(note_event, sample_rate);
 
-                    // Check if we have this note cached
-                    if cache_lock.get(&cache_key).is_none() {
-                        // Cache miss - render the full note and store it
+                    // Step 1: Handle cache miss (render if needed)
+                    if !prerendered && cache_lock.get(&cache_key).is_none() {
                         let total_duration =
                             note_event.envelope.total_duration(note_event.duration);
 
                         // Only cache notes with reasonable duration
                         if total_duration > 0.0 && total_duration < 10.0 {
-                            // Render the complete note (GPU if available, otherwise CPU)
                             let rendered_samples = Self::render_note_to_buffer(
                                 note_event,
                                 sample_rate,
@@ -1396,93 +1405,79 @@ impl Mixer {
                                 rendered_samples,
                                 sample_rate,
                                 total_duration,
-                                note_event.frequencies[0], // Reference frequency
+                                note_event.frequencies[0],
                             );
                             cache_lock.insert(cache_key, cached_sample);
                         }
                     }
-                    // On cache hit: cached sample will be used during playback below
-                }
-            }
-        }
 
-        // Build a set of cached note indices to avoid per-sample cache lookups
-        // SKIP if pre-rendered (all notes are cached, mark them all as cached)
-        let mut cached_note_indices = std::collections::HashSet::new();
-        if prerendered && cache.is_some() {
-            // All notes are pre-rendered, mark ALL NoteEvents as cached
-            for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
-                if let AudioEvent::Note(_) = event {
-                    cached_note_indices.insert(start_idx + idx);
-                }
-            }
-        } else if let Some(cache_arc) = cache {
-            // Not pre-rendered, check cache for each note (slower path)
-            // Handle poisoned mutex gracefully (don't panic in audio thread)
-            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
-            for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
-                if let AudioEvent::Note(note_event) = event {
-                    let cache_key = CacheKey::from_note_event(note_event, sample_rate);
-                    if cache_lock.get(&cache_key).is_some() {
-                        cached_note_indices.insert(start_idx + idx);
-                    }
-                }
-            }
-        }
-
-        // Pre-render cached notes into buffer (if cache is enabled)
-        let mut cached_notes_buffer = vec![0.0f32; buffer.len()];
-        if let Some(cache_arc) = cache {
-            // Handle poisoned mutex gracefully (don't panic in audio thread)
-            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
-            for (_idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
-                if let AudioEvent::Note(note_event) = event {
-                    let cache_key = CacheKey::from_note_event(note_event, sample_rate);
-
+                    // Step 2 & 3: If cached, build index AND copy to buffer
                     if let Some(cached_sample) = cache_lock.get(&cache_key) {
-                        // Cache hit! Use the cached sample
+                        // Add to cached indices (for synthesis loop to skip)
+                        if !prerendered {
+                            cached_note_indices.insert(start_idx + idx);
+                        }
+
+                        // Copy cached sample DIRECTLY to output buffer (SIMD-optimized)
                         let note_start = note_event.start_time;
                         let note_end = note_start + cached_sample.duration;
 
                         // Skip if note doesn't overlap with current block
-                        if note_end < start_time
-                            || note_start >= start_time + (buffer.len() as f32 / sample_rate)
+                        if note_end >= start_time
+                            && note_start < start_time + (buffer.len() as f32 / sample_rate)
                         {
-                            continue;
-                        }
+                            // Compute sample ranges
+                            let time_offset_in_note = (start_time - note_start).max(0.0);
+                            let cache_start_sample = (time_offset_in_note * sample_rate) as usize;
 
-                        // Compute sample ranges (buffer space and cached sample space)
-                        let time_offset_in_note = (start_time - note_start).max(0.0);
-                        let cache_start_sample = (time_offset_in_note * sample_rate) as usize;
+                            let buffer_start_sample = if note_start > start_time {
+                                ((note_start - start_time) * sample_rate) as usize
+                            } else {
+                                0
+                            };
 
-                        let buffer_start_sample = if note_start > start_time {
-                            ((note_start - start_time) * sample_rate) as usize
-                        } else {
-                            0
-                        };
+                            // Calculate how many samples to copy
+                            let samples_remaining_in_cache = cached_sample
+                                .samples
+                                .len()
+                                .saturating_sub(cache_start_sample);
+                            let samples_remaining_in_buffer =
+                                buffer.len().saturating_sub(buffer_start_sample);
+                            let num_samples_to_copy =
+                                samples_remaining_in_cache.min(samples_remaining_in_buffer);
 
-                        // Calculate how many samples to copy
-                        let samples_remaining_in_cache = cached_sample
-                            .samples
-                            .len()
-                            .saturating_sub(cache_start_sample);
-                        let samples_remaining_in_buffer =
-                            buffer.len().saturating_sub(buffer_start_sample);
-                        let num_samples_to_copy =
-                            samples_remaining_in_cache.min(samples_remaining_in_buffer);
+                            // SIMD-optimized bulk copy
+                            if num_samples_to_copy > 0
+                                && cache_start_sample < cached_sample.samples.len()
+                            {
+                                use wide::f32x8;
 
-                        // Bulk copy with addition (vectorizable)
-                        if num_samples_to_copy > 0
-                            && cache_start_sample < cached_sample.samples.len()
-                        {
-                            for i in 0..num_samples_to_copy {
-                                cached_notes_buffer[buffer_start_sample + i] +=
-                                    cached_sample.samples[cache_start_sample + i];
+                                let src = &cached_sample.samples[cache_start_sample..];
+                                let dst = &mut buffer[buffer_start_sample..];
+
+                                // SIMD-optimized bulk copy
+                                let simd_chunks = num_samples_to_copy / 8;
+                                let remainder = num_samples_to_copy % 8;
+
+                                for chunk_idx in 0..simd_chunks {
+                                    let i = chunk_idx * 8;
+                                    let src_simd = f32x8::new(src[i..i + 8].try_into().unwrap());
+                                    let dst_simd = f32x8::new(dst[i..i + 8].try_into().unwrap());
+                                    let result = dst_simd + src_simd;
+                                    dst[i..i + 8].copy_from_slice(&result.to_array());
+                                }
+
+                                // Handle remaining samples
+                                let simd_end = simd_chunks * 8;
+                                for i in simd_end..simd_end + remainder {
+                                    dst[i] += src[i];
+                                }
                             }
                         }
                     }
                 }
             }
+            // Drop cache_lock here - mutex released before main synthesis loop
         }
 
         // Pre-render sample events with SIMD for better performance
@@ -1504,7 +1499,8 @@ impl Mixer {
         // For each sample in the block
         for (i, sample_out) in buffer.iter_mut().enumerate() {
             let time = start_time + (i as f32 * time_delta);
-            let mut track_value = 0.0;
+            // Start with current buffer value (which may contain cached samples written above)
+            let mut track_value = *sample_out;
 
             // Process events (reuse binary search result for entire block)
             for (relative_idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
@@ -1515,7 +1511,7 @@ impl Mixer {
                         // Check if this note is cached using the pre-built HashSet (O(1) lookup, no mutex!)
                         // We built cached_note_indices earlier specifically to avoid cache locking in this hot loop
                         if cached_note_indices.contains(&absolute_idx) {
-                            // Skip - already rendered in cached_notes_buffer
+                            // Skip - already rendered directly to output buffer above
                             continue;
                         }
 
@@ -1582,8 +1578,7 @@ impl Mixer {
             // Add pre-rendered samples (processed with SIMD above)
             track_value += sample_buffer[i];
 
-            // Add cached notes (if cache is enabled)
-            track_value += cached_notes_buffer[i];
+            // Note: Cached notes are already in track_value (read from buffer at loop start)
 
             // Apply track volume
             track_value *= track.volume;

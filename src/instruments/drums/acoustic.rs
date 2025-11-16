@@ -632,6 +632,7 @@ pub(super) fn reverse_snare_sample(sample_index: usize, sample_rate: f32) -> f32
 }
 
 /// Generate a pitched tom sample (tunable tom at specific frequency)
+#[allow(dead_code)]
 pub(super) fn pitched_tom_sample(sample_index: usize, sample_rate: f32, pitch_hz: f32) -> f32 {
     let t = sample_index as f32 / sample_rate;
     let duration = 0.4;

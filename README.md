@@ -20,6 +20,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
 - **Key Signatures & Modes**: Major, minor, and all 7 Greek modes (Dorian, Phrygian, Lydian, etc.)
 - **Real-time Playback**: Cross-platform audio output with concurrent mixing, live volume/pan control
+- **Live Audio Recording**: Record from microphone or line-in to WAV files, then process with full effects pipeline
 - **Sample Playback**: Load and play audio files (MP3, OGG, FLAC, WAV, AAC) with pitch shifting, time dilation and slicing, powered by SIMD with auto caching for efficient sample playback
 - **GPU Acceleration** (optional `gpu` feature): GPU compute shader acceleration via wgpu for synthesis and export. Transparent API integration - enable with `AudioEngine::new_with_gpu()`. Performance scales with GPU hardware; integrated GPUs show minimal improvement while discrete GPUs can provide significant acceleration
 - **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM
@@ -56,7 +57,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 ## CONS
     no gui or graphical elements
     no "instant feedback" outside of hot-reloading segments
-    no external control or input (no live line recording, midi in, osc or network controls) or hardware control
+    no external control or input (no midi in, osc or network controls) or hardware control
     no plugin system
     rust (not as beginner friendly as something like sonic pi)
 
@@ -464,7 +465,7 @@ Tunes automatically applies:
 
 Enable with the `gpu` feature flag in Cargo.toml:
 ```toml
-tunes = { version = "0.16.0", features = ["gpu"] }
+tunes = { version = "0.17.0", features = ["gpu"] }
 ```
 
 **Transparent API (recommended):**
@@ -492,17 +493,15 @@ mixer.enable_gpu();  // Explicit GPU enablement
 
 ```bash
 # GPU vs CPU comparison with transparent API
-cargo run --release --features gpu --bin gpu_benchmark
+cargo bench --bench gpu_benchmark --features gpu
 
 # Export performance (CPU and GPU)
-cargo run --release --features gpu --bin export_speed
+cargo bench --bench export_speed --features gpu
 
 # Two-stage GPU pipeline demonstration
-cargo run --release --features gpu --bin pipeline_benchmark
+cargo bench --bench pipeline_benchmark --features gpu
 
-# Additional benchmarks
-cargo run --release --bin simd_sample_playback
-cargo run --release --bin concurrent_mixing
+# Additional benchmarks to be found in the benches/ directory!
 ```
 
 ### Comparison with Other Rust Audio Libraries

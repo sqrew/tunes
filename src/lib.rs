@@ -22,6 +22,7 @@
 //! }
 //! ```
 
+pub mod audio;
 pub mod cache;
 pub mod composition;
 pub mod consts;
@@ -110,4 +111,7 @@ pub mod prelude {
         drum_type_to_midi_note, frequency_to_midi_note, midi_note_to_drum_type,
         midi_note_to_frequency,
     };
+
+    // Live audio input
+    pub use crate::audio::LiveInput;
 }

@@ -26,9 +26,11 @@
 
 mod device;
 mod synthesis;
+mod convolution;
 
 pub use device::{GpuDevice, GpuState};
 pub use synthesis::GpuSynthesizer;
+pub use convolution::GpuConvolution;
 
 use anyhow::Result;
 

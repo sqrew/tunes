@@ -1,10 +1,10 @@
 # Effects
 
-Tunes provides a professional-grade effects system with 16 built-in effects that can be applied at track, bus, and master levels.
+Tunes provides a professional-grade effects system with 17 built-in effects that can be applied at track, bus, and master levels.
 
 ## EffectChain System
 
-Every track, bus, and master fader has an `EffectChain` - a unified container for all 16 effects with automatic priority-based ordering.
+Every track, bus, and master fader has an `EffectChain` - a unified container for all 17 effects with automatic priority-based ordering.
 
 ### Priority-Based Effect Ordering
 
@@ -587,7 +587,172 @@ comp.track("vocal")
 
 **Use cases:** Add space and depth, ambient textures, create atmosphere
 
-### 10. Delay
+### 10. Convolution Reverb
+
+High-quality reverb using real impulse responses (IRs) - captures the exact acoustic characteristics of real spaces or hardware reverbs.
+
+**What is convolution reverb?**
+
+While algorithmic reverb (like Freeverb above) _simulates_ spaces using filters, convolution reverb uses **impulse responses** - actual recordings or simulations of how spaces respond to sound. This produces incredibly realistic room acoustics.
+
+**Quick example:**
+```rust
+use tunes::synthesis::effects::convolution;
+
+// From preset (synthetic IR generated on-the-fly)
+comp.track("piano")
+    .convolution_reverb(convolution::presets::cathedral(0.7)?);
+
+// From WAV file (real recorded IR)
+comp.track("vocal")
+    .convolution_reverb(ConvolutionReverb::from_file("church.wav", 0.5)?);
+```
+
+**Available presets:**
+```rust
+use tunes::synthesis::effects::convolution::presets;
+
+// Short reverbs (< 1 second)
+presets::small_room(0.5)?;      // Tight, intimate space (0.3s RT60)
+presets::plate(0.6)?;           // Classic plate reverb sound (2.0s RT60)
+presets::spring(0.4)?;          // Vintage spring reverb (1.0s RT60)
+
+// Long reverbs (> 2 seconds)
+presets::concert_hall(0.7)?;    // Balanced, spacious hall (2.5s RT60)
+presets::cathedral(0.8)?;       // Huge, epic space (4.5s RT60)
+```
+
+**Parameters:**
+- **Mix**: Wet/dry blend (0.0 = dry, 1.0 = fully wet)
+- Each preset has carefully tuned decay characteristics
+
+**Custom IR from file:**
+```rust
+// Load your own impulse response
+let reverb = ConvolutionReverb::from_file("path/to/ir.wav", 0.6)?;
+comp.track("guitar").convolution_reverb(reverb);
+```
+
+**Advanced: Custom IR synthesis**
+```rust
+use tunes::synthesis::effects::IRParams;
+
+// Build custom space characteristics
+let params = IRParams {
+    decay_time: 3.5,           // Reverb tail length (seconds)
+    early_reflections: 0.4,    // Amount of early reflections
+    late_reverb: 0.8,          // Amount of late reverb tail
+    diffusion: 0.7,            // Spread of reflections (0.0-1.0)
+    density: 0.6,              // Reflection density (0.0-1.0)
+    high_damping: 0.5,         // High frequency absorption
+    low_damping: 0.3,          // Low frequency absorption
+    sample_rate: 44100,
+};
+
+let reverb = ConvolutionReverb::from_params(params, 0.7)?;
+comp.track("synth").convolution_reverb(reverb);
+```
+
+#### GPU Acceleration (Optional)
+
+**New feature!** Convolution reverb supports GPU acceleration for massive performance improvements on long impulse responses.
+
+**Enable GPU acceleration:**
+```rust
+use tunes::synthesis::effects::convolution;
+
+// Create reverb (any preset or custom)
+let mut reverb = convolution::presets::cathedral(0.7)?;
+
+// Enable GPU processing
+#[cfg(feature = "gpu")]
+reverb.enable_gpu()?;
+
+// Use as normal
+comp.track("orchestra").convolution_reverb(reverb);
+```
+
+**Performance comparison:**
+- **CPU**: Uses overlap-add FFT algorithm (efficient but serial)
+- **GPU**: Partitioned convolution with parallel processing
+  - Integrated GPUs: May be slower (overhead > benefit)
+  - Discrete GPUs: **5-50x faster** than CPU!
+
+**How GPU acceleration works:**
+1. Impulse response is split into 4096-sample partitions
+2. All partitions processed in parallel on GPU (true parallelism)
+3. No size limits - cathedral reverbs (500k+ samples) supported
+4. Automatic fallback to CPU if GPU unavailable
+
+**When to use GPU:**
+- Long impulse responses (concert halls, cathedrals)
+- Real-time processing requirements
+- When you have a discrete GPU
+
+**Technical details:**
+- Uses compute shaders (WGSL) for parallel FFT processing
+- Radix-2 Cooley-Tukey FFT algorithm on GPU
+- CPU-side delay line management for accuracy
+- Requires `gpu` feature flag at compile time
+
+**Comparison to algorithmic reverb:**
+
+| Feature | Algorithmic (Reverb) | Convolution (ConvolutionReverb) |
+|---------|---------------------|----------------------------------|
+| Sound quality | Good simulation | Photorealistic |
+| CPU usage | Very light | Moderate (heavy for long IRs) |
+| GPU support | No | Yes (5-50x faster with discrete GPU) |
+| Customization | Limited parameters | Load any IR file |
+| Character | Generic/synthetic | Specific spaces/hardware |
+| Use cases | General ambience | Realistic spaces, special effects |
+
+**Use cases:**
+- **Realistic spaces**: Cathedral, concert hall, studio room
+- **Vintage hardware**: EMT plate, AKG spring, Lexicon 224
+- **Creative effects**: Reverse reverb, gated reverb, unusual spaces
+- **Film/game audio**: Matching reverb to visual environments
+- **High-end production**: When algorithmic reverb isn't realistic enough
+
+**Complete workflow example:**
+```rust
+use tunes::prelude::*;
+use tunes::synthesis::effects::convolution;
+
+let mut comp = Composition::new(Tempo::new(120.0));
+
+// Piano in a cathedral
+comp.instrument("piano", &Instrument::acoustic_piano())
+    .notes(&[C4, E4, G4, C5], 0.5)
+    .convolution_reverb({
+        let mut reverb = convolution::presets::cathedral(0.7)?;
+        #[cfg(feature = "gpu")]
+        reverb.enable_gpu()?;
+        reverb
+    });
+
+// Vocals in a concert hall
+comp.instrument("vocal", &Instrument::sine())
+    .notes(&[A4, G4, F4, E4], 0.5)
+    .convolution_reverb(convolution::presets::concert_hall(0.5)?);
+
+// Drums in a small room
+comp.track("drums")
+    .bus("drums")
+    .drum(DrumType::Kick);
+
+let mut mixer = comp.into_mixer();
+mixer.bus("drums")
+    .convolution_reverb(convolution::presets::small_room(0.3)?);
+
+mixer.export_wav("realistic_reverb.wav", 44100)?;
+# Ok::<(), anyhow::Error>(())
+```
+
+**Algorithm:** FFT-based overlap-add convolution (CPU) or partitioned parallel convolution (GPU)
+
+**Priority:** 220 (same as Reverb - time-based effects)
+
+### 11. Delay
 
 Echo/delay effect with feedback.
 
@@ -607,7 +772,7 @@ comp.track("guitar")
 
 **Use cases:** Slapback echo, rhythmic delays, ambient soundscapes
 
-### 11. Chorus
+### 12. Chorus
 
 Thickening effect using modulated delays.
 
@@ -624,7 +789,7 @@ comp.track("pad")
 
 **Use cases:** Thicken synths, classic 80s chorus, stereo width
 
-### 12. Phaser
+### 13. Phaser
 
 Sweeping notch filter effect.
 
@@ -641,7 +806,7 @@ comp.track("electric_piano")
 
 **Use cases:** 70s electric piano, psychedelic sweeps, movement
 
-### 13. Flanger
+### 14. Flanger
 
 Extreme phasing with metallic character.
 
@@ -657,7 +822,7 @@ comp.track("synth")
 
 **Use cases:** Jet plane effect, metallic sweeps, experimental sounds
 
-### 14. Ring Modulator
+### 15. Ring Modulator
 
 Metallic/robotic modulation effect.
 
@@ -671,7 +836,7 @@ comp.track("vocal")
 
 **Use cases:** Robot voices, bell-like tones, alien sounds
 
-### 15. Tremolo
+### 16. Tremolo
 
 Volume modulation (amplitude variation).
 
@@ -685,7 +850,7 @@ comp.track("guitar")
 
 **Use cases:** Classic guitar tremolo, rhythmic pulsing, texture
 
-### 16. AutoPan
+### 17. AutoPan
 
 Automatic stereo panning.
 

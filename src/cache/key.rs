@@ -28,17 +28,24 @@ impl CacheKey {
     /// Compute cache key from synthesis parameters
     ///
     /// This creates a unique identifier based on:
+    /// - Frequency/pitch
     /// - Waveform type
     /// - Envelope (ADSR)
     /// - FM synthesis parameters
     /// - Filter settings
     /// - Duration (affects envelope shape)
     /// - Pitch bend
+    /// - Velocity
     ///
-    /// Note: Frequency is NOT part of the cache key - we cache at a reference
-    /// pitch and transpose during playback for better cache efficiency.
+    /// Each unique combination gets its own cache entry for fast playback.
     pub fn from_note_event(note: &NoteEvent, sample_rate: f32) -> Self {
         let mut hasher = DefaultHasher::new();
+
+        // Frequency - each pitch gets its own cache entry
+        for i in 0..note.num_freqs {
+            hash_f32(note.frequencies[i], &mut hasher);
+        }
+        note.num_freqs.hash(&mut hasher);
 
         // Waveform
         hash_waveform(&note.waveform, &mut hasher);
@@ -203,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_frequency_not_in_key() {
+    fn test_different_frequency_different_key() {
         let note1 = NoteEvent {
             frequencies: [440.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             num_freqs: 1,
@@ -225,8 +232,7 @@ mod tests {
         let key1 = CacheKey::from_note_event(&note1, 44100.0);
         let key2 = CacheKey::from_note_event(&note2, 44100.0);
 
-        // Keys should be THE SAME - we don't cache per-frequency
-        // We cache the waveform shape and transpose during playback
-        assert_eq!(key1, key2);
+        // Keys should be DIFFERENT - each pitch gets its own cache entry
+        assert_ne!(key1, key2);
     }
 }

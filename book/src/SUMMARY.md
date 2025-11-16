@@ -49,6 +49,7 @@
 - [Note Generators](./advanced/generators.md)
 - [Pattern Transformations](./advanced/transformations.md)
 - [Importing Audio](./advanced/import.md)
+- [Live Audio Recording](./advanced/live-audio-recording.md)
 - [Exporting Audio](./advanced/export.md)
 - [MIDI Import/Export](./advanced/midi.md)
 - [Live Coding](./advanced/live-coding.md)
