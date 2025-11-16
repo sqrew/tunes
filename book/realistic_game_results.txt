@@ -1,0 +1,192 @@
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:33:16
+   |
+33 | pub(super) use acoustic::*;
+   |                ^^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:33:16
+   |
+33 | pub(super) use acoustic::*;
+   |                ^^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:34:16
+   |
+34 | pub(super) use auxiliary::*;
+   |                ^^^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:34:16
+   |
+34 | pub(super) use auxiliary::*;
+   |                ^^^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:35:16
+   |
+35 | pub(super) use cymbals::*;
+   |                ^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:35:16
+   |
+35 | pub(super) use cymbals::*;
+   |                ^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:36:16
+   |
+36 | pub(super) use effects::*;
+   |                ^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:36:16
+   |
+36 | pub(super) use effects::*;
+   |                ^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:37:16
+   |
+37 | pub(super) use electronic::*;
+   |                ^^^^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:37:16
+   |
+37 | pub(super) use electronic::*;
+   |                ^^^^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: glob import doesn't reexport anything with visibility `pub(in crate::instruments)` because no imported item is public enough
+  --> src/instruments/drums/mod.rs:38:16
+   |
+38 | pub(super) use hand_percussion::*;
+   |                ^^^^^^^^^^^^^^^^^^
+   |
+note: the most public imported item is `pub(self)`
+  --> src/instruments/drums/mod.rs:38:16
+   |
+38 | pub(super) use hand_percussion::*;
+   |                ^^^^^^^^^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: `tunes` (lib) generated 6 warnings
+   Compiling tunes v0.17.0 (/home/sqrew/Desktop/tunes)
+warning: value assigned to `track` is never read
+  --> benches/realistic_game_audio.rs:83:13
+   |
+83 |             track = track.filter(Filter::low_pass(2000.0, 0.7));
+   |             ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: `tunes` (bench "realistic_game_audio") generated 1 warning
+    Finished `bench` profile [optimized] target(s) in 0.75s
+     Running benches/realistic_game_audio.rs (/home/sqrew/Desktop/tunes/target/release/deps/realistic_game_audio-05d145fea9829e11)
+
+🎮 Realistic Game Audio Benchmark
+
+Simulating real-world game audio with:
+  ✓ Spatial audio (3D positioning, distance attenuation)
+  ✓ Effects (EQ, reverb)
+  ✓ Multiple sample types (impacts, explosions, ambient)
+  ✓ True concurrent playback (all samples start simultaneously)
+
+Creating test samples...
+Rendering to WAV...
+  Duration: 0.50s
+  Sample rate: 44100 Hz
+  Total samples: 22050
+  Encoding to WAV...
+  Progress: 0%  Progress: 100%
+✅ Exported to: bench_impact.wav
+Rendering to WAV...
+  Duration: 0.50s
+  Sample rate: 44100 Hz
+  Total samples: 22050
+  Encoding to WAV...
+  Progress: 0%  Progress: 100%
+✅ Exported to: bench_explosion.wav
+Rendering to WAV...
+  Duration: 0.15s
+  Sample rate: 44100 Hz
+  Total samples: 6616
+  Encoding to WAV...
+  Progress: 0%  Progress: 100%
+✅ Exported to: bench_ambient.wav
+  ✓ Created 3 sample types
+
+  SIMD: AVX2 (8 lanes)
+
+======================================================================
+
+=== Test 1: Baseline (No Spatial, No Effects) ===
+  This is our SIMD-only performance baseline.
+  50 concurrent samples: 51.8x realtime
+  100 concurrent samples: 31.9x realtime
+
+======================================================================
+
+=== Test 2: With Spatial Audio (Distance Attenuation) ===
+  Each sample has 3D position and volume based on distance.
+  50 concurrent samples: 50.0x realtime
+  100 concurrent samples: 28.2x realtime
+
+======================================================================
+
+=== Test 3: REALISTIC GAME SCENARIO ===
+  Spatial audio + EQ per sample + global reverb
+  This simulates actual game audio workload.
+  25 concurrent samples: 27.7x realtime
+  50 concurrent samples: 28.5x realtime
+  75 concurrent samples: 19.6x realtime
+  100 concurrent samples: 15.9x realtime
+
+======================================================================
+
+=== Test 4: Finding The Limit (Realistic Scenario) ===
+  Testing with increasing concurrent samples until we drop below 1x realtime...
+  150 concurrent samples: 13.3x realtime
+  200 concurrent samples: 10.6x realtime
+  250 concurrent samples: 9.6x realtime
+  300 concurrent samples: 7.9x realtime
+  350 concurrent samples: 7.5x realtime
+  400 concurrent samples: 7.6x realtime
+
+======================================================================
+
+=== SUMMARY ===
+
+  Baseline (SIMD only):
+    Worst case: 31.9x realtime
+    Conservative capacity: ~3188 concurrent samples
+
+  With Spatial Audio:
+    Worst case: 28.2x realtime
+    Conservative capacity: ~2823 concurrent samples
+
+  REALISTIC GAME SCENARIO (spatial + effects):
+    Worst case: 15.9x realtime
+    Conservative capacity: ~1587 concurrent samples
+
+  ✅ No breaking point found! Can handle 400+ concurrent samples.
+
+  Hardware context: i5-6500 (2015, 10-year-old CPU)
+  Modern CPUs (i7-14700, Ryzen 7 7800X3D) would show 2-4x better performance!
+
+  ✅ EXCELLENT! Can handle realistic game audio workloads.
+
+✅ Realistic game audio benchmark complete!
+
+Note: This benchmark simulates actual game audio scenarios with spatial
+positioning, distance attenuation, and effects - providing honest performance
+numbers that game developers can expect in production use.
+

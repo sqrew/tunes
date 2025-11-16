@@ -33,6 +33,8 @@ use rustfft::num_complex::Complex;
 use rustfft::{Fft, FftPlanner};
 use std::collections::VecDeque;
 use std::sync::Arc;
+#[cfg(feature = "gpu")]
+use std::sync::Mutex;
 
 #[cfg(feature = "gpu")]
 use crate::gpu::{GpuConvolution, GpuDevice};
@@ -356,6 +358,8 @@ impl ConvolutionReverb {
         // Note: Partitioned convolution supports any IR size by splitting into 4096-sample chunks
 
         // Initialize GPU device
+
+        use std::sync::Mutex;
         let gpu_device = GpuDevice::new().map_err(|e| {
             TunesError::AudioEngineError(format!("Failed to initialize GPU: {}", e))
         })?;

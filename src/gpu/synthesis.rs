@@ -1,10 +1,9 @@
 //! GPU-accelerated synthesis using compute shaders
 
 use super::device::GpuDevice;
-use crate::track::NoteEvent;
 use crate::synthesis::waveform::Waveform;
+use crate::track::NoteEvent;
 use anyhow::{Context, Result};
-use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 /// GPU synthesizer for accelerated audio generation
@@ -53,55 +52,66 @@ impl GpuSynthesizer {
     pub fn new(device: GpuDevice) -> Result<Self> {
         // Load shader
         let shader_source = include_str!("synthesis.wgsl");
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Synthesis Shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Synthesis Shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Synthesis Bind Group Layout"),
-            entries: &[
-                // Input: Note parameters
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Output: Sample buffer
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Synthesis Bind Group Layout"),
+                    entries: &[
+                        // Input: Note parameters
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Output: Sample buffer
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Synthesis Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Synthesis Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Synthesis Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: Some("main"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Synthesis Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
         Ok(Self {
             device,
@@ -122,11 +132,14 @@ impl GpuSynthesizer {
         let total_samples = (total_duration * sample_rate) as usize;
 
         // Create GPU buffers
-        let params_buffer = self.device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Note Params Buffer"),
-            contents: bytemuck::cast_slice(&[gpu_params]),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Note Params Buffer"),
+                    contents: bytemuck::cast_slice(&[gpu_params]),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
         let output_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Output Buffer"),
@@ -144,25 +157,31 @@ impl GpuSynthesizer {
         });
 
         // Create bind group
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Synthesis Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Synthesis Bind Group"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Create command encoder
-        let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Synthesis Encoder"),
-        });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Synthesis Encoder"),
+                });
 
         // Dispatch compute shader
         {
@@ -203,9 +222,8 @@ impl GpuSynthesizer {
         self.device.device.poll(wgpu::Maintain::Wait);
 
         // Wait for mapping
-        pollster::block_on(async {
-            receiver.receive().await
-        }).context("Failed to map buffer")?
+        pollster::block_on(async { receiver.receive().await })
+            .context("Failed to map buffer")?
             .context("Buffer mapping failed")?;
 
         // Copy data to Vec

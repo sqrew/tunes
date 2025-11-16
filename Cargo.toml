@@ -124,6 +124,10 @@ required-features = ["gpu"]
 name = "gpu_stress_test"
 harness = false
 
+[[bench]]
+name = "realistic_game_audio"
+harness = false
+
 # GPU examples require the gpu feature to be enabled
 [[example]]
 name = "gpu_export_demo"
