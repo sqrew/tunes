@@ -24,15 +24,13 @@
 //!
 //! Automatically falls back to CPU synthesis if GPU is unavailable.
 
+mod convolution;
 mod device;
 mod synthesis;
-mod convolution;
 
+pub use convolution::GpuConvolution;
 pub use device::{GpuDevice, GpuState};
 pub use synthesis::GpuSynthesizer;
-pub use convolution::GpuConvolution;
-
-use anyhow::Result;
 
 /// Check if GPU compute is available on this system
 pub fn is_gpu_available() -> bool {

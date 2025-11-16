@@ -15,9 +15,9 @@ pub struct GpuConvolution {
     ir_partitions_buffer: wgpu::Buffer,
 
     // Processing parameters
-    num_partitions: usize,  // Number of IR partitions
-    partition_size: usize,  // Size of each IR partition
-    fft_size: usize,        // FFT size for each partition
+    num_partitions: usize, // Number of IR partitions
+    partition_size: usize, // Size of each IR partition
+    fft_size: usize,       // FFT size for each partition
     block_size: usize,
 
     // Delay lines for partitioned convolution
@@ -69,8 +69,8 @@ impl GpuConvolution {
         use rustfft::FftPlanner;
 
         // Partition parameters
-        const PARTITION_SIZE: usize = 4096;  // Fixed partition size for GPU
-        let partition_fft_size = PARTITION_SIZE * 2;   // Need 2x for linear convolution
+        const PARTITION_SIZE: usize = 4096; // Fixed partition size for GPU
+        let partition_fft_size = PARTITION_SIZE * 2; // Need 2x for linear convolution
 
         // Step 1: Convert IR from frequency domain back to time domain
         let mut ir_time = ir_fft.to_vec();
@@ -87,8 +87,12 @@ impl GpuConvolution {
         let mut partition_delays: Vec<Vec<f32>> = Vec::new();
         let mut all_partition_ffts: Vec<GpuComplex> = Vec::new();
 
-        println!("📦 Partitioning IR: {} samples -> {} partitions of {} samples",
-                 ir_samples.len(), num_partitions, PARTITION_SIZE);
+        println!(
+            "📦 Partitioning IR: {} samples -> {} partitions of {} samples",
+            ir_samples.len(),
+            num_partitions,
+            PARTITION_SIZE
+        );
 
         let fft = planner.plan_fft_forward(partition_fft_size);
 
@@ -118,13 +122,14 @@ impl GpuConvolution {
         }
 
         // Upload all partitions as single concatenated buffer
-        let ir_partitions_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("All IR Partitions FFT"),
-                contents: bytemuck::cast_slice(&all_partition_ffts),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
+        let ir_partitions_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("All IR Partitions FFT"),
+                    contents: bytemuck::cast_slice(&all_partition_ffts),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Load partitioned convolution shader
         let shader_source = include_str!("convolution_partitioned.wgsl");
@@ -280,36 +285,39 @@ impl GpuConvolution {
         });
 
         // Create bind group (using pre-concatenated IR partitions buffer)
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Partitioned Conv Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.ir_partitions_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: partition_outputs_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Partitioned Conv Bind Group"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: input_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.ir_partitions_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: partition_outputs_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Encode and submit GPU commands
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Partitioned Conv Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Partitioned Conv Encoder"),
+                });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -361,7 +369,9 @@ impl GpuConvolution {
             }
 
             // Output first block_size samples from this partition's delay line
-            let samples_to_output = self.block_size.min(self.partition_delays[partition_idx].len());
+            let samples_to_output = self
+                .block_size
+                .min(self.partition_delays[partition_idx].len());
             for i in 0..samples_to_output {
                 if delay_samples == 0 || i >= delay_samples {
                     output[i] += self.partition_delays[partition_idx][i];
@@ -383,7 +393,12 @@ impl GpuConvolution {
     }
 
     /// Read complex buffer synchronously from GPU to CPU
-    fn read_buffer_sync_complex(&self, buffer: &wgpu::Buffer, _size: usize) -> Result<Vec<GpuComplex>> {
+    #[allow(dead_code)]
+    fn read_buffer_sync_complex(
+        &self,
+        buffer: &wgpu::Buffer,
+        _size: usize,
+    ) -> Result<Vec<GpuComplex>> {
         let buffer_slice = buffer.slice(..);
 
         // Map the buffer
