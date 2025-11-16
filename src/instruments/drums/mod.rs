@@ -29,13 +29,13 @@ pub mod effects;
 pub mod electronic;
 pub mod hand_percussion;
 
-// Re-export all sample functions for internal use
-pub(super) use acoustic::*;
-pub(super) use auxiliary::*;
-pub(super) use cymbals::*;
-pub(super) use effects::*;
-pub(super) use electronic::*;
-pub(super) use hand_percussion::*;
+// Import all sample functions for internal use
+use acoustic::*;
+use auxiliary::*;
+use cymbals::*;
+use effects::*;
+use electronic::*;
+use hand_percussion::*;
 
 /// Drum types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

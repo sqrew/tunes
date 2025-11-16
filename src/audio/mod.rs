@@ -24,11 +24,12 @@
 //!
 //! // Now use the recording with the existing pipeline
 //! let mut comp = Composition::new(Tempo::new(120.0));
+//! comp.load_sample("vocal", "my_recording.wav")?;
 //! comp.track("vocals")
-//!     .sample_file("my_recording.wav")?
-//!     .reverb(0.3);
+//!     .sample("vocal")
+//!     .reverb(Reverb::new(0.5, 0.5, 0.3));
 //!
-//! comp.export("output.wav")?;
+//! comp.into_mixer().export_wav("output.wav", 44100)?;
 //! # Ok(())
 //! # }
 //! ```
