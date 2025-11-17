@@ -23,7 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
-pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralMorphTarget};
+pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralMorphTarget, SpectralDynamics, SpectralScramble};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -73,6 +73,8 @@ pub struct EffectChain {
     pub spectral_invert: Option<SpectralInvert>,
     pub spectral_widen: Option<SpectralWiden>,
     pub spectral_morph: Option<SpectralMorph>,
+    pub spectral_dynamics: Option<SpectralDynamics>,
+    pub spectral_scramble: Option<SpectralScramble>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
@@ -80,7 +82,8 @@ pub struct EffectChain {
     //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb,
     //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
     //             20=SpectralRobotize, 21=SpectralDelay, 22=SpectralFilter, 23=SpectralBlur,
-    //             24=SpectralShift, 25=SpectralExciter, 26=SpectralInvert, 27=SpectralWiden, 28=SpectralMorph
+    //             24=SpectralShift, 25=SpectralExciter, 26=SpectralInvert, 27=SpectralWiden, 28=SpectralMorph,
+    //             29=SpectralDynamics, 30=SpectralScramble
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -127,6 +130,8 @@ impl EffectChain {
             spectral_invert: None,
             spectral_widen: None,
             spectral_morph: None,
+            spectral_dynamics: None,
+            spectral_scramble: None,
             effect_order: Vec::new(),
         }
     }
@@ -225,6 +230,12 @@ impl EffectChain {
         }
         if let Some(ref spectral_morph) = self.spectral_morph {
             effects.push((spectral_morph.priority, 28));
+        }
+        if let Some(ref spectral_dynamics) = self.spectral_dynamics {
+            effects.push((spectral_dynamics.priority, 29));
+        }
+        if let Some(ref spectral_scramble) = self.spectral_scramble {
+            effects.push((spectral_scramble.priority, 30));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -586,6 +597,18 @@ impl EffectChain {
                     // SpectralMorph (block-based spectral effect)
                     if let Some(ref mut spectral_morph) = self.spectral_morph {
                         spectral_morph.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                29 => {
+                    // SpectralDynamics (block-based spectral effect)
+                    if let Some(ref mut spectral_dynamics) = self.spectral_dynamics {
+                        spectral_dynamics.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                30 => {
+                    // SpectralScramble (block-based spectral effect)
+                    if let Some(ref mut spectral_scramble) = self.spectral_scramble {
+                        spectral_scramble.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}
@@ -1101,6 +1124,36 @@ impl EffectChain {
     /// ```
     pub fn with_spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
         self.spectral_morph = Some(spectral_morph);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral dynamics for frequency-dependent compression/expansion
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralDynamics};
+    /// let mut chain = EffectChain::new();
+    /// let dynamics = SpectralDynamics::gentle();
+    /// chain = chain.with_spectral_dynamics(dynamics);
+    /// ```
+    pub fn with_spectral_dynamics(mut self, spectral_dynamics: SpectralDynamics) -> Self {
+        self.spectral_dynamics = Some(spectral_dynamics);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral scramble for glitchy frequency bin randomization
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralScramble};
+    /// let mut chain = EffectChain::new();
+    /// let scramble = SpectralScramble::glitch();
+    /// chain = chain.with_spectral_scramble(scramble);
+    /// ```
+    pub fn with_spectral_scramble(mut self, spectral_scramble: SpectralScramble) -> Self {
+        self.spectral_scramble = Some(spectral_scramble);
         self.compute_effect_order();
         self
     }

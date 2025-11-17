@@ -44,7 +44,7 @@ use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
     Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
     SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
-    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, Tremolo,
+    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -488,6 +488,20 @@ impl<'a> BusBuilder<'a> {
     /// Add spectral morph effect to this bus for morphing spectrum toward target shapes
     pub fn spectral_morph(self, spectral_morph: SpectralMorph) -> Self {
         self.bus.effects.spectral_morph = Some(spectral_morph);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral dynamics effect (frequency-dependent compression/expansion)
+    pub fn spectral_dynamics(self, spectral_dynamics: SpectralDynamics) -> Self {
+        self.bus.effects.spectral_dynamics = Some(spectral_dynamics);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral scramble effect (glitchy frequency bin randomization)
+    pub fn spectral_scramble(self, spectral_scramble: SpectralScramble) -> Self {
+        self.bus.effects.spectral_scramble = Some(spectral_scramble);
         self.bus.effects.compute_effect_order();
         self
     }

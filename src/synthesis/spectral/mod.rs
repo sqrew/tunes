@@ -37,6 +37,8 @@ mod exciter;
 mod invert;
 mod widen;
 mod morph;
+mod dynamics;
+mod scramble;
 
 // Re-exports
 pub use phase_vocoder::PhaseVocoder;
@@ -52,6 +54,8 @@ pub use exciter::SpectralExciter;
 pub use invert::SpectralInvert;
 pub use widen::SpectralWiden;
 pub use morph::{SpectralMorph, MorphTarget};
+pub use dynamics::SpectralDynamics;
+pub use scramble::SpectralScramble;
 
 /// Window function types for spectral processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -3,7 +3,7 @@ use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
     Gate, Limiter, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation, SpectralFreeze,
     SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
-    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, Tremolo,
+    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
@@ -214,6 +214,18 @@ impl<'a> EffectsBuilder<'a> {
     /// Add spectral morph for morphing spectrum toward target shapes
     pub fn spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
         self.inner = self.inner.spectral_morph(spectral_morph);
+        self
+    }
+
+    /// Add spectral dynamics effect (frequency-dependent compression/expansion)
+    pub fn spectral_dynamics(mut self, spectral_dynamics: SpectralDynamics) -> Self {
+        self.inner = self.inner.spectral_dynamics(spectral_dynamics);
+        self
+    }
+
+    /// Add spectral scramble effect (glitchy frequency bin randomization)
+    pub fn spectral_scramble(mut self, spectral_scramble: SpectralScramble) -> Self {
+        self.inner = self.inner.spectral_scramble(spectral_scramble);
         self
     }
 
@@ -1054,6 +1066,22 @@ impl<'a> TrackBuilder<'a> {
     pub fn spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
         let track = self.get_track_mut();
         track.effects.spectral_morph = Some(spectral_morph);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral dynamics effect for frequency-dependent compression/expansion
+    pub fn spectral_dynamics(mut self, spectral_dynamics: SpectralDynamics) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_dynamics = Some(spectral_dynamics);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral scramble effect for glitchy frequency bin randomization
+    pub fn spectral_scramble(mut self, spectral_scramble: SpectralScramble) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_scramble = Some(spectral_scramble);
         track.effects.compute_effect_order();
         self
     }

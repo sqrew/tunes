@@ -2425,6 +2425,34 @@ impl Mixer {
         self.master.compute_effect_order();
         self
     }
+
+    /// Add spectral dynamics to the master bus for frequency-dependent compression/expansion
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # let mut mixer = Mixer::new(44100.0);
+    /// mixer.master_spectral_dynamics(SpectralDynamics::gentle());
+    /// ```
+    pub fn master_spectral_dynamics(&mut self, spectral_dynamics: crate::synthesis::effects::SpectralDynamics) -> &mut Self {
+        self.master.spectral_dynamics = Some(spectral_dynamics);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral scramble to the master bus for glitchy frequency bin randomization
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # let mut mixer = Mixer::new(44100.0);
+    /// mixer.master_spectral_scramble(SpectralScramble::glitch());
+    /// ```
+    pub fn master_spectral_scramble(&mut self, spectral_scramble: crate::synthesis::effects::SpectralScramble) -> &mut Self {
+        self.master.spectral_scramble = Some(spectral_scramble);
+        self.master.compute_effect_order();
+        self
+    }
 }
 
 impl Default for Mixer {

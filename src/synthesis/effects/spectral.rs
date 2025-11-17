@@ -7,7 +7,8 @@ use crate::synthesis::spectral::{
     PhaseVocoder as CorePhaseVocoder, SpectralBlur as CoreSpectralBlur,
     SpectralCompressor as CoreSpectralCompressor, SpectralFilter as CoreSpectralFilter,
     SpectralFreeze as CoreSpectralFreeze, SpectralGate as CoreSpectralGate,
-    SpectralRobotize as CoreSpectralRobotize, WindowType,
+    SpectralRobotize as CoreSpectralRobotize, SpectralDynamics as CoreSpectralDynamics,
+    SpectralScramble as CoreSpectralScramble, WindowType,
 };
 
 // Re-export FilterType for public use
@@ -3176,5 +3177,433 @@ mod tests {
     fn test_spectral_delay_with_params() {
         let delay = SpectralDelay::with_params(4096, 1024, 200.0, 0.5, 0.8, 0.7, 44100.0);
         assert!(delay.enabled);
+    }
+}
+
+/// Spectral dynamics wrapper for effects chain integration
+///
+/// Provides frequency-dependent dynamic range compression/expansion with per-bin control.
+/// Perfect for multiband dynamics, spectral expansion, and creative sound design.
+#[derive(Clone)]
+pub struct SpectralDynamics {
+    core: CoreSpectralDynamics,
+    pub priority: u8,
+    pub enabled: bool,
+}
+
+impl SpectralDynamics {
+    /// Create a new spectral dynamics effect with default FFT settings (2048/512)
+    ///
+    /// # Arguments
+    /// - `threshold` - Dynamics threshold in dB (default: -20.0)
+    /// - `ratio` - Dynamics ratio (>1 = compress, <1 = expand, default: 4.0)
+    /// - `attack` - Attack time in milliseconds (default: 5.0)
+    /// - `release` - Release time in milliseconds (default: 50.0)
+    /// - `knee` - Soft knee width in dB (default: 6.0)
+    /// - `sample_rate` - Sample rate in Hz
+    pub fn new(
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+        knee: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self::with_params(
+            2048,
+            512,
+            threshold,
+            ratio,
+            attack,
+            release,
+            knee,
+            sample_rate,
+        )
+    }
+
+    /// Create a spectral dynamics effect with custom FFT settings
+    ///
+    /// # Arguments
+    /// - `fft_size` - FFT size (must be power of 2, typically 2048)
+    /// - `hop_size` - Hop size (typically fft_size/4)
+    /// - `threshold` - Dynamics threshold in dB
+    /// - `ratio` - Dynamics ratio (>1 = compress, <1 = expand)
+    /// - `attack` - Attack time in milliseconds
+    /// - `release` - Release time in milliseconds
+    /// - `knee` - Soft knee width in dB
+    /// - `sample_rate` - Sample rate in Hz
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+        knee: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralDynamics::new(
+            fft_size,
+            hop_size,
+            crate::synthesis::spectral::WindowType::Hann,
+            sample_rate,
+        );
+        core.set_threshold(threshold);
+        core.set_ratio(ratio);
+        core.set_attack(attack);
+        core.set_release(release);
+        core.set_knee(knee);
+
+        Self {
+            core,
+            priority: 155, // After spectral effects, before spatial
+            enabled: true,
+        }
+    }
+
+    /// Gentle dynamics - subtle control
+    pub fn gentle() -> Self {
+        let core = CoreSpectralDynamics::gentle();
+        Self {
+            core,
+            priority: 155,
+            enabled: true,
+        }
+    }
+
+    /// Moderate dynamics - balanced control
+    pub fn moderate() -> Self {
+        let core = CoreSpectralDynamics::moderate();
+        Self {
+            core,
+            priority: 155,
+            enabled: true,
+        }
+    }
+
+    /// Aggressive dynamics - heavy control
+    pub fn aggressive() -> Self {
+        let core = CoreSpectralDynamics::aggressive();
+        Self {
+            core,
+            priority: 155,
+            enabled: true,
+        }
+    }
+
+    /// Expander - dynamics expansion
+    pub fn expander() -> Self {
+        let core = CoreSpectralDynamics::expander();
+        Self {
+            core,
+            priority: 155,
+            enabled: true,
+        }
+    }
+
+    /// Gate-like - aggressive expansion
+    pub fn gate_like() -> Self {
+        let core = CoreSpectralDynamics::gate_like();
+        Self {
+            core,
+            priority: 155,
+            enabled: true,
+        }
+    }
+
+    /// Set dynamics threshold in dB
+    pub fn set_threshold(&mut self, threshold_db: f32) {
+        self.core.set_threshold(threshold_db);
+    }
+
+    /// Set dynamics ratio
+    pub fn set_ratio(&mut self, ratio: f32) {
+        self.core.set_ratio(ratio);
+    }
+
+    /// Set attack time in milliseconds
+    pub fn set_attack(&mut self, attack_ms: f32) {
+        self.core.set_attack(attack_ms);
+    }
+
+    /// Set release time in milliseconds
+    pub fn set_release(&mut self, release_ms: f32) {
+        self.core.set_release(release_ms);
+    }
+
+    /// Set soft knee width in dB
+    pub fn set_knee(&mut self, knee_db: f32) {
+        self.core.set_knee(knee_db);
+    }
+
+    /// Set mix between original and processed signal (0.0-1.0)
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current threshold
+    pub fn threshold(&self) -> f32 {
+        self.core.threshold()
+    }
+
+    /// Get current ratio
+    pub fn ratio(&self) -> f32 {
+        self.core.ratio()
+    }
+
+    /// Get current attack time
+    pub fn attack(&self) -> f32 {
+        self.core.attack()
+    }
+
+    /// Get current release time
+    pub fn release(&self) -> f32 {
+        self.core.release()
+    }
+
+    /// Get current knee width
+    pub fn knee(&self) -> f32 {
+        self.core.knee()
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of mono audio
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for SpectralDynamics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralDynamics")
+            .field("threshold", &self.core.threshold())
+            .field("ratio", &self.core.ratio())
+            .field("attack", &self.core.attack())
+            .field("release", &self.core.release())
+            .field("knee", &self.core.knee())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral scramble wrapper for effects chain integration
+///
+/// Provides frequency bin randomization for glitchy, experimental effects.
+/// Perfect for glitch effects, digital artifacts, and creative sound design.
+#[derive(Clone)]
+pub struct SpectralScramble {
+    core: CoreSpectralScramble,
+    pub priority: u8,
+    pub enabled: bool,
+}
+
+impl SpectralScramble {
+    /// Create a new spectral scramble effect with default FFT settings (2048/512)
+    ///
+    /// # Arguments
+    /// - `scramble_amount` - Scramble intensity (0.0-1.0, default: 1.0)
+    /// - `low_freq` - Low frequency bound in Hz (default: 200.0)
+    /// - `high_freq` - High frequency bound in Hz (default: 12000.0)
+    /// - `mix` - Mix between original and scrambled (0.0-1.0, default: 1.0)
+    /// - `sample_rate` - Sample rate in Hz
+    pub fn new(
+        scramble_amount: f32,
+        low_freq: f32,
+        high_freq: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self::with_params(
+            2048,
+            512,
+            scramble_amount,
+            low_freq,
+            high_freq,
+            mix,
+            sample_rate,
+        )
+    }
+
+    /// Create a spectral scramble effect with custom FFT settings
+    ///
+    /// # Arguments
+    /// - `fft_size` - FFT size (must be power of 2, typically 2048)
+    /// - `hop_size` - Hop size (typically fft_size/4)
+    /// - `scramble_amount` - Scramble intensity (0.0-1.0)
+    /// - `low_freq` - Low frequency bound in Hz
+    /// - `high_freq` - High frequency bound in Hz
+    /// - `mix` - Mix between original and scrambled (0.0-1.0)
+    /// - `sample_rate` - Sample rate in Hz
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        scramble_amount: f32,
+        low_freq: f32,
+        high_freq: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralScramble::new(
+            fft_size,
+            hop_size,
+            crate::synthesis::spectral::WindowType::Hann,
+            sample_rate,
+        );
+        core.set_scramble_amount(scramble_amount);
+        core.set_low_freq(low_freq);
+        core.set_high_freq(high_freq);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 175, // After other spectral effects
+            enabled: true,
+        }
+    }
+
+    /// Subtle scramble - mild glitchiness
+    pub fn subtle() -> Self {
+        let core = CoreSpectralScramble::subtle();
+        Self {
+            core,
+            priority: 175,
+            enabled: true,
+        }
+    }
+
+    /// Moderate scramble - balanced glitch
+    pub fn moderate() -> Self {
+        let core = CoreSpectralScramble::moderate();
+        Self {
+            core,
+            priority: 175,
+            enabled: true,
+        }
+    }
+
+    /// Chaos - full scramble
+    pub fn chaos() -> Self {
+        let core = CoreSpectralScramble::chaos();
+        Self {
+            core,
+            priority: 175,
+            enabled: true,
+        }
+    }
+
+    /// Glitch - mid-range scramble
+    pub fn glitch() -> Self {
+        let core = CoreSpectralScramble::glitch();
+        Self {
+            core,
+            priority: 175,
+            enabled: true,
+        }
+    }
+
+    /// Digital - high frequency scramble
+    pub fn digital() -> Self {
+        let core = CoreSpectralScramble::digital();
+        Self {
+            core,
+            priority: 175,
+            enabled: true,
+        }
+    }
+
+    /// Set scramble amount (0.0-1.0)
+    pub fn set_scramble_amount(&mut self, amount: f32) {
+        self.core.set_scramble_amount(amount);
+    }
+
+    /// Set low frequency bound in Hz
+    pub fn set_low_freq(&mut self, freq: f32) {
+        self.core.set_low_freq(freq);
+    }
+
+    /// Set high frequency bound in Hz
+    pub fn set_high_freq(&mut self, freq: f32) {
+        self.core.set_high_freq(freq);
+    }
+
+    /// Set mix between original and scrambled (0.0-1.0)
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current scramble amount
+    pub fn scramble_amount(&self) -> f32 {
+        self.core.scramble_amount()
+    }
+
+    /// Get current low frequency bound
+    pub fn low_freq(&self) -> f32 {
+        self.core.low_freq()
+    }
+
+    /// Get current high frequency bound
+    pub fn high_freq(&self) -> f32 {
+        self.core.high_freq()
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of mono audio
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for SpectralScramble {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralScramble")
+            .field("scramble_amount", &self.core.scramble_amount())
+            .field("low_freq", &self.core.low_freq())
+            .field("high_freq", &self.core.high_freq())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
     }
 }
