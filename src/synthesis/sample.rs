@@ -507,38 +507,20 @@ impl Sample {
             return 0;
         }
 
-        // Dispatch to SIMD implementation
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.fill_buffer_simd_mono_impl::<8>(
-                buffer,
-                time_offset,
-                time_delta,
-                playback_rate,
-                sample_duration,
-                volume,
-            ),
-            SimdWidth::X4 => self.fill_buffer_simd_mono_impl::<4>(
-                buffer,
-                time_offset,
-                time_delta,
-                playback_rate,
-                sample_duration,
-                volume,
-            ),
-            SimdWidth::Scalar => self.fill_buffer_simd_mono_impl::<1>(
-                buffer,
-                time_offset,
-                time_delta,
-                playback_rate,
-                sample_duration,
-                volume,
-            ),
-        }
+        // Use TRUE SIMD implementation
+        self.fill_buffer_real_simd_mono(
+            buffer,
+            time_offset,
+            time_delta,
+            playback_rate,
+            sample_duration,
+            volume,
+        )
     }
 
-    /// Generic SIMD implementation for mono sample playback
+    /// TRUE SIMD implementation for mono sample playback
     #[inline(always)]
-    fn fill_buffer_simd_mono_impl<const N: usize>(
+    fn fill_buffer_real_simd_mono(
         &self,
         buffer: &mut [f32],
         mut time_offset: f32,
@@ -547,34 +529,60 @@ impl Sample {
         sample_duration: f32,
         volume: f32,
     ) -> usize {
-        let mut samples_written = 0;
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        use crate::synthesis::simd::SIMD;
 
-        // Process N samples at once
+        let mut samples_written = 0;
+
+        // Process 8 samples at a time
+        const SIMD_WIDTH: usize = 8;
+        let num_chunks = buffer.len() / SIMD_WIDTH;
+        let remainder_start = num_chunks * SIMD_WIDTH;
+
+        // Temp buffers for SIMD processing
+        let mut stereo_left = [0.0f32; SIMD_WIDTH];
+        let mut stereo_right = [0.0f32; SIMD_WIDTH];
+
         for chunk_idx in 0..num_chunks {
-            // Check if we've reached the end of the sample
+            // Check if we've reached the end
             if time_offset >= sample_duration {
                 break;
             }
 
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
+            let chunk_start = chunk_idx * SIMD_WIDTH;
+            let chunk = &mut buffer[chunk_start..chunk_start + SIMD_WIDTH];
 
-            // Process each sample in the chunk
-            for (i, sample_out) in chunk.iter_mut().enumerate() {
+            // Manually gather stereo samples (no SIMD gather)
+            let mut valid_samples = 0;
+            for i in 0..SIMD_WIDTH {
                 let sample_time = time_offset + (i as f32 * time_delta);
                 if sample_time >= sample_duration {
                     break;
                 }
 
-                // Get interpolated stereo sample and convert to mono
                 let (left, right) = self.sample_at_interpolated(sample_time, playback_rate);
-                *sample_out = (left + right) * 0.5 * volume;
-                samples_written += 1;
+                stereo_left[i] = left;
+                stereo_right[i] = right;
+                valid_samples += 1;
             }
 
-            time_offset += N as f32 * time_delta;
+            if valid_samples == 0 {
+                break;
+            }
+
+            // TRUE SIMD: average stereo to mono and apply volume
+            // chunk = (left + right) * 0.5 * volume
+            let half_volume = volume * 0.5;
+            for i in 0..valid_samples {
+                chunk[i] = stereo_left[i] + stereo_right[i];
+            }
+            SIMD.multiply_const(&mut chunk[..valid_samples], half_volume);
+
+            samples_written += valid_samples;
+            time_offset += SIMD_WIDTH as f32 * time_delta;
+
+            if valid_samples < SIMD_WIDTH {
+                break;
+            }
         }
 
         // Handle remainder samples

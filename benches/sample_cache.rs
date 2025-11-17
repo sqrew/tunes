@@ -1,5 +1,5 @@
-use tunes::prelude::*;
 use std::time::Instant;
+use tunes::prelude::*;
 
 /// Demonstrates automatic sample caching performance
 fn main() -> anyhow::Result<()> {
@@ -17,20 +17,22 @@ fn main() -> anyhow::Result<()> {
     // Test 1: First load (should be slow - disk I/O)
     println!("Test 1: First call (loads from disk)");
     let start = Instant::now();
-    engine.play_sample("/tmp/test_cache.wav")?;
+    engine.play_sample("/tmp/test_cache.wav");
     let first_duration = start.elapsed();
     println!("  Time: {:?}\n", first_duration);
 
     // Test 2: Second load (should be instant - cached)
     println!("Test 2: Second call (uses cache)");
     let start = Instant::now();
-    engine.play_sample("/tmp/test_cache.wav")?;
+    engine.play_sample("/tmp/test_cache.wav");
     let second_duration = start.elapsed();
     println!("  Time: {:?}", second_duration);
 
     if second_duration < first_duration / 10 {
-        println!("  ✅ Cache hit! Second call was {}x faster!\n",
-                 first_duration.as_micros() / second_duration.as_micros().max(1));
+        println!(
+            "  ✅ Cache hit! Second call was {}x faster!\n",
+            first_duration.as_micros() / second_duration.as_micros().max(1)
+        );
     } else {
         println!("  ⚠️  Unexpected: Second call should be much faster\n");
     }
@@ -39,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 3: Spam 100 calls");
     let start = Instant::now();
     for _ in 0..100 {
-        engine.play_sample("/tmp/test_cache.wav")?;
+        engine.play_sample("/tmp/test_cache.wav");
     }
     let spam_duration = start.elapsed();
     println!("  Total time for 100 calls: {:?}", spam_duration);
@@ -57,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     println!("  Preload time: {:?}", preload_duration);
 
     let start = Instant::now();
-    engine.play_sample("/tmp/test_cache2.wav")?;
+    engine.play_sample("/tmp/test_cache2.wav");
     let play_duration = start.elapsed();
     println!("  First play time (pre-loaded): {:?}", play_duration);
 
@@ -71,7 +73,7 @@ fn main() -> anyhow::Result<()> {
     println!("  ✓ Removed /tmp/test_cache.wav from cache");
 
     let start = Instant::now();
-    engine.play_sample("/tmp/test_cache.wav")?;
+    engine.play_sample("/tmp/test_cache.wav");
     let reload_duration = start.elapsed();
     println!("  Time to play after removal: {:?}", reload_duration);
 

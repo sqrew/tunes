@@ -12,6 +12,7 @@ pub mod modulation;
 pub mod spatial;
 pub mod eq;
 pub mod convolution;
+pub mod spectral;
 
 // Re-export all effect types
 pub use delay::Delay;
@@ -22,6 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
+pub use spectral::{PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -38,7 +40,7 @@ pub use convolution::{Convolution, ConvolutionReverb, IRParams};
 ///     .with_compressor(Compressor::new(0.5, 4.0, 0.01, 0.1, 1.0))
 ///     .with_reverb(Reverb::hall());
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EffectChain {
     // All available effects
     pub eq: Option<EQ>,
@@ -58,13 +60,28 @@ pub struct EffectChain {
     pub convolution_reverb: Option<ConvolutionReverb>,
     pub limiter: Option<Limiter>,
     pub parametric_eq: Option<ParametricEQ>,
+    pub phase_vocoder: Option<PhaseVocoder>,
+    pub spectral_freeze: Option<SpectralFreeze>,
+    pub spectral_gate: Option<SpectralGate>,
+    pub spectral_compressor: Option<SpectralCompressor>,
+    pub spectral_robotize: Option<SpectralRobotize>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
     //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
-    //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb
+    //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb,
+    //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
+    //             20=SpectralRobotize
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
+}
+
+impl std::fmt::Debug for EffectChain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EffectChain")
+            .field("effect_count", &self.effect_order.len())
+            .finish()
+    }
 }
 
 impl EffectChain {
@@ -88,6 +105,11 @@ impl EffectChain {
             convolution_reverb: None,
             limiter: None,
             parametric_eq: None,
+            phase_vocoder: None,
+            spectral_freeze: None,
+            spectral_gate: None,
+            spectral_compressor: None,
+            spectral_robotize: None,
             effect_order: Vec::new(),
         }
     }
@@ -147,6 +169,21 @@ impl EffectChain {
         }
         if let Some(ref convolution_reverb) = self.convolution_reverb {
             effects.push((convolution_reverb.priority, 15));
+        }
+        if let Some(ref phase_vocoder) = self.phase_vocoder {
+            effects.push((phase_vocoder.priority, 16));
+        }
+        if let Some(ref spectral_freeze) = self.spectral_freeze {
+            effects.push((spectral_freeze.priority, 17));
+        }
+        if let Some(ref spectral_gate) = self.spectral_gate {
+            effects.push((spectral_gate.priority, 18));
+        }
+        if let Some(ref spectral_compressor) = self.spectral_compressor {
+            effects.push((spectral_compressor.priority, 19));
+        }
+        if let Some(ref spectral_robotize) = self.spectral_robotize {
+            effects.push((spectral_robotize.priority, 20));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -430,6 +467,36 @@ impl EffectChain {
                     // ConvolutionReverb
                     if let Some(ref mut convolution_reverb) = self.convolution_reverb {
                         convolution_reverb.process_block_direct(buffer);
+                    }
+                }
+                16 => {
+                    // PhaseVocoder (block-based spectral effect)
+                    if let Some(ref mut phase_vocoder) = self.phase_vocoder {
+                        phase_vocoder.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                17 => {
+                    // SpectralFreeze (block-based spectral effect)
+                    if let Some(ref mut spectral_freeze) = self.spectral_freeze {
+                        spectral_freeze.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                18 => {
+                    // SpectralGate (block-based spectral effect)
+                    if let Some(ref mut spectral_gate) = self.spectral_gate {
+                        spectral_gate.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                19 => {
+                    // SpectralCompressor (block-based spectral effect)
+                    if let Some(ref mut spectral_compressor) = self.spectral_compressor {
+                        spectral_compressor.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                20 => {
+                    // SpectralRobotize (block-based spectral effect)
+                    if let Some(ref mut spectral_robotize) = self.spectral_robotize {
+                        spectral_robotize.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}
@@ -745,6 +812,99 @@ impl EffectChain {
     /// Add parametric EQ effect (builder pattern)
     pub fn with_parametric_eq(mut self, parametric_eq: ParametricEQ) -> Self {
         self.parametric_eq = Some(parametric_eq);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add phase vocoder effect (builder pattern)
+    ///
+    /// Phase vocoder provides high-quality time-stretching and pitch-shifting.
+    ///
+    /// **Note**: This is a block-based effect. Use `process_mono_block` or
+    /// `process_stereo_block` for best results.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, PhaseVocoder};
+    /// let mut chain = EffectChain::new();
+    /// let mut vocoder = PhaseVocoder::new(44100.0);
+    /// vocoder.set_pitch_shift(7.0); // Perfect fifth up
+    /// chain = chain.with_phase_vocoder(vocoder);
+    /// ```
+    pub fn with_phase_vocoder(mut self, phase_vocoder: PhaseVocoder) -> Self {
+        self.phase_vocoder = Some(phase_vocoder);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add a spectral freeze effect to the chain
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralFreeze};
+    /// let mut chain = EffectChain::new();
+    /// let mut freeze = SpectralFreeze::new(44100.0);
+    /// freeze.freeze();
+    /// freeze.set_mix(0.75); // 75% frozen, 25% live
+    /// chain = chain.with_spectral_freeze(freeze);
+    /// ```
+    pub fn with_spectral_freeze(mut self, spectral_freeze: SpectralFreeze) -> Self {
+        self.spectral_freeze = Some(spectral_freeze);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add a spectral gate effect to the chain
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralGate};
+    /// let mut chain = EffectChain::new();
+    /// let mut gate = SpectralGate::new(44100.0);
+    /// gate.set_threshold(-40.0); // Gate bins below -40 dB
+    /// gate.set_attack(0.001);
+    /// gate.set_release(0.050);
+    /// chain = chain.with_spectral_gate(gate);
+    /// ```
+    pub fn with_spectral_gate(mut self, spectral_gate: SpectralGate) -> Self {
+        self.spectral_gate = Some(spectral_gate);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add a spectral compressor effect to the chain
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralCompressor};
+    /// let mut chain = EffectChain::new();
+    /// let mut comp = SpectralCompressor::new(44100.0);
+    /// comp.set_threshold(-20.0);  // Compress above -20 dB
+    /// comp.set_ratio(4.0);         // 4:1 ratio
+    /// comp.set_attack(5.0);        // 5ms attack
+    /// comp.set_release(50.0);      // 50ms release
+    /// comp.set_knee(6.0);          // 6 dB soft knee
+    /// chain = chain.with_spectral_compressor(comp);
+    /// ```
+    pub fn with_spectral_compressor(mut self, spectral_compressor: SpectralCompressor) -> Self {
+        self.spectral_compressor = Some(spectral_compressor);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add a spectral robotize effect to the chain
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralRobotize};
+    /// let mut chain = EffectChain::new();
+    /// let mut robotize = SpectralRobotize::new(44100.0);
+    /// robotize.set_target_phase(0.0);
+    /// robotize.set_mix(1.0); // Full robotization
+    /// chain = chain.with_spectral_robotize(robotize);
+    /// ```
+    pub fn with_spectral_robotize(mut self, spectral_robotize: SpectralRobotize) -> Self {
+        self.spectral_robotize = Some(spectral_robotize);
         self.compute_effect_order();
         self
     }

@@ -2212,6 +2212,112 @@ impl Mixer {
         self.master.autopan = Some(autopan);
         self.master.compute_effect_order();
     }
+
+    /// Add a phase vocoder to the master chain for time-stretching and pitch-shifting
+    ///
+    /// Phase vocoder allows independent control of time and pitch using STFT analysis.
+    /// Perfect for creative time/pitch manipulation with phase coherence preservation.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::PhaseVocoder;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let mut vocoder = PhaseVocoder::new(44100.0);
+    /// vocoder.set_pitch_shift(7.0); // Perfect fifth up
+    /// mixer.master_phase_vocoder(vocoder);
+    /// ```
+    pub fn master_phase_vocoder(&mut self, phase_vocoder: crate::synthesis::effects::PhaseVocoder) {
+        self.master.phase_vocoder = Some(phase_vocoder);
+        self.master.compute_effect_order();
+    }
+
+    /// Add a spectral freeze to the master chain for capturing and holding frequency spectrum
+    ///
+    /// Spectral freeze captures the current frequency content and holds it indefinitely,
+    /// creating sustained "frozen" sounds. Perfect for ambient textures and drones.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralFreeze;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let mut freeze = SpectralFreeze::new(44100.0);
+    /// freeze.freeze();
+    /// freeze.set_mix(0.75); // 75% frozen, 25% live
+    /// mixer.master_spectral_freeze(freeze);
+    /// ```
+    pub fn master_spectral_freeze(&mut self, spectral_freeze: crate::synthesis::effects::SpectralFreeze) {
+        self.master.spectral_freeze = Some(spectral_freeze);
+        self.master.compute_effect_order();
+    }
+
+    /// Add a spectral gate to the master chain for frequency-selective noise gating
+    ///
+    /// Spectral gate applies independent gating to each frequency bin, enabling surgical
+    /// noise reduction. Unlike traditional gates that gate the entire signal, spectral gate
+    /// can remove hum, hiss, and unwanted frequencies while preserving the wanted signal.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralGate;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let mut gate = SpectralGate::new(44100.0);
+    /// gate.set_threshold(-40.0); // Gate bins below -40 dB
+    /// gate.set_attack(1.0);       // 1ms attack
+    /// gate.set_release(50.0);     // 50ms release
+    /// mixer.master_spectral_gate(gate);
+    /// ```
+    pub fn master_spectral_gate(&mut self, spectral_gate: crate::synthesis::effects::SpectralGate) {
+        self.master.spectral_gate = Some(spectral_gate);
+        self.master.compute_effect_order();
+    }
+
+    /// Add a spectral compressor to the master chain for frequency-selective dynamic range compression
+    ///
+    /// Spectral compressor applies independent compression to each frequency bin, enabling
+    /// multiband compression at extreme resolution (1024+ bands). This allows for surgical
+    /// dynamic control that can't be achieved with traditional multiband compressors.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralCompressor;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let mut compressor = SpectralCompressor::new(44100.0);
+    /// compressor.set_threshold(-20.0); // Compress above -20 dB
+    /// compressor.set_ratio(4.0);        // 4:1 ratio
+    /// compressor.set_attack(5.0);       // 5ms attack
+    /// compressor.set_release(50.0);     // 50ms release
+    /// compressor.set_knee(6.0);         // 6 dB soft knee
+    /// mixer.master_spectral_compressor(compressor);
+    /// ```
+    pub fn master_spectral_compressor(&mut self, spectral_compressor: crate::synthesis::effects::SpectralCompressor) {
+        self.master.spectral_compressor = Some(spectral_compressor);
+        self.master.compute_effect_order();
+    }
+
+    pub fn master_spectral_robotize(&mut self, spectral_robotize: crate::synthesis::effects::SpectralRobotize) {
+        self.master.spectral_robotize = Some(spectral_robotize);
+        self.master.compute_effect_order();
+    }
 }
 
 impl Default for Mixer {

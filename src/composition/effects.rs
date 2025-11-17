@@ -1,14 +1,15 @@
 use super::TrackBuilder;
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
-    Gate, Limiter, Phaser, Reverb, RingModulator, Saturation, Tremolo,
+    Gate, Limiter, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation, SpectralFreeze,
+    SpectralGate, SpectralCompressor, SpectralRobotize, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
 
 /// Builder for audio effects (accessed via `.effects()`)
 ///
-/// Provides a scoped namespace for all 17 audio effect methods.
+/// Provides a scoped namespace for all 22 audio effect methods.
 /// Use with closure syntax for clean, organized code:
 ///
 /// ```rust
@@ -137,6 +138,36 @@ impl<'a> EffectsBuilder<'a> {
         self
     }
 
+    /// Add phase vocoder effect for time-stretching and pitch-shifting
+    pub fn phase_vocoder(mut self, phase_vocoder: PhaseVocoder) -> Self {
+        self.inner = self.inner.phase_vocoder(phase_vocoder);
+        self
+    }
+
+    /// Add spectral freeze effect for capturing and holding frequency spectrum
+    pub fn spectral_freeze(mut self, spectral_freeze: SpectralFreeze) -> Self {
+        self.inner = self.inner.spectral_freeze(spectral_freeze);
+        self
+    }
+
+    /// Add spectral gate effect for frequency-selective noise gating
+    pub fn spectral_gate(mut self, spectral_gate: SpectralGate) -> Self {
+        self.inner = self.inner.spectral_gate(spectral_gate);
+        self
+    }
+
+    /// Add spectral compressor effect for frequency-selective dynamic range compression
+    pub fn spectral_compressor(mut self, spectral_compressor: SpectralCompressor) -> Self {
+        self.inner = self.inner.spectral_compressor(spectral_compressor);
+        self
+    }
+
+    /// Add spectral robotize effect for robotic/synthesized voice
+    pub fn spectral_robotize(mut self, spectral_robotize: SpectralRobotize) -> Self {
+        self.inner = self.inner.spectral_robotize(spectral_robotize);
+        self
+    }
+
     /// Add LFO modulation
     pub fn modulate(mut self, mod_route: ModRoute) -> Self {
         self.inner = self.inner.modulate(mod_route);
@@ -147,7 +178,7 @@ impl<'a> EffectsBuilder<'a> {
 impl<'a> TrackBuilder<'a> {
     /// Enter effects namespace
     ///
-    /// Provides scoped access to all 17 audio effect methods.
+    /// Provides scoped access to all 18 audio effect methods.
     /// The closure receives an `EffectsBuilder` and should return it
     /// after applying effects.
     ///
@@ -533,6 +564,188 @@ impl<'a> TrackBuilder<'a> {
     pub fn limiter(mut self, limiter: Limiter) -> Self {
         let track = self.get_track_mut();
         track.effects.limiter = Some(limiter);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add phase vocoder effect for time-stretching and pitch-shifting
+    ///
+    /// Phase vocoder allows independent control of time and pitch using STFT analysis.
+    /// Perfect for creative time/pitch manipulation with phase coherence preservation.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `phase_vocoder` - PhaseVocoder effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::PhaseVocoder;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Pitch up a perfect fifth without changing duration
+    /// let mut vocoder = PhaseVocoder::new(44100.0);
+    /// vocoder.set_pitch_shift(7.0);
+    ///
+    /// comp.instrument("vocals", &Instrument::synth_lead())
+    ///     .phase_vocoder(vocoder)
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn phase_vocoder(mut self, phase_vocoder: PhaseVocoder) -> Self {
+        let track = self.get_track_mut();
+        track.effects.phase_vocoder = Some(phase_vocoder);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral freeze effect for capturing and holding frequency spectrum
+    ///
+    /// Spectral freeze captures the current frequency content and holds it indefinitely,
+    /// creating sustained "frozen" sounds. Perfect for ambient textures, drones, and
+    /// evolving soundscapes from transient sounds.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_freeze` - SpectralFreeze effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralFreeze;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Freeze the spectrum and mix with live signal
+    /// let mut freeze = SpectralFreeze::new(44100.0);
+    /// freeze.freeze();
+    /// freeze.set_mix(0.75);  // 75% frozen, 25% live
+    ///
+    /// comp.instrument("ambient", &Instrument::warm_pad())
+    ///     .spectral_freeze(freeze)
+    ///     .note(&[A3], 4.0);
+    /// ```
+    pub fn spectral_freeze(mut self, spectral_freeze: SpectralFreeze) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_freeze = Some(spectral_freeze);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral gate effect for frequency-selective noise gating
+    ///
+    /// Spectral gate applies independent gating to each frequency bin, enabling surgical
+    /// noise reduction. Unlike traditional gates that gate the entire signal, spectral gate
+    /// can remove hum, hiss, and unwanted frequencies while preserving the wanted signal.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_gate` - SpectralGate effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::instruments::Instrument;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralGate;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Remove noise below -40 dB per frequency bin
+    /// let mut gate = SpectralGate::new(44100.0);
+    /// gate.set_threshold(-40.0);
+    /// gate.set_attack(0.001);  // 1ms
+    /// gate.set_release(0.050); // 50ms
+    ///
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_gate(gate)
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_gate(mut self, spectral_gate: SpectralGate) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_gate = Some(spectral_gate);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral compressor effect for frequency-selective dynamic range compression
+    ///
+    /// Spectral compressor applies independent compression to each frequency bin, enabling
+    /// multiband compression at extreme resolution (1024+ bands). This allows for surgical
+    /// dynamic control that can't be achieved with traditional multiband compressors.
+    ///
+    /// # Use Cases
+    ///
+    /// - **Multiband Mastering**: 1024-band compression for ultimate control
+    /// - **De-essing**: Compress harsh sibilance (6-8 kHz) without affecting rest of vocal
+    /// - **Taming Resonances**: Control specific problem frequencies
+    /// - **Creative Effects**: Per-frequency dynamics for unique textures
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralCompressor;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // De-ess a vocal track
+    /// let mut comp_effect = SpectralCompressor::new(44100.0);
+    /// comp_effect.set_threshold(-20.0);  // Compress above -20 dB
+    /// comp_effect.set_ratio(4.0);         // 4:1 ratio
+    /// comp_effect.set_attack(5.0);        // 5ms attack
+    /// comp_effect.set_release(50.0);      // 50ms release
+    /// comp_effect.set_knee(6.0);          // 6 dB soft knee
+    ///
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_compressor(comp_effect)
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_compressor(mut self, spectral_compressor: SpectralCompressor) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_compressor = Some(spectral_compressor);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral robotize effect for robotic/synthesized voice effects
+    ///
+    /// SpectralRobotize quantizes phase information while preserving magnitude spectrum,
+    /// creating classic robot voice, whisper-to-speech, and synthesized vocal effects.
+    ///
+    /// # Use Cases
+    /// - Robot Voice: Classic Kraftwerk/Daft Punk effects
+    /// - Whisper to Speech: Convert whispered audio to synthesized speech
+    /// - Creative FX: Dehumanize vocals, alien voices
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralRobotize;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut robotize = SpectralRobotize::new(44100.0);
+    /// robotize.set_target_phase(0.0);
+    /// robotize.set_mix(1.0); // Full robotization
+    ///
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_robotize(robotize)
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_robotize(mut self, spectral_robotize: SpectralRobotize) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_robotize = Some(spectral_robotize);
         track.effects.compute_effect_order();
         self
     }

@@ -42,7 +42,8 @@
 
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
-    Limiter, ParametricEQ, Phaser, Reverb, RingModulator, Saturation, Tremolo,
+    Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
+    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -397,6 +398,40 @@ impl<'a> BusBuilder<'a> {
     /// Add reverb effect to this bus
     pub fn reverb(self, reverb: Reverb) -> Self {
         self.bus.effects.reverb = Some(reverb);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add phase vocoder effect to this bus for time-stretching and pitch-shifting
+    pub fn phase_vocoder(self, phase_vocoder: PhaseVocoder) -> Self {
+        self.bus.effects.phase_vocoder = Some(phase_vocoder);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral freeze effect to this bus for capturing and holding frequency spectrum
+    pub fn spectral_freeze(self, spectral_freeze: SpectralFreeze) -> Self {
+        self.bus.effects.spectral_freeze = Some(spectral_freeze);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral gate effect to this bus for frequency-selective noise gating
+    pub fn spectral_gate(self, spectral_gate: SpectralGate) -> Self {
+        self.bus.effects.spectral_gate = Some(spectral_gate);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral compressor effect to this bus for frequency-selective dynamic range compression
+    pub fn spectral_compressor(self, spectral_compressor: SpectralCompressor) -> Self {
+        self.bus.effects.spectral_compressor = Some(spectral_compressor);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    pub fn spectral_robotize(self, spectral_robotize: SpectralRobotize) -> Self {
+        self.bus.effects.spectral_robotize = Some(spectral_robotize);
         self.bus.effects.compute_effect_order();
         self
     }

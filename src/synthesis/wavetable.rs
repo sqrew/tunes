@@ -245,53 +245,54 @@ impl Wavetable {
     /// let final_phase = wavetable.fill_buffer_simd(&mut buffer, 0.0, phase_inc);
     /// ```
     pub fn fill_buffer_simd(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
-
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.fill_buffer_impl::<8>(buffer, start_phase, phase_increment),
-            SimdWidth::X4 => self.fill_buffer_impl::<4>(buffer, start_phase, phase_increment),
-            SimdWidth::Scalar => self.fill_buffer_scalar(buffer, start_phase, phase_increment),
-        }
+        // Use real SIMD implementation (auto-dispatches)
+        self.fill_buffer_real_simd(buffer, start_phase, phase_increment)
     }
 
-    /// Generic SIMD implementation - processes N samples at once
+    /// TRUE SIMD implementation - uses vector operations for interpolation
     #[inline(always)]
-    fn fill_buffer_impl<const N: usize>(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
+    fn fill_buffer_real_simd(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
+        use crate::synthesis::simd::SIMD;
+
         let mut phase = start_phase;
         let table_size = self.table.len();
         let table_size_f32 = table_size as f32;
+        let mask = table_size - 1;
 
-        // Calculate how many complete chunks we can process
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        // Process 8 samples at a time (optimal for AVX2)
+        const SIMD_WIDTH: usize = 8;
+        let num_chunks = buffer.len() / SIMD_WIDTH;
+        let remainder_start = num_chunks * SIMD_WIDTH;
 
-        // Process N samples at a time
+        // Temp buffers for SIMD lerp
+        let mut samples1 = [0.0f32; SIMD_WIDTH];
+        let mut samples2 = [0.0f32; SIMD_WIDTH];
+        let mut fracs = [0.0f32; SIMD_WIDTH];
+
         for chunk_idx in 0..num_chunks {
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
+            let chunk_start = chunk_idx * SIMD_WIDTH;
+            let chunk = &mut buffer[chunk_start..chunk_start + SIMD_WIDTH];
 
-            // Generate N phases
-            let mut phases = [0.0f32; 8]; // Max size for N=8
-            for i in 0..N {
-                phases[i] = (phase + (i as f32) * phase_increment).fract();
-            }
-
-            // Sample N values from the wavetable
-            for i in 0..N {
-                let table_pos = phases[i] * table_size_f32;
+            // Manually gather table samples (no SIMD gather in `wide`)
+            // But we'll use SIMD for the interpolation math
+            for i in 0..SIMD_WIDTH {
+                let p = (phase + (i as f32) * phase_increment).fract();
+                let table_pos = p * table_size_f32;
                 let index = table_pos as usize;
                 let frac = table_pos - index as f32;
 
-                let sample1 = unsafe { *self.table.get_unchecked(index) };
-                let sample2 = unsafe { *self.table.get_unchecked((index + 1) & (table_size - 1)) };
-
-                chunk[i] = sample1 + (sample2 - sample1) * frac;
+                samples1[i] = unsafe { *self.table.get_unchecked(index) };
+                samples2[i] = unsafe { *self.table.get_unchecked((index + 1) & mask) };
+                fracs[i] = frac;
             }
 
-            phase += (N as f32) * phase_increment;
+            // TRUE SIMD: lerp 8 samples at once with vector ops
+            SIMD.lerp_buffers(chunk, &samples1, &samples2, &fracs);
+
+            phase += (SIMD_WIDTH as f32) * phase_increment;
         }
 
-        // Handle remainder samples with scalar code
+        // Handle remainder samples
         for i in remainder_start..buffer.len() {
             buffer[i] = self.sample(phase);
             phase += phase_increment;

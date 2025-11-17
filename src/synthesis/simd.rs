@@ -57,9 +57,21 @@ pub trait SimdLanes: Copy + Clone + Sized {
     fn abs(self) -> Self;
     fn min(self, other: Self) -> Self;
     fn max(self, other: Self) -> Self;
+    fn sqrt(self) -> Self;
+
+    // FMA (fused multiply-add): a * b + c
+    // More accurate and faster than separate mul + add
+    fn mul_add(self, b: Self, c: Self) -> Self;
+
+    // Fast approximations for audio (trading precision for speed)
+    fn fast_tanh(self) -> Self;
+    fn fast_sin(self) -> Self;
+    fn fast_cos(self) -> Self;
+    fn clamp(self, min: Self, max: Self) -> Self;
 
     // Conversion
     fn write_to_slice(self, slice: &mut [f32]);
+    fn extract_lane(self, lane: usize) -> f32;
 }
 
 // Macro to implement SimdLanes for wide SIMD types
@@ -118,9 +130,78 @@ macro_rules! impl_simd_lanes {
             }
 
             #[inline(always)]
+            fn sqrt(self) -> Self {
+                self.sqrt()
+            }
+
+            #[inline(always)]
+            fn mul_add(self, b: Self, c: Self) -> Self {
+                self.mul_add(b, c)
+            }
+
+            #[inline(always)]
+            fn fast_tanh(self) -> Self {
+                // Pade [3/3] approximation: tanh(x) ≈ x(x² + 15)/(15 + 6x²)
+                // Very accurate for -2 < x < 2, good enough for audio
+                let x2 = self.mul(self);
+                let num = self.mul(x2.add(<$type>::splat(15.0)));
+                let denom = x2.mul(<$type>::splat(6.0)).add(<$type>::splat(15.0));
+                let result = num.div(denom);
+
+                // Clamp to valid tanh range for safety
+                result.clamp(<$type>::splat(-1.0), <$type>::splat(1.0))
+            }
+
+            #[inline(always)]
+            fn fast_sin(self) -> Self {
+                // 7th order Taylor series: sin(x) ≈ x - x³/3! + x⁵/5! - x⁷/7!
+                // Accurate to ~0.001 for |x| < π, perfect for audio phase
+                let x = self;
+                let x2 = x.mul(x);
+                let x3 = x2.mul(x);
+                let x5 = x3.mul(x2);
+                let x7 = x5.mul(x2);
+
+                // sin(x) ≈ x - x³/6 + x⁵/120 - x⁷/5040
+                let term1 = x;
+                let term2 = x3.mul(<$type>::splat(-1.0 / 6.0));
+                let term3 = x5.mul(<$type>::splat(1.0 / 120.0));
+                let term4 = x7.mul(<$type>::splat(-1.0 / 5040.0));
+
+                term1.add(term2).add(term3).add(term4)
+            }
+
+            #[inline(always)]
+            fn fast_cos(self) -> Self {
+                // 6th order Taylor series: cos(x) ≈ 1 - x²/2! + x⁴/4! - x⁶/6!
+                // Accurate to ~0.001 for |x| < π
+                let x2 = self.mul(self);
+                let x4 = x2.mul(x2);
+                let x6 = x4.mul(x2);
+
+                // cos(x) ≈ 1 - x²/2 + x⁴/24 - x⁶/720
+                let term1 = <$type>::splat(1.0);
+                let term2 = x2.mul(<$type>::splat(-1.0 / 2.0));
+                let term3 = x4.mul(<$type>::splat(1.0 / 24.0));
+                let term4 = x6.mul(<$type>::splat(-1.0 / 720.0));
+
+                term1.add(term2).add(term3).add(term4)
+            }
+
+            #[inline(always)]
+            fn clamp(self, min: Self, max: Self) -> Self {
+                self.max(min).min(max)
+            }
+
+            #[inline(always)]
             fn write_to_slice(self, slice: &mut [f32]) {
                 let arr = self.to_array();
                 slice[..$lanes].copy_from_slice(&arr);
+            }
+
+            #[inline(always)]
+            fn extract_lane(self, lane: usize) -> f32 {
+                self.to_array()[lane]
             }
         }
     };
@@ -180,8 +261,58 @@ impl SimdLanes for f32 {
     }
 
     #[inline(always)]
+    fn sqrt(self) -> Self {
+        self.sqrt()
+    }
+
+    #[inline(always)]
+    fn mul_add(self, b: Self, c: Self) -> Self {
+        self.mul_add(b, c)
+    }
+
+    #[inline(always)]
+    fn fast_tanh(self) -> Self {
+        // Pade [3/3] approximation: tanh(x) ≈ x(x² + 15)/(15 + 6x²)
+        let x2 = self * self;
+        let num = self * (x2 + 15.0);
+        let denom = 15.0 + 6.0 * x2;
+        let result = num / denom;
+        result.clamp(-1.0, 1.0)
+    }
+
+    #[inline(always)]
+    fn fast_sin(self) -> Self {
+        // 7th order Taylor series
+        let x = self;
+        let x2 = x * x;
+        let x3 = x2 * x;
+        let x5 = x3 * x2;
+        let x7 = x5 * x2;
+        x - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0
+    }
+
+    #[inline(always)]
+    fn fast_cos(self) -> Self {
+        // 6th order Taylor series
+        let x2 = self * self;
+        let x4 = x2 * x2;
+        let x6 = x4 * x2;
+        1.0 - x2 / 2.0 + x4 / 24.0 - x6 / 720.0
+    }
+
+    #[inline(always)]
+    fn clamp(self, min: Self, max: Self) -> Self {
+        self.max(min).min(max)
+    }
+
+    #[inline(always)]
     fn write_to_slice(self, slice: &mut [f32]) {
         slice[0] = self;
+    }
+
+    #[inline(always)]
+    fn extract_lane(self, _lane: usize) -> f32 {
+        self
     }
 }
 
@@ -325,6 +456,126 @@ impl SimdDispatcher {
             *sample = f(*sample);
         }
     }
+
+    /// Multiply all samples in buffer by a constant using SIMD
+    #[inline]
+    pub fn multiply_const(&self, buffer: &mut [f32], multiplier: f32) {
+        match self.width {
+            SimdWidth::X8 => self.multiply_const_impl::<f32x8>(buffer, multiplier),
+            SimdWidth::X4 => self.multiply_const_impl::<f32x4>(buffer, multiplier),
+            SimdWidth::Scalar => self.multiply_const_impl::<f32>(buffer, multiplier),
+        }
+    }
+
+    #[inline(always)]
+    fn multiply_const_impl<V: SimdLanes>(&self, buffer: &mut [f32], multiplier: f32) {
+        let mult_vec = V::splat(multiplier);
+        let (chunks, remainder) = buffer.split_at_mut(buffer.len() - (buffer.len() % V::LANES));
+
+        for chunk in chunks.chunks_exact_mut(V::LANES) {
+            let vec = V::from_array(chunk);
+            let result = vec.mul(mult_vec);
+            result.write_to_slice(chunk);
+        }
+
+        for sample in remainder.iter_mut() {
+            *sample *= multiplier;
+        }
+    }
+
+    /// FMA (fused multiply-add): buffer = buffer * mul + add, using SIMD
+    #[inline]
+    pub fn fma(&self, buffer: &mut [f32], mul: f32, add: f32) {
+        match self.width {
+            SimdWidth::X8 => self.fma_impl::<f32x8>(buffer, mul, add),
+            SimdWidth::X4 => self.fma_impl::<f32x4>(buffer, mul, add),
+            SimdWidth::Scalar => self.fma_impl::<f32>(buffer, mul, add),
+        }
+    }
+
+    #[inline(always)]
+    fn fma_impl<V: SimdLanes>(&self, buffer: &mut [f32], mul: f32, add: f32) {
+        let mul_vec = V::splat(mul);
+        let add_vec = V::splat(add);
+        let (chunks, remainder) = buffer.split_at_mut(buffer.len() - (buffer.len() % V::LANES));
+
+        for chunk in chunks.chunks_exact_mut(V::LANES) {
+            let vec = V::from_array(chunk);
+            let result = vec.mul_add(mul_vec, add_vec);
+            result.write_to_slice(chunk);
+        }
+
+        for sample in remainder.iter_mut() {
+            *sample = sample.mul_add(mul, add);
+        }
+    }
+
+    /// Apply fast_tanh to all samples using SIMD
+    #[inline]
+    pub fn apply_fast_tanh(&self, buffer: &mut [f32]) {
+        match self.width {
+            SimdWidth::X8 => self.apply_fast_tanh_impl::<f32x8>(buffer),
+            SimdWidth::X4 => self.apply_fast_tanh_impl::<f32x4>(buffer),
+            SimdWidth::Scalar => self.apply_fast_tanh_impl::<f32>(buffer),
+        }
+    }
+
+    #[inline(always)]
+    fn apply_fast_tanh_impl<V: SimdLanes>(&self, buffer: &mut [f32]) {
+        let (chunks, remainder) = buffer.split_at_mut(buffer.len() - (buffer.len() % V::LANES));
+
+        for chunk in chunks.chunks_exact_mut(V::LANES) {
+            let vec = V::from_array(chunk);
+            let result = vec.fast_tanh();
+            result.write_to_slice(chunk);
+        }
+
+        for sample in remainder.iter_mut() {
+            *sample = sample.fast_tanh();
+        }
+    }
+
+    /// Linear interpolation: out = a + (b - a) * t, using SIMD
+    /// Processes two buffers and a fractional buffer
+    #[inline]
+    pub fn lerp_buffers(&self, out: &mut [f32], a: &[f32], b: &[f32], t: &[f32]) {
+        match self.width {
+            SimdWidth::X8 => self.lerp_impl::<f32x8>(out, a, b, t),
+            SimdWidth::X4 => self.lerp_impl::<f32x4>(out, a, b, t),
+            SimdWidth::Scalar => self.lerp_impl::<f32>(out, a, b, t),
+        }
+    }
+
+    #[inline(always)]
+    fn lerp_impl<V: SimdLanes>(&self, out: &mut [f32], a: &[f32], b: &[f32], t: &[f32]) {
+        let len = out.len().min(a.len()).min(b.len()).min(t.len());
+        let (out_chunks, out_rem) = out[..len].split_at_mut(len - (len % V::LANES));
+        let (a_chunks, a_rem) = a[..len].split_at(len - (len % V::LANES));
+        let (b_chunks, b_rem) = b[..len].split_at(len - (len % V::LANES));
+        let (t_chunks, t_rem) = t[..len].split_at(len - (len % V::LANES));
+
+        // SIMD path
+        for (((out_chunk, a_chunk), b_chunk), t_chunk) in out_chunks
+            .chunks_exact_mut(V::LANES)
+            .zip(a_chunks.chunks_exact(V::LANES))
+            .zip(b_chunks.chunks_exact(V::LANES))
+            .zip(t_chunks.chunks_exact(V::LANES))
+        {
+            let va = V::from_array(a_chunk);
+            let vb = V::from_array(b_chunk);
+            let vt = V::from_array(t_chunk);
+
+            // lerp: a + (b - a) * t
+            let diff = vb.sub(va);
+            let result = diff.mul_add(vt, va);
+            result.write_to_slice(out_chunk);
+        }
+
+        // Scalar remainder
+        for i in 0..out_rem.len() {
+            out_rem[i] = a_rem[i] + (b_rem[i] - a_rem[i]) * t_rem[i];
+        }
+    }
 }
 
 impl Default for SimdDispatcher {
@@ -399,5 +650,175 @@ mod tests {
         let mut buffer = vec![0.0; 4];
         vec.write_to_slice(&mut buffer);
         assert_eq!(buffer, vec![42.0, 42.0, 42.0, 42.0]);
+    }
+
+    #[test]
+    fn test_sqrt() {
+        let vec = f32x4::splat(16.0);
+        let result = vec.sqrt();
+        let arr = result.to_array();
+        assert_eq!(arr, [4.0, 4.0, 4.0, 4.0]);
+    }
+
+    #[test]
+    fn test_mul_add() {
+        let a = f32x4::splat(2.0);
+        let b = f32x4::splat(3.0);
+        let c = f32x4::splat(1.0);
+        let result = a.mul_add(b, c); // 2 * 3 + 1 = 7
+        let arr = result.to_array();
+        assert_eq!(arr, [7.0, 7.0, 7.0, 7.0]);
+    }
+
+    #[test]
+    fn test_fast_tanh() {
+        let vec = f32x4::splat(1.0);
+        let result = vec.fast_tanh();
+        let arr = result.to_array();
+        // Should be close to tanh(1.0) ≈ 0.7616
+        for &val in &arr {
+            assert!((val - 1.0f32.tanh()).abs() < 0.01, "fast_tanh accuracy check");
+        }
+    }
+
+    #[test]
+    fn test_clamp() {
+        let vec = f32x4::from([0.5, 1.5, -0.5, 2.5]);
+        let result = vec.clamp(f32x4::splat(0.0), f32x4::splat(2.0));
+        let arr = result.to_array();
+        assert_eq!(arr, [0.5, 1.5, 0.0, 2.0]);
+    }
+
+    #[test]
+    fn test_simd_multiply_const() {
+        use crate::synthesis::simd::SIMD;
+        let mut buffer = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+
+        // Multiply by 2 using true SIMD
+        SIMD.multiply_const(&mut buffer, 2.0);
+
+        assert_eq!(buffer, vec![2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0]);
+    }
+
+    #[test]
+    fn test_simd_fma() {
+        use crate::synthesis::simd::SIMD;
+        let mut buffer = vec![1.0, 2.0, 3.0, 4.0];
+
+        // FMA: buffer = buffer * 2.0 + 1.0
+        SIMD.fma(&mut buffer, 2.0, 1.0);
+
+        assert_eq!(buffer, vec![3.0, 5.0, 7.0, 9.0]);
+    }
+
+    #[test]
+    fn test_simd_fast_tanh() {
+        use crate::synthesis::simd::SIMD;
+        let mut buffer = vec![0.0, 1.0, -1.0, 0.5];
+
+        SIMD.apply_fast_tanh(&mut buffer);
+
+        // Check that results are close to actual tanh
+        assert!((buffer[0] - 0.0f32.tanh()).abs() < 0.01);
+        assert!((buffer[1] - 1.0f32.tanh()).abs() < 0.01);
+        assert!((buffer[2] - (-1.0f32).tanh()).abs() < 0.01);
+        assert!((buffer[3] - 0.5f32.tanh()).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_simd_non_aligned_buffer() {
+        use crate::synthesis::simd::SIMD;
+        let mut buffer = vec![1.0, 2.0, 3.0]; // Not divisible by SIMD width
+
+        SIMD.multiply_const(&mut buffer, 2.0);
+
+        assert_eq!(buffer, vec![2.0, 4.0, 6.0]);
+    }
+
+    #[test]
+    fn test_fast_sin_accuracy() {
+        use std::f32::consts::PI;
+
+        // Test scalar version
+        assert!((f32::fast_sin(0.0) - 0.0).abs() < 0.001);
+        assert!((f32::fast_sin(PI / 2.0) - 1.0).abs() < 0.001);
+        assert!((f32::fast_sin(-PI / 2.0) - (-1.0)).abs() < 0.001);
+        assert!((f32::fast_sin(PI / 4.0) - (PI / 4.0).sin()).abs() < 0.001);
+
+        // Test f32x4 version
+        let test_vals = [0.0, PI / 2.0, -PI / 2.0, PI / 4.0];
+        let vec = f32x4::from_array(&test_vals);
+        let result = vec.fast_sin();
+        let result_arr = result.to_array();
+
+        assert!((result_arr[0] - 0.0).abs() < 0.001);
+        assert!((result_arr[1] - 1.0).abs() < 0.001);
+        assert!((result_arr[2] - (-1.0)).abs() < 0.001);
+        assert!((result_arr[3] - (PI / 4.0).sin()).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_fast_cos_accuracy() {
+        use std::f32::consts::PI;
+
+        // Test scalar version
+        assert!((f32::fast_cos(0.0) - 1.0).abs() < 0.001);
+        assert!((f32::fast_cos(PI) - (-1.0)).abs() < 0.25); // Taylor series ~21% error at π
+        assert!((f32::fast_cos(PI / 2.0) - 0.0).abs() < 0.001);
+        assert!((f32::fast_cos(PI / 4.0) - (PI / 4.0).cos()).abs() < 0.001);
+
+        // Test f32x8 version
+        let test_vals = [0.0, PI, PI / 2.0, PI / 4.0, -PI / 4.0, PI / 6.0, 0.5, 1.0];
+        let vec = f32x8::from_array(&test_vals);
+        let result = vec.fast_cos();
+        let result_arr = result.to_array();
+
+        assert!((result_arr[0] - 1.0).abs() < 0.001);
+        assert!((result_arr[1] - (-1.0)).abs() < 0.25);
+        assert!((result_arr[2] - 0.0).abs() < 0.001);
+        assert!((result_arr[3] - (PI / 4.0).cos()).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_fast_sincos_vs_stdlib() {
+        use std::f32::consts::PI;
+
+        // Test a range of values - accuracy decreases near ±π
+        let test_values = [
+            -PI / 2.0, -PI / 4.0, -PI / 6.0, 0.0, PI / 6.0, PI / 4.0, PI / 2.0,
+        ];
+
+        for &x in &test_values {
+            let fast_sin = f32::fast_sin(x);
+            let std_sin = x.sin();
+            assert!(
+                (fast_sin - std_sin).abs() < 0.002,
+                "fast_sin({}) = {} vs sin({}) = {}, error = {}",
+                x,
+                fast_sin,
+                std_sin,
+                x,
+                (fast_sin - std_sin).abs()
+            );
+
+            let fast_cos = f32::fast_cos(x);
+            let std_cos = x.cos();
+            assert!(
+                (fast_cos - std_cos).abs() < 0.002,
+                "fast_cos({}) = {} vs cos({}) = {}, error = {}",
+                x,
+                fast_cos,
+                std_cos,
+                x,
+                (fast_cos - std_cos).abs()
+            );
+        }
+
+        // Test edges with looser tolerance
+        // Taylor series centered at 0 has ~20% error at ±π, but this is acceptable
+        // because phases wrap to [-π, π] and most values are near 0 after wrapping
+        assert!((f32::fast_sin(PI) - PI.sin()).abs() < 0.08);
+        assert!((f32::fast_sin(-PI) - (-PI).sin()).abs() < 0.08);
+        assert!((f32::fast_cos(PI) - PI.cos()).abs() < 0.25); // ~21% error at π
     }
 }

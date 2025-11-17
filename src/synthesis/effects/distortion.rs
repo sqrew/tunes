@@ -78,7 +78,7 @@ impl Distortion {
         input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 
-    /// Process a block of samples with SIMD acceleration
+    /// Process a block of samples with TRUE SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -87,8 +87,6 @@ impl Distortion {
     /// * `sample_rate` - Sample rate in Hz (for time advancement)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
-
         // Update automation params if needed (check first sample)
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
@@ -104,63 +102,36 @@ impl Distortion {
             return;
         }
 
-        // Dispatch to SIMD implementation
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.process_block_simd::<8>(buffer),
-            SimdWidth::X4 => self.process_block_simd::<4>(buffer),
-            SimdWidth::Scalar => self.process_block_scalar(buffer),
-        }
+        // Use true SIMD implementation (auto-dispatches to best width)
+        self.process_block_simd(buffer);
     }
 
-    /// SIMD implementation - processes N samples at once
+    /// SIMD implementation using true vector operations
     #[inline(always)]
-    fn process_block_simd<const N: usize>(&self, buffer: &mut [f32]) {
+    fn process_block_simd(&self, buffer: &mut [f32]) {
+        use crate::synthesis::simd::SIMD;
+
         let drive = self.drive;
         let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
         let compensation = 1.0 / drive.sqrt();
 
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        // Store dry signal for wet/dry mix
+        let dry: Vec<f32> = buffer.to_vec();
 
-        // Process N samples at a time
-        for chunk_idx in 0..num_chunks {
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
+        // TRUE SIMD processing chain:
+        // 1. Multiply by drive
+        SIMD.multiply_const(buffer, drive);
 
-            for sample in chunk.iter_mut() {
-                let input = *sample;
-                let amplified = input * drive;
-                let distorted = amplified.tanh();
-                let normalized = distorted * compensation;
-                *sample = input.mul_add(one_minus_mix, normalized * mix);
-            }
-        }
+        // 2. Apply fast tanh saturation
+        SIMD.apply_fast_tanh(buffer);
 
-        // Handle remainder with scalar
-        for i in remainder_start..buffer.len() {
-            let input = buffer[i];
-            let amplified = input * drive;
-            let distorted = amplified.tanh();
-            let normalized = distorted * compensation;
-            buffer[i] = input.mul_add(one_minus_mix, normalized * mix);
-        }
-    }
+        // 3. Apply compensation and mix
+        // buffer = dry * (1-mix) + buffer * (compensation * mix)
+        let wet_gain = compensation * mix;
+        let dry_gain = 1.0 - mix;
 
-    /// Scalar fallback
-    #[inline(always)]
-    fn process_block_scalar(&self, buffer: &mut [f32]) {
-        let drive = self.drive;
-        let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
-        let compensation = 1.0 / drive.sqrt();
-
-        for sample in buffer.iter_mut() {
-            let input = *sample;
-            let amplified = input * drive;
-            let distorted = amplified.tanh();
-            let normalized = distorted * compensation;
-            *sample = input.mul_add(one_minus_mix, normalized * mix);
+        for (output, &dry_sample) in buffer.iter_mut().zip(dry.iter()) {
+            *output = dry_sample.mul_add(dry_gain, *output * wet_gain);
         }
     }
 
@@ -448,7 +419,7 @@ impl Saturation {
         input.mul_add(1.0 - self.mix, normalized * self.mix)
     }
 
-    /// Process a block of samples with SIMD acceleration
+    /// Process a block of samples with TRUE SIMD acceleration
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -457,8 +428,6 @@ impl Saturation {
     /// * `sample_rate` - Sample rate in Hz (for time advancement)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
-
         // Update automation params if needed
         if sample_count & 63 == 0 {
             if let Some(auto) = &self.mix_automation {
@@ -477,92 +446,57 @@ impl Saturation {
             return;
         }
 
-        // Dispatch to SIMD implementation
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.process_block_simd::<8>(buffer),
-            SimdWidth::X4 => self.process_block_simd::<4>(buffer),
-            SimdWidth::Scalar => self.process_block_scalar(buffer),
-        }
+        // Use true SIMD implementation
+        self.process_block_simd(buffer);
     }
 
-    /// SIMD implementation - processes N samples at once
+    /// TRUE SIMD implementation
     #[inline(always)]
-    fn process_block_simd<const N: usize>(&self, buffer: &mut [f32]) {
+    fn process_block_simd(&self, buffer: &mut [f32]) {
+        use crate::synthesis::simd::SIMD;
+
         let drive = self.drive;
         let character = self.character;
         let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
-        let one_minus_character = 1.0 - character;
         let compensation = 1.0 / drive.sqrt();
 
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        // Store dry signal for wet/dry mix
+        let dry: Vec<f32> = buffer.to_vec();
 
-        // Process N samples at a time
-        for chunk_idx in 0..num_chunks {
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
+        // SIMD processing for soft saturation (tanh) path
+        // 1. Multiply by drive
+        SIMD.multiply_const(buffer, drive);
 
-            for sample in chunk.iter_mut() {
-                let input = *sample;
-                let amplified = input * drive;
+        // 2. Apply fast tanh
+        SIMD.apply_fast_tanh(buffer);
 
-                // Blend between soft (tanh) and hard (cubic) saturation
-                let soft = amplified.tanh();
+        // 3. If character > 0, blend with hard saturation
+        //    Hard saturation has branches, so we do this part scalar for now
+        if character > 0.001 {
+            let one_minus_character = 1.0 - character;
+
+            for (i, &amplified_dry) in dry.iter().enumerate() {
+                let amplified = amplified_dry * drive;
+                let soft = buffer[i]; // Already has tanh applied
+
+                // Hard saturation (cubic soft clipper)
                 let hard = if amplified.abs() <= 1.0 {
                     amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
                 } else {
                     amplified.signum()
                 };
 
-                let saturated = soft.mul_add(one_minus_character, hard * character);
-                let normalized = saturated * compensation;
-                *sample = input.mul_add(one_minus_mix, normalized * mix);
+                // Blend soft and hard
+                buffer[i] = soft.mul_add(one_minus_character, hard * character);
             }
         }
 
-        // Handle remainder with scalar
-        for i in remainder_start..buffer.len() {
-            let input = buffer[i];
-            let amplified = input * drive;
+        // 4. Apply compensation and wet/dry mix
+        let wet_gain = compensation * mix;
+        let dry_gain = 1.0 - mix;
 
-            let soft = amplified.tanh();
-            let hard = if amplified.abs() <= 1.0 {
-                amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
-            } else {
-                amplified.signum()
-            };
-
-            let saturated = soft.mul_add(one_minus_character, hard * character);
-            let normalized = saturated * compensation;
-            buffer[i] = input.mul_add(one_minus_mix, normalized * mix);
-        }
-    }
-
-    /// Scalar fallback
-    #[inline(always)]
-    fn process_block_scalar(&self, buffer: &mut [f32]) {
-        let drive = self.drive;
-        let character = self.character;
-        let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
-        let one_minus_character = 1.0 - character;
-        let compensation = 1.0 / drive.sqrt();
-
-        for sample in buffer.iter_mut() {
-            let input = *sample;
-            let amplified = input * drive;
-
-            let soft = amplified.tanh();
-            let hard = if amplified.abs() <= 1.0 {
-                amplified.mul_add(1.5, -0.5 * amplified * amplified.abs())
-            } else {
-                amplified.signum()
-            };
-
-            let saturated = soft.mul_add(one_minus_character, hard * character);
-            let normalized = saturated * compensation;
-            *sample = input.mul_add(one_minus_mix, normalized * mix);
+        for (output, &dry_sample) in buffer.iter_mut().zip(dry.iter()) {
+            *output = dry_sample.mul_add(dry_gain, *output * wet_gain);
         }
     }
 
