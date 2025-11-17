@@ -20,7 +20,7 @@ A production-quality GPU FFT implementation featuring:
 - ✅ **Comprehensive validation** suite across multiple FFT sizes
 - ✅ **Full forward/inverse FFT** support
 
-The implementation is mathematically correct and well-tested. It just isn't faster.
+The implementation is mathematically correct and well-tested. It just isn't faster for this use-case.
 
 ---
 
@@ -145,20 +145,6 @@ Our implementation uses the classic Decimation-In-Time approach:
 3. Output is in natural order
 ```
 
-### Key Bug We Fixed
-
-Initial implementation had incorrect twiddle factor stride:
-
-```wgsl
-// WRONG (original):
-let stride = 1u << stage;  // 2^s
-
-// CORRECT (fixed):
-let stride = 1u << (params.log2_size - stage - 1u);  // 2^(log2(N)-s-1)
-```
-
-This caused wrong results for all but the DC and Nyquist bins. The fix was discovered through systematic manual trace-through of the FFT stages.
-
 ### Validation
 
 All validation tests pass with floating-point precision errors < 1e-5:
@@ -210,7 +196,7 @@ The GPU FFT implementation can be found at:
 - `src/gpu/fft.wgsl` - WGSL compute shaders
 - `tests/integration/gpu_fft_validation.rs` - Validation suite
 - `benches/gpu_fft_benchmark.rs` - Performance benchmarks
-- `examples/gpu_fft_debug.rs` - Debug comparison tool
+- `tests/integration/gpu_fft_debug.rs` - Debug comparison tool
 
 ---
 
