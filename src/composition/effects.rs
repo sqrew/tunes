@@ -2,7 +2,8 @@ use super::TrackBuilder;
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
     Gate, Limiter, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation, SpectralFreeze,
-    SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, Tremolo,
+    SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
+    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
@@ -183,6 +184,36 @@ impl<'a> EffectsBuilder<'a> {
     /// Add spectral blur for temporal smoothing in frequency domain
     pub fn spectral_blur(mut self, spectral_blur: SpectralBlur) -> Self {
         self.inner = self.inner.spectral_blur(spectral_blur);
+        self
+    }
+
+    /// Add spectral shift for frequency shifting
+    pub fn spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
+        self.inner = self.inner.spectral_shift(spectral_shift);
+        self
+    }
+
+    /// Add spectral exciter for harmonic enhancement
+    pub fn spectral_exciter(mut self, spectral_exciter: SpectralExciter) -> Self {
+        self.inner = self.inner.spectral_exciter(spectral_exciter);
+        self
+    }
+
+    /// Add spectral invert for frequency spectrum reversal
+    pub fn spectral_invert(mut self, spectral_invert: SpectralInvert) -> Self {
+        self.inner = self.inner.spectral_invert(spectral_invert);
+        self
+    }
+
+    /// Add spectral widen for stereo widening via phase manipulation
+    pub fn spectral_widen(mut self, spectral_widen: SpectralWiden) -> Self {
+        self.inner = self.inner.spectral_widen(spectral_widen);
+        self
+    }
+
+    /// Add spectral morph for morphing spectrum toward target shapes
+    pub fn spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
+        self.inner = self.inner.spectral_morph(spectral_morph);
         self
     }
 
@@ -864,6 +895,165 @@ impl<'a> TrackBuilder<'a> {
     pub fn spectral_blur(mut self, spectral_blur: SpectralBlur) -> Self {
         let track = self.get_track_mut();
         track.effects.spectral_blur = Some(spectral_blur);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral shift for frequency shifting
+    ///
+    /// SpectralShift shifts the entire frequency spectrum up or down, creating pitch-like effects
+    /// without time-stretching. Perfect for harmonizer effects, octave doubling, and detuning.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("synth", &Instrument::synth_lead())
+    ///     .spectral_shift(SpectralShift::up())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_shift = Some(spectral_shift);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral exciter for harmonic enhancement
+    ///
+    /// SpectralExciter adds harmonically-related frequencies to enhance brightness and presence,
+    /// similar to classic aural exciters but operating in the frequency domain.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_exciter(SpectralExciter::warm())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_exciter(mut self, spectral_exciter: SpectralExciter) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_exciter = Some(spectral_exciter);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral invert for frequency spectrum reversal
+    ///
+    /// SpectralInvert flips the frequency spectrum (low ↔ high), creating surreal timbral
+    /// transformations. Useful for creative sound design, alien voices, and experimental effects.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_invert` - SpectralInvert effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralInvert;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Using a preset for quick setup
+    /// comp.instrument("synth", &Instrument::synth_lead())
+    ///     .spectral_invert(SpectralInvert::full())
+    ///     .note(&[C4], 2.0);
+    ///
+    /// // Or create with custom mix amount
+    /// let invert = SpectralInvert::moderate();
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_invert(invert)
+    ///     .note(&[A3], 2.0);
+    /// ```
+    pub fn spectral_invert(mut self, spectral_invert: SpectralInvert) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_invert = Some(spectral_invert);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral widen for stereo widening via phase manipulation
+    ///
+    /// SpectralWiden creates stereo width by applying frequency-dependent phase shifts,
+    /// resulting in enhanced stereo imaging. Perfect for pads, synths, and ambient textures.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_widen` - SpectralWiden effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Using a preset for quick setup
+    /// comp.instrument("pad", &Instrument::warm_pad())
+    ///     .spectral_widen(SpectralWiden::wide())
+    ///     .note(&[C4, E4, G4], 2.0);
+    ///
+    /// // Or create with custom parameters
+    /// let widen = SpectralWiden::ultra();
+    /// comp.instrument("synth", &Instrument::synth_pad())
+    ///     .spectral_widen(widen)
+    ///     .note(&[A3], 2.0);
+    /// ```
+    pub fn spectral_widen(mut self, spectral_widen: SpectralWiden) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_widen = Some(spectral_widen);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral morph for morphing spectrum toward target shapes
+    ///
+    /// SpectralMorph transforms the spectrum to match different target characteristics:
+    /// harmonic structures, noise, whisper-like, or robotic timbres.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_morph` - SpectralMorph effect instance
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralMorph;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Using presets for quick setup
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_morph(SpectralMorph::robot())
+    ///     .note(&[C4], 2.0);
+    ///
+    /// // Other presets available
+    /// comp.instrument("synth", &Instrument::synth_lead())
+    ///     .spectral_morph(SpectralMorph::harmonic())
+    ///     .note(&[A3], 2.0);
+    /// ```
+    pub fn spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_morph = Some(spectral_morph);
         track.effects.compute_effect_order();
         self
     }

@@ -23,7 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
-pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur};
+pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralMorphTarget};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -68,13 +68,19 @@ pub struct EffectChain {
     pub spectral_delay: Option<SpectralDelay>,
     pub spectral_filter: Option<SpectralFilter>,
     pub spectral_blur: Option<SpectralBlur>,
+    pub spectral_shift: Option<SpectralShift>,
+    pub spectral_exciter: Option<SpectralExciter>,
+    pub spectral_invert: Option<SpectralInvert>,
+    pub spectral_widen: Option<SpectralWiden>,
+    pub spectral_morph: Option<SpectralMorph>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
     //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
     //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb,
     //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
-    //             20=SpectralRobotize, 21=SpectralDelay, 22=SpectralFilter, 23=SpectralBlur
+    //             20=SpectralRobotize, 21=SpectralDelay, 22=SpectralFilter, 23=SpectralBlur,
+    //             24=SpectralShift, 25=SpectralExciter, 26=SpectralInvert, 27=SpectralWiden, 28=SpectralMorph
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -116,6 +122,11 @@ impl EffectChain {
             spectral_delay: None,
             spectral_filter: None,
             spectral_blur: None,
+            spectral_shift: None,
+            spectral_exciter: None,
+            spectral_invert: None,
+            spectral_widen: None,
+            spectral_morph: None,
             effect_order: Vec::new(),
         }
     }
@@ -199,6 +210,21 @@ impl EffectChain {
         }
         if let Some(ref spectral_blur) = self.spectral_blur {
             effects.push((spectral_blur.priority, 23));
+        }
+        if let Some(ref spectral_shift) = self.spectral_shift {
+            effects.push((spectral_shift.priority, 24));
+        }
+        if let Some(ref spectral_exciter) = self.spectral_exciter {
+            effects.push((spectral_exciter.priority, 25));
+        }
+        if let Some(ref spectral_invert) = self.spectral_invert {
+            effects.push((spectral_invert.priority, 26));
+        }
+        if let Some(ref spectral_widen) = self.spectral_widen {
+            effects.push((spectral_widen.priority, 27));
+        }
+        if let Some(ref spectral_morph) = self.spectral_morph {
+            effects.push((spectral_morph.priority, 28));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -530,6 +556,36 @@ impl EffectChain {
                     // SpectralBlur (block-based spectral effect)
                     if let Some(ref mut spectral_blur) = self.spectral_blur {
                         spectral_blur.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                24 => {
+                    // SpectralShift (block-based spectral effect)
+                    if let Some(ref mut spectral_shift) = self.spectral_shift {
+                        spectral_shift.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                25 => {
+                    // SpectralExciter (block-based spectral effect)
+                    if let Some(ref mut spectral_exciter) = self.spectral_exciter {
+                        spectral_exciter.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                26 => {
+                    // SpectralInvert (block-based spectral effect)
+                    if let Some(ref mut spectral_invert) = self.spectral_invert {
+                        spectral_invert.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                27 => {
+                    // SpectralWiden (block-based spectral effect)
+                    if let Some(ref mut spectral_widen) = self.spectral_widen {
+                        spectral_widen.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                28 => {
+                    // SpectralMorph (block-based spectral effect)
+                    if let Some(ref mut spectral_morph) = self.spectral_morph {
+                        spectral_morph.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}
@@ -970,6 +1026,81 @@ impl EffectChain {
     /// ```
     pub fn with_spectral_blur(mut self, spectral_blur: SpectralBlur) -> Self {
         self.spectral_blur = Some(spectral_blur);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral shift for frequency shifting
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralShift};
+    /// let mut chain = EffectChain::new();
+    /// let shift = SpectralShift::up();
+    /// chain = chain.with_spectral_shift(shift);
+    /// ```
+    pub fn with_spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
+        self.spectral_shift = Some(spectral_shift);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral exciter for harmonic enhancement
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralExciter};
+    /// let mut chain = EffectChain::new();
+    /// let exciter = SpectralExciter::warm();
+    /// chain = chain.with_spectral_exciter(exciter);
+    /// ```
+    pub fn with_spectral_exciter(mut self, spectral_exciter: SpectralExciter) -> Self {
+        self.spectral_exciter = Some(spectral_exciter);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral invert for frequency spectrum reversal
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralInvert};
+    /// let mut chain = EffectChain::new();
+    /// let invert = SpectralInvert::full();
+    /// chain = chain.with_spectral_invert(invert);
+    /// ```
+    pub fn with_spectral_invert(mut self, spectral_invert: SpectralInvert) -> Self {
+        self.spectral_invert = Some(spectral_invert);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral widen for stereo widening via phase manipulation
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralWiden};
+    /// let mut chain = EffectChain::new();
+    /// let widen = SpectralWiden::wide();
+    /// chain = chain.with_spectral_widen(widen);
+    /// ```
+    pub fn with_spectral_widen(mut self, spectral_widen: SpectralWiden) -> Self {
+        self.spectral_widen = Some(spectral_widen);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral morph for morphing spectrum toward target shapes
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralMorph};
+    /// let mut chain = EffectChain::new();
+    /// let morph = SpectralMorph::robot();
+    /// chain = chain.with_spectral_morph(morph);
+    /// ```
+    pub fn with_spectral_morph(mut self, spectral_morph: SpectralMorph) -> Self {
+        self.spectral_morph = Some(spectral_morph);
         self.compute_effect_order();
         self
     }

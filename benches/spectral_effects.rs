@@ -1,6 +1,6 @@
 use std::time::Instant;
 use tunes::prelude::*;
-use tunes::synthesis::effects::{FilterType, SpectralFilter};
+use tunes::synthesis::effects::{FilterType, SpectralFilter, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph};
 
 /// Benchmark spectral (frequency-domain) effects
 ///
@@ -45,6 +45,11 @@ fn main() -> anyhow::Result<()> {
         ("SpectralRobotize", "robot"),
         ("SpectralDelay", "shimmer"),
         ("SpectralFilter", "low_pass"),
+        ("SpectralShift", "up"),
+        ("SpectralExciter", "warm"),
+        ("SpectralInvert", "full"),
+        ("SpectralWiden", "wide"),
+        ("SpectralMorph", "robot"),
     ];
 
     for (effect_name, preset_name) in &spectral_effects {
@@ -70,6 +75,11 @@ fn main() -> anyhow::Result<()> {
                 "SpectralRobotize" => track.spectral_robotize(SpectralRobotize::robot()),
                 "SpectralDelay" => track.spectral_delay(SpectralDelay::shimmer()),
                 "SpectralFilter" => track.spectral_filter(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0),
+                "SpectralShift" => track.spectral_shift(SpectralShift::up()),
+                "SpectralExciter" => track.spectral_exciter(SpectralExciter::warm()),
+                "SpectralInvert" => track.spectral_invert(SpectralInvert::full()),
+                "SpectralWiden" => track.spectral_widen(SpectralWiden::wide()),
+                "SpectralMorph" => track.spectral_morph(SpectralMorph::robot()),
                 _ => track,
             };
 

@@ -1605,6 +1605,1146 @@ impl std::fmt::Debug for SpectralBlur {
     }
 }
 
+use crate::synthesis::spectral::SpectralShift as CoreSpectralShift;
+
+/// Spectral shift effect - shift all frequencies by a fixed Hz amount
+///
+/// Unlike pitch shifting (which multiplies frequencies), spectral shift adds
+/// a constant Hz offset to all frequencies. This breaks harmonic relationships,
+/// creating metallic, bell-like, or alien timbres.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::SpectralShift;
+/// // Create spectral shift with 100 Hz upward shift
+/// let shift = SpectralShift::new(100.0, 0.8, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralShift {
+    /// Core spectral shift engine
+    core: CoreSpectralShift,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralShift {
+    /// Create a new spectral shift with specified parameters
+    ///
+    /// # Arguments
+    /// * `shift_hz` - Frequency shift in Hz (positive = up, negative = down)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// let shift = SpectralShift::new(100.0, 0.8, 44100.0);
+    /// ```
+    pub fn new(shift_hz: f32, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, shift_hz, mix, sample_rate)
+    }
+
+    /// Create a spectral shift with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `shift_hz` - Frequency shift in Hz
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// let shift = SpectralShift::with_params(4096, 1024, 150.0, 0.9, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        shift_hz: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralShift::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_shift_hz(shift_hz);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 145,
+            enabled: true,
+        }
+    }
+
+    /// Subtle detuning for thickness
+    pub fn subtle() -> Self {
+        Self::new(7.0, 0.5, 44100.0)
+    }
+
+    /// Metallic timbre
+    pub fn metallic() -> Self {
+        Self::new(75.0, 0.8, 44100.0)
+    }
+
+    /// Bell-like sound
+    pub fn bell() -> Self {
+        Self::new(150.0, 0.9, 44100.0)
+    }
+
+    /// Alien/sci-fi effect
+    pub fn alien() -> Self {
+        Self::new(300.0, 1.0, 44100.0)
+    }
+
+    /// Downshift (darker, lower)
+    pub fn down() -> Self {
+        Self::new(-100.0, 0.8, 44100.0)
+    }
+
+    /// Set frequency shift in Hz
+    ///
+    /// # Arguments
+    /// * `shift_hz` - Frequency shift in Hz (positive = up, negative = down)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// let mut shift = SpectralShift::new(100.0, 0.8, 44100.0);
+    /// shift.set_shift_hz(150.0);
+    /// ```
+    pub fn set_shift_hz(&mut self, shift_hz: f32) {
+        self.core.set_shift_hz(shift_hz);
+    }
+
+    /// Get current frequency shift
+    pub fn shift_hz(&self) -> f32 {
+        self.core.shift_hz()
+    }
+
+    /// Set wet/dry mix
+    ///
+    /// # Arguments
+    /// * `mix` - Mix amount (0.0 = dry, 1.0 = wet)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// let mut shift = SpectralShift::new(100.0, 0.8, 44100.0);
+    /// shift.set_mix(0.5);
+    /// ```
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the shift state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralShift {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralShift")
+            .field("shift_hz", &self.core.shift_hz())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+use crate::synthesis::spectral::SpectralExciter as CoreSpectralExciter;
+
+/// Spectral exciter effect - adds harmonics and brightness to high frequencies
+///
+/// Unlike traditional exciters that add harmonics in the time domain,
+/// spectral exciter works in the frequency domain for more precise control.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::SpectralExciter;
+/// // Create spectral exciter with 3kHz crossover and moderate drive
+/// let exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralExciter {
+    /// Core spectral exciter engine
+    core: CoreSpectralExciter,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralExciter {
+    /// Create a new spectral exciter with specified parameters
+    ///
+    /// # Arguments
+    /// * `frequency` - Crossover frequency in Hz (excite above this)
+    /// * `drive` - Drive amount (1.0-10.0)
+    /// * `harmonics` - Harmonic blend (0.0-1.0)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+    /// ```
+    pub fn new(frequency: f32, drive: f32, harmonics: f32, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, frequency, drive, harmonics, mix, sample_rate)
+    }
+
+    /// Create a spectral exciter with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `frequency` - Crossover frequency in Hz
+    /// * `drive` - Drive amount (1.0-10.0)
+    /// * `harmonics` - Harmonic blend (0.0-1.0)
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let exciter = SpectralExciter::with_params(4096, 1024, 4000.0, 3.0, 0.7, 0.6, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        frequency: f32,
+        drive: f32,
+        harmonics: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralExciter::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_frequency(frequency);
+        core.set_drive(drive);
+        core.set_harmonics(harmonics);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 150,
+            enabled: true,
+        }
+    }
+
+    /// Gentle excitement for subtle brightness
+    pub fn gentle() -> Self {
+        Self::new(5000.0, 1.5, 0.3, 0.25, 44100.0)
+    }
+
+    /// Moderate excitement for presence and clarity
+    pub fn moderate() -> Self {
+        Self::new(3500.0, 2.5, 0.5, 0.4, 44100.0)
+    }
+
+    /// Aggressive excitement for maximum brightness
+    pub fn aggressive() -> Self {
+        Self::new(2500.0, 4.0, 0.7, 0.6, 44100.0)
+    }
+
+    /// Air preset - adds top-end air and sparkle
+    pub fn air() -> Self {
+        Self::new(8000.0, 2.0, 0.8, 0.3, 44100.0)
+    }
+
+    /// Presence preset - adds midrange presence
+    pub fn presence() -> Self {
+        Self::new(2000.0, 3.0, 0.4, 0.5, 44100.0)
+    }
+
+    /// Set crossover frequency
+    ///
+    /// # Arguments
+    /// * `frequency` - Crossover frequency in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let mut exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+    /// exciter.set_frequency(4000.0);
+    /// ```
+    pub fn set_frequency(&mut self, frequency: f32) {
+        self.core.set_frequency(frequency);
+    }
+
+    /// Get current crossover frequency
+    pub fn frequency(&self) -> f32 {
+        self.core.frequency()
+    }
+
+    /// Set drive amount
+    ///
+    /// # Arguments
+    /// * `drive` - Drive amount (1.0-10.0)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let mut exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+    /// exciter.set_drive(3.0);
+    /// ```
+    pub fn set_drive(&mut self, drive: f32) {
+        self.core.set_drive(drive);
+    }
+
+    /// Get current drive amount
+    pub fn drive(&self) -> f32 {
+        self.core.drive()
+    }
+
+    /// Set harmonic blend
+    ///
+    /// # Arguments
+    /// * `harmonics` - Harmonic blend (0.0-1.0)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let mut exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+    /// exciter.set_harmonics(0.7);
+    /// ```
+    pub fn set_harmonics(&mut self, harmonics: f32) {
+        self.core.set_harmonics(harmonics);
+    }
+
+    /// Get current harmonic blend
+    pub fn harmonics(&self) -> f32 {
+        self.core.harmonics()
+    }
+
+    /// Set wet/dry mix
+    ///
+    /// # Arguments
+    /// * `mix` - Mix amount (0.0 = dry, 1.0 = wet)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let mut exciter = SpectralExciter::new(3000.0, 2.0, 0.5, 0.5, 44100.0);
+    /// exciter.set_mix(0.3);
+    /// ```
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the exciter state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralExciter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralExciter")
+            .field("frequency", &self.core.frequency())
+            .field("drive", &self.core.drive())
+            .field("harmonics", &self.core.harmonics())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+use crate::synthesis::spectral::SpectralInvert as CoreSpectralInvert;
+
+/// Spectral invert effect - flip the frequency spectrum upside down
+///
+/// Inverts the spectrum by swapping low and high frequencies, creating
+/// alien, backwards-sounding, or otherworldly timbres.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::SpectralInvert;
+/// // Create spectral invert with 80% mix
+/// let invert = SpectralInvert::new(0.8, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralInvert {
+    /// Core spectral invert engine
+    core: CoreSpectralInvert,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralInvert {
+    /// Create a new spectral invert with specified parameters
+    ///
+    /// # Arguments
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = fully inverted)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralInvert;
+    /// let invert = SpectralInvert::new(0.8, 44100.0);
+    /// ```
+    pub fn new(mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, mix, sample_rate)
+    }
+
+    /// Create a spectral invert with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralInvert;
+    /// let invert = SpectralInvert::with_params(4096, 1024, 1.0, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralInvert::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 160,
+            enabled: true,
+        }
+    }
+
+    /// Subtle inversion for slight weirdness
+    pub fn subtle() -> Self {
+        Self::new(0.3, 44100.0)
+    }
+
+    /// Full inversion for alien timbres
+    pub fn full() -> Self {
+        Self::new(1.0, 44100.0)
+    }
+
+    /// Moderate blend for interesting hybrids
+    pub fn moderate() -> Self {
+        Self::new(0.6, 44100.0)
+    }
+
+    /// Set wet/dry mix
+    ///
+    /// # Arguments
+    /// * `mix` - Mix amount (0.0 = dry, 1.0 = fully inverted)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralInvert;
+    /// let mut invert = SpectralInvert::new(0.8, 44100.0);
+    /// invert.set_mix(0.5);
+    /// ```
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the invert state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralInvert {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralInvert")
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+use crate::synthesis::spectral::SpectralWiden as CoreSpectralWiden;
+
+/// Spectral widen effect - stereo widening in the frequency domain
+///
+/// Creates stereo width by manipulating phase relationships in the frequency domain.
+/// More precise and artifact-free than time-domain stereo widening.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::SpectralWiden;
+/// // Create spectral widen with 150% width
+/// let widen = SpectralWiden::new(1.5, 200.0, 16000.0, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralWiden {
+    /// Core spectral widen engine
+    core: CoreSpectralWiden,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralWiden {
+    /// Create a new spectral widen with specified parameters
+    ///
+    /// # Arguments
+    /// * `width` - Width multiplier (0.0 = mono, 1.0 = normal, 2.0 = very wide)
+    /// * `low_cutoff` - Low frequency cutoff in Hz (don't widen below this)
+    /// * `high_cutoff` - High frequency cutoff in Hz (don't widen above this)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let widen = SpectralWiden::new(1.5, 200.0, 16000.0, 44100.0);
+    /// ```
+    pub fn new(width: f32, low_cutoff: f32, high_cutoff: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, width, low_cutoff, high_cutoff, sample_rate)
+    }
+
+    /// Create a spectral widen with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `width` - Width multiplier (0.0-3.0)
+    /// * `low_cutoff` - Low frequency cutoff in Hz
+    /// * `high_cutoff` - High frequency cutoff in Hz
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let widen = SpectralWiden::with_params(4096, 1024, 2.0, 150.0, 16000.0, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        width: f32,
+        low_cutoff: f32,
+        high_cutoff: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralWiden::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_width(width);
+        core.set_low_cutoff(low_cutoff);
+        core.set_high_cutoff(high_cutoff);
+
+        Self {
+            core,
+            priority: 165,
+            enabled: true,
+        }
+    }
+
+    /// Subtle widening for mix enhancement
+    pub fn subtle() -> Self {
+        Self::new(1.2, 250.0, 16000.0, 44100.0)
+    }
+
+    /// Moderate widening for stereo enhancement
+    pub fn moderate() -> Self {
+        Self::new(1.5, 200.0, 16000.0, 44100.0)
+    }
+
+    /// Wide stereo for dramatic effect
+    pub fn wide() -> Self {
+        Self::new(2.0, 150.0, 16000.0, 44100.0)
+    }
+
+    /// Ultra-wide for special effects
+    pub fn ultra() -> Self {
+        Self::new(2.5, 200.0, 16000.0, 44100.0)
+    }
+
+    /// Set width amount
+    ///
+    /// # Arguments
+    /// * `width` - Width multiplier (0.0 = mono, 1.0 = normal, 2.0 = very wide)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let mut widen = SpectralWiden::new(1.5, 200.0, 16000.0, 44100.0);
+    /// widen.set_width(2.0);
+    /// ```
+    pub fn set_width(&mut self, width: f32) {
+        self.core.set_width(width);
+    }
+
+    /// Get current width
+    pub fn width(&self) -> f32 {
+        self.core.width()
+    }
+
+    /// Set low frequency cutoff
+    ///
+    /// # Arguments
+    /// * `frequency` - Low cutoff in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let mut widen = SpectralWiden::new(1.5, 200.0, 16000.0, 44100.0);
+    /// widen.set_low_cutoff(250.0);
+    /// ```
+    pub fn set_low_cutoff(&mut self, frequency: f32) {
+        self.core.set_low_cutoff(frequency);
+    }
+
+    /// Get low cutoff
+    pub fn low_cutoff(&self) -> f32 {
+        self.core.low_cutoff()
+    }
+
+    /// Set high frequency cutoff
+    ///
+    /// # Arguments
+    /// * `frequency` - High cutoff in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let mut widen = SpectralWiden::new(1.5, 200.0, 16000.0, 44100.0);
+    /// widen.set_high_cutoff(12000.0);
+    /// ```
+    pub fn set_high_cutoff(&mut self, frequency: f32) {
+        self.core.set_high_cutoff(frequency);
+    }
+
+    /// Get high cutoff
+    pub fn high_cutoff(&self) -> f32 {
+        self.core.high_cutoff()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the widen state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralWiden {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralWiden")
+            .field("width", &self.core.width())
+            .field("low_cutoff", &self.core.low_cutoff())
+            .field("high_cutoff", &self.core.high_cutoff())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+use crate::synthesis::spectral::SpectralMorph as CoreSpectralMorph;
+
+// Re-export MorphTarget as SpectralMorphTarget
+pub use crate::synthesis::spectral::MorphTarget as SpectralMorphTarget;
+
+/// Spectral morph effect - morph between different spectral shapes
+///
+/// Morphs the input spectrum toward target spectral shapes like
+/// harmonic series, noise, or filtered versions. Creates vocoder-like
+/// and transformative effects.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+/// // Create spectral morph with robot target
+/// let morph = SpectralMorph::new(SpectralMorphTarget::Robot, 0.7, 220.0, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralMorph {
+    /// Core spectral morph engine
+    core: CoreSpectralMorph,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralMorph {
+    /// Create a new spectral morph with specified parameters
+    ///
+    /// # Arguments
+    /// * `target` - Target spectrum type
+    /// * `morph_amount` - Morph amount (0.0 = original, 1.0 = full target)
+    /// * `fundamental` - Fundamental frequency for harmonic target (Hz)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+    /// let morph = SpectralMorph::new(SpectralMorphTarget::Robot, 0.7, 220.0, 44100.0);
+    /// ```
+    pub fn new(target: SpectralMorphTarget, morph_amount: f32, fundamental: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, target, morph_amount, fundamental, sample_rate)
+    }
+
+    /// Create a spectral morph with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `target` - Target spectrum type
+    /// * `morph_amount` - Morph amount (0.0-1.0)
+    /// * `fundamental` - Fundamental frequency for harmonic target (Hz)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+    /// let morph = SpectralMorph::with_params(4096, 1024, SpectralMorphTarget::Harmonic, 0.8, 110.0, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        target: SpectralMorphTarget,
+        morph_amount: f32,
+        fundamental: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralMorph::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_target(target);
+        core.set_morph_amount(morph_amount);
+        core.set_fundamental(fundamental);
+
+        Self {
+            core,
+            priority: 170,
+            enabled: true,
+        }
+    }
+
+    /// Morph to harmonic series
+    pub fn harmonic() -> Self {
+        Self::new(SpectralMorphTarget::Harmonic, 0.7, 110.0, 44100.0)
+    }
+
+    /// Morph to noise
+    pub fn noise() -> Self {
+        Self::new(SpectralMorphTarget::Noise, 0.6, 110.0, 44100.0)
+    }
+
+    /// Morph to whisper
+    pub fn whisper() -> Self {
+        Self::new(SpectralMorphTarget::Whisper, 0.8, 110.0, 44100.0)
+    }
+
+    /// Morph to robot
+    pub fn robot() -> Self {
+        Self::new(SpectralMorphTarget::Robot, 0.9, 220.0, 44100.0)
+    }
+
+    /// Set target spectrum type
+    ///
+    /// # Arguments
+    /// * `target` - Target spectrum type
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+    /// let mut morph = SpectralMorph::new(SpectralMorphTarget::Robot, 0.7, 220.0, 44100.0);
+    /// morph.set_target(SpectralMorphTarget::Harmonic);
+    /// ```
+    pub fn set_target(&mut self, target: SpectralMorphTarget) {
+        self.core.set_target(target);
+    }
+
+    /// Get current target
+    pub fn target(&self) -> SpectralMorphTarget {
+        self.core.target()
+    }
+
+    /// Set morph amount
+    ///
+    /// # Arguments
+    /// * `amount` - Morph amount (0.0 = original, 1.0 = full target)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+    /// let mut morph = SpectralMorph::new(SpectralMorphTarget::Robot, 0.7, 220.0, 44100.0);
+    /// morph.set_morph_amount(0.5);
+    /// ```
+    pub fn set_morph_amount(&mut self, amount: f32) {
+        self.core.set_morph_amount(amount);
+    }
+
+    /// Get morph amount
+    pub fn morph_amount(&self) -> f32 {
+        self.core.morph_amount()
+    }
+
+    /// Set fundamental frequency
+    ///
+    /// # Arguments
+    /// * `frequency` - Fundamental frequency in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
+    /// let mut morph = SpectralMorph::new(SpectralMorphTarget::Harmonic, 0.7, 220.0, 44100.0);
+    /// morph.set_fundamental(110.0);
+    /// ```
+    pub fn set_fundamental(&mut self, frequency: f32) {
+        self.core.set_fundamental(frequency);
+    }
+
+    /// Get fundamental frequency
+    pub fn fundamental(&self) -> f32 {
+        self.core.fundamental()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the morph state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralMorph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralMorph")
+            .field("target", &self.core.target())
+            .field("morph_amount", &self.core.morph_amount())
+            .field("fundamental", &self.core.fundamental())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

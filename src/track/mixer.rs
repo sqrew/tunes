@@ -2340,6 +2340,91 @@ impl Mixer {
         self.master.compute_effect_order();
         self
     }
+
+    /// Add spectral shift effect to the master chain for frequency shifting
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralShift;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_shift(SpectralShift::up());
+    /// ```
+    pub fn master_spectral_shift(&mut self, spectral_shift: crate::synthesis::effects::SpectralShift) -> &mut Self {
+        self.master.spectral_shift = Some(spectral_shift);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral exciter effect to the master chain for harmonic enhancement
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralExciter;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_exciter(SpectralExciter::warm());
+    /// ```
+    pub fn master_spectral_exciter(&mut self, spectral_exciter: crate::synthesis::effects::SpectralExciter) -> &mut Self {
+        self.master.spectral_exciter = Some(spectral_exciter);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral invert effect to the master chain for frequency spectrum reversal
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralInvert;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_invert(SpectralInvert::full());
+    /// ```
+    pub fn master_spectral_invert(&mut self, spectral_invert: crate::synthesis::effects::SpectralInvert) -> &mut Self {
+        self.master.spectral_invert = Some(spectral_invert);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral widen effect to the master chain for stereo widening
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralWiden;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_widen(SpectralWiden::wide());
+    /// ```
+    pub fn master_spectral_widen(&mut self, spectral_widen: crate::synthesis::effects::SpectralWiden) -> &mut Self {
+        self.master.spectral_widen = Some(spectral_widen);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral morph effect to the master chain for morphing spectrum toward target shapes
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralMorph;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_morph(SpectralMorph::robot());
+    /// ```
+    pub fn master_spectral_morph(&mut self, spectral_morph: crate::synthesis::effects::SpectralMorph) -> &mut Self {
+        self.master.spectral_morph = Some(spectral_morph);
+        self.master.compute_effect_order();
+        self
+    }
 }
 
 impl Default for Mixer {

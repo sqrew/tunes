@@ -43,7 +43,8 @@
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
     Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
-    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, Tremolo,
+    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
+    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -452,6 +453,41 @@ impl<'a> BusBuilder<'a> {
     /// Add spectral blur effect to this bus for temporal smoothing in frequency domain
     pub fn spectral_blur(self, spectral_blur: SpectralBlur) -> Self {
         self.bus.effects.spectral_blur = Some(spectral_blur);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral shift effect to this bus for frequency shifting
+    pub fn spectral_shift(self, spectral_shift: SpectralShift) -> Self {
+        self.bus.effects.spectral_shift = Some(spectral_shift);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral exciter effect to this bus for harmonic enhancement
+    pub fn spectral_exciter(self, spectral_exciter: SpectralExciter) -> Self {
+        self.bus.effects.spectral_exciter = Some(spectral_exciter);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral invert effect to this bus for frequency spectrum reversal
+    pub fn spectral_invert(self, spectral_invert: SpectralInvert) -> Self {
+        self.bus.effects.spectral_invert = Some(spectral_invert);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral widen effect to this bus for stereo widening via phase manipulation
+    pub fn spectral_widen(self, spectral_widen: SpectralWiden) -> Self {
+        self.bus.effects.spectral_widen = Some(spectral_widen);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral morph effect to this bus for morphing spectrum toward target shapes
+    pub fn spectral_morph(self, spectral_morph: SpectralMorph) -> Self {
+        self.bus.effects.spectral_morph = Some(spectral_morph);
         self.bus.effects.compute_effect_order();
         self
     }

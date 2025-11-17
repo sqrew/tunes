@@ -32,6 +32,11 @@ mod robotize;
 mod delay;
 mod filter;
 mod blur;
+mod shift;
+mod exciter;
+mod invert;
+mod widen;
+mod morph;
 
 // Re-exports
 pub use phase_vocoder::PhaseVocoder;
@@ -42,6 +47,11 @@ pub use robotize::SpectralRobotize;
 pub use delay::SpectralDelay;
 pub use filter::SpectralFilter;
 pub use blur::SpectralBlur;
+pub use shift::SpectralShift;
+pub use exciter::SpectralExciter;
+pub use invert::SpectralInvert;
+pub use widen::SpectralWiden;
+pub use morph::{SpectralMorph, MorphTarget};
 
 /// Window function types for spectral processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
