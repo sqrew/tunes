@@ -25,11 +25,11 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **GPU Acceleration** (optional `gpu` feature): GPU compute shader acceleration via wgpu for synthesis and export. Transparent API integration - enable with `AudioEngine::new_with_gpu()`. Performance scales with GPU hardware; integrated GPUs show minimal improvement while discrete GPUs can provide significant acceleration
 - **WebAssembly Support** (optional `web` feature): Full browser support via WebAssembly - synthesis, effects, sample playback, and real-time audio in web applications. Powered by Web Audio API through cpal's wasm-bindgen integration
 - **Streaming Audio**: Memory-efficient streaming for long background music and ambience without loading entire files into RAM (native-only)
-- **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation for immersive game audio
+- **Spatial Audio**: 3D sound positioning with distance attenuation, azimuth panning, doppler effect, and listener orientation, sound cones, and occlusion for immersive game audio
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
-  * The library includes **1169 comprehensive tests and 478 doc tests** ensuring reliability and correctness.
+  * The library includes **1305 comprehensive tests and 620 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:

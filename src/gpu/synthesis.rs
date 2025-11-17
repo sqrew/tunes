@@ -194,7 +194,7 @@ impl GpuSynthesizer {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch with workgroup size 256
-            let workgroups = (total_samples as u32 + 255) / 256;
+            let workgroups = (total_samples as u32).div_ceil(256);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

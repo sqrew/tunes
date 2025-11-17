@@ -5,9 +5,9 @@
 
 use crate::synthesis::spectral::{
     PhaseVocoder as CorePhaseVocoder, SpectralBlur as CoreSpectralBlur,
-    SpectralCompressor as CoreSpectralCompressor, SpectralFilter as CoreSpectralFilter,
-    SpectralFreeze as CoreSpectralFreeze, SpectralGate as CoreSpectralGate,
-    SpectralRobotize as CoreSpectralRobotize, SpectralDynamics as CoreSpectralDynamics,
+    SpectralCompressor as CoreSpectralCompressor, SpectralDynamics as CoreSpectralDynamics,
+    SpectralFilter as CoreSpectralFilter, SpectralFreeze as CoreSpectralFreeze,
+    SpectralGate as CoreSpectralGate, SpectralRobotize as CoreSpectralRobotize,
     SpectralScramble as CoreSpectralScramble, WindowType,
 };
 
@@ -704,6 +704,7 @@ impl SpectralCompressor {
     /// * `release` - Release time in milliseconds
     /// * `knee` - Soft knee width in dB
     /// * `sample_rate` - Sample rate in Hz
+    #[allow(clippy::too_many_arguments)]
     pub fn with_params(
         fft_size: usize,
         hop_size: usize,
@@ -2148,12 +2149,7 @@ impl SpectralInvert {
     /// # use tunes::synthesis::effects::SpectralInvert;
     /// let invert = SpectralInvert::with_params(4096, 1024, 1.0, 44100.0);
     /// ```
-    pub fn with_params(
-        fft_size: usize,
-        hop_size: usize,
-        mix: f32,
-        sample_rate: f32,
-    ) -> Self {
+    pub fn with_params(fft_size: usize, hop_size: usize, mix: f32, sample_rate: f32) -> Self {
         let mut core = CoreSpectralInvert::new(fft_size, hop_size, WindowType::Hann, sample_rate);
         core.set_mix(mix);
 
@@ -2554,7 +2550,12 @@ impl SpectralMorph {
     /// # use tunes::synthesis::effects::{SpectralMorph, SpectralMorphTarget};
     /// let morph = SpectralMorph::new(SpectralMorphTarget::Robot, 0.7, 220.0, 44100.0);
     /// ```
-    pub fn new(target: SpectralMorphTarget, morph_amount: f32, fundamental: f32, sample_rate: f32) -> Self {
+    pub fn new(
+        target: SpectralMorphTarget,
+        morph_amount: f32,
+        fundamental: f32,
+        sample_rate: f32,
+    ) -> Self {
         Self::with_params(2048, 512, target, morph_amount, fundamental, sample_rate)
     }
 
@@ -3232,6 +3233,7 @@ impl SpectralDynamics {
     /// - `release` - Release time in milliseconds
     /// - `knee` - Soft knee width in dB
     /// - `sample_rate` - Sample rate in Hz
+    #[allow(clippy::too_many_arguments)]
     pub fn with_params(
         fft_size: usize,
         hop_size: usize,

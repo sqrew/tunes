@@ -82,7 +82,6 @@
 /// // Or use presets
 /// let seq = fibonacci::classic();
 /// ```
-
 /// Generate Fibonacci sequence with custom length
 ///
 /// See module-level documentation for details on the Fibonacci sequence,

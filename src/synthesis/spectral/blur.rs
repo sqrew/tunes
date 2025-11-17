@@ -24,7 +24,7 @@ pub struct SpectralBlur {
     fft_size: usize,
 
     /// Sample rate
-    sample_rate: f32,
+    _sample_rate: f32,
 
     /// Blur amount (0.0 = no blur, 1.0 = full blur)
     blur_amount: f32,
@@ -66,7 +66,7 @@ impl SpectralBlur {
         Self {
             stft,
             fft_size,
-            sample_rate,
+            _sample_rate: sample_rate,
             blur_amount: 0.5,
             feedback: 0.7,
             mix: 1.0,

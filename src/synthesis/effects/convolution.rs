@@ -115,7 +115,7 @@ impl ConvolutionReverb {
         }
 
         // Auto-select block size based on IR length
-        let block_size = block_size.unwrap_or_else(|| {
+        let block_size = block_size.unwrap_or({
             if ir.len() < 4096 {
                 2048
             } else if ir.len() < 16384 {

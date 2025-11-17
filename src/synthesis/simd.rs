@@ -23,7 +23,6 @@
 /// let width = SIMD.width();
 /// println!("Using {}-wide SIMD", width);
 /// ```
-
 use lazy_static::lazy_static;
 use wide::{f32x4, f32x8};
 
@@ -370,9 +369,9 @@ impl SimdDispatcher {
                 };
             }
             // Fall back to SSE (4-wide) - guaranteed on x86_64
-            return Self {
+            Self {
                 width: SimdWidth::X4,
-            };
+            }
         }
 
         // Non-x86 architectures: use 4-wide (NEON on ARM, LLVM auto-vec elsewhere)

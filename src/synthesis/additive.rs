@@ -37,6 +37,8 @@
 //! ```
 
 use std::f32::consts::PI;
+use crate::synthesis::simd::{SIMD, SimdLanes, SimdWidth};
+use wide::{f32x4, f32x8};
 
 /// A single partial (sine wave component) in additive synthesis
 ///
@@ -289,7 +291,7 @@ impl AdditiveSynth {
         }
     }
 
-    /// Generate multiple samples
+    /// Generate multiple samples (SIMD-optimized)
     ///
     /// # Arguments
     /// * `length` - Number of samples to generate
@@ -304,7 +306,208 @@ impl AdditiveSynth {
     /// let one_second = synth.generate(44100);
     /// ```
     pub fn generate(&mut self, length: usize) -> Vec<f32> {
-        (0..length).map(|_| self.sample()).collect()
+        // Use SIMD if we have enough partials to benefit
+        if self.partials.len() >= 8 {
+            match SIMD.simd_width() {
+                SimdWidth::X8 => self.generate_simd_x8(length),
+                SimdWidth::X4 => self.generate_simd_x4(length),
+                SimdWidth::Scalar => (0..length).map(|_| self.sample()).collect(),
+            }
+        } else if self.partials.len() >= 4 {
+            match SIMD.simd_width() {
+                SimdWidth::X8 | SimdWidth::X4 => self.generate_simd_x4(length),
+                SimdWidth::Scalar => (0..length).map(|_| self.sample()).collect(),
+            }
+        } else {
+            // Too few partials for SIMD to help
+            (0..length).map(|_| self.sample()).collect()
+        }
+    }
+
+    /// SIMD-optimized generation using 8-wide vectors (AVX2)
+    #[inline]
+    fn generate_simd_x8(&mut self, length: usize) -> Vec<f32> {
+        let mut output = Vec::with_capacity(length);
+        let num_partials = self.partials.len();
+        let simd_partials = (num_partials / 8) * 8;
+
+        for _ in 0..length {
+            let mut sum = 0.0f32;
+
+            // Process 8 partials at a time
+            for chunk_start in (0..simd_partials).step_by(8) {
+                // Load 8 phases
+                let phases = f32x8::from([
+                    self.phases[chunk_start],
+                    self.phases[chunk_start + 1],
+                    self.phases[chunk_start + 2],
+                    self.phases[chunk_start + 3],
+                    self.phases[chunk_start + 4],
+                    self.phases[chunk_start + 5],
+                    self.phases[chunk_start + 6],
+                    self.phases[chunk_start + 7],
+                ]);
+
+                // Load 8 amplitudes
+                let amplitudes = f32x8::from([
+                    self.partials[chunk_start].amplitude,
+                    self.partials[chunk_start + 1].amplitude,
+                    self.partials[chunk_start + 2].amplitude,
+                    self.partials[chunk_start + 3].amplitude,
+                    self.partials[chunk_start + 4].amplitude,
+                    self.partials[chunk_start + 5].amplitude,
+                    self.partials[chunk_start + 6].amplitude,
+                    self.partials[chunk_start + 7].amplitude,
+                ]);
+
+                // Load 8 frequency ratios
+                let freq_ratios = f32x8::from([
+                    self.partials[chunk_start].frequency_ratio,
+                    self.partials[chunk_start + 1].frequency_ratio,
+                    self.partials[chunk_start + 2].frequency_ratio,
+                    self.partials[chunk_start + 3].frequency_ratio,
+                    self.partials[chunk_start + 4].frequency_ratio,
+                    self.partials[chunk_start + 5].frequency_ratio,
+                    self.partials[chunk_start + 6].frequency_ratio,
+                    self.partials[chunk_start + 7].frequency_ratio,
+                ]);
+
+                // Calculate sine waves: sin(phase * 2π) * amplitude
+                let phase_radians = phases.mul(f32x8::splat(2.0 * PI));
+                let sine_vals = phase_radians.fast_sin();
+                let samples = sine_vals.mul(amplitudes);
+
+                // Sum all 8 partials
+                let arr = samples.to_array();
+                sum += arr[0] + arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7];
+
+                // Calculate phase increments and update phases
+                let fundamental = f32x8::splat(self.fundamental_freq);
+                let sample_rate = f32x8::splat(self.sample_rate);
+                let freqs = fundamental.mul(freq_ratios);
+                let phase_increments = freqs.div(sample_rate);
+                let new_phases = phases.add(phase_increments);
+
+                // Write back phases, wrapping to [0, 1)
+                for i in 0..8 {
+                    let mut phase = new_phases.to_array()[i];
+                    if phase >= 1.0 {
+                        phase -= phase.floor();
+                    }
+                    self.phases[chunk_start + i] = phase;
+                }
+            }
+
+            // Handle remaining partials with scalar code
+            for i in simd_partials..num_partials {
+                let freq = self.fundamental_freq * self.partials[i].frequency_ratio;
+                let sample = (self.phases[i] * 2.0 * PI).sin() * self.partials[i].amplitude;
+                sum += sample;
+
+                let phase_increment = freq / self.sample_rate;
+                self.phases[i] += phase_increment;
+                if self.phases[i] >= 1.0 {
+                    self.phases[i] -= self.phases[i].floor();
+                }
+            }
+
+            // Normalize and push sample
+            let normalized = if num_partials > 0 {
+                sum / num_partials as f32
+            } else {
+                0.0
+            };
+            output.push(normalized);
+        }
+
+        output
+    }
+
+    /// SIMD-optimized generation using 4-wide vectors (SSE/NEON)
+    #[inline]
+    fn generate_simd_x4(&mut self, length: usize) -> Vec<f32> {
+        let mut output = Vec::with_capacity(length);
+        let num_partials = self.partials.len();
+        let simd_partials = (num_partials / 4) * 4;
+
+        for _ in 0..length {
+            let mut sum = 0.0f32;
+
+            // Process 4 partials at a time
+            for chunk_start in (0..simd_partials).step_by(4) {
+                // Load 4 phases
+                let phases = f32x4::from([
+                    self.phases[chunk_start],
+                    self.phases[chunk_start + 1],
+                    self.phases[chunk_start + 2],
+                    self.phases[chunk_start + 3],
+                ]);
+
+                // Load 4 amplitudes
+                let amplitudes = f32x4::from([
+                    self.partials[chunk_start].amplitude,
+                    self.partials[chunk_start + 1].amplitude,
+                    self.partials[chunk_start + 2].amplitude,
+                    self.partials[chunk_start + 3].amplitude,
+                ]);
+
+                // Load 4 frequency ratios
+                let freq_ratios = f32x4::from([
+                    self.partials[chunk_start].frequency_ratio,
+                    self.partials[chunk_start + 1].frequency_ratio,
+                    self.partials[chunk_start + 2].frequency_ratio,
+                    self.partials[chunk_start + 3].frequency_ratio,
+                ]);
+
+                // Calculate sine waves: sin(phase * 2π) * amplitude
+                let phase_radians = phases.mul(f32x4::splat(2.0 * PI));
+                let sine_vals = phase_radians.fast_sin();
+                let samples = sine_vals.mul(amplitudes);
+
+                // Sum all 4 partials
+                let arr = samples.to_array();
+                sum += arr[0] + arr[1] + arr[2] + arr[3];
+
+                // Calculate phase increments and update phases
+                let fundamental = f32x4::splat(self.fundamental_freq);
+                let sample_rate = f32x4::splat(self.sample_rate);
+                let freqs = fundamental.mul(freq_ratios);
+                let phase_increments = freqs.div(sample_rate);
+                let new_phases = phases.add(phase_increments);
+
+                // Write back phases, wrapping to [0, 1)
+                for i in 0..4 {
+                    let mut phase = new_phases.to_array()[i];
+                    if phase >= 1.0 {
+                        phase -= phase.floor();
+                    }
+                    self.phases[chunk_start + i] = phase;
+                }
+            }
+
+            // Handle remaining partials with scalar code
+            for i in simd_partials..num_partials {
+                let freq = self.fundamental_freq * self.partials[i].frequency_ratio;
+                let sample = (self.phases[i] * 2.0 * PI).sin() * self.partials[i].amplitude;
+                sum += sample;
+
+                let phase_increment = freq / self.sample_rate;
+                self.phases[i] += phase_increment;
+                if self.phases[i] >= 1.0 {
+                    self.phases[i] -= self.phases[i].floor();
+                }
+            }
+
+            // Normalize and push sample
+            let normalized = if num_partials > 0 {
+                sum / num_partials as f32
+            } else {
+                0.0
+            };
+            output.push(normalized);
+        }
+
+        output
     }
 }
 

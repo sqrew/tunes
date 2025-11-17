@@ -144,6 +144,10 @@ name = "spectral_effects"
 harness = false
 
 [[bench]]
+name = "simd_synthesis_benchmark"
+harness = false
+
+[[bench]]
 name = "gpu_fft_benchmark"
 harness = false
 required-features = ["gpu"]

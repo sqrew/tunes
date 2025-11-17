@@ -8,7 +8,6 @@
 ///
 /// Slices are lightweight references to regions of the parent sample,
 /// avoiding unnecessary copying of audio data.
-
 use crate::error::{Result, TunesError};
 use crate::synthesis::sample::Sample;
 use std::sync::Arc;
@@ -276,7 +275,7 @@ impl Sample {
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn detect_transients(&self, threshold: f32, min_gap_ms: f32) -> Result<Vec<usize>> {
-        if threshold < 0.0 || threshold > 1.0 {
+        if !(0.0..=1.0).contains(&threshold) {
             return Err(TunesError::InvalidAudioFormat(
                 "Threshold must be between 0.0 and 1.0".to_string(),
             ));

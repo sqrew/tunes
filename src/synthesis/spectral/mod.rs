@@ -24,38 +24,38 @@ use std::sync::Arc;
 use wide::{f32x4, f32x8};
 
 // Module declarations
-mod phase_vocoder;
+mod blur;
+mod compressor;
+mod delay;
+mod dynamics;
+mod exciter;
+mod filter;
 mod freeze;
 mod gate;
-mod compressor;
-mod robotize;
-mod delay;
-mod filter;
-mod blur;
-mod shift;
-mod exciter;
 mod invert;
-mod widen;
 mod morph;
-mod dynamics;
+mod phase_vocoder;
+mod robotize;
 mod scramble;
+mod shift;
+mod widen;
 
 // Re-exports
-pub use phase_vocoder::PhaseVocoder;
+pub use blur::SpectralBlur;
+pub use compressor::SpectralCompressor;
+pub use delay::SpectralDelay;
+pub use dynamics::SpectralDynamics;
+pub use exciter::SpectralExciter;
+pub use filter::SpectralFilter;
 pub use freeze::SpectralFreeze;
 pub use gate::SpectralGate;
-pub use compressor::SpectralCompressor;
-pub use robotize::SpectralRobotize;
-pub use delay::SpectralDelay;
-pub use filter::SpectralFilter;
-pub use blur::SpectralBlur;
-pub use shift::SpectralShift;
-pub use exciter::SpectralExciter;
 pub use invert::SpectralInvert;
-pub use widen::SpectralWiden;
-pub use morph::{SpectralMorph, MorphTarget};
-pub use dynamics::SpectralDynamics;
+pub use morph::{MorphTarget, SpectralMorph};
+pub use phase_vocoder::PhaseVocoder;
+pub use robotize::SpectralRobotize;
 pub use scramble::SpectralScramble;
+pub use shift::SpectralShift;
+pub use widen::SpectralWiden;
 
 /// Window function types for spectral processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -478,6 +478,7 @@ impl ComplexOps {
 /// });
 /// ```
 #[derive(Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct STFT {
     /// FFT size (window size)
     fft_size: usize,
@@ -962,7 +963,10 @@ mod tests {
         });
 
         // Callback should have been invoked at least once
-        assert!(callback_invoked, "Spectral processing callback was never called");
+        assert!(
+            callback_invoked,
+            "Spectral processing callback was never called"
+        );
     }
 
     #[test]

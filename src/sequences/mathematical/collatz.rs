@@ -117,7 +117,6 @@
 /// // Or use presets
 /// let seq = collatz::dramatic();
 /// ```
-
 /// Generate Collatz sequence with custom parameters
 ///
 /// See module-level documentation for details on the Collatz conjecture,

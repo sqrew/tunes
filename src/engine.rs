@@ -35,7 +35,7 @@ pub type SoundId = u64;
 enum AudioCommand {
     Play {
         id: SoundId,
-        mixer: Mixer,
+        mixer: Box<Mixer>,
         looping: bool,
     },
     Stop {
@@ -162,7 +162,7 @@ struct ActiveSound {
     looping: bool,
     spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
     spatial_cone: Option<SoundCone>,           // Optional directional cone
-    occlusion: f32,                             // Occlusion amount (0.0 = none, 1.0 = fully occluded)
+    occlusion: f32, // Occlusion amount (0.0 = none, 1.0 = fully occluded)
     // Volume fade state
     fade_start_time: Option<f32>,
     fade_duration: f32,
@@ -692,7 +692,7 @@ impl AudioEngine {
                 active_sounds.insert(
                     id,
                     ActiveSound {
-                        mixer,
+                        mixer: *mixer,
                         sample_clock: 0.0,
                         elapsed_time: 0.0,
                         volume: 1.0,
@@ -923,6 +923,7 @@ impl AudioEngine {
     /// Mix all active sounds into the output buffer (called from audio thread)
     ///
     /// This function is ALLOCATION-FREE - all buffers are pre-allocated and reused.
+    #[allow(clippy::too_many_arguments)]
     fn mix_sounds(
         output: &mut [f32],
         active_sounds: &mut HashMap<SoundId, ActiveSound>,
@@ -1228,7 +1229,7 @@ impl AudioEngine {
         self.command_tx
             .send(AudioCommand::Play {
                 id,
-                mixer: mixer_clone,
+                mixer: Box::new(mixer_clone),
                 looping: false,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
@@ -1344,7 +1345,7 @@ impl AudioEngine {
         self.command_tx
             .send(AudioCommand::Play {
                 id,
-                mixer: mixer_clone,
+                mixer: Box::new(mixer_clone),
                 looping: true,
             })
             .map_err(|_| TunesError::AudioEngineError("Audio engine stopped".to_string()))?;
@@ -2759,7 +2760,7 @@ impl<'a> SamplePlaybackBuilder<'a> {
         }
 
         if let Some(filter) = &self.filter {
-            track = track.filter(filter.clone());
+            track = track.filter(*filter);
         }
 
         // Apply effects

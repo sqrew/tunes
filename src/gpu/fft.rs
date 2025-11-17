@@ -33,7 +33,7 @@ pub struct GpuFft {
 
     // Bind groups
     main_bind_group: wgpu::BindGroup,
-    butterfly_bind_groups: Vec<wgpu::BindGroup>,  // One per stage
+    butterfly_bind_groups: Vec<wgpu::BindGroup>, // One per stage
 }
 
 impl GpuFft {
@@ -55,108 +55,120 @@ impl GpuFft {
             anyhow::bail!("FFT size must be power of 2, got {}", fft_size);
         }
 
-        if fft_size < 8 || fft_size > 4096 {
+        if !(8..=4096).contains(&fft_size) {
             anyhow::bail!("FFT size must be between 8 and 4096, got {}", fft_size);
         }
 
         let log2_size = (fft_size as f32).log2() as u32;
 
         // Load shader
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("FFT Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("fft.wgsl").into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("FFT Compute Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("fft.wgsl").into()),
+            });
 
         // Create buffers
         let data_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Data Buffer"),
-            size: (fft_size * 2 * std::mem::size_of::<f32>()) as u64,  // Complex: 2 floats per sample
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            size: (fft_size * 2 * std::mem::size_of::<f32>()) as u64, // Complex: 2 floats per sample
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
         // Pre-compute twiddle factors on CPU
         let twiddle_factors = Self::compute_twiddle_factors(fft_size);
-        let twiddle_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FFT Twiddle Factors"),
-            contents: bytemuck::cast_slice(&twiddle_factors),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let twiddle_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FFT Twiddle Factors"),
+                contents: bytemuck::cast_slice(&twiddle_factors),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         // Parameters buffer
         let params_data = [
             fft_size as u32,
             log2_size,
-            0u32,  // inverse flag (will be set per-call)
-            0u32,  // padding
+            0u32, // inverse flag (will be set per-call)
+            0u32, // padding
         ];
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FFT Parameters"),
-            contents: bytemuck::cast_slice(&params_data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FFT Parameters"),
+                contents: bytemuck::cast_slice(&params_data),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Butterfly parameters buffer (stage index)
         let butterfly_params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Butterfly Parameters"),
-            size: 16,  // 4 u32s (stage + padding)
+            size: 16, // 4 u32s (stage + padding)
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         // Create bind group layouts
-        let main_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("FFT Main Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let main_bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("FFT Main Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
-        let butterfly_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("FFT Butterfly Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let butterfly_bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("FFT Butterfly Bind Group Layout"),
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                });
 
         // Create main bind group
         let main_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -184,56 +196,69 @@ impl GpuFft {
             let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("FFT Butterfly Bind Group"),
                 layout: &butterfly_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: butterfly_params_buffer.as_entire_binding(),
-                    },
-                ],
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: butterfly_params_buffer.as_entire_binding(),
+                }],
             });
             butterfly_bind_groups.push(bind_group);
         }
 
         // Create pipeline layouts
-        let main_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("FFT Main Pipeline Layout"),
-            bind_group_layouts: &[&main_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let main_pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("FFT Main Pipeline Layout"),
+                    bind_group_layouts: &[&main_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let butterfly_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("FFT Butterfly Pipeline Layout"),
-            bind_group_layouts: &[&main_bind_group_layout, &butterfly_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let butterfly_pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("FFT Butterfly Pipeline Layout"),
+                    bind_group_layouts: &[&main_bind_group_layout, &butterfly_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create compute pipelines
-        let bit_reversal_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("FFT Bit Reversal Pipeline"),
-            layout: Some(&main_pipeline_layout),
-            module: &shader,
-            entry_point: Some("bit_reversal"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let bit_reversal_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FFT Bit Reversal Pipeline"),
+                    layout: Some(&main_pipeline_layout),
+                    module: &shader,
+                    entry_point: Some("bit_reversal"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
-        let butterfly_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("FFT Butterfly Pipeline"),
-            layout: Some(&butterfly_pipeline_layout),
-            module: &shader,
-            entry_point: Some("fft_butterfly"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let butterfly_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FFT Butterfly Pipeline"),
+                    layout: Some(&butterfly_pipeline_layout),
+                    module: &shader,
+                    entry_point: Some("fft_butterfly"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
-        let normalize_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("FFT Normalize Pipeline"),
-            layout: Some(&main_pipeline_layout),
-            module: &shader,
-            entry_point: Some("normalize"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let normalize_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FFT Normalize Pipeline"),
+                    layout: Some(&main_pipeline_layout),
+                    module: &shader,
+                    entry_point: Some("normalize"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
         Ok(Self {
             device,
@@ -260,8 +285,8 @@ impl GpuFft {
 
         for k in 0..size {
             let angle = -2.0 * PI * k as f32 / size as f32;
-            factors.push(angle.cos());  // Real part
-            factors.push(angle.sin());  // Imaginary part
+            factors.push(angle.cos()); // Real part
+            factors.push(angle.sin()); // Imaginary part
         }
 
         factors
@@ -312,7 +337,11 @@ impl GpuFft {
     /// Execute FFT (forward or inverse)
     fn execute_fft(&mut self, data: &mut [Complex<f32>], inverse: bool) -> Result<()> {
         if data.len() != self.fft_size {
-            anyhow::bail!("Data length {} doesn't match FFT size {}", data.len(), self.fft_size);
+            anyhow::bail!(
+                "Data length {} doesn't match FFT size {}",
+                data.len(),
+                self.fft_size
+            );
         }
 
         // Convert Complex<f32> to interleaved f32 [re0, im0, re1, im1, ...]
@@ -323,7 +352,9 @@ impl GpuFft {
         }
 
         // Upload data to GPU
-        self.device.queue.write_buffer(&self.data_buffer, 0, bytemuck::cast_slice(&interleaved));
+        self.device
+            .queue
+            .write_buffer(&self.data_buffer, 0, bytemuck::cast_slice(&interleaved));
 
         // Update params buffer with inverse flag
         let params_data = [
@@ -332,13 +363,18 @@ impl GpuFft {
             if inverse { 1u32 } else { 0u32 },
             0u32,
         ];
-        self.device.queue.write_buffer(&self.params_buffer, 0, bytemuck::cast_slice(&params_data));
+        self.device
+            .queue
+            .write_buffer(&self.params_buffer, 0, bytemuck::cast_slice(&params_data));
 
         // Stage 1: Bit reversal (DIT algorithm - bit-reverse input on GPU)
         {
-            let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FFT Bit Reversal Encoder"),
-            });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("FFT Bit Reversal Encoder"),
+                    });
 
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("FFT Bit Reversal"),
@@ -348,7 +384,7 @@ impl GpuFft {
             pass.set_pipeline(&self.bit_reversal_pipeline);
             pass.set_bind_group(0, &self.main_bind_group, &[]);
 
-            let workgroups = (self.fft_size as u32 + 255) / 256;
+            let workgroups = (self.fft_size as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
 
             drop(pass);
@@ -359,11 +395,18 @@ impl GpuFft {
         for stage in 0..self.log2_size {
             // Update butterfly params
             let butterfly_params = [stage, 0u32, 0u32, 0u32];
-            self.device.queue.write_buffer(&self.butterfly_params_buffer, 0, bytemuck::cast_slice(&butterfly_params));
+            self.device.queue.write_buffer(
+                &self.butterfly_params_buffer,
+                0,
+                bytemuck::cast_slice(&butterfly_params),
+            );
 
-            let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some(&format!("FFT Butterfly Stage {} Encoder", stage)),
-            });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some(&format!("FFT Butterfly Stage {} Encoder", stage)),
+                    });
 
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some(&format!("FFT Butterfly Stage {}", stage)),
@@ -379,7 +422,7 @@ impl GpuFft {
             let half_block = block_size >> 1;
             let num_pairs = (self.fft_size as u32 / block_size) * half_block;
 
-            let workgroups = (num_pairs + 255) / 256;
+            let workgroups = num_pairs.div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
 
             drop(pass);
@@ -388,9 +431,12 @@ impl GpuFft {
 
         // Stage 3: Normalization (for inverse FFT)
         if inverse {
-            let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FFT Normalization Encoder"),
-            });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("FFT Normalization Encoder"),
+                    });
 
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("FFT Normalization"),
@@ -400,7 +446,7 @@ impl GpuFft {
             pass.set_pipeline(&self.normalize_pipeline);
             pass.set_bind_group(0, &self.main_bind_group, &[]);
 
-            let workgroups = (self.fft_size as u32 + 255) / 256;
+            let workgroups = (self.fft_size as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
 
             drop(pass);
@@ -416,9 +462,12 @@ impl GpuFft {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("FFT Readback Encoder"),
-        });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FFT Readback Encoder"),
+                });
         encoder.copy_buffer_to_buffer(&self.data_buffer, 0, &staging_buffer, 0, buffer_size);
         self.device.queue.submit(Some(encoder.finish()));
 
@@ -454,7 +503,6 @@ impl GpuFft {
     pub fn size(&self) -> usize {
         self.fft_size
     }
-
 }
 
 #[cfg(test)]
@@ -463,7 +511,7 @@ mod tests {
     use rustfft::FftPlanner;
 
     #[test]
-    #[ignore]  // Requires GPU
+    #[ignore] // Requires GPU
     fn test_fft_forward() {
         let device = GpuDevice::new().unwrap();
         let mut gpu_fft = GpuFft::new(Arc::new(device), 1024).unwrap();
@@ -489,13 +537,25 @@ mod tests {
         for i in 0..1024 {
             let diff_re = (gpu_result[i].re - cpu_result[i].re).abs();
             let diff_im = (gpu_result[i].im - cpu_result[i].im).abs();
-            assert!(diff_re < 0.001, "Real part mismatch at {}: {} vs {}", i, gpu_result[i].re, cpu_result[i].re);
-            assert!(diff_im < 0.001, "Imag part mismatch at {}: {} vs {}", i, gpu_result[i].im, cpu_result[i].im);
+            assert!(
+                diff_re < 0.001,
+                "Real part mismatch at {}: {} vs {}",
+                i,
+                gpu_result[i].re,
+                cpu_result[i].re
+            );
+            assert!(
+                diff_im < 0.001,
+                "Imag part mismatch at {}: {} vs {}",
+                i,
+                gpu_result[i].im,
+                cpu_result[i].im
+            );
         }
     }
 
     #[test]
-    #[ignore]  // Requires GPU
+    #[ignore] // Requires GPU
     fn test_fft_inverse() {
         let device = GpuDevice::new().unwrap();
         let mut gpu_fft = GpuFft::new(Arc::new(device), 1024).unwrap();

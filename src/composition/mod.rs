@@ -1,9 +1,9 @@
-use crate::synthesis::envelope::Envelope;
 use crate::instruments::Instrument;
+use crate::synthesis::envelope::Envelope;
 use crate::synthesis::sample::Sample;
-use crate::track::{Mixer, Track};
-use crate::track::ids::{BusId, BusIdGenerator, TrackIdGenerator};
 use crate::synthesis::waveform::Waveform;
+use crate::track::ids::{BusId, BusIdGenerator, TrackIdGenerator};
+use crate::track::{Mixer, Track};
 use std::collections::HashMap;
 
 // Import synthesis types - use prelude which re-exports them
@@ -18,25 +18,25 @@ use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
 
 // Module declarations
-pub mod drum_grid;
-pub mod patterns;
-pub mod timing;
 mod chords;
+pub mod drum_grid;
 mod effects;
 mod expression;
 pub mod generative;
 mod notes;
 mod ornaments;
+pub mod patterns;
 mod portamento;
 mod sections;
 mod synthesis;
+pub mod timing;
 mod tuplets;
 
 // Re-export main types for public API
 pub use crate::instruments::drums::DrumType;
 pub use drum_grid::DrumGrid;
-pub use timing::Tempo;
 pub use sections::{Section, SectionBuilder};
+pub use timing::Tempo;
 
 /// Template for reusing track settings across multiple tracks
 #[derive(Clone)]
@@ -85,8 +85,8 @@ pub struct Composition {
     templates: HashMap<String, TrackTemplate>, // Named track templates for reuse
 
     // ID generators and mappings for performance optimization
-    bus_id_gen: BusIdGenerator,           // Generate unique bus IDs
-    track_id_gen: TrackIdGenerator,       // Generate unique track IDs
+    bus_id_gen: BusIdGenerator,             // Generate unique bus IDs
+    track_id_gen: TrackIdGenerator,         // Generate unique track IDs
     bus_name_to_id: HashMap<String, BusId>, // Map bus names to IDs
     bus_id_to_name: HashMap<BusId, String>, // Map bus IDs back to names
 }
@@ -200,6 +200,7 @@ impl Composition {
     /// comp.from_template("lead_sound", "lead2")
     ///     .notes(&[G4, E4, C4], 0.25);
     /// ```
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_template(&mut self, template_name: &str, track_name: &str) -> TrackBuilder<'_> {
         let template = self.templates.get(template_name)
             .cloned()
@@ -334,7 +335,9 @@ impl Composition {
             track.name = Some(name.clone());
 
             // Look up bus name from track's bus_id
-            let bus_name = self.bus_id_to_name.get(&track.bus_id)
+            let bus_name = self
+                .bus_id_to_name
+                .get(&track.bus_id)
                 .cloned()
                 .unwrap_or_else(|| "default".to_string());
 
@@ -418,8 +421,12 @@ impl Composition {
                 See: https://docs.claude.com/spatial-audio for more details.",
                 track_name,
                 found_positions.len(),
-                found_positions.iter()
-                    .map(|p| format!("  - ({:.2}, {:.2}, {:.2})", p.position.x, p.position.y, p.position.z))
+                found_positions
+                    .iter()
+                    .map(|p| format!(
+                        "  - ({:.2}, {:.2}, {:.2})",
+                        p.position.x, p.position.y, p.position.z
+                    ))
                     .collect::<Vec<_>>()
                     .join("\n")
             );
@@ -716,10 +723,7 @@ impl Composition {
     /// }
     /// ```
     pub fn markers(&self) -> Vec<(&str, f32)> {
-        self.markers
-            .iter()
-            .map(|(k, v)| (k.as_str(), *v))
-            .collect()
+        self.markers.iter().map(|(k, v)| (k.as_str(), *v)).collect()
     }
 }
 
@@ -767,9 +771,21 @@ mod marker_tests {
         assert_eq!(markers.len(), 3);
 
         // HashMap iteration order is not guaranteed, so check all exist
-        assert!(markers.iter().any(|(name, time)| name == &"a" && *time == 1.0));
-        assert!(markers.iter().any(|(name, time)| name == &"b" && *time == 2.0));
-        assert!(markers.iter().any(|(name, time)| name == &"c" && *time == 3.0));
+        assert!(
+            markers
+                .iter()
+                .any(|(name, time)| name == &"a" && *time == 1.0)
+        );
+        assert!(
+            markers
+                .iter()
+                .any(|(name, time)| name == &"b" && *time == 2.0)
+        );
+        assert!(
+            markers
+                .iter()
+                .any(|(name, time)| name == &"c" && *time == 3.0)
+        );
     }
 
     #[test]
@@ -786,9 +802,7 @@ mod marker_tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.mark_at("drop", 16.0);
 
-        comp.track("bass")
-            .at_marker("drop")
-            .note(&[C2], 0.5);
+        comp.track("bass").at_marker("drop").note(&[C2], 0.5);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks()[0];
@@ -845,19 +859,16 @@ mod marker_tests {
         comp.mark_at("drop", 16.0);
 
         // Test .at_marker()
-        comp.track("track1")
-            .at_marker("drop")
-            .note(&[C4], 0.5);
+        comp.track("track1").at_marker("drop").note(&[C4], 0.5);
 
         // Test .at_mark()
-        comp.track("track2")
-            .at_mark("drop")
-            .note(&[E4], 0.5);
+        comp.track("track2").at_mark("drop").note(&[E4], 0.5);
 
         let mixer = comp.into_mixer();
 
         // Both should start at the same time
-        let times: Vec<f32> = mixer.tracks()
+        let times: Vec<f32> = mixer
+            .tracks()
             .iter()
             .filter_map(|track| {
                 if let Some(crate::track::AudioEvent::Note(note)) = track.events.first() {
@@ -974,8 +985,12 @@ impl<'a> TrackBuilder<'a> {
         } else {
             // Create new bus ID
             let id = self.composition.bus_id_gen.next_id();
-            self.composition.bus_name_to_id.insert(bus_name.to_string(), id);
-            self.composition.bus_id_to_name.insert(id, bus_name.to_string());
+            self.composition
+                .bus_name_to_id
+                .insert(bus_name.to_string(), id);
+            self.composition
+                .bus_id_to_name
+                .insert(id, bus_name.to_string());
             id
         };
 

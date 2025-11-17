@@ -75,7 +75,6 @@
 /// // Or use presets
 /// let kick = euclidean::kick_four_floor();
 /// ```
-
 /// Generate Euclidean rhythm pattern - returns step indices where hits occur
 ///
 /// See module-level documentation for details on Euclidean rhythms,

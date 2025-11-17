@@ -27,7 +27,7 @@ pub struct SpectralInvert {
     fft_size: usize,
 
     /// Sample rate
-    sample_rate: f32,
+    _sample_rate: f32,
 
     /// Wet/dry mix (0.0 = dry, 1.0 = fully inverted)
     mix: f32,
@@ -54,7 +54,7 @@ impl SpectralInvert {
         Self {
             stft,
             fft_size,
-            sample_rate,
+            _sample_rate: sample_rate,
             mix: 1.0,
             enabled: true,
         }

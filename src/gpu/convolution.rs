@@ -83,7 +83,7 @@ impl GpuConvolution {
         let ir_samples: Vec<f32> = ir_time.iter().map(|c| c.re * scale).collect();
 
         // Step 2: Split IR into partitions and concatenate FFTs
-        let num_partitions = (ir_samples.len() + PARTITION_SIZE - 1) / PARTITION_SIZE;
+        let num_partitions = ir_samples.len().div_ceil(PARTITION_SIZE);
         let mut partition_delays: Vec<Vec<f32>> = Vec::new();
         let mut all_partition_ffts: Vec<GpuComplex> = Vec::new();
 

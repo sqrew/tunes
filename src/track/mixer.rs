@@ -595,9 +595,9 @@ impl Mixer {
                             let cache_key = CacheKey::from_note_event(note_event, sample_rate);
 
                             // Only add if not already seen
-                            if !unique_notes.contains_key(&cache_key) {
-                                unique_notes.insert(cache_key, note_event.clone());
-                            }
+                            unique_notes
+                                .entry(cache_key)
+                                .or_insert_with(|| note_event.clone());
                         }
                     }
                 }
@@ -1422,6 +1422,7 @@ impl Mixer {
     /// * `cache` - Optional sample cache for pre-rendered synthesis
     /// * `gpu_synthesizer` - Optional GPU synthesizer for 500-1000x faster rendering
     /// * `prerendered` - If true, skip cache-miss detection (already pre-rendered)
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_track_block(
         track: &mut Track,
         buffer: &mut [f32],
@@ -2252,7 +2253,10 @@ impl Mixer {
     /// let freeze = SpectralFreeze::new(true, 0.75, 44100.0); // 75% frozen, 25% live
     /// mixer.master_spectral_freeze(freeze);
     /// ```
-    pub fn master_spectral_freeze(&mut self, spectral_freeze: crate::synthesis::effects::SpectralFreeze) {
+    pub fn master_spectral_freeze(
+        &mut self,
+        spectral_freeze: crate::synthesis::effects::SpectralFreeze,
+    ) {
         self.master.spectral_freeze = Some(spectral_freeze);
         self.master.compute_effect_order();
     }
@@ -2298,17 +2302,26 @@ impl Mixer {
     /// let compressor = SpectralCompressor::new(-20.0, 4.0, 5.0, 50.0, 6.0, 44100.0);
     /// mixer.master_spectral_compressor(compressor);
     /// ```
-    pub fn master_spectral_compressor(&mut self, spectral_compressor: crate::synthesis::effects::SpectralCompressor) {
+    pub fn master_spectral_compressor(
+        &mut self,
+        spectral_compressor: crate::synthesis::effects::SpectralCompressor,
+    ) {
         self.master.spectral_compressor = Some(spectral_compressor);
         self.master.compute_effect_order();
     }
 
-    pub fn master_spectral_robotize(&mut self, spectral_robotize: crate::synthesis::effects::SpectralRobotize) {
+    pub fn master_spectral_robotize(
+        &mut self,
+        spectral_robotize: crate::synthesis::effects::SpectralRobotize,
+    ) {
         self.master.spectral_robotize = Some(spectral_robotize);
         self.master.compute_effect_order();
     }
 
-    pub fn master_spectral_delay(&mut self, spectral_delay: crate::synthesis::effects::SpectralDelay) {
+    pub fn master_spectral_delay(
+        &mut self,
+        spectral_delay: crate::synthesis::effects::SpectralDelay,
+    ) {
         self.master.spectral_delay = Some(spectral_delay);
         self.master.compute_effect_order();
     }
@@ -2335,7 +2348,10 @@ impl Mixer {
     /// let filter = SpectralFilter::new(FilterType::LowPass, 8000.0, 1.0, 1.0, 44100.0);
     /// mixer.master_spectral_filter(filter);
     /// ```
-    pub fn master_spectral_filter(&mut self, spectral_filter: crate::synthesis::effects::SpectralFilter) -> &mut Self {
+    pub fn master_spectral_filter(
+        &mut self,
+        spectral_filter: crate::synthesis::effects::SpectralFilter,
+    ) -> &mut Self {
         self.master.spectral_filter = Some(spectral_filter);
         self.master.compute_effect_order();
         self
@@ -2352,7 +2368,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_shift(SpectralShift::subtle());
     /// ```
-    pub fn master_spectral_shift(&mut self, spectral_shift: crate::synthesis::effects::SpectralShift) -> &mut Self {
+    pub fn master_spectral_shift(
+        &mut self,
+        spectral_shift: crate::synthesis::effects::SpectralShift,
+    ) -> &mut Self {
         self.master.spectral_shift = Some(spectral_shift);
         self.master.compute_effect_order();
         self
@@ -2369,7 +2388,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_exciter(SpectralExciter::gentle());
     /// ```
-    pub fn master_spectral_exciter(&mut self, spectral_exciter: crate::synthesis::effects::SpectralExciter) -> &mut Self {
+    pub fn master_spectral_exciter(
+        &mut self,
+        spectral_exciter: crate::synthesis::effects::SpectralExciter,
+    ) -> &mut Self {
         self.master.spectral_exciter = Some(spectral_exciter);
         self.master.compute_effect_order();
         self
@@ -2386,7 +2408,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_invert(SpectralInvert::full());
     /// ```
-    pub fn master_spectral_invert(&mut self, spectral_invert: crate::synthesis::effects::SpectralInvert) -> &mut Self {
+    pub fn master_spectral_invert(
+        &mut self,
+        spectral_invert: crate::synthesis::effects::SpectralInvert,
+    ) -> &mut Self {
         self.master.spectral_invert = Some(spectral_invert);
         self.master.compute_effect_order();
         self
@@ -2403,7 +2428,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_widen(SpectralWiden::wide());
     /// ```
-    pub fn master_spectral_widen(&mut self, spectral_widen: crate::synthesis::effects::SpectralWiden) -> &mut Self {
+    pub fn master_spectral_widen(
+        &mut self,
+        spectral_widen: crate::synthesis::effects::SpectralWiden,
+    ) -> &mut Self {
         self.master.spectral_widen = Some(spectral_widen);
         self.master.compute_effect_order();
         self
@@ -2420,7 +2448,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_morph(SpectralMorph::robot());
     /// ```
-    pub fn master_spectral_morph(&mut self, spectral_morph: crate::synthesis::effects::SpectralMorph) -> &mut Self {
+    pub fn master_spectral_morph(
+        &mut self,
+        spectral_morph: crate::synthesis::effects::SpectralMorph,
+    ) -> &mut Self {
         self.master.spectral_morph = Some(spectral_morph);
         self.master.compute_effect_order();
         self
@@ -2437,7 +2468,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_dynamics(SpectralDynamics::gentle());
     /// ```
-    pub fn master_spectral_dynamics(&mut self, spectral_dynamics: crate::synthesis::effects::SpectralDynamics) -> &mut Self {
+    pub fn master_spectral_dynamics(
+        &mut self,
+        spectral_dynamics: crate::synthesis::effects::SpectralDynamics,
+    ) -> &mut Self {
         self.master.spectral_dynamics = Some(spectral_dynamics);
         self.master.compute_effect_order();
         self
@@ -2454,7 +2488,10 @@ impl Mixer {
     /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_scramble(SpectralScramble::glitch());
     /// ```
-    pub fn master_spectral_scramble(&mut self, spectral_scramble: crate::synthesis::effects::SpectralScramble) -> &mut Self {
+    pub fn master_spectral_scramble(
+        &mut self,
+        spectral_scramble: crate::synthesis::effects::SpectralScramble,
+    ) -> &mut Self {
         self.master.spectral_scramble = Some(spectral_scramble);
         self.master.compute_effect_order();
         self
