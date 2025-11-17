@@ -4,10 +4,14 @@
 //! They provide high-quality time-stretching, pitch-shifting, and spectral freezing.
 
 use crate::synthesis::spectral::{
-    PhaseVocoder as CorePhaseVocoder, SpectralFreeze as CoreSpectralFreeze,
-    SpectralGate as CoreSpectralGate, SpectralCompressor as CoreSpectralCompressor,
+    PhaseVocoder as CorePhaseVocoder, SpectralBlur as CoreSpectralBlur,
+    SpectralCompressor as CoreSpectralCompressor, SpectralFilter as CoreSpectralFilter,
+    SpectralFreeze as CoreSpectralFreeze, SpectralGate as CoreSpectralGate,
     SpectralRobotize as CoreSpectralRobotize, WindowType,
 };
+
+// Re-export FilterType for public use
+pub use crate::synthesis::spectral::FilterType;
 
 /// Phase vocoder effect for time-stretching and pitch-shifting
 ///
@@ -71,7 +75,13 @@ impl PhaseVocoder {
     /// // Larger FFT for better frequency resolution, more latency
     /// let vocoder = PhaseVocoder::with_params(4096, 1024, 1.0, 0.0, 44100.0);
     /// ```
-    pub fn with_params(fft_size: usize, hop_size: usize, time_stretch: f32, pitch_shift: f32, sample_rate: f32) -> Self {
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        time_stretch: f32,
+        pitch_shift: f32,
+        sample_rate: f32,
+    ) -> Self {
         let mut core = CorePhaseVocoder::new(fft_size, hop_size, sample_rate, WindowType::Hann);
         core.set_time_stretch(time_stretch);
         core.set_pitch_shift(pitch_shift);
@@ -82,6 +92,31 @@ impl PhaseVocoder {
             sample_rate,
             enabled: true,
         }
+    }
+
+    /// Pitch up a perfect fifth (7 semitones)
+    pub fn pitch_up() -> Self {
+        Self::new(1.0, 7.0, 44100.0)
+    }
+
+    /// Pitch down a perfect fifth (-7 semitones)
+    pub fn pitch_down() -> Self {
+        Self::new(1.0, -7.0, 44100.0)
+    }
+
+    /// Chipmunk effect - high pitched voice
+    pub fn chipmunk() -> Self {
+        Self::new(1.0, 12.0, 44100.0)
+    }
+
+    /// Slow motion - half speed without pitch change
+    pub fn slow_mo() -> Self {
+        Self::new(2.0, 0.0, 44100.0)
+    }
+
+    /// Fast forward - double speed without pitch change
+    pub fn fast() -> Self {
+        Self::new(0.5, 0.0, 44100.0)
     }
 
     /// Set time stretch ratio
@@ -244,7 +279,13 @@ impl SpectralFreeze {
     /// // Larger FFT for better frequency resolution, more latency
     /// let freeze = SpectralFreeze::with_params(4096, 1024, false, 1.0, 44100.0);
     /// ```
-    pub fn with_params(fft_size: usize, hop_size: usize, freeze: bool, mix: f32, _sample_rate: f32) -> Self {
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        freeze: bool,
+        mix: f32,
+        _sample_rate: f32,
+    ) -> Self {
         let mut core = CoreSpectralFreeze::new(fft_size, hop_size, WindowType::Hann);
         if freeze {
             core.freeze();
@@ -256,6 +297,21 @@ impl SpectralFreeze {
             priority: 50, // Process before reverb/delay, same as phase vocoder
             enabled: true,
         }
+    }
+
+    /// Frozen - full freeze effect
+    pub fn frozen() -> Self {
+        Self::new(true, 1.0, 44100.0)
+    }
+
+    /// Shimmer - partial freeze for ethereal effect
+    pub fn shimmer() -> Self {
+        Self::new(true, 0.5, 44100.0)
+    }
+
+    /// Glitch - subtle freeze for glitchy textures
+    pub fn glitch() -> Self {
+        Self::new(true, 0.3, 44100.0)
     }
 
     /// Enable freeze and start capturing spectrum
@@ -422,7 +478,15 @@ impl SpectralGate {
     /// // Larger FFT for better frequency resolution, more latency
     /// let gate = SpectralGate::with_params(4096, 1024, -40.0, 1.0, 50.0, 0.0, 44100.0);
     /// ```
-    pub fn with_params(fft_size: usize, hop_size: usize, threshold: f32, attack: f32, release: f32, ratio: f32, sample_rate: f32) -> Self {
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        threshold: f32,
+        attack: f32,
+        release: f32,
+        ratio: f32,
+        sample_rate: f32,
+    ) -> Self {
         let mut core = CoreSpectralGate::new(fft_size, hop_size, WindowType::Hann, sample_rate);
         core.set_threshold(threshold);
         core.set_attack(attack);
@@ -434,6 +498,26 @@ impl SpectralGate {
             priority: 50, // Process before reverb/delay, same as other spectral effects
             enabled: true,
         }
+    }
+
+    /// Gentle noise reduction
+    pub fn gentle() -> Self {
+        Self::new(-50.0, 10.0, 100.0, 0.2, 44100.0)
+    }
+
+    /// Aggressive gating - tight cleanup
+    pub fn aggressive() -> Self {
+        Self::new(-35.0, 1.0, 50.0, 0.0, 44100.0)
+    }
+
+    /// Denoise - subtle noise reduction
+    pub fn denoise() -> Self {
+        Self::new(-60.0, 20.0, 150.0, 0.1, 44100.0)
+    }
+
+    /// Tighten - clean up loose signals
+    pub fn tighten() -> Self {
+        Self::new(-40.0, 2.0, 80.0, 0.0, 44100.0)
     }
 
     /// Set threshold in dB
@@ -587,8 +671,24 @@ impl SpectralCompressor {
     /// - `release` - Release time in milliseconds (default: 50.0)
     /// - `knee` - Soft knee width in dB (default: 6.0)
     /// - `sample_rate` - Sample rate in Hz
-    pub fn new(threshold: f32, ratio: f32, attack: f32, release: f32, knee: f32, sample_rate: f32) -> Self {
-        Self::with_params(2048, 512, threshold, ratio, attack, release, knee, sample_rate)
+    pub fn new(
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+        knee: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self::with_params(
+            2048,
+            512,
+            threshold,
+            ratio,
+            attack,
+            release,
+            knee,
+            sample_rate,
+        )
     }
 
     /// Create a spectral compressor with custom FFT settings
@@ -603,7 +703,16 @@ impl SpectralCompressor {
     /// * `release` - Release time in milliseconds
     /// * `knee` - Soft knee width in dB
     /// * `sample_rate` - Sample rate in Hz
-    pub fn with_params(fft_size: usize, hop_size: usize, threshold: f32, ratio: f32, attack: f32, release: f32, knee: f32, sample_rate: f32) -> Self {
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        threshold: f32,
+        ratio: f32,
+        attack: f32,
+        release: f32,
+        knee: f32,
+        sample_rate: f32,
+    ) -> Self {
         let mut core = CoreSpectralCompressor::new(
             fft_size,
             hop_size,
@@ -621,6 +730,26 @@ impl SpectralCompressor {
             priority: 50, // Before reverb/delay
             enabled: true,
         }
+    }
+
+    /// Gentle compression - subtle glue
+    pub fn gentle() -> Self {
+        Self::new(-25.0, 2.0, 10.0, 80.0, 3.0, 44100.0)
+    }
+
+    /// Aggressive compression - heavy control
+    pub fn aggressive() -> Self {
+        Self::new(-15.0, 6.0, 2.0, 40.0, 2.0, 44100.0)
+    }
+
+    /// Glue - subtle spectral glue compression
+    pub fn glue() -> Self {
+        Self::new(-30.0, 3.0, 15.0, 100.0, 4.0, 44100.0)
+    }
+
+    /// Tame peaks - reduce spectral peaks
+    pub fn tame_peaks() -> Self {
+        Self::new(-10.0, 8.0, 1.0, 30.0, 1.0, 44100.0)
     }
 
     /// Set compression threshold in dB
@@ -746,7 +875,13 @@ impl SpectralRobotize {
     /// - `target_phase` - Target phase to quantize to in radians
     /// - `mix` - Mix between original (0.0) and robotized (1.0)
     /// - `sample_rate` - Sample rate in Hz (unused but kept for API consistency)
-    pub fn with_params(fft_size: usize, hop_size: usize, target_phase: f32, mix: f32, _sample_rate: f32) -> Self {
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        target_phase: f32,
+        mix: f32,
+        _sample_rate: f32,
+    ) -> Self {
         let mut core = CoreSpectralRobotize::new(
             fft_size,
             hop_size,
@@ -760,6 +895,21 @@ impl SpectralRobotize {
             priority: 50, // Before reverb/delay
             enabled: true,
         }
+    }
+
+    /// Robot - classic robot voice effect
+    pub fn robot() -> Self {
+        Self::new(0.0, 1.0, 44100.0)
+    }
+
+    /// Vocoder - vocoder-style effect
+    pub fn vocoder() -> Self {
+        Self::new(0.0, 0.8, 44100.0)
+    }
+
+    /// Metallic - metallic timbre
+    pub fn metallic() -> Self {
+        Self::new(1.57, 0.9, 44100.0) // π/2 phase
     }
 
     /// Set target phase to quantize to (typically 0.0)
@@ -838,8 +988,22 @@ impl SpectralDelay {
     /// - `frequency_scale` - Frequency-dependent scaling (-1.0 to 1.0)
     /// - `mix` - Dry/wet mix (0.0-1.0)
     /// - `sample_rate` - Sample rate in Hz
-    pub fn new(delay_time: f32, feedback: f32, frequency_scale: f32, mix: f32, sample_rate: f32) -> Self {
-        Self::with_params(2048, 512, delay_time, feedback, frequency_scale, mix, sample_rate)
+    pub fn new(
+        delay_time: f32,
+        feedback: f32,
+        frequency_scale: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self::with_params(
+            2048,
+            512,
+            delay_time,
+            feedback,
+            frequency_scale,
+            mix,
+            sample_rate,
+        )
     }
 
     /// Create with custom FFT parameters
@@ -874,6 +1038,26 @@ impl SpectralDelay {
             priority: 100,
             enabled: true,
         }
+    }
+
+    /// Shimmer - upward pitch-shifting delay
+    pub fn shimmer() -> Self {
+        Self::new(200.0, 0.4, 1.5, 0.6, 44100.0)
+    }
+
+    /// Cascade - downward cascading delay
+    pub fn cascade() -> Self {
+        Self::new(150.0, 0.5, 0.5, 0.7, 44100.0)
+    }
+
+    /// Echo - simple spectral echo
+    pub fn echo() -> Self {
+        Self::new(250.0, 0.3, 1.0, 0.5, 44100.0)
+    }
+
+    /// Harmonic - harmonic delay effect
+    pub fn harmonic() -> Self {
+        Self::new(100.0, 0.6, 2.0, 0.5, 44100.0)
     }
 
     /// Set base delay time in milliseconds
@@ -958,6 +1142,462 @@ impl std::fmt::Debug for SpectralDelay {
             .field("delay_time", &self.core.delay_time())
             .field("feedback", &self.core.feedback())
             .field("frequency_scale", &self.core.frequency_scale())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral filter effect for frequency-domain filtering
+///
+/// Applies filtering by manipulating frequency bin magnitudes directly in the spectral domain.
+/// This provides precise control over frequency response and can create effects not possible
+/// with traditional time-domain filters.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{SpectralFilter, FilterType};
+/// // Create low-pass filter at 1kHz with moderate resonance
+/// let filter = SpectralFilter::new(FilterType::LowPass, 1000.0, 2.0, 1.0, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralFilter {
+    /// Core spectral filter engine
+    core: CoreSpectralFilter,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralFilter {
+    /// Create a new spectral filter with specified parameters
+    ///
+    /// # Arguments
+    /// * `filter_type` - Type of filter (LowPass, HighPass, BandPass, BandStop, Notch)
+    /// * `cutoff` - Cutoff frequency in Hz
+    /// * `resonance` - Q factor (0.1 - 20.0)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralFilter, FilterType};
+    /// let filter = SpectralFilter::new(FilterType::LowPass, 1000.0, 2.0, 1.0, 44100.0);
+    /// ```
+    pub fn new(
+        filter_type: FilterType,
+        cutoff: f32,
+        resonance: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        Self::with_params(2048, 512, filter_type, cutoff, resonance, mix, sample_rate)
+    }
+
+    /// Create a spectral filter with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `filter_type` - Type of filter
+    /// * `cutoff` - Cutoff frequency in Hz
+    /// * `resonance` - Q factor
+    /// * `mix` - Wet/dry mix
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralFilter, FilterType};
+    /// let filter = SpectralFilter::with_params(4096, 1024, FilterType::HighPass, 200.0, 1.0, 0.8, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        filter_type: FilterType,
+        cutoff: f32,
+        resonance: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralFilter::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_filter_type(filter_type);
+        core.set_cutoff(cutoff);
+        core.set_resonance(resonance);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 50,
+            enabled: true,
+        }
+    }
+
+    /// Low-pass filter - remove highs (1kHz cutoff)
+    pub fn low_pass() -> Self {
+        Self::new(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0)
+    }
+
+    /// High-pass filter - remove lows (200Hz cutoff)
+    pub fn high_pass() -> Self {
+        Self::new(FilterType::HighPass, 200.0, 1.0, 1.0, 44100.0)
+    }
+
+    /// Band-pass filter - midrange only
+    pub fn band_pass() -> Self {
+        Self::new(FilterType::BandPass, 1000.0, 2.0, 1.0, 44100.0)
+    }
+
+    /// Telephone - narrow band-pass for lo-fi effect
+    pub fn telephone() -> Self {
+        Self::new(FilterType::BandPass, 1200.0, 8.0, 1.0, 44100.0)
+    }
+
+    /// Radio - band-pass for vintage radio effect
+    pub fn radio() -> Self {
+        Self::new(FilterType::BandPass, 2000.0, 5.0, 1.0, 44100.0)
+    }
+
+    /// Rumble cut - remove low-end rumble
+    pub fn rumble_cut() -> Self {
+        Self::new(FilterType::HighPass, 80.0, 1.5, 1.0, 44100.0)
+    }
+
+    /// Air cut - remove excessive brightness
+    pub fn air_cut() -> Self {
+        Self::new(FilterType::LowPass, 8000.0, 1.0, 1.0, 44100.0)
+    }
+
+    /// Set the filter type
+    pub fn set_filter_type(&mut self, filter_type: FilterType) {
+        self.core.set_filter_type(filter_type);
+    }
+
+    /// Set the cutoff frequency in Hz
+    pub fn set_cutoff(&mut self, cutoff: f32) {
+        self.core.set_cutoff(cutoff);
+    }
+
+    /// Set the resonance/Q factor
+    pub fn set_resonance(&mut self, resonance: f32) {
+        self.core.set_resonance(resonance);
+    }
+
+    /// Set the wet/dry mix
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the filter state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralFilter")
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral blur effect - temporal smoothing in frequency domain
+///
+/// Creates a smooth, ambient quality by blending current spectrum with previous frames.
+/// Perfect for pads, ambient textures, and creating ethereal soundscapes.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::SpectralBlur;
+/// // Create gentle blur with moderate feedback
+/// let blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+/// ```
+#[derive(Clone)]
+pub struct SpectralBlur {
+    /// Core spectral blur engine
+    core: CoreSpectralBlur,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralBlur {
+    /// Create a new spectral blur with specified parameters
+    ///
+    /// # Arguments
+    /// * `blur_amount` - Amount of blurring (0.0 = none, 1.0 = maximum)
+    /// * `feedback` - Temporal persistence (0.0-0.99, higher = longer trails)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralBlur;
+    /// let blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+    /// ```
+    pub fn new(blur_amount: f32, feedback: f32, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, blur_amount, feedback, mix, sample_rate)
+    }
+
+    /// Create a spectral blur with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `blur_amount` - Amount of blurring (0.0-1.0)
+    /// * `feedback` - Temporal persistence (0.0-0.99)
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralBlur;
+    /// let blur = SpectralBlur::with_params(4096, 1024, 0.7, 0.5, 1.0, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        blur_amount: f32,
+        feedback: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralBlur::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_blur_amount(blur_amount);
+        core.set_feedback(feedback);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 50,
+            enabled: true,
+        }
+    }
+
+    /// Subtle blur - gentle smoothing
+    pub fn subtle() -> Self {
+        Self::new(0.3, 0.2, 0.5, 44100.0)
+    }
+
+    /// Gentle blur - moderate smoothing for pads
+    pub fn gentle() -> Self {
+        Self::new(0.5, 0.3, 0.7, 44100.0)
+    }
+
+    /// Dreamy - ethereal ambient texture
+    pub fn dreamy() -> Self {
+        Self::new(0.7, 0.5, 0.8, 44100.0)
+    }
+
+    /// Heavy blur - maximum smoothing
+    pub fn heavy() -> Self {
+        Self::new(0.9, 0.7, 1.0, 44100.0)
+    }
+
+    /// Shimmer - long trails for reverb-like effect
+    pub fn shimmer() -> Self {
+        Self::new(0.6, 0.8, 0.9, 44100.0)
+    }
+
+    /// Set blur amount
+    ///
+    /// # Arguments
+    /// * `amount` - Blur amount (0.0 = none, 1.0 = maximum)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralBlur;
+    /// let mut blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+    /// blur.set_blur_amount(0.8);
+    /// ```
+    pub fn set_blur_amount(&mut self, amount: f32) {
+        self.core.set_blur_amount(amount);
+    }
+
+    /// Get current blur amount
+    pub fn blur_amount(&self) -> f32 {
+        self.core.blur_amount()
+    }
+
+    /// Set feedback amount
+    ///
+    /// # Arguments
+    /// * `feedback` - Feedback amount (0.0-0.99, higher = longer trails)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralBlur;
+    /// let mut blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+    /// blur.set_feedback(0.6);
+    /// ```
+    pub fn set_feedback(&mut self, feedback: f32) {
+        self.core.set_feedback(feedback);
+    }
+
+    /// Get current feedback amount
+    pub fn feedback(&self) -> f32 {
+        self.core.feedback()
+    }
+
+    /// Set wet/dry mix
+    ///
+    /// # Arguments
+    /// * `mix` - Mix amount (0.0 = dry, 1.0 = wet)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::SpectralBlur;
+    /// let mut blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+    /// blur.set_mix(0.5);
+    /// ```
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix amount
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio
+    ///
+    /// # Arguments
+    /// * `buffer` - Audio buffer to process (modified in-place)
+    /// * `_sample_rate` - Sample rate (unused, kept for API consistency)
+    /// * `_time` - Current time (unused)
+    /// * `_sample_count` - Sample count (unused)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset the blur state (clears previous spectrum)
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Clone into a boxed effect
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+
+    /// Get effect priority
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    /// Set effect priority
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
+    }
+
+    /// Check if effect is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable the effect
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Create a copy with the same settings
+    pub fn duplicate(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            priority: self.priority,
+            enabled: self.enabled,
+        }
+    }
+}
+
+impl std::fmt::Debug for SpectralBlur {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralBlur")
+            .field("blur_amount", &self.core.blur_amount())
+            .field("feedback", &self.core.feedback())
             .field("mix", &self.core.mix())
             .field("priority", &self.priority)
             .field("enabled", &self.enabled)

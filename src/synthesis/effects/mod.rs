@@ -23,7 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
-pub use spectral::{PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay};
+pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -66,13 +66,15 @@ pub struct EffectChain {
     pub spectral_compressor: Option<SpectralCompressor>,
     pub spectral_robotize: Option<SpectralRobotize>,
     pub spectral_delay: Option<SpectralDelay>,
+    pub spectral_filter: Option<SpectralFilter>,
+    pub spectral_blur: Option<SpectralBlur>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
     //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
     //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb,
     //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
-    //             20=SpectralRobotize, 21=SpectralDelay
+    //             20=SpectralRobotize, 21=SpectralDelay, 22=SpectralFilter, 23=SpectralBlur
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -112,6 +114,8 @@ impl EffectChain {
             spectral_compressor: None,
             spectral_robotize: None,
             spectral_delay: None,
+            spectral_filter: None,
+            spectral_blur: None,
             effect_order: Vec::new(),
         }
     }
@@ -189,6 +193,12 @@ impl EffectChain {
         }
         if let Some(ref spectral_delay) = self.spectral_delay {
             effects.push((spectral_delay.priority, 21));
+        }
+        if let Some(ref spectral_filter) = self.spectral_filter {
+            effects.push((spectral_filter.priority, 22));
+        }
+        if let Some(ref spectral_blur) = self.spectral_blur {
+            effects.push((spectral_blur.priority, 23));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -508,6 +518,18 @@ impl EffectChain {
                     // SpectralDelay (block-based spectral effect)
                     if let Some(ref mut spectral_delay) = self.spectral_delay {
                         spectral_delay.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                22 => {
+                    // SpectralFilter (block-based spectral effect)
+                    if let Some(ref mut spectral_filter) = self.spectral_filter {
+                        spectral_filter.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                23 => {
+                    // SpectralBlur (block-based spectral effect)
+                    if let Some(ref mut spectral_blur) = self.spectral_blur {
+                        spectral_blur.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}
@@ -918,6 +940,36 @@ impl EffectChain {
     /// ```
     pub fn with_spectral_delay(mut self, spectral_delay: SpectralDelay) -> Self {
         self.spectral_delay = Some(spectral_delay);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral filter for frequency-domain filtering
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralFilter, FilterType};
+    /// let mut chain = EffectChain::new();
+    /// let filter = SpectralFilter::new(FilterType::LowPass, 1000.0, 2.0, 1.0, 44100.0);
+    /// chain = chain.with_spectral_filter(filter);
+    /// ```
+    pub fn with_spectral_filter(mut self, spectral_filter: SpectralFilter) -> Self {
+        self.spectral_filter = Some(spectral_filter);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral blur for temporal smoothing in frequency domain
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralBlur};
+    /// let mut chain = EffectChain::new();
+    /// let blur = SpectralBlur::new(0.5, 0.3, 1.0, 44100.0);
+    /// chain = chain.with_spectral_blur(blur);
+    /// ```
+    pub fn with_spectral_blur(mut self, spectral_blur: SpectralBlur) -> Self {
+        self.spectral_blur = Some(spectral_blur);
         self.compute_effect_order();
         self
     }

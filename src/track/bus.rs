@@ -43,7 +43,7 @@
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
     Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
-    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, Tremolo,
+    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -438,6 +438,20 @@ impl<'a> BusBuilder<'a> {
 
     pub fn spectral_delay(self, spectral_delay: SpectralDelay) -> Self {
         self.bus.effects.spectral_delay = Some(spectral_delay);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral filter effect to this bus for frequency-domain filtering
+    pub fn spectral_filter(self, spectral_filter: SpectralFilter) -> Self {
+        self.bus.effects.spectral_filter = Some(spectral_filter);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral blur effect to this bus for temporal smoothing in frequency domain
+    pub fn spectral_blur(self, spectral_blur: SpectralBlur) -> Self {
+        self.bus.effects.spectral_blur = Some(spectral_blur);
         self.bus.effects.compute_effect_order();
         self
     }

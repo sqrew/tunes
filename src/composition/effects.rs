@@ -2,7 +2,7 @@ use super::TrackBuilder;
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
     Gate, Limiter, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation, SpectralFreeze,
-    SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, Tremolo,
+    SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
@@ -171,6 +171,18 @@ impl<'a> EffectsBuilder<'a> {
     /// Add spectral delay with frequency-dependent delay times
     pub fn spectral_delay(mut self, spectral_delay: SpectralDelay) -> Self {
         self.inner = self.inner.spectral_delay(spectral_delay);
+        self
+    }
+
+    /// Add spectral filter for frequency-domain filtering
+    pub fn spectral_filter(mut self, filter_type: crate::synthesis::spectral::FilterType, cutoff: f32, resonance: f32, mix: f32, sample_rate: f32) -> Self {
+        self.inner = self.inner.spectral_filter(filter_type, cutoff, resonance, mix, sample_rate);
+        self
+    }
+
+    /// Add spectral blur for temporal smoothing in frequency domain
+    pub fn spectral_blur(mut self, blur_amount: f32, feedback: f32, mix: f32, sample_rate: f32) -> Self {
+        self.inner = self.inner.spectral_blur(blur_amount, feedback, mix, sample_rate);
         self
     }
 
@@ -773,6 +785,71 @@ impl<'a> TrackBuilder<'a> {
     pub fn spectral_delay(mut self, spectral_delay: SpectralDelay) -> Self {
         let track = self.get_track_mut();
         track.effects.spectral_delay = Some(spectral_delay);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral filter for frequency-domain filtering
+    ///
+    /// SpectralFilter applies filtering in the frequency domain, allowing precise control
+    /// over the frequency response with minimal artifacts. Unlike time-domain filters,
+    /// spectral filtering can achieve brick-wall responses and frequency-dependent effects.
+    ///
+    /// # Use Cases
+    /// - Surgical EQ: Brick-wall filtering with sharp cutoffs
+    /// - Creative Effects: Resonant spectral filtering for unique timbres
+    /// - Noise Reduction: Precise frequency removal
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::spectral::FilterType;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("bass", &Instrument::sub_bass())
+    ///     .spectral_filter(FilterType::LowPass, 1000.0, 2.0, 1.0, 44100.0)
+    ///     .note(&[C2], 2.0);
+    /// ```
+    pub fn spectral_filter(mut self, filter_type: crate::synthesis::spectral::FilterType, cutoff: f32, resonance: f32, mix: f32, sample_rate: f32) -> Self {
+        let spectral_filter = SpectralFilter::new(filter_type, cutoff, resonance, mix, sample_rate);
+        let track = self.get_track_mut();
+        track.effects.spectral_filter = Some(spectral_filter);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral blur for temporal smoothing in frequency domain
+    ///
+    /// Creates smooth, ambient textures by blending current spectrum with previous frames.
+    /// Perfect for pads, ambient soundscapes, and ethereal effects.
+    ///
+    /// # Arguments
+    /// * `blur_amount` - Amount of blurring (0.0-1.0)
+    /// * `feedback` - Temporal persistence (0.0-0.99)
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Sample rate in Hz
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("pad", &Instrument::synth_pad())
+    ///     .spectral_blur(0.7, 0.5, 0.8, 44100.0)
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_blur(mut self, blur_amount: f32, feedback: f32, mix: f32, sample_rate: f32) -> Self {
+        let spectral_blur = SpectralBlur::new(blur_amount, feedback, mix, sample_rate);
+        let track = self.get_track_mut();
+        track.effects.spectral_blur = Some(spectral_blur);
         track.effects.compute_effect_order();
         self
     }

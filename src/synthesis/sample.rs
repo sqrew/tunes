@@ -489,7 +489,7 @@ impl Sample {
         playback_rate: f32,
         volume: f32,
     ) -> usize {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
+        
 
         // Calculate time offset into this sample
         let time_offset = current_time - start_time;

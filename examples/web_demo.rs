@@ -22,7 +22,6 @@
 //!    Then open http://localhost:8000/examples/web_demo.html
 //!
 
-use tunes::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

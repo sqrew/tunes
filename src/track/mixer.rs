@@ -2312,6 +2312,34 @@ impl Mixer {
         self.master.spectral_delay = Some(spectral_delay);
         self.master.compute_effect_order();
     }
+
+    /// Add spectral filter to the master output for frequency-domain filtering
+    ///
+    /// Applies filtering in the frequency domain, allowing precise control over the
+    /// frequency response with minimal artifacts. Unlike time-domain filters, spectral
+    /// filtering can achieve brick-wall responses and frequency-dependent effects.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Arguments
+    /// * `spectral_filter` - SpectralFilter effect configuration
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralFilter;
+    /// # use tunes::synthesis::spectral::FilterType;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// let filter = SpectralFilter::new(FilterType::LowPass, 8000.0, 1.0, 1.0, 44100.0);
+    /// mixer.master_spectral_filter(filter);
+    /// ```
+    pub fn master_spectral_filter(&mut self, spectral_filter: crate::synthesis::effects::SpectralFilter) -> &mut Self {
+        self.master.spectral_filter = Some(spectral_filter);
+        self.master.compute_effect_order();
+        self
+    }
 }
 
 impl Default for Mixer {

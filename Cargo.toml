@@ -139,6 +139,10 @@ harness = false
 name = "realistic_game_audio"
 harness = false
 
+[[bench]]
+name = "spectral_effects"
+harness = false
+
 # GPU examples require the gpu feature to be enabled
 [[example]]
 name = "gpu_export_demo"

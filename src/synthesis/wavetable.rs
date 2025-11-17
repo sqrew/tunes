@@ -244,14 +244,24 @@ impl Wavetable {
     ///
     /// let final_phase = wavetable.fill_buffer_simd(&mut buffer, 0.0, phase_inc);
     /// ```
-    pub fn fill_buffer_simd(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
+    pub fn fill_buffer_simd(
+        &self,
+        buffer: &mut [f32],
+        start_phase: f32,
+        phase_increment: f32,
+    ) -> f32 {
         // Use real SIMD implementation (auto-dispatches)
         self.fill_buffer_real_simd(buffer, start_phase, phase_increment)
     }
 
     /// TRUE SIMD implementation - uses vector operations for interpolation
     #[inline(always)]
-    fn fill_buffer_real_simd(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
+    fn fill_buffer_real_simd(
+        &self,
+        buffer: &mut [f32],
+        start_phase: f32,
+        phase_increment: f32,
+    ) -> f32 {
         use crate::synthesis::simd::SIMD;
 
         let mut phase = start_phase;
@@ -302,8 +312,14 @@ impl Wavetable {
     }
 
     /// Scalar fallback implementation
+    #[allow(dead_code)]
     #[inline(always)]
-    fn fill_buffer_scalar(&self, buffer: &mut [f32], start_phase: f32, phase_increment: f32) -> f32 {
+    fn fill_buffer_scalar(
+        &self,
+        buffer: &mut [f32],
+        start_phase: f32,
+        phase_increment: f32,
+    ) -> f32 {
         let mut phase = start_phase;
         for sample in buffer {
             *sample = self.sample(phase);
