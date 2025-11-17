@@ -2227,8 +2227,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::PhaseVocoder;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// let mut vocoder = PhaseVocoder::new(44100.0);
-    /// vocoder.set_pitch_shift(7.0); // Perfect fifth up
+    /// let vocoder = PhaseVocoder::new(1.0, 7.0, 44100.0); // Perfect fifth up
     /// mixer.master_phase_vocoder(vocoder);
     /// ```
     pub fn master_phase_vocoder(&mut self, phase_vocoder: crate::synthesis::effects::PhaseVocoder) {
@@ -2250,9 +2249,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::SpectralFreeze;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// let mut freeze = SpectralFreeze::new(44100.0);
-    /// freeze.freeze();
-    /// freeze.set_mix(0.75); // 75% frozen, 25% live
+    /// let freeze = SpectralFreeze::new(true, 0.75, 44100.0); // 75% frozen, 25% live
     /// mixer.master_spectral_freeze(freeze);
     /// ```
     pub fn master_spectral_freeze(&mut self, spectral_freeze: crate::synthesis::effects::SpectralFreeze) {
@@ -2275,10 +2272,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::SpectralGate;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// let mut gate = SpectralGate::new(44100.0);
-    /// gate.set_threshold(-40.0); // Gate bins below -40 dB
-    /// gate.set_attack(1.0);       // 1ms attack
-    /// gate.set_release(50.0);     // 50ms release
+    /// let gate = SpectralGate::new(-40.0, 0.001, 0.050, 0.0, 44100.0);
     /// mixer.master_spectral_gate(gate);
     /// ```
     pub fn master_spectral_gate(&mut self, spectral_gate: crate::synthesis::effects::SpectralGate) {
@@ -2301,12 +2295,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::SpectralCompressor;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// let mut compressor = SpectralCompressor::new(44100.0);
-    /// compressor.set_threshold(-20.0); // Compress above -20 dB
-    /// compressor.set_ratio(4.0);        // 4:1 ratio
-    /// compressor.set_attack(5.0);       // 5ms attack
-    /// compressor.set_release(50.0);     // 50ms release
-    /// compressor.set_knee(6.0);         // 6 dB soft knee
+    /// let compressor = SpectralCompressor::new(-20.0, 4.0, 5.0, 50.0, 6.0, 44100.0);
     /// mixer.master_spectral_compressor(compressor);
     /// ```
     pub fn master_spectral_compressor(&mut self, spectral_compressor: crate::synthesis::effects::SpectralCompressor) {
@@ -2316,6 +2305,11 @@ impl Mixer {
 
     pub fn master_spectral_robotize(&mut self, spectral_robotize: crate::synthesis::effects::SpectralRobotize) {
         self.master.spectral_robotize = Some(spectral_robotize);
+        self.master.compute_effect_order();
+    }
+
+    pub fn master_spectral_delay(&mut self, spectral_delay: crate::synthesis::effects::SpectralDelay) {
+        self.master.spectral_delay = Some(spectral_delay);
         self.master.compute_effect_order();
     }
 }

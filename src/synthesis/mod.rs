@@ -44,4 +44,4 @@ pub use spatial::{
     calculate_doppler,
 };
 pub use simd::{SimdDispatcher, SimdLanes, SimdWidth, SIMD};
-pub use spectral::{Window, WindowType, ComplexOps, STFT, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize};
+pub use spectral::{Window, WindowType, ComplexOps, STFT, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay};

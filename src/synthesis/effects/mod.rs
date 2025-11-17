@@ -23,7 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
-pub use spectral::{PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize};
+pub use spectral::{PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -65,13 +65,14 @@ pub struct EffectChain {
     pub spectral_gate: Option<SpectralGate>,
     pub spectral_compressor: Option<SpectralCompressor>,
     pub spectral_robotize: Option<SpectralRobotize>,
+    pub spectral_delay: Option<SpectralDelay>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
     //             6=Chorus, 7=Phaser, 8=Flanger, 9=RingMod, 10=Tremolo,
     //             11=Delay, 12=Reverb, 13=Limiter, 14=ParametricEQ, 15=ConvolutionReverb,
     //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
-    //             20=SpectralRobotize
+    //             20=SpectralRobotize, 21=SpectralDelay
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -110,6 +111,7 @@ impl EffectChain {
             spectral_gate: None,
             spectral_compressor: None,
             spectral_robotize: None,
+            spectral_delay: None,
             effect_order: Vec::new(),
         }
     }
@@ -184,6 +186,9 @@ impl EffectChain {
         }
         if let Some(ref spectral_robotize) = self.spectral_robotize {
             effects.push((spectral_robotize.priority, 20));
+        }
+        if let Some(ref spectral_delay) = self.spectral_delay {
+            effects.push((spectral_delay.priority, 21));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -497,6 +502,12 @@ impl EffectChain {
                     // SpectralRobotize (block-based spectral effect)
                     if let Some(ref mut spectral_robotize) = self.spectral_robotize {
                         spectral_robotize.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                21 => {
+                    // SpectralDelay (block-based spectral effect)
+                    if let Some(ref mut spectral_delay) = self.spectral_delay {
+                        spectral_delay.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}
@@ -827,8 +838,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, PhaseVocoder};
     /// let mut chain = EffectChain::new();
-    /// let mut vocoder = PhaseVocoder::new(44100.0);
-    /// vocoder.set_pitch_shift(7.0); // Perfect fifth up
+    /// let vocoder = PhaseVocoder::new(1.0, 7.0, 44100.0); // 1.0x speed, perfect fifth up
     /// chain = chain.with_phase_vocoder(vocoder);
     /// ```
     pub fn with_phase_vocoder(mut self, phase_vocoder: PhaseVocoder) -> Self {
@@ -843,9 +853,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralFreeze};
     /// let mut chain = EffectChain::new();
-    /// let mut freeze = SpectralFreeze::new(44100.0);
-    /// freeze.freeze();
-    /// freeze.set_mix(0.75); // 75% frozen, 25% live
+    /// let freeze = SpectralFreeze::new(true, 0.75, 44100.0); // Frozen, 75% wet
     /// chain = chain.with_spectral_freeze(freeze);
     /// ```
     pub fn with_spectral_freeze(mut self, spectral_freeze: SpectralFreeze) -> Self {
@@ -860,10 +868,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralGate};
     /// let mut chain = EffectChain::new();
-    /// let mut gate = SpectralGate::new(44100.0);
-    /// gate.set_threshold(-40.0); // Gate bins below -40 dB
-    /// gate.set_attack(0.001);
-    /// gate.set_release(0.050);
+    /// let gate = SpectralGate::new(-40.0, 0.001, 0.050, 0.0, 44100.0);
     /// chain = chain.with_spectral_gate(gate);
     /// ```
     pub fn with_spectral_gate(mut self, spectral_gate: SpectralGate) -> Self {
@@ -878,12 +883,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralCompressor};
     /// let mut chain = EffectChain::new();
-    /// let mut comp = SpectralCompressor::new(44100.0);
-    /// comp.set_threshold(-20.0);  // Compress above -20 dB
-    /// comp.set_ratio(4.0);         // 4:1 ratio
-    /// comp.set_attack(5.0);        // 5ms attack
-    /// comp.set_release(50.0);      // 50ms release
-    /// comp.set_knee(6.0);          // 6 dB soft knee
+    /// let comp = SpectralCompressor::new(-20.0, 4.0, 5.0, 50.0, 6.0, 44100.0);
     /// chain = chain.with_spectral_compressor(comp);
     /// ```
     pub fn with_spectral_compressor(mut self, spectral_compressor: SpectralCompressor) -> Self {
@@ -898,13 +898,26 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralRobotize};
     /// let mut chain = EffectChain::new();
-    /// let mut robotize = SpectralRobotize::new(44100.0);
-    /// robotize.set_target_phase(0.0);
-    /// robotize.set_mix(1.0); // Full robotization
+    /// let robotize = SpectralRobotize::new(0.0, 1.0, 44100.0); // Full robotization
     /// chain = chain.with_spectral_robotize(robotize);
     /// ```
     pub fn with_spectral_robotize(mut self, spectral_robotize: SpectralRobotize) -> Self {
         self.spectral_robotize = Some(spectral_robotize);
+        self.compute_effect_order();
+        self
+    }
+
+    /// Add spectral delay with frequency-dependent delay times
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{EffectChain, SpectralDelay};
+    /// let mut chain = EffectChain::new();
+    /// let delay = SpectralDelay::new(200.0, 0.5, 1.0, 0.5, 44100.0);
+    /// chain = chain.with_spectral_delay(delay);
+    /// ```
+    pub fn with_spectral_delay(mut self, spectral_delay: SpectralDelay) -> Self {
+        self.spectral_delay = Some(spectral_delay);
         self.compute_effect_order();
         self
     }

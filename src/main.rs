@@ -30,10 +30,6 @@ use synthesis::{BitCrusher, Chorus, Compressor, Distortion};
 
 fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
-    comp.load_sample("name", "sample.wav")?;
-    comp.track("test")
-        .sample("name")
-        .effects(|f| f.distortion(Distortion::new(1.0, 1.0)));
     let eighth = comp.tempo().eighth_note();
 
     let engine = AudioEngine::new()?;

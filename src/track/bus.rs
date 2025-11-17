@@ -43,7 +43,7 @@
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
     Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
-    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, Tremolo,
+    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -432,6 +432,12 @@ impl<'a> BusBuilder<'a> {
 
     pub fn spectral_robotize(self, spectral_robotize: SpectralRobotize) -> Self {
         self.bus.effects.spectral_robotize = Some(spectral_robotize);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    pub fn spectral_delay(self, spectral_delay: SpectralDelay) -> Self {
+        self.bus.effects.spectral_delay = Some(spectral_delay);
         self.bus.effects.compute_effect_order();
         self
     }
