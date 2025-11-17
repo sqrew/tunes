@@ -60,5 +60,11 @@
 
 ---
 
+# Experimental
+
+- [GPU FFT: A Failed Experiment](./experimental/gpu_fft.md)
+
+---
+
 [Comparisons](./comparisons.md)
 [API Reference](./api-reference.md)
