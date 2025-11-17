@@ -1,7 +1,7 @@
 use crate::composition::{Composition, Tempo};
 use crate::error::{Result, TunesError};
 use crate::synthesis::spatial::{
-    ListenerConfig, SpatialParams, SpatialPosition, calculate_spatial,
+    ListenerConfig, SoundCone, SpatialParams, SpatialPosition, calculate_spatial_with_cone,
 };
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -109,6 +109,14 @@ enum AudioCommand {
     SetSpatialParams {
         params: SpatialParams,
     },
+    SetSoundCone {
+        id: SoundId,
+        cone: Option<SoundCone>,
+    },
+    SetSoundOcclusion {
+        id: SoundId,
+        occlusion: f32,
+    },
     // Streaming commands (only available on native platforms - no FS on web)
     #[cfg(not(target_arch = "wasm32"))]
     StreamFile {
@@ -153,6 +161,8 @@ struct ActiveSound {
     paused: bool,
     looping: bool,
     spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
+    spatial_cone: Option<SoundCone>,           // Optional directional cone
+    occlusion: f32,                             // Occlusion amount (0.0 = none, 1.0 = fully occluded)
     // Volume fade state
     fade_start_time: Option<f32>,
     fade_duration: f32,
@@ -691,6 +701,8 @@ impl AudioEngine {
                         paused: false,
                         looping,
                         spatial_position: None,
+                        spatial_cone: None,
+                        occlusion: 0.0,
                         fade_start_time: None,
                         fade_duration: 0.0,
                         fade_start_volume: 1.0,
@@ -763,6 +775,16 @@ impl AudioEngine {
             }
             AudioCommand::SetSpatialParams { params } => {
                 *spatial = params;
+            }
+            AudioCommand::SetSoundCone { id, cone } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.spatial_cone = cone;
+                }
+            }
+            AudioCommand::SetSoundOcclusion { id, occlusion } => {
+                if let Some(sound) = active_sounds.get_mut(&id) {
+                    sound.occlusion = occlusion.clamp(0.0, 1.0);
+                }
             }
             AudioCommand::PauseAll => {
                 for sound in active_sounds.values_mut() {
@@ -994,13 +1016,23 @@ impl AudioEngine {
             }
 
             // Calculate spatial audio if runtime position is set
-            let (spatial_volume, spatial_pan, spatial_pitch) =
+            let (mut spatial_volume, spatial_pan, spatial_pitch, spatial_occlusion) =
                 if let Some(pos) = &sound.spatial_position {
-                    let result = calculate_spatial(pos, listener, spatial_params);
-                    (result.volume, result.pan, result.pitch)
+                    let result = calculate_spatial_with_cone(
+                        pos,
+                        listener,
+                        spatial_params,
+                        sound.spatial_cone.as_ref(),
+                        sound.occlusion,
+                    );
+                    (result.volume, result.pan, result.pitch, result.occlusion)
                 } else {
-                    (1.0, sound.pan, 1.0)
+                    (1.0, sound.pan, 1.0, 0.0)
                 };
+
+            // Apply occlusion as volume reduction
+            // 0.0 = no occlusion (full volume), 1.0 = fully occluded (silent)
+            spatial_volume *= 1.0 - spatial_occlusion;
 
             // Apply doppler pitch shift to playback rate
             let effective_playback_rate = sound.playback_rate * spatial_pitch;
@@ -1955,6 +1987,71 @@ impl AudioEngine {
     pub fn set_spatial_params(&self, params: SpatialParams) -> Result<()> {
         self.command_tx
             .send(AudioCommand::SetSpatialParams { params })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set directional cone for a sound source
+    ///
+    /// Makes a sound source directional, so it's louder when the listener is
+    /// in front of the source and quieter when behind or to the sides.
+    ///
+    /// # Arguments
+    /// * `id` - Sound ID
+    /// * `cone` - Optional sound cone (None for omnidirectional)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let engine = AudioEngine::new()?;
+    /// # let sound_id = 1;
+    /// use tunes::synthesis::spatial::{SoundCone, Vec3};
+    ///
+    /// // Create a narrow directional cone (like a megaphone)
+    /// let cone = SoundCone::narrow().with_direction(0.0, 0.0, 1.0);
+    /// engine.set_sound_cone(sound_id, Some(cone))?;
+    ///
+    /// // Remove directionality (make omnidirectional)
+    /// engine.set_sound_cone(sound_id, None)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_sound_cone(&self, id: SoundId, cone: Option<SoundCone>) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetSoundCone { id, cone })
+            .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
+    }
+
+    /// Set occlusion amount for a sound
+    ///
+    /// Occlusion represents how much a sound is blocked by geometry/obstacles.
+    /// The game should use raycasting or other detection to determine occlusion
+    /// and then set this value.
+    ///
+    /// # Arguments
+    /// * `id` - Sound ID
+    /// * `occlusion` - Occlusion amount (0.0 = no occlusion, 1.0 = fully occluded)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// # let engine = AudioEngine::new()?;
+    /// # let sound_id = 1;
+    /// // No occlusion (sound has clear path to listener)
+    /// engine.set_sound_occlusion(sound_id, 0.0)?;
+    ///
+    /// // Partial occlusion (sound is partially blocked)
+    /// engine.set_sound_occlusion(sound_id, 0.6)?;
+    ///
+    /// // Full occlusion (sound is completely blocked)
+    /// engine.set_sound_occlusion(sound_id, 1.0)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_sound_occlusion(&self, id: SoundId, occlusion: f32) -> Result<()> {
+        self.command_tx
+            .send(AudioCommand::SetSoundOcclusion { id, occlusion })
             .map_err(|_| TunesError::AudioEngineError("Failed to send command".to_string()))
     }
 

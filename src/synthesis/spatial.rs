@@ -3,9 +3,11 @@
 //! This module provides spatial audio capabilities including:
 //! - 3D positioning of sound sources
 //! - Distance-based attenuation
-//! - Azimuth-based stereo panning
+//! - Azimuth-based stereo panning with elevation
 //! - Listener position and orientation
 //! - Doppler effect for moving sources
+//! - Directional sound sources (sound cones)
+//! - Occlusion support
 
 use std::f32::consts::PI;
 
@@ -157,6 +159,77 @@ impl Default for SpatialPosition {
     }
 }
 
+/// Sound cone configuration for directional audio sources
+///
+/// A sound cone defines how a sound's volume changes based on the angle
+/// between the source's forward direction and the direction to the listener.
+///
+/// # Example
+/// ```
+/// use tunes::synthesis::spatial::{SoundCone, Vec3};
+///
+/// // Create a narrow cone (like a megaphone or loudspeaker)
+/// let cone = SoundCone::new(
+///     Vec3::new(0.0, 0.0, 1.0), // Forward direction
+///     30.0,  // Inner cone angle (30 degrees)
+///     60.0,  // Outer cone angle (60 degrees)
+///     0.3,   // Outer gain (30% volume outside cone)
+/// );
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SoundCone {
+    /// Direction the sound source is pointing (normalized)
+    pub direction: Vec3,
+    /// Inner cone angle in degrees (full volume within this angle)
+    pub inner_angle: f32,
+    /// Outer cone angle in degrees (transitions from full to outer_gain)
+    pub outer_angle: f32,
+    /// Volume multiplier outside the outer cone (0.0 to 1.0)
+    pub outer_gain: f32,
+}
+
+impl SoundCone {
+    /// Create a new sound cone
+    ///
+    /// # Arguments
+    /// * `direction` - Direction the source is pointing (will be normalized)
+    /// * `inner_angle` - Inner cone angle in degrees (full volume)
+    /// * `outer_angle` - Outer cone angle in degrees (transition region)
+    /// * `outer_gain` - Volume multiplier outside cone (0.0 to 1.0)
+    pub fn new(direction: Vec3, inner_angle: f32, outer_angle: f32, outer_gain: f32) -> Self {
+        Self {
+            direction: direction.normalize(),
+            inner_angle: inner_angle.clamp(0.0, 360.0),
+            outer_angle: outer_angle.clamp(0.0, 360.0),
+            outer_gain: outer_gain.clamp(0.0, 1.0),
+        }
+    }
+
+    /// Create a narrow cone (like a megaphone)
+    /// Inner: 20°, Outer: 40°, Outer gain: 0.2
+    pub fn narrow() -> Self {
+        Self::new(Vec3::forward(), 20.0, 40.0, 0.2)
+    }
+
+    /// Create a medium cone (like a speaker)
+    /// Inner: 45°, Outer: 90°, Outer gain: 0.3
+    pub fn medium() -> Self {
+        Self::new(Vec3::forward(), 45.0, 90.0, 0.3)
+    }
+
+    /// Create a wide cone (like a person talking)
+    /// Inner: 90°, Outer: 150°, Outer gain: 0.5
+    pub fn wide() -> Self {
+        Self::new(Vec3::forward(), 90.0, 150.0, 0.5)
+    }
+
+    /// Set the direction the cone is pointing
+    pub fn with_direction(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.direction = Vec3::new(x, y, z).normalize();
+        self
+    }
+}
+
 /// Listener configuration for spatial audio
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ListenerConfig {
@@ -259,6 +332,9 @@ pub struct SpatialResult {
     pub pan: f32,
     /// Pitch multiplier for Doppler effect (1.0 = no change)
     pub pitch: f32,
+    /// Occlusion amount (0.0 = no occlusion, 1.0 = fully occluded)
+    /// This can be used to apply low-pass filtering when sound is blocked
+    pub occlusion: f32,
 }
 
 impl Default for SpatialResult {
@@ -267,6 +343,7 @@ impl Default for SpatialResult {
             volume: 1.0,
             pan: 0.0,
             pitch: 1.0,
+            occlusion: 0.0,
         }
     }
 }
@@ -343,6 +420,92 @@ pub fn azimuth_to_pan(azimuth: f32) -> f32 {
     clamped / (PI / 2.0)
 }
 
+/// Calculate elevation angle (vertical angle) from listener to source
+/// Returns angle in radians, where 0 = ear level, PI/2 = directly above, -PI/2 = directly below
+pub fn calculate_elevation(source_pos: &Vec3, listener: &ListenerConfig) -> f32 {
+    // Vector from listener to source
+    let to_source = source_pos.sub(&listener.position);
+    let distance_horizontal = (to_source.x * to_source.x + to_source.z * to_source.z).sqrt();
+
+    if distance_horizontal < 0.001 {
+        // Source is directly above or below
+        if to_source.y > 0.0 {
+            return PI / 2.0;
+        } else if to_source.y < 0.0 {
+            return -PI / 2.0;
+        }
+        return 0.0;
+    }
+
+    // Calculate elevation using atan2
+    to_source.y.atan2(distance_horizontal)
+}
+
+/// Calculate elevation-based volume attenuation and pan adjustment
+/// Returns (volume_multiplier, pan_adjustment)
+///
+/// Sounds above/below the listener are:
+/// - Attenuated in volume (quieter when elevated)
+/// - Pulled slightly toward center (mimics how ears perceive height)
+pub fn calculate_elevation_effect(elevation: f32) -> (f32, f32) {
+    let abs_elevation = elevation.abs();
+
+    // Volume attenuation: reduce volume for sounds above/below
+    // At 30 degrees: ~90% volume
+    // At 60 degrees: ~70% volume
+    // At 90 degrees (directly above/below): ~50% volume
+    let elevation_factor = (abs_elevation / (PI / 2.0)).min(1.0);
+    let volume_attenuation = 1.0 - (elevation_factor * 0.5);
+
+    // Pan adjustment: pull toward center when elevated
+    // This mimics how our ears perceive elevated sounds as more centered
+    // At 30 degrees: ~10% pull to center
+    // At 60 degrees: ~25% pull to center
+    // At 90 degrees: ~40% pull to center
+    let pan_reduction = elevation_factor * 0.4;
+
+    (volume_attenuation, pan_reduction)
+}
+
+/// Calculate directional gain based on sound cone
+/// Returns volume multiplier based on listener position relative to source direction
+///
+/// Cone angles are specified as the angle from the center axis (not total width).
+/// For example, a 30-degree cone means 30 degrees from center, not 60 degrees total.
+pub fn calculate_cone_gain(
+    source_pos: &Vec3,
+    listener_pos: &Vec3,
+    cone: &SoundCone,
+) -> f32 {
+    // Vector from source to listener
+    let to_listener = listener_pos.sub(source_pos);
+    let distance = to_listener.length();
+
+    if distance < 0.001 {
+        return 1.0; // Listener at source position
+    }
+
+    let direction_to_listener = to_listener.scale(1.0 / distance);
+
+    // Calculate angle between source direction and direction to listener
+    let dot = cone.direction.dot(&direction_to_listener);
+    let angle_rad = dot.clamp(-1.0, 1.0).acos();
+    let angle_deg = angle_rad.to_degrees();
+
+    // Cone angles are from center axis (no halving needed)
+    if angle_deg <= cone.inner_angle {
+        // Inside inner cone: full volume
+        1.0
+    } else if angle_deg >= cone.outer_angle {
+        // Outside outer cone: reduced volume
+        cone.outer_gain
+    } else {
+        // In transition zone: interpolate between full and outer gain
+        let transition = (angle_deg - cone.inner_angle) / (cone.outer_angle - cone.inner_angle);
+        1.0 + (cone.outer_gain - 1.0) * transition
+    }
+}
+
 /// Calculate Doppler pitch shift
 /// Returns pitch multiplier (1.0 = no shift, >1.0 = higher pitch, <1.0 = lower pitch)
 pub fn calculate_doppler(
@@ -385,12 +548,30 @@ pub fn calculate_spatial(
     listener: &ListenerConfig,
     params: &SpatialParams,
 ) -> SpatialResult {
+    calculate_spatial_with_cone(source, listener, params, None, 0.0)
+}
+
+/// Calculate complete spatial audio result with optional directional cone and occlusion
+///
+/// # Arguments
+/// * `source` - Source position and velocity
+/// * `listener` - Listener configuration
+/// * `params` - Spatial audio parameters
+/// * `cone` - Optional sound cone for directional sources
+/// * `occlusion` - Occlusion amount (0.0 = none, 1.0 = fully occluded)
+pub fn calculate_spatial_with_cone(
+    source: &SpatialPosition,
+    listener: &ListenerConfig,
+    params: &SpatialParams,
+    cone: Option<&SoundCone>,
+    occlusion: f32,
+) -> SpatialResult {
     // Calculate distance
     let to_source = source.position.sub(&listener.position);
     let distance = to_source.length();
 
-    // Calculate attenuation
-    let volume = if distance >= params.max_distance {
+    // Calculate distance attenuation
+    let mut volume = if distance >= params.max_distance {
         0.0
     } else {
         calculate_attenuation(
@@ -402,9 +583,25 @@ pub fn calculate_spatial(
         )
     };
 
-    // Calculate azimuth and pan
+    // Calculate azimuth and base pan
     let azimuth = calculate_azimuth(&source.position, listener);
-    let pan = azimuth_to_pan(azimuth);
+    let mut pan = azimuth_to_pan(azimuth);
+
+    // Calculate elevation effects
+    let elevation = calculate_elevation(&source.position, listener);
+    let (elevation_volume, pan_reduction) = calculate_elevation_effect(elevation);
+
+    // Apply elevation volume attenuation
+    volume *= elevation_volume;
+
+    // Apply elevation pan adjustment (pull toward center when elevated)
+    pan *= 1.0 - pan_reduction;
+
+    // Apply directional cone if present
+    if let Some(sound_cone) = cone {
+        let cone_gain = calculate_cone_gain(&source.position, &listener.position, sound_cone);
+        volume *= cone_gain;
+    }
 
     // Calculate Doppler pitch shift
     let pitch = if params.doppler_enabled {
@@ -419,7 +616,12 @@ pub fn calculate_spatial(
         1.0
     };
 
-    SpatialResult { volume, pan, pitch }
+    SpatialResult {
+        volume,
+        pan,
+        pitch,
+        occlusion: occlusion.clamp(0.0, 1.0),
+    }
 }
 
 #[cfg(test)]
@@ -555,5 +757,111 @@ mod tests {
         let result = calculate_spatial(&source, &listener, &params);
 
         assert_eq!(result.volume, 0.0); // Silent beyond max distance
+    }
+
+    #[test]
+    fn test_elevation_above() {
+        let source = Vec3::new(0.0, 10.0, 0.0); // Directly above
+        let listener = ListenerConfig::new();
+        let elevation = calculate_elevation(&source, &listener);
+        assert!((elevation - PI / 2.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_elevation_below() {
+        let source = Vec3::new(0.0, -10.0, 0.0); // Directly below
+        let listener = ListenerConfig::new();
+        let elevation = calculate_elevation(&source, &listener);
+        assert!((elevation + PI / 2.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_elevation_ear_level() {
+        let source = Vec3::new(5.0, 0.0, 5.0); // At ear level
+        let listener = ListenerConfig::new();
+        let elevation = calculate_elevation(&source, &listener);
+        assert!(elevation.abs() < 0.01);
+    }
+
+    #[test]
+    fn test_elevation_effect_attenuation() {
+        // Sound directly above should have reduced volume
+        let (volume, _) = calculate_elevation_effect(PI / 2.0);
+        assert!(volume < 1.0);
+        assert!(volume >= 0.5);
+    }
+
+    #[test]
+    fn test_elevation_effect_pan_reduction() {
+        // Sound elevated should have pan pulled toward center
+        let (_, pan_reduction) = calculate_elevation_effect(PI / 4.0);
+        assert!(pan_reduction > 0.0);
+        assert!(pan_reduction < 1.0);
+    }
+
+    #[test]
+    fn test_sound_cone_inside() {
+        let source_pos = Vec3::new(0.0, 0.0, 0.0);
+        let listener_pos = Vec3::new(0.0, 0.0, 5.0); // In front
+        let cone = SoundCone::new(Vec3::forward(), 60.0, 120.0, 0.3);
+
+        let gain = calculate_cone_gain(&source_pos, &listener_pos, &cone);
+        assert_eq!(gain, 1.0); // Full volume inside inner cone
+    }
+
+    #[test]
+    fn test_sound_cone_outside() {
+        let source_pos = Vec3::new(0.0, 0.0, 0.0);
+        let listener_pos = Vec3::new(0.0, 0.0, -5.0); // Behind
+        let cone = SoundCone::new(Vec3::forward(), 60.0, 120.0, 0.3);
+
+        let gain = calculate_cone_gain(&source_pos, &listener_pos, &cone);
+        assert_eq!(gain, 0.3); // Outer gain outside cone
+    }
+
+    #[test]
+    fn test_sound_cone_transition() {
+        let source_pos = Vec3::new(0.0, 0.0, 0.0);
+        let listener_pos = Vec3::new(5.0, 0.0, 5.0); // 45 degrees to the right
+        let cone = SoundCone::new(Vec3::forward(), 30.0, 90.0, 0.3);
+
+        let gain = calculate_cone_gain(&source_pos, &listener_pos, &cone);
+        assert!(gain > 0.3); // More than outer gain
+        assert!(gain < 1.0); // Less than full volume
+    }
+
+    #[test]
+    fn test_spatial_with_cone() {
+        let source = SpatialPosition::new(0.0, 0.0, 5.0);
+        let listener = ListenerConfig::new();
+        let params = SpatialParams::default();
+        let cone = SoundCone::narrow();
+
+        let result = calculate_spatial_with_cone(&source, &listener, &params, Some(&cone), 0.0);
+
+        assert!(result.volume > 0.0);
+        assert_eq!(result.occlusion, 0.0);
+    }
+
+    #[test]
+    fn test_occlusion() {
+        let source = SpatialPosition::new(5.0, 0.0, 0.0);
+        let listener = ListenerConfig::new();
+        let params = SpatialParams::default();
+
+        let result = calculate_spatial_with_cone(&source, &listener, &params, None, 0.7);
+
+        assert_eq!(result.occlusion, 0.7);
+    }
+
+    #[test]
+    fn test_occlusion_clamping() {
+        let source = SpatialPosition::new(5.0, 0.0, 0.0);
+        let listener = ListenerConfig::new();
+        let params = SpatialParams::default();
+
+        let result = calculate_spatial_with_cone(&source, &listener, &params, None, 1.5);
+
+        assert_eq!(result.occlusion, 1.0); // Clamped to 1.0
     }
 }

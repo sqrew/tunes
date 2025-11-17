@@ -1059,7 +1059,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralShift};
     /// let mut chain = EffectChain::new();
-    /// let shift = SpectralShift::up();
+    /// let shift = SpectralShift::subtle();
     /// chain = chain.with_spectral_shift(shift);
     /// ```
     pub fn with_spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
@@ -1074,7 +1074,7 @@ impl EffectChain {
     /// ```
     /// # use tunes::synthesis::effects::{EffectChain, SpectralExciter};
     /// let mut chain = EffectChain::new();
-    /// let exciter = SpectralExciter::warm();
+    /// let exciter = SpectralExciter::gentle();
     /// chain = chain.with_spectral_exciter(exciter);
     /// ```
     pub fn with_spectral_exciter(mut self, spectral_exciter: SpectralExciter) -> Self {

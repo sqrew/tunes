@@ -40,6 +40,7 @@
 - [FM Synthesis](./synthesis/fm.md)
 - [Granular Synthesis](./synthesis/granular.md)
 - [Effects Chain](./synthesis/effects.md)
+- [Spectral Effects](./synthesis/spectral.md)
 
 ---
 

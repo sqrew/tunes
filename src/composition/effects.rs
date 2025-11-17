@@ -894,7 +894,7 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::instruments::Instrument;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Using a preset for quick setup
-    /// comp.instrument("pad", &Instrument::synth_pad())
+    /// comp.instrument("pad", &Instrument::warm_pad())
     ///     .spectral_blur(SpectralBlur::gentle())
     ///     .note(&[C4], 2.0);
     ///
@@ -927,7 +927,7 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::instruments::Instrument;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("synth", &Instrument::synth_lead())
-    ///     .spectral_shift(SpectralShift::up())
+    ///     .spectral_shift(SpectralShift::subtle())
     ///     .note(&[C4], 2.0);
     /// ```
     pub fn spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
@@ -953,7 +953,7 @@ impl<'a> TrackBuilder<'a> {
     /// # use tunes::instruments::Instrument;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.instrument("vocal", &Instrument::warm_pad())
-    ///     .spectral_exciter(SpectralExciter::warm())
+    ///     .spectral_exciter(SpectralExciter::gentle())
     ///     .note(&[C4], 2.0);
     /// ```
     pub fn spectral_exciter(mut self, spectral_exciter: SpectralExciter) -> Self {
@@ -1024,7 +1024,7 @@ impl<'a> TrackBuilder<'a> {
     ///
     /// // Or create with custom parameters
     /// let widen = SpectralWiden::ultra();
-    /// comp.instrument("synth", &Instrument::synth_pad())
+    /// comp.instrument("synth", &Instrument::warm_pad())
     ///     .spectral_widen(widen)
     ///     .note(&[A3], 2.0);
     /// ```

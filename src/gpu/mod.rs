@@ -26,10 +26,12 @@
 
 mod convolution;
 mod device;
+mod fft;
 mod synthesis;
 
 pub use convolution::GpuConvolution;
 pub use device::{GpuDevice, GpuState};
+pub use fft::GpuFft;
 pub use synthesis::GpuSynthesizer;
 
 /// Check if GPU compute is available on this system

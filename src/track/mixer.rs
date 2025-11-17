@@ -2350,7 +2350,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::SpectralShift;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// mixer.master_spectral_shift(SpectralShift::up());
+    /// mixer.master_spectral_shift(SpectralShift::subtle());
     /// ```
     pub fn master_spectral_shift(&mut self, spectral_shift: crate::synthesis::effects::SpectralShift) -> &mut Self {
         self.master.spectral_shift = Some(spectral_shift);
@@ -2367,7 +2367,7 @@ impl Mixer {
     /// # use tunes::synthesis::effects::SpectralExciter;
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let mut mixer = comp.into_mixer();
-    /// mixer.master_spectral_exciter(SpectralExciter::warm());
+    /// mixer.master_spectral_exciter(SpectralExciter::gentle());
     /// ```
     pub fn master_spectral_exciter(&mut self, spectral_exciter: crate::synthesis::effects::SpectralExciter) -> &mut Self {
         self.master.spectral_exciter = Some(spectral_exciter);
@@ -2429,9 +2429,12 @@ impl Mixer {
     /// Add spectral dynamics to the master bus for frequency-dependent compression/expansion
     ///
     /// # Example
-    /// ```no_run
-    /// # use tunes::prelude::*;
-    /// # let mut mixer = Mixer::new(44100.0);
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralDynamics;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_dynamics(SpectralDynamics::gentle());
     /// ```
     pub fn master_spectral_dynamics(&mut self, spectral_dynamics: crate::synthesis::effects::SpectralDynamics) -> &mut Self {
@@ -2443,9 +2446,12 @@ impl Mixer {
     /// Add spectral scramble to the master bus for glitchy frequency bin randomization
     ///
     /// # Example
-    /// ```no_run
-    /// # use tunes::prelude::*;
-    /// # let mut mixer = Mixer::new(44100.0);
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralScramble;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
     /// mixer.master_spectral_scramble(SpectralScramble::glitch());
     /// ```
     pub fn master_spectral_scramble(&mut self, spectral_scramble: crate::synthesis::effects::SpectralScramble) -> &mut Self {

@@ -273,6 +273,220 @@ See `examples/doppler_effect_demo.rs` for a comprehensive demonstration with:
 
 Run it with: `cargo run --example doppler_effect_demo`
 
+### Elevation Panning
+
+Tunes automatically handles vertical positioning (elevation) of sounds. Sounds above or below the listener are:
+- **Attenuated** - Quieter than sounds at ear level
+- **Centered** - Pan is reduced toward center (mimics how our ears perceive height)
+
+This creates a more realistic 3D soundscape without requiring HRTF processing.
+
+```rust
+use tunes::prelude::*;
+
+fn helicopter_overhead() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("helicopter", &Instrument::synth_bass())
+        .filter(Filter::low_pass(400.0, 0.7))
+        .note(&[80.0], 10.0);
+
+    let sound_id = engine.play_looping(&comp.into_mixer())?;
+
+    // Listener at ground level
+    engine.set_listener_position(0.0, 1.7, 0.0)?;
+
+    // Helicopter flies overhead at 20m height
+    for i in 0..=40 {
+        let t = i as f32 / 40.0;
+        let x = -20.0 + (40.0 * t);  // -20m to +20m
+        let y = 20.0;                 // Constant 20m height
+
+        engine.set_sound_position(sound_id, x, y, 0.0)?;
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    engine.stop(sound_id)?;
+    Ok(())
+}
+```
+
+**Elevation Physics:**
+- **0° elevation** (ear level) - Full volume, normal panning
+- **30° elevation** - ~90% volume, 10% pan reduction
+- **60° elevation** - ~70% volume, 25% pan reduction
+- **90° elevation** (directly above/below) - ~50% volume, 40% pan reduction
+
+This works automatically with `set_sound_position()` - no additional configuration needed!
+
+### Directional Sound Cones
+
+Make sound sources directional so they're louder when the listener is in front and quieter behind. Perfect for:
+- **Loudspeakers** and PA systems
+- **NPCs talking** (voices are directional)
+- **Vehicle engines** (louder from front)
+- **Directional weapons** (gunfire, flamethrowers)
+
+```rust
+use tunes::prelude::*;
+use tunes::synthesis::spatial::{SoundCone, Vec3};
+
+fn directional_speaker() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("announcement", &Instrument::synth_lead())
+        .note(&[440.0], 5.0);
+
+    let sound_id = engine.play_looping(&comp.into_mixer())?;
+
+    // Create a narrow cone pointing forward (like a megaphone)
+    // inner_angle: 20°, outer_angle: 40°, outer_gain: 0.2 (20% volume outside)
+    let cone = SoundCone::narrow().with_direction(0.0, 0.0, 1.0);
+
+    // Position speaker at origin, pointing forward (+Z)
+    engine.set_sound_position(sound_id, 0.0, 1.7, 0.0)?;
+    engine.set_sound_cone(sound_id, Some(cone))?;
+
+    // Walk around the speaker
+    for i in 0..=36 {
+        let angle = (i as f32 * 10.0).to_radians();
+        let x = angle.sin() * 5.0;
+        let z = angle.cos() * 5.0;
+
+        engine.set_listener_position(x, 1.7, z)?;
+        engine.set_listener_forward(-x, 0.0, -z)?;  // Look at speaker
+
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    engine.stop(sound_id)?;
+    Ok(())
+}
+```
+
+**Built-in Cone Presets:**
+
+```rust
+use tunes::synthesis::spatial::SoundCone;
+
+// Narrow cone (megaphone, directional speaker)
+// Inner: 20°, Outer: 40°, Outer gain: 0.2
+let cone = SoundCone::narrow();
+
+// Medium cone (speaker, vehicle engine)
+// Inner: 45°, Outer: 90°, Outer gain: 0.3
+let cone = SoundCone::medium();
+
+// Wide cone (person talking, general directionality)
+// Inner: 90°, Outer: 150°, Outer gain: 0.5
+let cone = SoundCone::wide();
+
+// Custom cone
+let cone = SoundCone::new(
+    Vec3::new(0.0, -1.0, 0.0),  // Direction (down)
+    30.0,                        // Inner angle
+    60.0,                        // Outer angle
+    0.3,                         // Outer gain
+);
+```
+
+**How Sound Cones Work:**
+- **Inner cone** - Full volume within this angle from source direction
+- **Outer cone** - Volume transitions from full to outer gain
+- **Outside cone** - Volume is outer gain (reduced)
+- **Angles** are specified from center axis (30° means 30° from center, not 60° total width)
+
+**Removing Directionality:**
+
+```rust
+// Make sound omnidirectional again
+engine.set_sound_cone(sound_id, None)?;
+```
+
+### Occlusion
+
+Simulate sounds being blocked by walls, buildings, or terrain. The game determines occlusion using raycasting, then sets the occlusion value.
+
+```rust
+use tunes::prelude::*;
+
+fn occlusion_example() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("radio", &Instrument::synth_lead())
+        .note(&[440.0], 5.0);
+
+    let sound_id = engine.play_looping(&comp.into_mixer())?;
+    engine.set_sound_position(sound_id, 5.0, 1.7, 0.0)?;
+
+    // No occlusion - clear line of sight
+    engine.set_sound_occlusion(sound_id, 0.0)?;
+    thread::sleep(Duration::from_millis(1000));
+
+    // Partial occlusion - behind thin wall
+    engine.set_sound_occlusion(sound_id, 0.5)?;
+    thread::sleep(Duration::from_millis(1000));
+
+    // Full occlusion - behind thick wall
+    engine.set_sound_occlusion(sound_id, 1.0)?;
+    thread::sleep(Duration::from_millis(1000));
+
+    engine.stop(sound_id)?;
+    Ok(())
+}
+```
+
+**Game Integration with Raycasting:**
+
+```rust
+use tunes::prelude::*;
+
+struct Game {
+    engine: AudioEngine,
+    // ... physics/raycasting system
+}
+
+impl Game {
+    fn update_sound_occlusion(&self, sound_id: SoundId, source_pos: Vec3) -> anyhow::Result<()> {
+        // Use your game's raycasting to detect obstacles
+        let listener_pos = self.get_listener_position();
+        let raycast_result = self.raycast(listener_pos, source_pos);
+
+        let occlusion = match raycast_result {
+            RaycastResult::Clear => 0.0,
+            RaycastResult::ThinWall => 0.4,
+            RaycastResult::ThickWall => 0.7,
+            RaycastResult::MultipleWalls => 1.0,
+        };
+
+        self.engine.set_sound_occlusion(sound_id, occlusion)?;
+        Ok(())
+    }
+}
+```
+
+**Occlusion Values:**
+- `0.0` - No occlusion (clear path to listener)
+- `0.25` - Thin obstacle (cloth, thin wood)
+- `0.5` - Medium obstacle (drywall, thin concrete)
+- `0.75` - Thick obstacle (concrete wall, multiple walls)
+- `1.0` - Fully occluded (buried underground, very thick walls)
+
+**Note:** Occlusion currently affects volume. Future versions may add automatic low-pass filtering for muffled sound when occluded.
+
+### Advanced Example: All Features Combined
+
+See `examples/advanced_spatial_demo.rs` for a comprehensive demonstration showing:
+- Elevation panning (sounds moving vertically)
+- Directional sound cones (walking around a speaker)
+- Occlusion (sounds becoming blocked)
+- Combined features (helicopter with directional rotor sound, elevation, and occlusion)
+
+Run it with: `cargo run --example advanced_spatial_demo`
+
 ### Multi-Source Spatial Scene
 
 Create complex 3D soundscapes with multiple positioned instruments.
