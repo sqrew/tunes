@@ -97,7 +97,7 @@ cargo install wasm-pack
 wasm-pack build --target web --features web
 ```
 
-See [WEB_DEMO.md](WEB_DEMO.md) for complete WebAssembly setup and usage guide.
+See [book/src/advanced/wasm.md](book/src/advanced/wasm.md) for complete WebAssembly setup and usage guide.
 
 ## Quick Start: Super simple!!
 ### Real-time Playback

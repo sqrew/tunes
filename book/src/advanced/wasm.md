@@ -40,7 +40,7 @@ rustup target add wasm32-unknown-unknown
 
 ```toml
 [dependencies]
-tunes = { version = "0.19.0", features = ["web"] }
+tunes = { version = "0.22.0", features = ["web"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["console"] }
 console_error_panic_hook = "0.1"  # Better error messages
@@ -175,16 +175,14 @@ pub async fn load_and_play_sample() -> Result<(), JsValue> {
     let sample = Sample::from_bytes(&bytes)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    // Create engine and play
+    // Create engine and composition
     let engine = AudioEngine::new()
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let mut mixer = Mixer::new();
-    let mut track = Track::new();
-    track.add_note(0.0, sample);
-    mixer.add_track(track);
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.track("sample").sample(sample, 0.0);
 
-    engine.play_mixer_realtime(&mixer)
+    engine.play_mixer_realtime(&comp.into_mixer())
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     Ok(())
@@ -200,10 +198,20 @@ const KICK_SAMPLE: &[u8] = include_bytes!("../assets/kick.wav");
 
 #[wasm_bindgen]
 pub fn play_embedded_sample() -> Result<(), JsValue> {
+    console_error_panic_hook::set_once();
+
     let sample = Sample::from_bytes(KICK_SAMPLE)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    // Use the sample...
+    let engine = AudioEngine::new()
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.track("kick").sample(sample, 0.0);
+
+    engine.play_mixer_realtime(&comp.into_mixer())
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
     Ok(())
 }
 ```
@@ -347,19 +355,16 @@ impl DrumMachine {
     }
 
     pub fn play_pattern(&self, pattern: Vec<String>) -> Result<(), JsValue> {
-        let mut mixer = Mixer::new();
-        let mut track = Track::new();
+        let mut comp = Composition::new(Tempo::new(120.0));
 
         for (i, sample_name) in pattern.iter().enumerate() {
             if let Some(sample) = self.samples.get(sample_name) {
                 let time = i as f32 * 0.25; // 16th notes
-                track.add_note(time, sample.clone());
+                comp.track(&sample_name).sample(sample.clone(), time);
             }
         }
 
-        mixer.add_track(track);
-
-        self.engine.play_mixer_realtime(&mixer)
+        self.engine.play_mixer_realtime(&comp.into_mixer())
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(())

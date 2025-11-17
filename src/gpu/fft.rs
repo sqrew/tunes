@@ -46,6 +46,7 @@ impl GpuFft {
     /// # Example
     /// ```no_run
     /// # use tunes::gpu::{GpuDevice, GpuFft};
+    /// # use std::sync::Arc;
     /// let device = GpuDevice::new().unwrap();
     /// let fft = GpuFft::new(Arc::new(device), 2048).unwrap();
     /// ```
