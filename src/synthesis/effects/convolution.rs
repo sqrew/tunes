@@ -599,18 +599,18 @@ fn add_diffuse_tail(ir: &mut [f32], params: &IRParams) {
     let damping_coeff = 1.0 - params.damping;
     let mut lowpass_state = 0.0;
 
-    for i in start_sample..ir.len() {
+    for (offset, sample) in ir.iter_mut().enumerate().skip(start_sample) {
         // Generate random noise
         let noise = rng.random_range(-1.0..1.0);
 
         // Apply exponential decay
-        let decay = decay_coefficient.powf((i - start_sample) as f32);
+        let decay = decay_coefficient.powf(offset as f32);
 
         // Apply lowpass filter (simulates high-frequency absorption)
         lowpass_state = lowpass_state * params.damping + noise * damping_coeff;
 
         // Add to IR with decay
-        ir[i] += lowpass_state * decay * 0.3;
+        *sample += lowpass_state * decay * 0.3;
     }
 }
 

@@ -586,13 +586,13 @@ impl Sample {
         }
 
         // Handle remainder samples
-        for i in remainder_start..buffer.len() {
+        for sample in buffer.iter_mut().skip(remainder_start) {
             if time_offset >= sample_duration {
                 break;
             }
 
             let (left, right) = self.sample_at_interpolated(time_offset, playback_rate);
-            buffer[i] = (left + right) * 0.5 * volume;
+            *sample = (left + right) * 0.5 * volume;
             samples_written += 1;
             time_offset += time_delta;
         }
@@ -1064,9 +1064,9 @@ impl Sample {
         }
 
         // Normalize by overlap count to maintain amplitude
-        for frame in 0..output_frames {
-            if overlap_count[frame] > 0 {
-                let norm_factor = 1.0 / overlap_count[frame] as f32;
+        for (frame, &count) in overlap_count.iter().enumerate().take(output_frames) {
+            if count > 0 {
+                let norm_factor = 1.0 / count as f32;
                 for ch in 0..self.channels as usize {
                     let idx = frame * self.channels as usize + ch;
                     if idx < output_data.len() {
@@ -1156,9 +1156,7 @@ impl Sample {
             // Bounds check
             if input_frame >= self.num_frames - 1 {
                 // Pad with zeros if we're past the end
-                for _ in 0..self.channels {
-                    output_data.push(0.0);
-                }
+                output_data.extend(std::iter::repeat_n(0.0, self.channels as usize));
                 continue;
             }
 

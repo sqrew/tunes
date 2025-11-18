@@ -1915,8 +1915,7 @@ impl<'a> TrackBuilder<'a> {
         };
 
         // Shape intervals relative to first note
-        for i in 1..note_refs.len() {
-            let note_idx = note_refs[i].1;
+        for &(_, note_idx) in note_refs.iter().skip(1) {
 
             if let AudioEvent::Note(note) = &mut self.get_track_mut().events[note_idx] {
                 for j in 0..note.num_freqs {

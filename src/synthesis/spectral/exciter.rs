@@ -228,9 +228,9 @@ impl SpectralExciter {
         let crossover_bin = (frequency / hz_per_bin) as usize;
 
         // Process bins above crossover frequency
-        for i in crossover_bin..len {
-            let mag = spectrum[i].norm();
-            let phase = spectrum[i].arg();
+        for (i, bin) in spectrum.iter_mut().enumerate().take(len).skip(crossover_bin) {
+            let mag = bin.norm();
+            let phase = bin.arg();
 
             if mag > 1e-10 {
                 // Calculate frequency of this bin
@@ -259,7 +259,7 @@ impl SpectralExciter {
                     -0.1 * (1.0 - harmonics) * drive * 0.1  // Even bins get opposite shift
                 };
 
-                spectrum[i] = Complex::from_polar(excited_mag, phase + phase_mod);
+                *bin = Complex::from_polar(excited_mag, phase + phase_mod);
             }
         }
 

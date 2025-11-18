@@ -587,9 +587,8 @@ impl Mixer {
         // Collect all unique notes from all tracks
         let mut unique_notes: HashMap<CacheKey, NoteEvent> = HashMap::new();
 
-        for bus_opt in &self.buses {
-            if let Some(bus) = bus_opt {
-                for track in &bus.tracks {
+        for bus in self.buses.iter().flatten() {
+            for track in &bus.tracks {
                     for event in &track.events {
                         if let AudioEvent::Note(note_event) = event {
                             let cache_key = CacheKey::from_note_event(note_event, sample_rate);
@@ -601,7 +600,6 @@ impl Mixer {
                         }
                     }
                 }
-            }
         }
 
         let total_notes = unique_notes.len();

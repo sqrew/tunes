@@ -194,12 +194,12 @@ impl SpectralMorph {
         let mut mags = vec![0.0; len];
         let cutoff_freq = 1000.0;
 
-        for i in 0..len {
+        for (i, mag) in mags.iter_mut().enumerate().take(len) {
             let freq = i as f32 * hz_per_bin;
             if freq > cutoff_freq {
                 // High-pass with gentle slope
                 let ratio = (freq - cutoff_freq) / cutoff_freq;
-                mags[i] = ratio.min(1.0);
+                *mag = ratio.min(1.0);
             }
         }
 

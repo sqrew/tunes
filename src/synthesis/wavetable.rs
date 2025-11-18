@@ -303,8 +303,8 @@ impl Wavetable {
         }
 
         // Handle remainder samples
-        for i in remainder_start..buffer.len() {
-            buffer[i] = self.sample(phase);
+        for sample in buffer.iter_mut().skip(remainder_start) {
+            *sample = self.sample(phase);
             phase += phase_increment;
         }
 

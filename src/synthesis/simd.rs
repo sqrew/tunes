@@ -692,10 +692,10 @@ impl SimdDispatcher {
         }
 
         // Scalar remainder
-        for frame_idx in remainder_start..num_frames {
+        for (frame_idx, &input_sample) in input.iter().enumerate().take(num_frames).skip(remainder_start) {
             let stereo_idx = frame_idx * 2;
-            output[stereo_idx] += input[frame_idx] * left_gain;
-            output[stereo_idx + 1] += input[frame_idx] * right_gain;
+            output[stereo_idx] += input_sample * left_gain;
+            output[stereo_idx + 1] += input_sample * right_gain;
         }
     }
 

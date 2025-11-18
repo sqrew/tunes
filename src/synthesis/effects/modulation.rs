@@ -747,10 +747,10 @@ impl RingModulator {
 
             // Generate N carrier phases
             let mut phases = [0.0f32; 8]; // Max size for N=8
-            for i in 0..N {
-                phases[i] = self.phase + (i as f32) * phase_increment;
-                if phases[i] >= 1.0 {
-                    phases[i] -= 1.0;
+            for (i, phase) in phases.iter_mut().enumerate().take(N) {
+                *phase = self.phase + (i as f32) * phase_increment;
+                if *phase >= 1.0 {
+                    *phase -= 1.0;
                 }
             }
 
@@ -769,11 +769,11 @@ impl RingModulator {
         }
 
         // Handle remainder with scalar
-        for i in remainder_start..buffer.len() {
+        for sample in buffer.iter_mut().skip(remainder_start) {
             let carrier = crate::synthesis::wavetable::WAVETABLE.sample(self.phase);
-            let input = buffer[i];
+            let input = *sample;
             let modulated = input * carrier;
-            buffer[i] = input.mul_add(one_minus_mix, modulated * mix);
+            *sample = input.mul_add(one_minus_mix, modulated * mix);
 
             self.phase += phase_increment;
             if self.phase >= 1.0 {
@@ -992,10 +992,10 @@ impl Tremolo {
 
             // Generate N phases
             let mut phases = [0.0f32; 8]; // Max size for N=8
-            for i in 0..N {
-                phases[i] = self.phase + (i as f32) * phase_increment;
-                if phases[i] >= 1.0 {
-                    phases[i] -= 1.0;
+            for (i, phase) in phases.iter_mut().enumerate().take(N) {
+                *phase = self.phase + (i as f32) * phase_increment;
+                if *phase >= 1.0 {
+                    *phase -= 1.0;
                 }
             }
 
@@ -1013,10 +1013,10 @@ impl Tremolo {
         }
 
         // Handle remainder with scalar
-        for i in remainder_start..buffer.len() {
+        for sample in buffer.iter_mut().skip(remainder_start) {
             let lfo = (self.phase * two_pi).sin();
             let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
-            buffer[i] *= modulation;
+            *sample *= modulation;
 
             self.phase += phase_increment;
             if self.phase >= 1.0 {

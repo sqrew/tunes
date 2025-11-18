@@ -171,7 +171,7 @@ impl SpectralShift {
         // Create shifted spectrum with interpolation
         let mut shifted = vec![Complex::new(0.0, 0.0); len];
 
-        for i in 0..len {
+        for (i, shifted_bin) in shifted.iter_mut().enumerate().take(len) {
             // Source bin (fractional)
             let src_bin = i as f32 - shift_bins;
 
@@ -190,7 +190,7 @@ impl SpectralShift {
                 let phase_ceil = spectrum[bin_ceil].arg();
                 let phase = phase_floor * (1.0 - frac) + phase_ceil * frac;
 
-                shifted[i] = Complex::from_polar(mag, phase);
+                *shifted_bin = Complex::from_polar(mag, phase);
             }
         }
 

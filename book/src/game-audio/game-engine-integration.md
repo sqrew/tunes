@@ -8,7 +8,7 @@ Tunes is **framework-agnostic** and integrates trivially with any Rust game engi
 
 The integration pattern is identical across all engines:
 
-1. **Add dependency:** `tunes = "0.16.0"` in `Cargo.toml`
+1. **Add dependency:** `tunes = "0.22.0"` in `Cargo.toml`
 2. **Create engine:** `AudioEngine::new()` or `AudioEngine::new_with_gpu()`
 3. **Store in game state:** Engine resource, struct field, or global
 4. **Call from game logic:** `engine.play_sample("sound.wav")`
@@ -31,7 +31,7 @@ Bevy integration uses the ECS resource system.
 ```toml
 [dependencies]
 bevy = "0.14"
-tunes = "0.16.0"
+tunes = "0.22.0"
 ```
 
 **2. Create the AudioEngine resource:**
@@ -45,7 +45,7 @@ use tunes::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(AudioEngine::new().unwrap())  // That's it!
+        .insert_resource(AudioEngine::new().expect("Failed to initialize audio engine"))
         .add_systems(Update, game_audio_system)
         .run();
 }
@@ -74,7 +74,7 @@ fn setup_audio(mut commands: Commands) {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(AudioEngine::new_with_gpu().unwrap())  // GPU enabled!
+        .insert_resource(AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU"))
         .add_systems(Update, game_audio_system)
         .run();
 }
@@ -91,13 +91,11 @@ fn game_audio_system(
 ) {
     // Play samples in response to events
     if keyboard.just_pressed(KeyCode::Space) {
-        engine.play_sample("assets/audio/jump.wav")
-            .expect("Failed to play jump sound");
+        engine.play_sample("assets/audio/jump.wav");
     }
 
     if keyboard.just_pressed(KeyCode::KeyF) {
-        engine.play_sample("assets/audio/shoot.wav")
-            .expect("Failed to play shoot sound");
+        engine.play_sample("assets/audio/shoot.wav");
     }
 }
 ```
@@ -160,13 +158,13 @@ fn player_movement(
         if keyboard.pressed(KeyCode::ArrowLeft) {
             transform.translation.x -= speed;
             if keyboard.just_pressed(KeyCode::ArrowLeft) {
-                engine.play_sample("assets/audio/footstep.wav").ok();
+                engine.play_sample("assets/audio/footstep.wav");
             }
         }
 
         if keyboard.just_pressed(KeyCode::Space) {
             // Jump!
-            engine.play_sample("assets/audio/jump.wav").ok();
+            engine.play_sample("assets/audio/jump.wav");
         }
     }
 }
@@ -176,7 +174,7 @@ fn collision_system(
     // ... your collision logic here
 ) {
     // Play sound on collision
-    engine.play_sample("assets/audio/coin.wav").ok();
+    engine.play_sample("assets/audio/coin.wav");
 }
 ```
 
@@ -188,7 +186,7 @@ Pre-load frequently-used sounds during `Startup` to avoid first-play delay:
 
 ```rust
 fn setup_audio(mut commands: Commands) {
-    let engine = AudioEngine::new().unwrap();
+    let engine = AudioEngine::new().expect("Failed to initialize audio engine");
 
     // Pre-load common sounds
     engine.preload_sample("assets/audio/footstep.wav").ok();
@@ -201,14 +199,15 @@ fn setup_audio(mut commands: Commands) {
 
 ### Volume Control
 
-Store `SoundId` if you need to control sounds after playing:
+Use `stream_file()` if you need to control sounds after playing:
 
 ```rust
 #[derive(Resource)]
 struct MusicHandle(SoundId);
 
 fn play_music(mut commands: Commands, engine: Res<AudioEngine>) {
-    let id = engine.play_sample("assets/audio/music.wav")
+    // Use stream_file() to get a SoundId for later control
+    let id = engine.stream_file("assets/audio/music.wav")
         .expect("Failed to play music");
 
     // Store handle for later control
@@ -223,18 +222,21 @@ fn adjust_music_volume(
 }
 ```
 
+> **💡 Tip:** `play_sample()` uses a builder pattern for fire-and-forget playback. Use `stream_file()` when you need a `SoundId` to control volume, panning, or stop the sound later.
+
 ### Stopping Sounds
 
 ```rust
 fn stop_all_audio(engine: Res<AudioEngine>) {
-    engine.stop_all();
+    // Returns Result, handle with .ok() or .expect()
+    engine.stop_all().ok();
 }
 
 fn stop_specific_sound(
     engine: Res<AudioEngine>,
     handle: Res<MusicHandle>,
 ) {
-    engine.stop(handle.0);
+    engine.stop(handle.0).ok();
 }
 ```
 
@@ -266,7 +268,7 @@ GPU acceleration is available but provides marginal benefit for typical game aud
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(AudioEngine::new_with_gpu().unwrap())
+        .insert_resource(AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU"))
         .add_systems(Update, game_audio)
         .run();
 }
@@ -352,7 +354,7 @@ ggez integration stores `AudioEngine` in your game state struct.
 ```toml
 [dependencies]
 ggez = "0.9"
-tunes = "0.16.0"
+tunes = "0.22.0"
 ```
 
 **Basic Integration:**
@@ -370,7 +372,7 @@ struct GameState {
 impl GameState {
     fn new() -> GameResult<GameState> {
         Ok(GameState {
-            audio: AudioEngine::new_with_gpu().unwrap(),
+            audio: AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU"),
         })
     }
 }
@@ -379,7 +381,7 @@ impl EventHandler for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         // Play audio from game logic
         if some_collision {
-            self.audio.play_sample("assets/explosion.wav").ok();
+            self.audio.play_sample("assets/explosion.wav");
         }
         Ok(())
     }
@@ -413,7 +415,7 @@ macroquad integration is the simplest - just create `AudioEngine` at the start o
 ```toml
 [dependencies]
 macroquad = "0.4"
-tunes = "0.16.0"
+tunes = "0.22.0"
 ```
 
 **Basic Integration:**
@@ -425,7 +427,7 @@ use tunes::prelude::*;
 #[macroquad::main("Game")]
 async fn main() {
     // Create audio engine (GPU-accelerated for max performance)
-    let audio = AudioEngine::new_with_gpu().unwrap();
+    let audio = AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU");
 
     // Pre-load common sounds
     audio.preload_sample("assets/jump.wav").ok();
@@ -434,11 +436,11 @@ async fn main() {
     loop {
         // Game logic
         if is_key_pressed(KeyCode::Space) {
-            audio.play_sample("assets/jump.wav").ok();
+            audio.play_sample("assets/jump.wav");
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
-            audio.play_sample("assets/shoot.wav").ok();
+            audio.play_sample("assets/shoot.wav");
         }
 
         // Draw
@@ -466,7 +468,7 @@ bracket-lib (formerly RLTK) integration uses the state pattern.
 ```toml
 [dependencies]
 bracket-lib = "0.8"
-tunes = "0.16.0"
+tunes = "0.22.0"
 ```
 
 **Basic Integration:**
@@ -483,7 +485,7 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         // Game logic
         if ctx.key == Some(VirtualKeyCode::Space) {
-            self.audio.play_sample("assets/attack.wav").ok();
+            self.audio.play_sample("assets/attack.wav");
         }
 
         // Rendering...
@@ -496,7 +498,7 @@ fn main() -> BError {
         .build()?;
 
     let gs = State {
-        audio: AudioEngine::new_with_gpu().unwrap(),
+        audio: AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU"),
     };
 
     main_loop(context, gs)
@@ -525,14 +527,14 @@ struct GameEngine {
 impl GameEngine {
     fn new() -> Self {
         Self {
-            audio: AudioEngine::new_with_gpu().unwrap(),
+            audio: AudioEngine::new_with_gpu().expect("Failed to initialize audio engine with GPU"),
         }
     }
 
     fn update(&mut self) {
         // Game logic triggers audio
         if self.player_jumped() {
-            self.audio.play_sample("jump.wav").ok();
+            self.audio.play_sample("jump.wav");
         }
     }
 }

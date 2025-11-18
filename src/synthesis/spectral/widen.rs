@@ -140,13 +140,13 @@ impl SpectralWiden {
 
         // Apply phase modulation for stereo decorrelation
         // This creates width by shifting phase differently per frequency
-        for i in 0..len {
+        for (i, bin) in spectrum.iter_mut().enumerate().take(len) {
             let freq = i as f32 * hz_per_bin;
 
             // Only widen within cutoff range
             if freq >= low_cutoff && freq <= high_cutoff {
-                let mag = spectrum[i].norm();
-                let phase = spectrum[i].arg();
+                let mag = bin.norm();
+                let phase = bin.arg();
 
                 // Frequency-dependent phase shift for decorrelation
                 // Higher frequencies get more shift for natural stereo
@@ -159,7 +159,7 @@ impl SpectralWiden {
                 let direction = if i % 2 == 0 { 1.0 } else { -1.0 };
                 let new_phase = phase + phase_shift * direction;
 
-                spectrum[i] = Complex::from_polar(mag, new_phase);
+                *bin = Complex::from_polar(mag, new_phase);
             }
         }
     }

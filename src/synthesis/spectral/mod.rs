@@ -672,8 +672,8 @@ impl STFT {
     /// Overlap-add a frame into the output buffer (SIMD-accelerated)
     fn overlap_add(&mut self, frame: &[f32]) {
         // Use SIMD for the addition
-        for i in 0..frame.len() {
-            self.output_buffer[i] += frame[i];
+        for (output, &input) in self.output_buffer.iter_mut().zip(frame.iter()) {
+            *output += input;
         }
     }
 

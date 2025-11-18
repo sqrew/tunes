@@ -258,10 +258,10 @@ impl PhaseVocoder {
         magnitudes.fill(0.0);
 
         // Shift bins (simple nearest-neighbor for now)
-        for i in 0..fft_size / 2 {
+        for (i, &orig_mag) in original.iter().enumerate().take(fft_size / 2) {
             let new_bin = (i as f32 * shift_ratio).round() as usize;
             if new_bin < fft_size / 2 {
-                magnitudes[new_bin] = original[i];
+                magnitudes[new_bin] = orig_mag;
             }
         }
 
