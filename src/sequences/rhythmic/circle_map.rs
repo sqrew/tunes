@@ -211,7 +211,7 @@ mod tests {
     fn test_circle_map_bounded() {
         let phases = generate(0.5, 2.0, 0.0, 200);
         for phase in phases {
-            assert!(phase >= 0.0 && phase < 1.0, "Phase should be in [0, 1)");
+            assert!((0.0..1.0).contains(&phase), "Phase should be in [0, 1)");
         }
     }
 

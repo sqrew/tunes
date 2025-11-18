@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_golden_sections() {
-        const PHI: f32 = 1.618033988749;
+        const PHI: f32 = 1.618_034;
         let sections = golden_sections(100.0, 4);
 
         assert_eq!(sections.len(), 5);
@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(sections[0], 60.0);
 
         // Second value should be 60 / φ ≈ 37.08
-        let expected = 60.0 / 1.618033988749;
+        let expected = 60.0 / 1.618_034f32;
         assert!((sections[1] - expected).abs() < 0.01);
     }
 }

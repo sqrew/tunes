@@ -102,7 +102,7 @@ mod tests {
         }
 
         // Should contain all pitch classes if length >= steps_per_octave
-        let mut seen = vec![false; 12];
+        let mut seen = [false; 12];
         for &val in ascending.iter().take(12) {
             seen[val as usize] = true;
         }

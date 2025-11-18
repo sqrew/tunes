@@ -105,7 +105,7 @@ mod tests {
 
         // All values should be within bounds
         for &val in &walk {
-            assert!(val >= 0.0 && val <= 100.0, "Value {} out of bounds", val);
+            assert!((0.0..=100.0).contains(&val), "Value {} out of bounds", val);
         }
     }
 
@@ -116,7 +116,7 @@ mod tests {
 
         // Should still be within bounds despite large steps
         for &val in &walk {
-            assert!(val >= 0.0 && val <= 100.0, "Value {} out of bounds", val);
+            assert!((0.0..=100.0).contains(&val), "Value {} out of bounds", val);
         }
     }
 
@@ -137,7 +137,7 @@ mod tests {
 
         for &val in &walk {
             assert!(
-                val >= 0.0 && val <= 1.0,
+                (0.0..=1.0).contains(&val),
                 "Normalized value {} out of range",
                 val
             );

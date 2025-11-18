@@ -361,7 +361,7 @@ mod tests {
         }
 
         // At least one note should be different (with very high probability)
-        let original_freqs = vec![C4, E4, G4, C5];
+        let original_freqs = [C4, E4, G4, C5];
         let mut has_mutation = false;
         for (i, event) in events.iter().enumerate() {
             if let AudioEvent::Note(note) = event {

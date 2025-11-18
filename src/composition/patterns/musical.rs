@@ -1810,7 +1810,7 @@ mod tests {
             if let AudioEvent::Note(note) = event {
                 let freq = note.frequencies[0];
                 assert!(
-                    freq >= 220.0 && freq <= 440.0,
+                    (220.0..=440.0).contains(&freq),
                     "Frequency {} outside range 220-440",
                     freq
                 );

@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_golden_ratio() {
-        const PHI: f32 = 1.618033988749;
+        const PHI: f32 = 1.618_034;
         let seq = golden_ratio(5);
 
         assert_eq!(seq.len(), 5);

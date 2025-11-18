@@ -129,7 +129,7 @@ mod tests {
 
         // All values should be in 0-1 range
         for &val in &seq {
-            assert!(val >= 0.0 && val <= 1.0, "Value {} out of range", val);
+            assert!((0.0..=1.0).contains(&val), "Value {} out of range", val);
         }
     }
 

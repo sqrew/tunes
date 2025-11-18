@@ -86,7 +86,7 @@ mod tests {
 
         // The ratio of hits to total steps should approach 1/φ ≈ 0.618
         let ratio = pattern.len() as f32 / 100.0;
-        let expected = 1.0 / 1.618033988749;
+        let expected = 1.0 / 1.618_034f32;
         assert!((ratio - expected).abs() < 0.05); // Within 5%
     }
 }

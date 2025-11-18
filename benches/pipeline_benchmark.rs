@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
     // Complex FM synthesis lead (32 notes)
     for i in 0..32 {
         let time = i as f32 * 0.3;
-        let freq = 440.0 * (1.5_f32).powi((i % 8) as i32 - 4);
+        let freq = 440.0 * (1.5_f32).powi(i % 8 - 4);
         comp.track("lead")
             .at(time)
             .note(&[freq], 0.25)
@@ -97,7 +97,7 @@ fn main() -> anyhow::Result<()> {
         let mut comp_gpu = Composition::new(Tempo::new(120.0));
         for i in 0..32 {
             let time = i as f32 * 0.3;
-            let freq = 440.0 * (1.5_f32).powi((i % 8) as i32 - 4);
+            let freq = 440.0 * (1.5_f32).powi(i % 8 - 4);
             comp_gpu.track("lead")
                 .at(time)
                 .note(&[freq], 0.25)

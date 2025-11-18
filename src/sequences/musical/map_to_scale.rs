@@ -232,7 +232,7 @@ mod tests {
         let empty = map_to_scale(&[], &Scale::major(), C4, 2);
         assert_eq!(empty, Vec::<f32>::new());
 
-        let empty_scale = map_to_scale(&vec![1, 2, 3], &[], C4, 2);
+        let empty_scale = map_to_scale(&[1, 2, 3], &[], C4, 2);
         assert_eq!(empty_scale, Vec::<f32>::new());
     }
 
@@ -325,11 +325,11 @@ mod tests {
         assert_eq!(empty, Vec::<f32>::new());
 
         // Empty scale
-        let empty_scale = map_to_scale_f32(&vec![1.0, 2.0, 3.0], &[], C4, 2);
+        let empty_scale = map_to_scale_f32(&[1.0, 2.0, 3.0], &[], C4, 2);
         assert_eq!(empty_scale, Vec::<f32>::new());
 
         // Constant sequence (all same value)
-        let constant = map_to_scale_f32(&vec![5.0, 5.0, 5.0], &Scale::major(), C4, 2);
+        let constant = map_to_scale_f32(&[5.0, 5.0, 5.0], &Scale::major(), C4, 2);
         for &freq in &constant {
             assert!((freq - C4).abs() < 0.1); // All map to root
         }
