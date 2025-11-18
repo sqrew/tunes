@@ -11,6 +11,9 @@ pub struct Distortion {
     // Automation (optional)
     drive_automation: Option<Automation>,
     mix_automation: Option<Automation>,
+
+    // Pre-allocated buffer for dry signal (reused across calls)
+    dry_buffer: Vec<f32>,
 }
 
 impl Distortion {
@@ -22,6 +25,7 @@ impl Distortion {
             priority: PRIORITY_NORMAL, // Distortion in normal/middle position
             drive_automation: None,
             mix_automation: None,
+            dry_buffer: Vec::new(), // Pre-allocated, grows on first use
         }
     }
 
@@ -108,15 +112,16 @@ impl Distortion {
 
     /// SIMD implementation using true vector operations
     #[inline(always)]
-    fn process_block_simd(&self, buffer: &mut [f32]) {
+    fn process_block_simd(&mut self, buffer: &mut [f32]) {
         use crate::synthesis::simd::SIMD;
 
         let drive = self.drive;
         let mix = self.mix;
         let compensation = 1.0 / drive.sqrt();
 
-        // Store dry signal for wet/dry mix
-        let dry: Vec<f32> = buffer.to_vec();
+        // Reuse pre-allocated dry buffer (grows once, then reused)
+        self.dry_buffer.clear();
+        self.dry_buffer.extend_from_slice(buffer);
 
         // TRUE SIMD processing chain:
         // 1. Multiply by drive
@@ -125,13 +130,15 @@ impl Distortion {
         // 2. Apply fast tanh saturation
         SIMD.apply_fast_tanh(buffer);
 
-        // 3. Apply compensation and mix
+        // 3. Apply compensation and mix using SIMD FMA
         // buffer = dry * (1-mix) + buffer * (compensation * mix)
         let wet_gain = compensation * mix;
         let dry_gain = 1.0 - mix;
 
-        for (output, &dry_sample) in buffer.iter_mut().zip(dry.iter()) {
-            *output = dry_sample.mul_add(dry_gain, *output * wet_gain);
+        // SIMD-optimized wet/dry mix using FMA
+        SIMD.multiply_const(buffer, wet_gain);
+        for (output, &dry_sample) in buffer.iter_mut().zip(self.dry_buffer.iter()) {
+            *output = dry_sample.mul_add(dry_gain, *output);
         }
     }
 

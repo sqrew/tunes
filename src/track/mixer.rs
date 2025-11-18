@@ -1062,12 +1062,6 @@ impl Mixer {
         // Clear envelope cache for this block
         self.envelope_cache.clear();
 
-        // Temporary mono buffer for track processing (will be reused)
-        let track_buffer = vec![0.0f32; num_frames];
-
-        // Temporary stereo buffers for bus outputs
-        let bus_buffer = vec![0.0f32; buffer.len()];
-
         // TWO-PASS BUS PROCESSING for parallelization with sidechain support:
         // Pass 1: Render all bus audio + calculate envelopes (can be parallel)
         // Pass 2: Apply effects + mix to output (can be parallel, envelopes now available)
@@ -1122,11 +1116,9 @@ impl Mixer {
                             prerendered,
                         );
 
-                        // Calculate RMS envelope for this track
-                        let mut sum_squares = 0.0;
-                        for &sample in track_buffer.iter() {
-                            sum_squares += sample * sample;
-                        }
+                        // Calculate RMS envelope for this track (SIMD-optimized)
+                        use crate::synthesis::simd::SIMD;
+                        let sum_squares = SIMD.sum_of_squares(&track_buffer);
                         let track_envelope = (sum_squares / num_frames as f32).sqrt();
 
                         (track_id, track_buffer, track_envelope, track.pan)
@@ -1138,26 +1130,22 @@ impl Mixer {
                 for (track_id, track_buffer, track_envelope, pan) in track_results {
                     track_envelopes.push((track_id, track_envelope));
 
-                    // Apply stereo panning and mix
+                    // Apply stereo panning and mix (SIMD-optimized)
+                    // Use fast trig for pan calculations (no stdlib call overhead)
+                    use crate::synthesis::simd::SimdLanes;
                     let pan_angle = (pan + 1.0) * 0.25 * std::f32::consts::PI;
-                    let left_gain = pan_angle.cos();
-                    let right_gain = pan_angle.sin();
+                    let left_gain = pan_angle.fast_cos();
+                    let right_gain = pan_angle.fast_sin();
 
-                    for (frame_idx, &mono_sample) in track_buffer.iter().enumerate() {
-                        let stereo_idx = frame_idx * 2;
-                        bus_buffer[stereo_idx] += mono_sample * left_gain;
-                        bus_buffer[stereo_idx + 1] += mono_sample * right_gain;
-                    }
+                    use crate::synthesis::simd::SIMD;
+                    SIMD.mix_mono_to_stereo(&mut bus_buffer, &track_buffer, left_gain, right_gain);
                 }
 
-                // Calculate bus envelope (before effects)
-                let mut bus_sum_squares = 0.0;
-                for chunk in bus_buffer.chunks_exact(2) {
-                    let left = chunk[0];
-                    let right = chunk[1];
-                    bus_sum_squares += (left * left + right * right) / 2.0;
-                }
-                let bus_envelope = (bus_sum_squares / num_frames as f32).sqrt();
+                // Calculate bus envelope (before effects) - SIMD-optimized
+                // For stereo, RMS = sqrt((sum(L²) + sum(R²)) / (2 * num_frames))
+                use crate::synthesis::simd::SIMD;
+                let total_sum_squares = SIMD.sum_of_squares(&bus_buffer);
+                let bus_envelope = (total_sum_squares / (2.0 * num_frames as f32)).sqrt();
 
                 Some(BusRenderResult {
                     bus_id,
@@ -1208,11 +1196,9 @@ impl Mixer {
                             prerendered,
                         );
 
-                        // Calculate RMS envelope for this track
-                        let mut sum_squares = 0.0;
-                        for &sample in track_buffer.iter() {
-                            sum_squares += sample * sample;
-                        }
+                        // Calculate RMS envelope for this track (SIMD-optimized)
+                        use crate::synthesis::simd::SIMD;
+                        let sum_squares = SIMD.sum_of_squares(&track_buffer);
                         let track_envelope = (sum_squares / num_frames as f32).sqrt();
 
                         (track_id, track_buffer, track_envelope, track.pan)
@@ -1224,26 +1210,22 @@ impl Mixer {
                 for (track_id, track_buffer, track_envelope, pan) in track_results {
                     track_envelopes.push((track_id, track_envelope));
 
-                    // Apply stereo panning and mix
+                    // Apply stereo panning and mix (SIMD-optimized)
+                    // Use fast trig for pan calculations (no stdlib call overhead)
+                    use crate::synthesis::simd::SimdLanes;
                     let pan_angle = (pan + 1.0) * 0.25 * std::f32::consts::PI;
-                    let left_gain = pan_angle.cos();
-                    let right_gain = pan_angle.sin();
+                    let left_gain = pan_angle.fast_cos();
+                    let right_gain = pan_angle.fast_sin();
 
-                    for (frame_idx, &mono_sample) in track_buffer.iter().enumerate() {
-                        let stereo_idx = frame_idx * 2;
-                        bus_buffer[stereo_idx] += mono_sample * left_gain;
-                        bus_buffer[stereo_idx + 1] += mono_sample * right_gain;
-                    }
+                    use crate::synthesis::simd::SIMD;
+                    SIMD.mix_mono_to_stereo(&mut bus_buffer, &track_buffer, left_gain, right_gain);
                 }
 
-                // Calculate bus envelope (before effects)
-                let mut bus_sum_squares = 0.0;
-                for chunk in bus_buffer.chunks_exact(2) {
-                    let left = chunk[0];
-                    let right = chunk[1];
-                    bus_sum_squares += (left * left + right * right) / 2.0;
-                }
-                let bus_envelope = (bus_sum_squares / num_frames as f32).sqrt();
+                // Calculate bus envelope (before effects) - SIMD-optimized
+                // For stereo, RMS = sqrt((sum(L²) + sum(R²)) / (2 * num_frames))
+                use crate::synthesis::simd::SIMD;
+                let total_sum_squares = SIMD.sum_of_squares(&bus_buffer);
+                let bus_envelope = (total_sum_squares / (2.0 * num_frames as f32)).sqrt();
 
                 Some(BusRenderResult {
                     bus_id,
@@ -1302,18 +1284,16 @@ impl Mixer {
                 sidechain_env,
             );
 
-            // Mix into output buffer
+            // Mix into output buffer with SIMD optimization (automatic fallback)
+            // Use fast trig for pan calculations
+            use crate::synthesis::simd::SimdLanes;
             let bus_pan_angle = (bus.pan + 1.0) * 0.25 * std::f32::consts::PI;
-            let bus_left_gain = bus_pan_angle.cos() * bus.volume;
-            let bus_right_gain = bus_pan_angle.sin() * bus.volume;
+            let bus_left_gain = bus_pan_angle.fast_cos() * bus.volume;
+            let bus_right_gain = bus_pan_angle.fast_sin() * bus.volume;
 
-            for (idx, sample) in bus_buffer.iter().enumerate() {
-                if idx % 2 == 0 {
-                    buffer[idx] += sample * bus_left_gain;
-                } else {
-                    buffer[idx] += sample * bus_right_gain;
-                }
-            }
+            // Use the SIMD abstraction for clean, portable stereo mixing
+            use crate::synthesis::simd::SIMD;
+            SIMD.mix_stereo_interleaved(buffer, &bus_buffer, bus_left_gain, bus_right_gain);
         }
 
         // Look up master sidechain envelope if configured
@@ -1802,10 +1782,11 @@ impl Mixer {
             .effects
             .process_mono(track_value, sample_rate, time, sample_count);
 
-        // Apply stereo panning using constant power panning
+        // Apply stereo panning using constant power panning (fast trig)
+        use crate::synthesis::simd::SimdLanes;
         let pan_angle = (track.pan + 1.0) * 0.25 * std::f32::consts::PI;
-        let left_gain = pan_angle.cos();
-        let right_gain = pan_angle.sin();
+        let left_gain = pan_angle.fast_cos();
+        let right_gain = pan_angle.fast_sin();
 
         (track_value * left_gain, track_value * right_gain)
     }

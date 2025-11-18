@@ -151,6 +151,11 @@ pub struct Compressor {
     pub priority: u8,   // Processing priority (lower = earlier in signal chain)
     envelope: f32,
 
+    // Cached coefficients (avoid expensive exp() calls)
+    cached_attack_coeff: f32,
+    cached_release_coeff: f32,
+    cached_sample_rate: f32,
+
     // Sidechaining support (user-facing API)
     pub sidechain_source: Option<SidechainSource>, // External signal to trigger compression (by name)
 
@@ -179,14 +184,24 @@ impl Compressor {
     /// * `release` - Release time in seconds (typical: 0.05 to 0.5)
     /// * `makeup_gain` - Output gain multiplier (1.0 to 4.0)
     pub fn new(threshold: f32, ratio: f32, attack: f32, release: f32, makeup_gain: f32) -> Self {
+        let attack = attack.max(0.001);
+        let release = release.max(0.001);
+
+        // Pre-compute coefficients for default sample rate
+        let cached_attack_coeff = (-1.0 / (attack * DEFAULT_SAMPLE_RATE)).exp();
+        let cached_release_coeff = (-1.0 / (release * DEFAULT_SAMPLE_RATE)).exp();
+
         Self {
             threshold: threshold.clamp(0.0, 1.0),
             ratio: ratio.max(1.0),
-            attack: attack.max(0.001),
-            release: release.max(0.001),
+            attack,
+            release,
             makeup_gain: makeup_gain.max(0.1),
             priority: PRIORITY_EARLY, // Compressor typically early in chain
             envelope: 0.0,
+            cached_attack_coeff,
+            cached_release_coeff,
+            cached_sample_rate: DEFAULT_SAMPLE_RATE,
             sidechain_source: None,
             resolved_sidechain_source: None,
             bands: None,
@@ -378,14 +393,20 @@ impl Compressor {
             ),
         ];
 
+        let attack = 0.01;
+        let release = 0.1;
+
         Self {
             threshold: 0.5,
             ratio: 1.0, // Disabled when using bands
-            attack: 0.01,
-            release: 0.1,
+            attack,
+            release,
             makeup_gain: 1.0,
             priority: PRIORITY_EARLY,
             envelope: 0.0,
+            cached_attack_coeff: (-1.0 / (attack * DEFAULT_SAMPLE_RATE)).exp(),
+            cached_release_coeff: (-1.0 / (release * DEFAULT_SAMPLE_RATE)).exp(),
+            cached_sample_rate: DEFAULT_SAMPLE_RATE,
             sidechain_source: None,
             resolved_sidechain_source: None,
             bands: Some(bands),
@@ -473,15 +494,20 @@ impl Compressor {
         // Use sidechain envelope if provided, otherwise use input level
         let input_level = sidechain_envelope.unwrap_or_else(|| input.abs());
 
-        // Envelope follower with pre-computed coefficients
-        let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
-        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+        // Update cached coefficients if sample rate changed or automation updated attack/release
+        if (sample_rate - self.cached_sample_rate).abs() > 0.1
+            || (sample_count & 63 == 0 && (self.attack_automation.is_some() || self.release_automation.is_some()))
+        {
+            self.cached_attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+            self.cached_release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.cached_sample_rate = sample_rate;
+        }
 
-        // Use FMA for envelope calculation
+        // Use FMA for envelope calculation with cached coefficients
         let coeff = if input_level > self.envelope {
-            attack_coeff
+            self.cached_attack_coeff
         } else {
-            release_coeff
+            self.cached_release_coeff
         };
         self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
 
@@ -549,15 +575,20 @@ impl Compressor {
         // Use sidechain envelope if provided, otherwise use max of both channels for detection
         let input_level = sidechain_envelope.unwrap_or_else(|| left.abs().max(right.abs()));
 
-        // Envelope follower with pre-computed coefficients
-        let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
-        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+        // Update cached coefficients if sample rate changed or automation updated attack/release
+        if (sample_rate - self.cached_sample_rate).abs() > 0.1
+            || (sample_count & 63 == 0 && (self.attack_automation.is_some() || self.release_automation.is_some()))
+        {
+            self.cached_attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+            self.cached_release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.cached_sample_rate = sample_rate;
+        }
 
-        // Use FMA for envelope calculation
+        // Use FMA for envelope calculation with cached coefficients
         let coeff = if input_level > self.envelope {
-            attack_coeff
+            self.cached_attack_coeff
         } else {
-            release_coeff
+            self.cached_release_coeff
         };
         self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
 

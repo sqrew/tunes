@@ -69,6 +69,9 @@ pub struct ConvolutionReverb {
     /// Overlap buffer for overlap-add algorithm
     overlap_buffer: Vec<f32>,
 
+    /// Pre-allocated FFT working buffer (reused, avoids allocation per block)
+    fft_working_buffer: Vec<Complex<f32>>,
+
     /// Forward FFT planner (CPU fallback)
     fft: Arc<dyn Fft<f32>>,
 
@@ -155,6 +158,7 @@ impl ConvolutionReverb {
             input_buffer: Vec::with_capacity(block_size),
             output_buffer: VecDeque::with_capacity(fft_size),
             overlap_buffer: vec![0.0; fft_size],
+            fft_working_buffer: vec![Complex::new(0.0, 0.0); fft_size], // Pre-allocated
             fft,
             ifft,
             #[cfg(feature = "gpu")]
@@ -270,30 +274,33 @@ impl ConvolutionReverb {
         }
 
         // CPU path (fallback or when GPU disabled)
-        // Prepare input block (zero-padded to FFT size)
-        let mut input_complex = vec![Complex::new(0.0, 0.0); self.fft_size];
+        // Reuse pre-allocated FFT working buffer (zero it first)
+        for i in 0..self.fft_size {
+            self.fft_working_buffer[i] = Complex::new(0.0, 0.0);
+        }
 
+        // Prepare input block
         for (i, &sample) in self.input_buffer.iter().enumerate().take(self.block_size) {
-            input_complex[i] = Complex::new(sample, 0.0);
+            self.fft_working_buffer[i] = Complex::new(sample, 0.0);
         }
 
         // FFT the input block
-        self.fft.process(&mut input_complex);
+        self.fft.process(&mut self.fft_working_buffer);
 
         // Multiply in frequency domain (complex multiplication = convolution in time domain)
         for i in 0..self.fft_size {
-            input_complex[i] *= self.ir_fft[i];
+            self.fft_working_buffer[i] *= self.ir_fft[i];
         }
 
         // IFFT back to time domain
-        self.ifft.process(&mut input_complex);
+        self.ifft.process(&mut self.fft_working_buffer);
 
         // Normalize (rustfft doesn't auto-normalize IFFT)
         let scale = 1.0 / (self.fft_size as f32);
 
         // Overlap-add with previous block
         for i in 0..self.fft_size {
-            let sample = input_complex[i].re * scale;
+            let sample = self.fft_working_buffer[i].re * scale;
 
             // Add to overlap buffer and output
             let output_sample = sample + self.overlap_buffer[i];
@@ -301,7 +308,7 @@ impl ConvolutionReverb {
 
             // Update overlap buffer for next block
             self.overlap_buffer[i] = if i < self.fft_size - self.block_size {
-                input_complex[i + self.block_size].re * scale
+                self.fft_working_buffer[i + self.block_size].re * scale
             } else {
                 0.0
             };

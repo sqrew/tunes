@@ -1,5 +1,5 @@
-use tunes::prelude::*;
 use std::time::Instant;
+use tunes::prelude::*;
 
 /// Realistic Game Audio Benchmark
 ///
@@ -19,8 +19,10 @@ fn create_test_samples() -> anyhow::Result<Vec<Sample>> {
 
     // 1. Sustained bass tone (like engine rumble, ambient drone) - C2 = 65.4Hz
     let mut comp_bass = Composition::new(Tempo::new(120.0));
-    comp_bass.track("bass")
-        .at(0.0).note(&[65.4], 8.0)  // 8 beat duration = 4 seconds at 120 BPM
+    comp_bass
+        .track("bass")
+        .at(0.0)
+        .note(&[65.4], 8.0) // 8 beat duration = 4 seconds at 120 BPM
         .filter(Filter::low_pass(300.0, 0.7));
     let mut mixer_bass = comp_bass.into_mixer();
     mixer_bass.export_wav("bench_bass.wav", 44100)?;
@@ -28,8 +30,10 @@ fn create_test_samples() -> anyhow::Result<Vec<Sample>> {
 
     // 2. Mid-range sustained tone (like machinery, wind) - A3 = 220Hz
     let mut comp_mid = Composition::new(Tempo::new(120.0));
-    comp_mid.track("mid")
-        .at(0.0).note(&[220.0], 8.0)
+    comp_mid
+        .track("mid")
+        .at(0.0)
+        .note(&[220.0], 8.0)
         .filter(Filter::band_pass(800.0, 0.5));
     let mut mixer_mid = comp_mid.into_mixer();
     mixer_mid.export_wav("bench_mid.wav", 44100)?;
@@ -37,8 +41,10 @@ fn create_test_samples() -> anyhow::Result<Vec<Sample>> {
 
     // 3. High sustained tone with reverb (like ambient effects, atmospheric sounds) - E4 = 329.6Hz
     let mut comp_high = Composition::new(Tempo::new(120.0));
-    comp_high.track("high")
-        .at(0.0).note(&[329.6], 8.0)
+    comp_high
+        .track("high")
+        .at(0.0)
+        .note(&[329.6], 8.0)
         .reverb(Reverb::new(0.6, 0.5, 0.6))
         .filter(Filter::high_pass(400.0, 0.5));
     let mut mixer_high = comp_high.into_mixer();
@@ -54,7 +60,10 @@ fn run_realistic_test(
     with_spatial: bool,
     with_effects: bool,
 ) -> anyhow::Result<(f32, f32)> {
-    use tunes::synthesis::spatial::{SoundCone, SpatialPosition, ListenerConfig, SpatialParams, Vec3, calculate_spatial_with_cone};
+    use tunes::synthesis::spatial::{
+        ListenerConfig, SoundCone, SpatialParams, SpatialPosition, Vec3,
+        calculate_spatial_with_cone,
+    };
 
     // REALISTIC GAME SCENARIO: Create many separate mixers and manually mix them
     // This simulates what the audio callback does when playing N concurrent sounds
@@ -90,7 +99,11 @@ fn run_realistic_test(
 
             spatial_positions.push(Some(SpatialPosition {
                 position: Vec3 { x, y, z },
-                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+                velocity: Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
             }));
 
             // Add cones to some sounds
@@ -142,7 +155,13 @@ fn run_realistic_test(
         for (i, mixer) in mixers.iter_mut().enumerate() {
             // Render this sound to temp buffer at current elapsed time
             // IMPORTANT: Each mixer must advance through its timeline!
-            mixer.process_block(&mut temp_buffer, sample_rate, elapsed_times[i], Some(&listener), Some(&spatial_params));
+            mixer.process_block(
+                &mut temp_buffer,
+                sample_rate,
+                elapsed_times[i],
+                Some(&listener),
+                Some(&spatial_params),
+            );
 
             // Apply spatial audio if enabled (runtime spatial audio)
             let (volume, pan) = if let Some(pos) = &spatial_positions[i] {
@@ -274,21 +293,33 @@ fn main() -> anyhow::Result<()> {
 
     println!("  Baseline (SIMD only):");
     println!("    Worst case: {:.1}x realtime", baseline_worst);
-    println!("    Conservative capacity: ~{} concurrent samples", (100.0 * baseline_worst) as u32);
+    println!(
+        "    Conservative capacity: ~{} concurrent samples",
+        (100.0 * baseline_worst) as u32
+    );
     println!();
 
     println!("  With Spatial Audio:");
     println!("    Worst case: {:.1}x realtime", spatial_worst);
-    println!("    Conservative capacity: ~{} concurrent samples", (100.0 * spatial_worst) as u32);
+    println!(
+        "    Conservative capacity: ~{} concurrent samples",
+        (100.0 * spatial_worst) as u32
+    );
     println!();
 
     println!("  REALISTIC GAME SCENARIO (spatial + effects):");
     println!("    Worst case: {:.1}x realtime", realistic_worst);
-    println!("    Conservative capacity: ~{} concurrent samples", (100.0 * realistic_worst) as u32);
+    println!(
+        "    Conservative capacity: ~{} concurrent samples",
+        (100.0 * realistic_worst) as u32
+    );
     println!();
 
     if let Some((count, rt)) = breaking_point {
-        println!("  ⚠️  Breaking point: {} samples at {:.2}x realtime", count, rt);
+        println!(
+            "  ⚠️  Breaking point: {} samples at {:.2}x realtime",
+            count, rt
+        );
         println!("      (Below 1x realtime - cannot maintain real-time playback)");
     } else {
         println!("  ✅ No breaking point found! Can handle 400+ concurrent samples.");

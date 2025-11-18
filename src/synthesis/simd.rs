@@ -575,6 +575,222 @@ impl SimdDispatcher {
             out_rem[i] = a_rem[i] + (b_rem[i] - a_rem[i]) * t_rem[i];
         }
     }
+
+    /// Calculate sum of squares for a buffer (used for RMS envelope calculation)
+    ///
+    /// Returns the sum of all squared samples in the buffer.
+    /// Commonly used for: RMS = sqrt(sum_of_squares / num_samples)
+    #[inline]
+    pub fn sum_of_squares(&self, buffer: &[f32]) -> f32 {
+        match self.width {
+            SimdWidth::X8 => self.sum_of_squares_impl::<f32x8>(buffer),
+            SimdWidth::X4 => self.sum_of_squares_impl::<f32x4>(buffer),
+            SimdWidth::Scalar => self.sum_of_squares_impl::<f32>(buffer),
+        }
+    }
+
+    #[inline(always)]
+    fn sum_of_squares_impl<V: SimdLanes>(&self, buffer: &[f32]) -> f32 {
+        let lanes = V::LANES;
+        let chunks = buffer.len() / lanes;
+        let remainder_start = chunks * lanes;
+
+        let mut accumulator = V::splat(0.0);
+
+        // SIMD path: accumulate in vector
+        for chunk_idx in 0..chunks {
+            let idx = chunk_idx * lanes;
+            let vec = V::from_array(&buffer[idx..idx + lanes]);
+            // accumulator += vec * vec
+            accumulator = vec.mul_add(vec, accumulator);
+        }
+
+        // Sum all lanes of the accumulator
+        let mut sum = 0.0;
+        for i in 0..lanes {
+            sum += accumulator.extract_lane(i);
+        }
+
+        // Handle remainder with scalar code
+        for &sample in &buffer[remainder_start..] {
+            sum += sample * sample;
+        }
+
+        sum
+    }
+
+    /// Mix mono buffer into stereo with panning (mono-to-stereo expansion)
+    ///
+    /// Takes a mono input buffer and mixes it into an interleaved stereo output
+    /// buffer with independent left/right gains for panning.
+    ///
+    /// Performs: output[i*2] += input[i] * left_gain, output[i*2+1] += input[i] * right_gain
+    #[inline]
+    pub fn mix_mono_to_stereo(
+        &self,
+        output: &mut [f32],
+        input: &[f32],
+        left_gain: f32,
+        right_gain: f32,
+    ) {
+        match self.width {
+            SimdWidth::X8 => self.mix_mono_to_stereo_impl::<f32x8>(output, input, left_gain, right_gain),
+            SimdWidth::X4 => self.mix_mono_to_stereo_impl::<f32x4>(output, input, left_gain, right_gain),
+            SimdWidth::Scalar => self.mix_mono_to_stereo_impl::<f32>(output, input, left_gain, right_gain),
+        }
+    }
+
+    #[inline(always)]
+    fn mix_mono_to_stereo_impl<V: SimdLanes>(
+        &self,
+        output: &mut [f32],
+        input: &[f32],
+        left_gain: f32,
+        right_gain: f32,
+    ) {
+        let num_frames = input.len().min(output.len() / 2);
+        let lanes = V::LANES;
+        let chunks = num_frames / lanes;
+        let remainder_start = chunks * lanes;
+
+        let left_gain_vec = V::splat(left_gain);
+        let right_gain_vec = V::splat(right_gain);
+
+        // Process SIMD chunks
+        for chunk_idx in 0..chunks {
+            let mono_idx = chunk_idx * lanes;
+            let stereo_idx = chunk_idx * lanes * 2;
+
+            // Stack arrays for de-interleaving stereo output
+            let mut out_left = [0.0f32; 8];
+            let mut out_right = [0.0f32; 8];
+
+            // De-interleave stereo output
+            for i in 0..lanes {
+                out_left[i] = output[stereo_idx + i * 2];
+                out_right[i] = output[stereo_idx + i * 2 + 1];
+            }
+
+            // Load mono input and current stereo output
+            let mono_vec = V::from_array(&input[mono_idx..mono_idx + lanes]);
+            let out_left_vec = V::from_array(&out_left[..lanes]);
+            let out_right_vec = V::from_array(&out_right[..lanes]);
+
+            // Mix: output += mono * gain (using FMA)
+            let mixed_left = mono_vec.mul_add(left_gain_vec, out_left_vec);
+            let mixed_right = mono_vec.mul_add(right_gain_vec, out_right_vec);
+
+            // Write back
+            mixed_left.write_to_slice(&mut out_left[..lanes]);
+            mixed_right.write_to_slice(&mut out_right[..lanes]);
+
+            // Re-interleave
+            for i in 0..lanes {
+                output[stereo_idx + i * 2] = out_left[i];
+                output[stereo_idx + i * 2 + 1] = out_right[i];
+            }
+        }
+
+        // Scalar remainder
+        for frame_idx in remainder_start..num_frames {
+            let stereo_idx = frame_idx * 2;
+            output[stereo_idx] += input[frame_idx] * left_gain;
+            output[stereo_idx + 1] += input[frame_idx] * right_gain;
+        }
+    }
+
+    /// Mix interleaved stereo buffers with independent left/right gains
+    ///
+    /// This is optimized for mixing stereo audio buses where each channel
+    /// needs independent gain control. Input and output are interleaved stereo:
+    /// [L0, R0, L1, R1, ...]
+    ///
+    /// Performs: output[i] += input[i] * gain (where gain alternates L/R)
+    #[inline]
+    pub fn mix_stereo_interleaved(
+        &self,
+        output: &mut [f32],
+        input: &[f32],
+        left_gain: f32,
+        right_gain: f32,
+    ) {
+        match self.width {
+            SimdWidth::X8 => {
+                self.mix_stereo_impl::<f32x8>(output, input, left_gain, right_gain)
+            }
+            SimdWidth::X4 => {
+                self.mix_stereo_impl::<f32x4>(output, input, left_gain, right_gain)
+            }
+            SimdWidth::Scalar => {
+                self.mix_stereo_impl::<f32>(output, input, left_gain, right_gain)
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn mix_stereo_impl<V: SimdLanes>(
+        &self,
+        output: &mut [f32],
+        input: &[f32],
+        left_gain: f32,
+        right_gain: f32,
+    ) {
+        let num_frames = output.len().min(input.len()) / 2;
+        let lanes = V::LANES;
+        let chunks = num_frames / lanes;
+        let remainder_start = chunks * lanes;
+
+        let left_gain_vec = V::splat(left_gain);
+        let right_gain_vec = V::splat(right_gain);
+
+        // Process SIMD chunks (using stack arrays to avoid allocations)
+        // Max lanes is 8, so we use fixed-size arrays
+        for chunk_idx in 0..chunks {
+            let frame_start = chunk_idx * lanes;
+            let idx = frame_start * 2;
+
+            // Stack-allocated arrays (max 8 lanes)
+            let mut input_left = [0.0f32; 8];
+            let mut input_right = [0.0f32; 8];
+            let mut output_left = [0.0f32; 8];
+            let mut output_right = [0.0f32; 8];
+
+            // De-interleave input and output
+            for i in 0..lanes {
+                input_left[i] = input[idx + i * 2];
+                input_right[i] = input[idx + i * 2 + 1];
+                output_left[i] = output[idx + i * 2];
+                output_right[i] = output[idx + i * 2 + 1];
+            }
+
+            // Load into SIMD
+            let in_left = V::from_array(&input_left[..lanes]);
+            let in_right = V::from_array(&input_right[..lanes]);
+            let out_left = V::from_array(&output_left[..lanes]);
+            let out_right = V::from_array(&output_right[..lanes]);
+
+            // Mix: output += input * gain (using FMA for better performance)
+            let mixed_left = in_left.mul_add(left_gain_vec, out_left);
+            let mixed_right = in_right.mul_add(right_gain_vec, out_right);
+
+            // Write back arrays
+            mixed_left.write_to_slice(&mut output_left[..lanes]);
+            mixed_right.write_to_slice(&mut output_right[..lanes]);
+
+            // Re-interleave output
+            for i in 0..lanes {
+                output[idx + i * 2] = output_left[i];
+                output[idx + i * 2 + 1] = output_right[i];
+            }
+        }
+
+        // Handle remaining frames with scalar code (no branching!)
+        for frame_idx in remainder_start..num_frames {
+            let idx = frame_idx * 2;
+            output[idx] += input[idx] * left_gain;
+            output[idx + 1] += input[idx + 1] * right_gain;
+        }
+    }
 }
 
 impl Default for SimdDispatcher {
