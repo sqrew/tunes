@@ -152,6 +152,10 @@ name = "gpu_fft_benchmark"
 harness = false
 required-features = ["gpu"]
 
+[[bench]]
+name = "spatial_calculation_overhead"
+harness = false
+
 # GPU examples require the gpu feature to be enabled
 [[example]]
 name = "gpu_export_demo"

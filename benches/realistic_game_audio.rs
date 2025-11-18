@@ -13,36 +13,37 @@ use std::time::Instant;
 /// performance numbers that game developers can expect in production.
 
 fn create_test_samples() -> anyhow::Result<Vec<Sample>> {
-    // Create diverse test samples representing different game sounds
+    // Create SUSTAINED samples that play for the full benchmark duration
+    // This represents realistic game audio: ambient loops, music, sustained effects
     let mut samples = Vec::new();
 
-    // 1. Short impact sound (gunshot, footstep)
-    let mut comp_impact = Composition::new(Tempo::new(120.0));
-    comp_impact.track("impact").at(0.0).drum(DrumType::Kick808);
-    let mut mixer_impact = comp_impact.into_mixer();
-    mixer_impact.export_wav("bench_impact.wav", 44100)?;
-    samples.push(Sample::from_file("bench_impact.wav")?);
+    // 1. Sustained bass tone (like engine rumble, ambient drone) - C2 = 65.4Hz
+    let mut comp_bass = Composition::new(Tempo::new(120.0));
+    comp_bass.track("bass")
+        .at(0.0).note(&[65.4], 8.0)  // 8 beat duration = 4 seconds at 120 BPM
+        .filter(Filter::low_pass(300.0, 0.7));
+    let mut mixer_bass = comp_bass.into_mixer();
+    mixer_bass.export_wav("bench_bass.wav", 44100)?;
+    samples.push(Sample::from_file("bench_bass.wav")?);
 
-    // 2. Medium explosion sound
-    let mut comp_explosion = Composition::new(Tempo::new(120.0));
-    comp_explosion.track("explosion")
-        .at(0.0)
-        .drum(DrumType::Kick808)
-        .distortion(Distortion::new(0.6, 1.0))
-        .filter(Filter::low_pass(800.0, 0.7));
-    let mut mixer_explosion = comp_explosion.into_mixer();
-    mixer_explosion.export_wav("bench_explosion.wav", 44100)?;
-    samples.push(Sample::from_file("bench_explosion.wav")?);
+    // 2. Mid-range sustained tone (like machinery, wind) - A3 = 220Hz
+    let mut comp_mid = Composition::new(Tempo::new(120.0));
+    comp_mid.track("mid")
+        .at(0.0).note(&[220.0], 8.0)
+        .filter(Filter::band_pass(800.0, 0.5));
+    let mut mixer_mid = comp_mid.into_mixer();
+    mixer_mid.export_wav("bench_mid.wav", 44100)?;
+    samples.push(Sample::from_file("bench_mid.wav")?);
 
-    // 3. Sustained ambient sound (with reverb tail)
-    let mut comp_ambient = Composition::new(Tempo::new(120.0));
-    comp_ambient.track("ambient")
-        .at(0.0)
-        .drum(DrumType::Snare808)
-        .reverb(Reverb::new(0.8, 0.6, 0.7));
-    let mut mixer_ambient = comp_ambient.into_mixer();
-    mixer_ambient.export_wav("bench_ambient.wav", 44100)?;
-    samples.push(Sample::from_file("bench_ambient.wav")?);
+    // 3. High sustained tone with reverb (like ambient effects, atmospheric sounds) - E4 = 329.6Hz
+    let mut comp_high = Composition::new(Tempo::new(120.0));
+    comp_high.track("high")
+        .at(0.0).note(&[329.6], 8.0)
+        .reverb(Reverb::new(0.6, 0.5, 0.6))
+        .filter(Filter::high_pass(400.0, 0.5));
+    let mut mixer_high = comp_high.into_mixer();
+    mixer_high.export_wav("bench_high.wav", 44100)?;
+    samples.push(Sample::from_file("bench_high.wav")?);
 
     Ok(samples)
 }
@@ -53,19 +54,20 @@ fn run_realistic_test(
     with_spatial: bool,
     with_effects: bool,
 ) -> anyhow::Result<(f32, f32)> {
-    use tunes::synthesis::spatial::SoundCone;
-    use std::thread;
-    use std::time::Duration;
+    use tunes::synthesis::spatial::{SoundCone, SpatialPosition, ListenerConfig, SpatialParams, Vec3, calculate_spatial_with_cone};
 
-    let engine = AudioEngine::new()?;
-    let mut sound_ids = Vec::new();
+    // REALISTIC GAME SCENARIO: Create many separate mixers and manually mix them
+    // This simulates what the audio callback does when playing N concurrent sounds
+    let mut mixers = Vec::new();
+    let mut spatial_positions = Vec::new();
+    let mut spatial_cones = Vec::new();
+    let mut occlusions = Vec::new();
 
-    // Simulate realistic game scenario: sounds at various positions in 3D space
+    // Create separate mixer for each sound (realistic game behavior)
     for i in 0..sample_count {
-        let sample = &samples[i % samples.len()]; // Cycle through sample types
-        let pitch = 0.9 + (i as f32 * 0.005); // Slight pitch variation
+        let sample = &samples[i % samples.len()];
+        let pitch = 0.9 + (i as f32 * 0.005);
 
-        // Create composition for this sample
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track(&format!("sample_{}", i))
             .at(0.0)
@@ -73,53 +75,110 @@ fn run_realistic_test(
             .filter(if with_effects {
                 Filter::low_pass(2000.0, 0.7)
             } else {
-                Filter::high_pass(20.0, 0.7) // Minimal filtering
+                Filter::high_pass(20.0, 0.7)
             });
 
-        let sound_id = engine.play_mixer_realtime(&comp.into_mixer())?;
-        sound_ids.push(sound_id);
+        mixers.push(comp.into_mixer());
 
+        // Set up spatial audio if requested
         if with_spatial {
-            // Create 3D position for spatial audio
             let angle = (i as f32 * 2.0 * std::f32::consts::PI) / sample_count as f32;
-            let distance = 5.0 + (i as f32 % 10.0); // Vary distance 5-15 units
+            let distance = 5.0 + (i as f32 % 10.0);
             let x = distance * angle.cos();
             let z = distance * angle.sin();
-            let y = (i as f32 % 5.0) - 2.0; // Vary height -2 to +2 (tests elevation)
+            let y = (i as f32 % 5.0) - 2.0;
 
-            engine.set_sound_position(sound_id, x, y, z)?;
+            spatial_positions.push(Some(SpatialPosition {
+                position: Vec3 { x, y, z },
+                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+            }));
 
-            // Add directional cones to some sounds (like speakers or NPCs)
+            // Add cones to some sounds
             if i % 5 == 0 {
                 let cone = SoundCone::medium().with_direction(angle.cos(), 0.0, angle.sin());
-                engine.set_sound_cone(sound_id, Some(cone))?;
+                spatial_cones.push(Some(cone));
+            } else {
+                spatial_cones.push(None);
             }
 
-            // Add occlusion to some sounds (simulating walls)
+            // Add occlusion to some sounds
             if i % 7 == 0 {
-                engine.set_sound_occlusion(sound_id, 0.5)?;
+                occlusions.push(0.5);
+            } else {
+                occlusions.push(0.0);
             }
+        } else {
+            spatial_positions.push(None);
+            spatial_cones.push(None);
+            occlusions.push(0.0);
         }
     }
 
-    // Let sounds play for a moment to ensure spatial processing happens
-    thread::sleep(Duration::from_millis(10));
+    // Set up spatial audio parameters
+    let listener = ListenerConfig::default();
+    let spatial_params = SpatialParams::default();
+    let sample_rate = 44100.0;
+    let buffer_size = 512; // Typical audio callback buffer size
+    let block_duration = buffer_size as f32 / sample_rate;
 
-    // Measure render performance by rendering a short buffer
-    let start = Instant::now();
-    // Render a 1-second buffer to measure performance
-    for _ in 0..10 {
-        thread::sleep(Duration::from_millis(100));
+    // Allocate buffers
+    let mut output = vec![0.0f32; buffer_size * 2]; // Stereo
+    let mut temp_buffer = vec![0.0f32; buffer_size * 2];
+
+    // Track elapsed time for each mixer (must advance through audio!)
+    let mut elapsed_times = vec![0.0f32; sample_count];
+
+    // Measure mixing performance over 2 seconds of audio
+    let total_frames = (sample_rate * 2.0) as usize;
+    let num_callbacks = total_frames / buffer_size;
+
+    let render_start = Instant::now();
+
+    // Simulate what the audio callback does: mix all sounds for each buffer
+    for _ in 0..num_callbacks {
+        output.fill(0.0);
+
+        // Mix each sound into the output (this is what the audio callback does!)
+        for (i, mixer) in mixers.iter_mut().enumerate() {
+            // Render this sound to temp buffer at current elapsed time
+            // IMPORTANT: Each mixer must advance through its timeline!
+            mixer.process_block(&mut temp_buffer, sample_rate, elapsed_times[i], Some(&listener), Some(&spatial_params));
+
+            // Apply spatial audio if enabled (runtime spatial audio)
+            let (volume, pan) = if let Some(pos) = &spatial_positions[i] {
+                let result = calculate_spatial_with_cone(
+                    pos,
+                    &listener,
+                    &spatial_params,
+                    spatial_cones[i].as_ref(),
+                    occlusions[i],
+                );
+                (result.volume, result.pan)
+            } else {
+                (1.0, 0.0)
+            };
+
+            // Mix into output with panning
+            let (left_pan, right_pan) = if pan < 0.0 {
+                (1.0, 1.0 + pan)
+            } else {
+                (1.0 - pan, 1.0)
+            };
+
+            for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
+                let left = temp_frame[0] * volume * left_pan;
+                let right = temp_frame[1] * volume * right_pan;
+                output[frame_idx * 2] += left;
+                output[frame_idx * 2 + 1] += right;
+            }
+
+            // Advance elapsed time for this mixer (critical for realistic benchmark!)
+            elapsed_times[i] += block_duration;
+        }
     }
-    let render_time = start.elapsed();
 
-    // Stop all sounds
-    for sound_id in sound_ids {
-        engine.stop(sound_id).ok();
-    }
-
-    // Calculate approximate performance based on concurrent playback
-    let audio_duration = 1.0; // 1 second of concurrent audio
+    let render_time = render_start.elapsed();
+    let audio_duration = 2.0;
     let realtime_ratio = audio_duration / render_time.as_secs_f32();
 
     Ok((realtime_ratio, audio_duration))
@@ -247,9 +306,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Cleanup
-    std::fs::remove_file("bench_impact.wav").ok();
-    std::fs::remove_file("bench_explosion.wav").ok();
-    std::fs::remove_file("bench_ambient.wav").ok();
+    std::fs::remove_file("bench_bass.wav").ok();
+    std::fs::remove_file("bench_mid.wav").ok();
+    std::fs::remove_file("bench_high.wav").ok();
 
     println!("\n✅ Realistic game audio benchmark complete!");
     println!("\nNote: This benchmark simulates actual game audio scenarios with spatial");

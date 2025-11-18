@@ -163,6 +163,11 @@ struct ActiveSound {
     spatial_position: Option<SpatialPosition>, // 3D position for spatial audio
     spatial_cone: Option<SoundCone>,           // Optional directional cone
     occlusion: f32, // Occlusion amount (0.0 = none, 1.0 = fully occluded)
+    // Spatial audio caching (avoid recalculating every frame)
+    cached_spatial_volume: f32,
+    cached_spatial_pan: f32,
+    cached_spatial_pitch: f32,
+    spatial_dirty: bool, // True when position/cone/occlusion changed
     // Volume fade state
     fade_start_time: Option<f32>,
     fade_duration: f32,
@@ -703,6 +708,11 @@ impl AudioEngine {
                         spatial_position: None,
                         spatial_cone: None,
                         occlusion: 0.0,
+                        // Initialize spatial cache (will be calculated on first frame)
+                        cached_spatial_volume: 1.0,
+                        cached_spatial_pan: 0.0,
+                        cached_spatial_pitch: 1.0,
+                        spatial_dirty: true, // Force calculation on first frame
                         fade_start_time: None,
                         fade_duration: 0.0,
                         fade_start_volume: 1.0,
@@ -750,6 +760,7 @@ impl AudioEngine {
             AudioCommand::SetSoundPosition { id, position } => {
                 if let Some(sound) = active_sounds.get_mut(&id) {
                     sound.spatial_position = Some(position);
+                    sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::SetSoundVelocity { id, vx, vy, vz } => {
@@ -779,11 +790,13 @@ impl AudioEngine {
             AudioCommand::SetSoundCone { id, cone } => {
                 if let Some(sound) = active_sounds.get_mut(&id) {
                     sound.spatial_cone = cone;
+                    sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::SetSoundOcclusion { id, occlusion } => {
                 if let Some(sound) = active_sounds.get_mut(&id) {
                     sound.occlusion = occlusion.clamp(0.0, 1.0);
+                    sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::PauseAll => {
@@ -977,7 +990,7 @@ impl AudioEngine {
             };
 
             // Process entire block at once
-            temp_buffer.fill(0.0);
+            // Note: process_block fully overwrites the buffer, no need to clear it first
             sound.mixer.process_block(
                 &mut temp_buffer[..required_size],
                 sample_rate,
@@ -1017,16 +1030,33 @@ impl AudioEngine {
             }
 
             // Calculate spatial audio if runtime position is set
+            // Use cached values if nothing changed, otherwise recalculate
             let (mut spatial_volume, spatial_pan, spatial_pitch, spatial_occlusion) =
                 if let Some(pos) = &sound.spatial_position {
-                    let result = calculate_spatial_with_cone(
-                        pos,
-                        listener,
-                        spatial_params,
-                        sound.spatial_cone.as_ref(),
-                        sound.occlusion,
-                    );
-                    (result.volume, result.pan, result.pitch, result.occlusion)
+                    if sound.spatial_dirty {
+                        // Recalculate spatial audio
+                        let result = calculate_spatial_with_cone(
+                            pos,
+                            listener,
+                            spatial_params,
+                            sound.spatial_cone.as_ref(),
+                            sound.occlusion,
+                        );
+                        // Cache the results
+                        sound.cached_spatial_volume = result.volume;
+                        sound.cached_spatial_pan = result.pan;
+                        sound.cached_spatial_pitch = result.pitch;
+                        sound.spatial_dirty = false; // Mark as clean
+                        (result.volume, result.pan, result.pitch, result.occlusion)
+                    } else {
+                        // Use cached values
+                        (
+                            sound.cached_spatial_volume,
+                            sound.cached_spatial_pan,
+                            sound.cached_spatial_pitch,
+                            sound.occlusion, // Occlusion is just read directly, not cached
+                        )
+                    }
                 } else {
                     (1.0, sound.pan, 1.0, 0.0)
                 };
@@ -1038,53 +1068,183 @@ impl AudioEngine {
             // Apply doppler pitch shift to playback rate
             let effective_playback_rate = sound.playback_rate * spatial_pitch;
 
-            // Mix temp buffer into output with volume/pan/fade applied per-sample
-            for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
-                let frame_time =
-                    sound.elapsed_time + (frame_idx as f32 * time_delta * effective_playback_rate);
+            // Mix temp buffer into output with volume/pan/fade applied
+            // Use SIMD fast path when no fade is active (common case)
+            if sound.fade_start_time.is_none() && channels == 2 {
+                // SIMD fast path: no fade, stereo output
+                use wide::f32x8;
+                use crate::synthesis::simd::{SIMD, SimdWidth};
 
-                // Apply fade if active
-                let effective_volume = if let Some(fade_start) = sound.fade_start_time {
-                    let fade_elapsed = frame_time - fade_start;
-                    if fade_elapsed >= sound.fade_duration {
-                        // Fade complete
-                        if frame_idx == 0 {
-                            sound.volume = sound.fade_target_volume;
-                            sound.fade_start_time = None;
-                        }
-                        sound.fade_target_volume
-                    } else {
-                        // Interpolate
-                        let t = (fade_elapsed / sound.fade_duration).clamp(0.0, 1.0);
-                        sound.fade_start_volume
-                            + (sound.fade_target_volume - sound.fade_start_volume) * t
-                    }
+                let combined_volume = sound.volume * spatial_volume;
+                let num_frames = temp_buffer.len() / 2;
+
+                // Calculate pan multipliers once
+                let (left_pan, right_pan) = if spatial_pan < 0.0 {
+                    (1.0, 1.0 + spatial_pan)
                 } else {
-                    sound.volume
+                    (1.0 - spatial_pan, 1.0)
                 };
 
-                let mut left = temp_frame[0];
-                let mut right = temp_frame[1];
+                match SIMD.simd_width() {
+                    SimdWidth::X8 => {
+                        // Process 8 stereo frames (16 samples) at once
+                        // But only if we have enough room in the output buffer
+                        let max_frames_in_output = output.len() / 2;
+                        let safe_frames = num_frames.min(max_frames_in_output);
+                        let chunks_of_16 = safe_frames / 8;
+                        let remainder_start = chunks_of_16 * 8;
 
-                // Apply volume
-                left *= effective_volume * spatial_volume;
-                right *= effective_volume * spatial_volume;
+                        let vol_vec = f32x8::splat(combined_volume);
+                        let left_pan_vec = f32x8::splat(left_pan);
+                        let right_pan_vec = f32x8::splat(right_pan);
 
-                // Apply pan
-                if spatial_pan < 0.0 {
-                    right *= 1.0 + spatial_pan;
-                } else if spatial_pan > 0.0 {
-                    left *= 1.0 - spatial_pan;
+                        for chunk_idx in 0..chunks_of_16 {
+                            let frame_start = chunk_idx * 8;
+                            let temp_start = frame_start * 2;
+                            let out_start = frame_start * 2;
+
+                            // Load 8 left samples
+                            let left = f32x8::new([
+                                temp_buffer[temp_start],
+                                temp_buffer[temp_start + 2],
+                                temp_buffer[temp_start + 4],
+                                temp_buffer[temp_start + 6],
+                                temp_buffer[temp_start + 8],
+                                temp_buffer[temp_start + 10],
+                                temp_buffer[temp_start + 12],
+                                temp_buffer[temp_start + 14],
+                            ]);
+
+                            // Load 8 right samples
+                            let right = f32x8::new([
+                                temp_buffer[temp_start + 1],
+                                temp_buffer[temp_start + 3],
+                                temp_buffer[temp_start + 5],
+                                temp_buffer[temp_start + 7],
+                                temp_buffer[temp_start + 9],
+                                temp_buffer[temp_start + 11],
+                                temp_buffer[temp_start + 13],
+                                temp_buffer[temp_start + 15],
+                            ]);
+
+                            // Apply volume and pan
+                            let left_out = left * vol_vec * left_pan_vec;
+                            let right_out = right * vol_vec * right_pan_vec;
+
+                            // Load current output values
+                            let out_left = f32x8::new([
+                                output[out_start],
+                                output[out_start + 2],
+                                output[out_start + 4],
+                                output[out_start + 6],
+                                output[out_start + 8],
+                                output[out_start + 10],
+                                output[out_start + 12],
+                                output[out_start + 14],
+                            ]);
+                            let out_right = f32x8::new([
+                                output[out_start + 1],
+                                output[out_start + 3],
+                                output[out_start + 5],
+                                output[out_start + 7],
+                                output[out_start + 9],
+                                output[out_start + 11],
+                                output[out_start + 13],
+                                output[out_start + 15],
+                            ]);
+
+                            // Add (mix)
+                            let mixed_left = out_left + left_out;
+                            let mixed_right = out_right + right_out;
+
+                            // Store back (interleaved)
+                            let left_arr = mixed_left.to_array();
+                            let right_arr = mixed_right.to_array();
+                            for i in 0..8 {
+                                output[out_start + i * 2] = left_arr[i];
+                                output[out_start + i * 2 + 1] = right_arr[i];
+                            }
+                        }
+
+                        // Handle remainder frames with scalar code
+                        for frame_idx in remainder_start..num_frames {
+                            let temp_idx = frame_idx * 2;
+                            let out_idx = frame_idx * 2;
+
+                            if temp_idx + 1 < temp_buffer.len() && out_idx + 1 < output.len() {
+                                let left = temp_buffer[temp_idx] * combined_volume * left_pan;
+                                let right = temp_buffer[temp_idx + 1] * combined_volume * right_pan;
+
+                                output[out_idx] += left;
+                                output[out_idx + 1] += right;
+                            }
+                        }
+                    }
+                    _ => {
+                        // Fallback: scalar path
+                        for frame_idx in 0..num_frames {
+                            let temp_idx = frame_idx * 2;
+                            let out_idx = frame_idx * 2;
+
+                            let left = temp_buffer[temp_idx] * combined_volume * left_pan;
+                            let right = temp_buffer[temp_idx + 1] * combined_volume * right_pan;
+
+                            if out_idx + 1 < output.len() {
+                                output[out_idx] += left;
+                                output[out_idx + 1] += right;
+                            }
+                        }
+                    }
                 }
+            } else {
+                // Scalar path: fade is active or mono output
+                for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
+                    let frame_time =
+                        sound.elapsed_time + (frame_idx as f32 * time_delta * effective_playback_rate);
 
-                // Mix into output
-                let out_idx = frame_idx * channels;
-                if out_idx + 1 < output.len() {
-                    if channels == 1 {
-                        output[out_idx] += (left + right) * 0.5;
+                    // Apply fade if active
+                    let effective_volume = if let Some(fade_start) = sound.fade_start_time {
+                        let fade_elapsed = frame_time - fade_start;
+                        if fade_elapsed >= sound.fade_duration {
+                            // Fade complete
+                            if frame_idx == 0 {
+                                sound.volume = sound.fade_target_volume;
+                                sound.fade_start_time = None;
+                            }
+                            sound.fade_target_volume
+                        } else {
+                            // Interpolate
+                            let t = (fade_elapsed / sound.fade_duration).clamp(0.0, 1.0);
+                            sound.fade_start_volume
+                                + (sound.fade_target_volume - sound.fade_start_volume) * t
+                        }
                     } else {
-                        output[out_idx] += left;
-                        output[out_idx + 1] += right;
+                        sound.volume
+                    };
+
+                    let mut left = temp_frame[0];
+                    let mut right = temp_frame[1];
+
+                    // Apply volume
+                    left *= effective_volume * spatial_volume;
+                    right *= effective_volume * spatial_volume;
+
+                    // Apply pan
+                    if spatial_pan < 0.0 {
+                        right *= 1.0 + spatial_pan;
+                    } else if spatial_pan > 0.0 {
+                        left *= 1.0 - spatial_pan;
+                    }
+
+                    // Mix into output
+                    let out_idx = frame_idx * channels;
+                    if out_idx + 1 < output.len() {
+                        if channels == 1 {
+                            output[out_idx] += (left + right) * 0.5;
+                        } else {
+                            output[out_idx] += left;
+                            output[out_idx + 1] += right;
+                        }
                     }
                 }
             }

@@ -73,8 +73,8 @@ pub fn play_music() -> Result<(), JsValue> {
     comp.instrument("piano", &Instrument::electric_piano())
         .notes(&[C4, E4, G4, C5], 0.5);
 
-    // Play it!
-    engine.play_mixer(&comp.into_mixer())
+    // Play it! (non-blocking for web)
+    engine.play_mixer_realtime(&comp.into_mixer())
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     Ok(())
@@ -282,7 +282,7 @@ impl WebSynth {
 
     pub fn play_note(&self, frequency: f32, duration: f32) -> Result<(), JsValue> {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("synth").sine(frequency, duration);
+        comp.track("synth").note(&[frequency], duration);
 
         self.engine.play_mixer_realtime(&comp.into_mixer())
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -294,7 +294,7 @@ impl WebSynth {
         let mut comp = Composition::new(Tempo::new(120.0));
 
         for freq in frequencies {
-            comp.track("synth").sine(freq, 1.0);
+            comp.track("synth").note(&[freq], 1.0);
         }
 
         self.engine.play_mixer_realtime(&comp.into_mixer())
@@ -454,7 +454,6 @@ The repository includes a complete working example:
 
 - `examples/web_demo.rs` - Basic synthesis and playback
 - `examples/web_demo.html` - HTML interface
-- `WEB_DEMO.md` - Complete setup guide
 
 To run it:
 
