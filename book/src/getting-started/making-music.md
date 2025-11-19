@@ -10,10 +10,7 @@ fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
     comp.instrument("piano", &Instrument::electric_piano())
-        .chord(C4, &ChordPattern::MAJOR, 0.5)    // C major
-        .chord(F4, &ChordPattern::MAJOR, 0.5)    // F major
-        .chord(G4, &ChordPattern::MAJOR, 0.5)    // G major
-        .chord(C4, &ChordPattern::MAJOR, 0.5);   // C major
+        .chords(&[C4_MAJOR, F4_MAJOR, G4_MAJOR, C4_MAJOR], 0.5);
 
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
@@ -22,9 +19,8 @@ fn main() -> Result<(), anyhow::Error> {
 
 ## What's New
 
-- **Note names** like `C4`, `F4`, `G4` instead of raw frequencies
-- **`ChordPattern::MAJOR`** uses music theory to build chords
-- **`.chord()`** plays chords with a root note and pattern
+- **Note names** and **chord constants** like `C4_MAJOR`, `F4_MAJOR` instead of raw frequencies
+- **`.chords()`** plays a sequence of chord constants with specified duration
 - A recognizable **I-IV-V-I progression** in C major
 
 This is the foundation of musical composition in Tunes – clear, readable code that maps directly to musical concepts.

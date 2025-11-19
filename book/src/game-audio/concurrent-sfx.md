@@ -41,8 +41,7 @@ fn create_footstep() -> Mixer {
 fn create_jump_sound() -> Mixer {
     let mut comp = Composition::new(Tempo::new(120.0));
     comp.track("jump")
-        .note(&[200.0], 0.1)
-        .fade_to(400.0, 0.1);
+        .notes(&[200.0, 300.0, 400.0], 0.033);  // Rising pitch sweep
     comp.into_mixer()
 }
 
@@ -106,7 +105,7 @@ impl GameAudio {
         comp.track("gun")
             .note(&[150.0], 0.08)
             .filter(Filter::high_pass(100.0, 0.5))
-            .distortion(Distortion::new(0.7));
+            .distortion(Distortion::new(0.7, 0.8));
         comp.into_mixer()
     }
 
@@ -114,8 +113,8 @@ impl GameAudio {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("boom")
             .note(&[60.0], 0.3)
-            .distortion(Distortion::new(0.8))
-            .reverb(Reverb::new(0.6, 0.4));
+            .distortion(Distortion::new(0.8, 0.7))
+            .reverb(Reverb::new(0.6, 0.4, 0.5));
         comp.into_mixer()
     }
 }
@@ -225,7 +224,7 @@ For low-latency game audio, reduce buffer size:
 use tunes::prelude::*;
 
 fn low_latency_setup() -> anyhow::Result<AudioEngine> {
-    // Default is 8192 samples (~185ms latency at 44.1kHz)
+    // Default is 4096 samples (~93ms latency at 44.1kHz)
     // Reduce for faster response:
     let engine = AudioEngine::with_buffer_size(2048)?; // ~46ms latency
 

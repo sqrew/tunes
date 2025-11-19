@@ -6,7 +6,7 @@ Add `tunes` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.11.0"
+tunes = "0.22.0"
 ```
 
 ### Platform-Specific Requirements

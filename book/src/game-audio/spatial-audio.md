@@ -2,6 +2,34 @@
 
 Position sounds in 3D space using panning and volume attenuation. Tunes provides real-time control of sound positioning for immersive game audio.
 
+## Table of Contents
+
+**Getting Started:**
+- [Quick Start: Spatial Sample Playback](#quick-start-spatial-sample-playback)
+- [Built-in 3D Spatial Audio](#built-in-3d-spatial-audio)
+- [Composition-Time Positioning](#composition-time-positioning)
+- [Real-Time Position Updates](#real-time-position-updates)
+
+**Core Features:**
+- [Distance Attenuation](#distance-attenuation) - Automatic volume falloff with distance
+- [Listener Position and Orientation](#listener-position-and-orientation) - Camera/player control
+- [Doppler Effect](#doppler-effect) - Pitch shifting for moving sounds
+- [Elevation Panning](#elevation-panning) - Vertical sound positioning
+
+**Advanced Features:**
+- [Directional Sound Cones](#directional-sound-cones) - Loudspeakers, NPCs, vehicle engines
+- [Occlusion](#occlusion) - Sounds blocked by walls and obstacles
+
+**Examples:**
+- [Advanced Example: All Features Combined](#advanced-example-all-features-combined)
+- [Multi-Source Spatial Scene](#multi-source-spatial-scene)
+- [Game Integration Example](#game-integration-example)
+
+**Manual Implementation:**
+- [Manual Spatial Audio Implementation](#manual-spatial-audio-implementation) - 2D games and custom logic
+
+---
+
 ## Quick Start: Spatial Sample Playback
 
 Position samples in 3D space with automatic caching:

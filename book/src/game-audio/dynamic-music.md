@@ -185,29 +185,26 @@ fn create_adaptive_music() -> anyhow::Result<Mixer> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
     // Define sections
-    comp.section("intro", |c| {
-        c.instrument("piano", &Instrument::electric_piano())
-            .notes(&[C4, E4, G4, C5], 0.5);
-    });
+    comp.section("intro")
+        .instrument("piano", &Instrument::electric_piano())
+        .notes(&[C4, E4, G4, C5], 0.5);
 
-    comp.section("explore", |c| {
-        c.instrument("pad", &Instrument::synth_pad())
-            .notes(&[C3, E3, G3], 2.0);
-    });
+    comp.section("explore")
+        .instrument("pad", &Instrument::synth_pad())
+        .notes(&[C3, E3, G3], 2.0);
 
-    comp.section("combat", |c| {
-        c.track("drums")
-            .drum_grid(16, 0.125)
-            .kick(&[0, 4, 8, 12])
-            .snare(&[4, 12]);
-        c.instrument("bass", &Instrument::sub_bass())
-            .notes(&[C2, C2, G2, G2], 0.5);
-    });
+    comp.section("combat")
+        .track("drums")
+        .drum_grid(16, 0.125)
+        .kick(&[0, 4, 8, 12])
+        .snare(&[4, 12])
+        .and()
+        .instrument("bass", &Instrument::sub_bass())
+        .notes(&[C2, C2, G2, G2], 0.5);
 
-    comp.section("victory", |c| {
-        c.instrument("trumpet", &Instrument::trumpet())
-            .notes(&[C4, E4, G4, C5], 0.5);
-    });
+    comp.section("victory")
+        .instrument("trumpet", &Instrument::trumpet())
+        .notes(&[C4, E4, G4, C5], 0.5);
 
     // Arrange based on gameplay
     comp.arrange(&["intro", "explore", "explore", "combat", "victory"]);

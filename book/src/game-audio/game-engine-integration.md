@@ -91,11 +91,13 @@ fn game_audio_system(
 ) {
     // Play samples in response to events
     if keyboard.just_pressed(KeyCode::Space) {
-        engine.play_sample("assets/audio/jump.wav");
+        engine.play_sample("assets/audio/jump.wav")
+            .expect("Failed to play jump sound");
     }
 
     if keyboard.just_pressed(KeyCode::KeyF) {
-        engine.play_sample("assets/audio/shoot.wav");
+        engine.play_sample("assets/audio/shoot.wav")
+            .expect("Failed to play shoot sound");
     }
 }
 ```
@@ -158,13 +160,15 @@ fn player_movement(
         if keyboard.pressed(KeyCode::ArrowLeft) {
             transform.translation.x -= speed;
             if keyboard.just_pressed(KeyCode::ArrowLeft) {
-                engine.play_sample("assets/audio/footstep.wav");
+                engine.play_sample("assets/audio/footstep.wav")
+                    .expect("Failed to play footstep sound");
             }
         }
 
         if keyboard.just_pressed(KeyCode::Space) {
             // Jump!
-            engine.play_sample("assets/audio/jump.wav");
+            engine.play_sample("assets/audio/jump.wav")
+                .expect("Failed to play jump sound");
         }
     }
 }
@@ -174,7 +178,8 @@ fn collision_system(
     // ... your collision logic here
 ) {
     // Play sound on collision
-    engine.play_sample("assets/audio/coin.wav");
+    engine.play_sample("assets/audio/coin.wav")
+        .expect("Failed to play coin sound");
 }
 ```
 
@@ -381,7 +386,8 @@ impl EventHandler for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         // Play audio from game logic
         if some_collision {
-            self.audio.play_sample("assets/explosion.wav");
+            self.audio.play_sample("assets/explosion.wav")
+                .expect("Failed to play explosion sound");
         }
         Ok(())
     }
@@ -436,11 +442,13 @@ async fn main() {
     loop {
         // Game logic
         if is_key_pressed(KeyCode::Space) {
-            audio.play_sample("assets/jump.wav");
+            audio.play_sample("assets/jump.wav")
+                .expect("Failed to play jump sound");
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
-            audio.play_sample("assets/shoot.wav");
+            audio.play_sample("assets/shoot.wav")
+                .expect("Failed to play shoot sound");
         }
 
         // Draw
@@ -485,7 +493,8 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         // Game logic
         if ctx.key == Some(VirtualKeyCode::Space) {
-            self.audio.play_sample("assets/attack.wav");
+            self.audio.play_sample("assets/attack.wav")
+                .expect("Failed to play attack sound");
         }
 
         // Rendering...
@@ -534,7 +543,8 @@ impl GameEngine {
     fn update(&mut self) {
         // Game logic triggers audio
         if self.player_jumped() {
-            self.audio.play_sample("jump.wav");
+            self.audio.play_sample("jump.wav")
+                .expect("Failed to play jump sound");
         }
     }
 }
