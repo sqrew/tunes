@@ -36,7 +36,6 @@ fn main() -> Result<(), anyhow::Error> {
         .notes(&[C4, C3, C2, C1], 1.0);
 
     let engine = AudioEngine::new()?;
-
     engine.play_mixer(&comp.into_mixer())?;
 
     Ok(())

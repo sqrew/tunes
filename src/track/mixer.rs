@@ -2356,6 +2356,86 @@ impl Mixer {
         self
     }
 
+    /// Add formant shifter effect to the master chain for vocal character transformation
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::FormantShifter;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_formant_shifter(FormantShifter::male_to_female());
+    /// ```
+    pub fn master_formant_shifter(
+        &mut self,
+        formant_shifter: crate::synthesis::effects::FormantShifter,
+    ) -> &mut Self {
+        self.master.formant_shifter = Some(formant_shifter);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral harmonizer effect to the master chain for pitch-shifted harmonies
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralHarmonizer;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_harmonizer(SpectralHarmonizer::fifth());
+    /// ```
+    pub fn master_spectral_harmonizer(
+        &mut self,
+        spectral_harmonizer: crate::synthesis::effects::SpectralHarmonizer,
+    ) -> &mut Self {
+        self.master.spectral_harmonizer = Some(spectral_harmonizer);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral resonator effect to the master chain for resonant frequency peaks
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralResonator;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_resonator(SpectralResonator::bell());
+    /// ```
+    pub fn master_spectral_resonator(
+        &mut self,
+        spectral_resonator: crate::synthesis::effects::SpectralResonator,
+    ) -> &mut Self {
+        self.master.spectral_resonator = Some(spectral_resonator);
+        self.master.compute_effect_order();
+        self
+    }
+
+    /// Add spectral panner effect to the master chain for frequency-based spatial positioning
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralPanner;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// let mut mixer = comp.into_mixer();
+    /// mixer.master_spectral_panner(SpectralPanner::circular());
+    /// ```
+    pub fn master_spectral_panner(
+        &mut self,
+        spectral_panner: crate::synthesis::effects::SpectralPanner,
+    ) -> &mut Self {
+        self.master.spectral_panner = Some(spectral_panner);
+        self.master.compute_effect_order();
+        self
+    }
+
     /// Add spectral exciter effect to the master chain for harmonic enhancement
     ///
     /// # Example

@@ -1,9 +1,11 @@
 use super::TrackBuilder;
 use crate::synthesis::effects::{
     AutoPan, BitCrusher, Chorus, Compressor, ConvolutionReverb, Delay, Distortion, EQ, Flanger,
-    Gate, Limiter, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation, SpectralFreeze,
-    SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
-    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
+    FormantShifter, Gate, Limiter, PhaseVocoder, Phaser,
+    Reverb, RingModulator, Saturation, SpectralFreeze, SpectralGate, SpectralCompressor,
+    SpectralHarmonizer, SpectralPanner, SpectralResonator, SpectralRobotize, SpectralDelay,
+    SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden,
+    SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
 };
 use crate::synthesis::filter::Filter;
 use crate::synthesis::lfo::ModRoute;
@@ -190,6 +192,30 @@ impl<'a> EffectsBuilder<'a> {
     /// Add spectral shift for frequency shifting
     pub fn spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
         self.inner = self.inner.spectral_shift(spectral_shift);
+        self
+    }
+
+    /// Add formant shifter for vocal character transformation
+    pub fn formant_shifter(mut self, formant_shifter: FormantShifter) -> Self {
+        self.inner = self.inner.formant_shifter(formant_shifter);
+        self
+    }
+
+    /// Add spectral harmonizer for pitch-shifted harmonies
+    pub fn spectral_harmonizer(mut self, spectral_harmonizer: SpectralHarmonizer) -> Self {
+        self.inner = self.inner.spectral_harmonizer(spectral_harmonizer);
+        self
+    }
+
+    /// Add spectral resonator for resonant peaks
+    pub fn spectral_resonator(mut self, spectral_resonator: SpectralResonator) -> Self {
+        self.inner = self.inner.spectral_resonator(spectral_resonator);
+        self
+    }
+
+    /// Add spectral panner for frequency-based spatial positioning
+    pub fn spectral_panner(mut self, spectral_panner: SpectralPanner) -> Self {
+        self.inner = self.inner.spectral_panner(spectral_panner);
         self
     }
 
@@ -933,6 +959,106 @@ impl<'a> TrackBuilder<'a> {
     pub fn spectral_shift(mut self, spectral_shift: SpectralShift) -> Self {
         let track = self.get_track_mut();
         track.effects.spectral_shift = Some(spectral_shift);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add formant shifter for vocal character transformation
+    ///
+    /// FormantShifter changes the spectral envelope (formants) independently from pitch,
+    /// enabling vocal gender/age changes and character effects. Shift formants up for
+    /// brighter/feminine sound, down for darker/masculine sound.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::FormantShifter;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .formant_shifter(FormantShifter::male_to_female())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn formant_shifter(mut self, formant_shifter: FormantShifter) -> Self {
+        let track = self.get_track_mut();
+        track.effects.formant_shifter = Some(formant_shifter);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral harmonizer for pitch-shifted harmonies
+    ///
+    /// SpectralHarmonizer adds multiple pitch-shifted voices to create rich harmonies.
+    /// Perfect for vocal harmonies, thick synth sounds, and choir effects.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::synthesis::effects::SpectralHarmonizer;
+    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::Instrument;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("vocal", &Instrument::warm_pad())
+    ///     .spectral_harmonizer(SpectralHarmonizer::major_chord())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_harmonizer(mut self, spectral_harmonizer: SpectralHarmonizer) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_harmonizer = Some(spectral_harmonizer);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral resonator for resonant frequency peaks
+    ///
+    /// SpectralResonator creates narrow resonant peaks at specified frequencies,
+    /// perfect for bell timbres, vowel formants, harmonic enhancement, and metallic effects.
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::{SpectralResonator, Resonance};
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("bell", &Instrument::warm_pad())
+    ///     .spectral_resonator(SpectralResonator::bell())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_resonator(mut self, spectral_resonator: SpectralResonator) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_resonator = Some(spectral_resonator);
+        track.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral panner for frequency-based spatial positioning
+    ///
+    /// SpectralPanner positions different frequency ranges at different points in the
+    /// stereo field. Perfect for game audio where you want spatial frequency effects
+    /// (e.g., bass centered, highs wide, frequency sweeps).
+    ///
+    /// **Note**: This is a block-based spectral effect with ~23ms latency @ 44.1kHz.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::synthesis::effects::SpectralPanner;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.instrument("ambience", &Instrument::warm_pad())
+    ///     .spectral_panner(SpectralPanner::circular())
+    ///     .note(&[C4], 2.0);
+    /// ```
+    pub fn spectral_panner(mut self, spectral_panner: SpectralPanner) -> Self {
+        let track = self.get_track_mut();
+        track.effects.spectral_panner = Some(spectral_panner);
         track.effects.compute_effect_order();
         self
     }

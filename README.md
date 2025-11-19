@@ -29,7 +29,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Audio Export**: WAV (uncompressed), FLAC (lossless ~50-60% compression), STEM export
 - **MIDI Import/Export**: Import Standard MIDI Files and export compositions to MIDI with proper metadata
 - **Live Coding**: Hot-reload system - edit code and hear changes instantly
-  * The library includes **1305 comprehensive tests and 620 doc tests** ensuring reliability and correctness.
+  * The library includes **1547 comprehensive tests and 659 doc tests** ensuring reliability and correctness.
 
 
 ## Who this is and isn't for:

@@ -1259,6 +1259,44 @@ impl Sample {
             })
             .collect()
     }
+
+    /// Export this sample to a WAV file
+    ///
+    /// Writes the sample data to a WAV file with 16-bit PCM encoding.
+    ///
+    /// # Arguments
+    /// * `path` - Output file path (e.g., "output.wav")
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::synthesis::sample::Sample;
+    /// let sample = Sample::from_file("input.mp3")?;
+    /// sample.export_wav("output.wav")?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    pub fn export_wav<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let spec = hound::WavSpec {
+            channels: self.channels,
+            sample_rate: self.sample_rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+
+        let mut writer = hound::WavWriter::create(path, spec)
+            .map_err(|e| TunesError::WavWriteError(format!("Failed to create WAV writer: {}", e)))?;
+
+        // Convert f32 samples (-1.0 to 1.0) to i16 samples
+        for &sample in self.data.iter() {
+            let sample_i16 = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
+            writer.write_sample(sample_i16)
+                .map_err(|e| TunesError::WavWriteError(format!("Failed to write sample: {}", e)))?;
+        }
+
+        writer.finalize()
+            .map_err(|e| TunesError::WavWriteError(format!("Failed to finalize WAV file: {}", e)))?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

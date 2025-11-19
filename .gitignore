@@ -16,6 +16,11 @@
 *.ogg
 *.flac
 
+# Exception: Include benchmark assets for reproducibility
+!benches/assets/*.wav
+!benches/assets/*.mp3
+!benches/assets/README.md
+
 # Documentation build
 /doc
 

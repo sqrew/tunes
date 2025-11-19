@@ -41,10 +41,12 @@
 //! ```
 
 use crate::synthesis::effects::{
-    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger, Gate,
-    Limiter, ParametricEQ, PhaseVocoder, Phaser, Reverb, RingModulator, Saturation,
-    SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur,
-    SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
+    AutoPan, BitCrusher, Chorus, Compressor, Delay, Distortion, EQ, EffectChain, Flanger,
+    FormantShifter, Gate, Limiter, ParametricEQ, PhaseVocoder, Phaser,
+    Reverb, RingModulator, Saturation, SpectralFreeze, SpectralGate,
+    SpectralCompressor, SpectralHarmonizer, SpectralPanner, SpectralResonator, SpectralRobotize,
+    SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert,
+    SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble, Tremolo,
 };
 use crate::track::Track;
 use crate::track::ids::BusId;
@@ -460,6 +462,34 @@ impl<'a> BusBuilder<'a> {
     /// Add spectral shift effect to this bus for frequency shifting
     pub fn spectral_shift(self, spectral_shift: SpectralShift) -> Self {
         self.bus.effects.spectral_shift = Some(spectral_shift);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add formant shifter effect to this bus for vocal character transformation
+    pub fn formant_shifter(self, formant_shifter: FormantShifter) -> Self {
+        self.bus.effects.formant_shifter = Some(formant_shifter);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral harmonizer effect to this bus for pitch-shifted harmonies
+    pub fn spectral_harmonizer(self, spectral_harmonizer: SpectralHarmonizer) -> Self {
+        self.bus.effects.spectral_harmonizer = Some(spectral_harmonizer);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral resonator effect to this bus for resonant frequency peaks
+    pub fn spectral_resonator(self, spectral_resonator: SpectralResonator) -> Self {
+        self.bus.effects.spectral_resonator = Some(spectral_resonator);
+        self.bus.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral panner effect to this bus for frequency-based spatial positioning
+    pub fn spectral_panner(self, spectral_panner: SpectralPanner) -> Self {
+        self.bus.effects.spectral_panner = Some(spectral_panner);
         self.bus.effects.compute_effect_order();
         self
     }

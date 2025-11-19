@@ -3,53 +3,77 @@ use tunes::prelude::*;
 
 /// Realistic Game Audio Benchmark
 ///
-/// Tests concurrent sample playback with real-world game audio features:
+/// Tests concurrent sample playback with REAL audio files (not synthetic tones).
+/// Uses 46 diverse samples from benches/assets/ with:
+/// - Complex spectral content (real-world audio characteristics)
+/// - Varied lengths (0.15s - 4s transients and sustained sounds)
+/// - Cache pressure (46 unique samples create realistic cache miss patterns)
 /// - Spatial audio (3D positioning, distance attenuation, elevation, directionality)
 /// - Effects (reverb, EQ)
-/// - Multiple sample types (footsteps, gunshots, impacts, etc.)
+/// - Multiple sample types (footsteps, gunshots, impacts, voices, etc.)
 /// - Occlusion simulation
 ///
-/// This benchmark simulates a realistic game scenario to provide honest
-/// performance numbers that game developers can expect in production.
+/// This benchmark provides HONEST performance numbers using real game audio assets,
+/// not optimistic synthetic test data.
 
 fn create_test_samples() -> anyhow::Result<Vec<Sample>> {
-    // Create SUSTAINED samples that play for the full benchmark duration
-    // This represents realistic game audio: ambient loops, music, sustained effects
+    // Load REAL audio samples from benches/assets/
+    // These are diverse, complex audio files (not simple synthetic tones)
+    // This provides realistic performance testing with:
+    // - 46 unique samples (cache pressure)
+    // - Varied lengths (0.15s - 4s)
+    // - Complex spectral content
+    // - Mix of transients and sustained sounds
     let mut samples = Vec::new();
 
-    // 1. Sustained bass tone (like engine rumble, ambient drone) - C2 = 65.4Hz
-    let mut comp_bass = Composition::new(Tempo::new(120.0));
-    comp_bass
-        .track("bass")
-        .at(0.0)
-        .note(&[65.4], 8.0) // 8 beat duration = 4 seconds at 120 BPM
-        .filter(Filter::low_pass(300.0, 0.7));
-    let mut mixer_bass = comp_bass.into_mixer();
-    mixer_bass.export_wav("bench_bass.wav", 44100)?;
-    samples.push(Sample::from_file("bench_bass.wav")?);
+    println!("Loading real audio samples from benches/assets/...");
 
-    // 2. Mid-range sustained tone (like machinery, wind) - A3 = 220Hz
-    let mut comp_mid = Composition::new(Tempo::new(120.0));
-    comp_mid
-        .track("mid")
-        .at(0.0)
-        .note(&[220.0], 8.0)
-        .filter(Filter::band_pass(800.0, 0.5));
-    let mut mixer_mid = comp_mid.into_mixer();
-    mixer_mid.export_wav("bench_mid.wav", 44100)?;
-    samples.push(Sample::from_file("bench_mid.wav")?);
+    // Footsteps (8 files) - short transients
+    for i in 1..=8 {
+        samples.push(Sample::from_file(&format!("benches/assets/footstep_{:02}.wav", i))?);
+    }
 
-    // 3. High sustained tone with reverb (like ambient effects, atmospheric sounds) - E4 = 329.6Hz
-    let mut comp_high = Composition::new(Tempo::new(120.0));
-    comp_high
-        .track("high")
-        .at(0.0)
-        .note(&[329.6], 8.0)
-        .reverb(Reverb::new(0.6, 0.5, 0.6))
-        .filter(Filter::high_pass(400.0, 0.5));
-    let mut mixer_high = comp_high.into_mixer();
-    mixer_high.export_wav("bench_high.wav", 44100)?;
-    samples.push(Sample::from_file("bench_high.wav")?);
+    // Impacts (6 files) - heavier transients
+    for i in 1..=6 {
+        samples.push(Sample::from_file(&format!("benches/assets/impact_{:02}.wav", i))?);
+    }
+
+    // Gunshots (6 files) - sharp attack + reverb
+    for i in 1..=6 {
+        samples.push(Sample::from_file(&format!("benches/assets/gunshot_{:02}.wav", i))?);
+    }
+
+    // Explosions (5 files) - complex broadband
+    for i in 1..=5 {
+        samples.push(Sample::from_file(&format!("benches/assets/explosion_{:02}.wav", i))?);
+    }
+
+    // Voice-like (6 files) - harmonic + formants
+    for i in 1..=6 {
+        samples.push(Sample::from_file(&format!("benches/assets/voice_{:02}.wav", i))?);
+    }
+
+    // Ambient loops (4 files) - sustained textures
+    for i in 1..=4 {
+        samples.push(Sample::from_file(&format!("benches/assets/ambient_{:02}.wav", i))?);
+    }
+
+    // Engine sounds (3 files) - rhythmic sustained
+    for i in 1..=3 {
+        samples.push(Sample::from_file(&format!("benches/assets/engine_{:02}.wav", i))?);
+    }
+
+    // Bass-heavy (4 files) - sub-bass focus
+    for i in 1..=4 {
+        samples.push(Sample::from_file(&format!("benches/assets/bass_{:02}.wav", i))?);
+    }
+
+    // High-frequency (4 files) - bright treble
+    for i in 1..=4 {
+        samples.push(Sample::from_file(&format!("benches/assets/high_freq_{:02}.wav", i))?);
+    }
+
+    println!("  ✓ Loaded {} real audio samples", samples.len());
 
     Ok(samples)
 }
@@ -205,18 +229,19 @@ fn run_realistic_test(
 
 fn main() -> anyhow::Result<()> {
     println!("\n🎮 Realistic Game Audio Benchmark\n");
-    println!("Simulating real-world game audio with:");
+    println!("Testing with REAL audio files (not synthetic tones):");
+    println!("  ✓ 46 diverse samples (footsteps, gunshots, voices, etc.)");
+    println!("  ✓ Complex spectral content (realistic audio characteristics)");
+    println!("  ✓ Varied lengths (0.15s - 4s) for cache pressure");
     println!("  ✓ Spatial audio (3D positioning, elevation, distance attenuation)");
     println!("  ✓ Directional sound cones (speakers, NPCs)");
     println!("  ✓ Occlusion (sounds blocked by walls)");
     println!("  ✓ Effects (EQ, reverb)");
-    println!("  ✓ Multiple sample types (impacts, explosions, ambient)");
     println!("  ✓ True concurrent playback (all samples playing simultaneously)\n");
 
-    // Create test samples
-    println!("Creating test samples...");
+    // Load real audio samples
     let samples = create_test_samples()?;
-    println!("  ✓ Created {} sample types\n", samples.len());
+    println!("");
 
     // Display SIMD capabilities
     use tunes::synthesis::simd::SIMD;
@@ -336,16 +361,14 @@ fn main() -> anyhow::Result<()> {
         println!("  ⚠️  Performance below realtime in realistic scenarios.");
     }
 
-    // Cleanup
-    std::fs::remove_file("bench_bass.wav").ok();
-    std::fs::remove_file("bench_mid.wav").ok();
-    std::fs::remove_file("bench_high.wav").ok();
-
     println!("\n✅ Realistic game audio benchmark complete!");
-    println!("\nNote: This benchmark simulates actual game audio scenarios with spatial");
-    println!("positioning (elevation, directionality, occlusion), distance attenuation,");
-    println!("and effects - providing honest performance numbers that game developers");
-    println!("can expect in production use.\n");
+    println!("\nNote: This benchmark uses REAL audio samples (46 diverse files) with");
+    println!("complex spectral content, varied lengths, and realistic cache behavior.");
+    println!("Combined with spatial audio (elevation, directionality, occlusion),");
+    println!("distance attenuation, and effects - these are HONEST performance numbers");
+    println!("that game developers can expect in production use.\n");
+    println!("Sample pool: 46 unique files (footsteps, impacts, gunshots, explosions,");
+    println!("voices, ambient loops, engines, bass, and high-frequency sounds)\n");
 
     Ok(())
 }

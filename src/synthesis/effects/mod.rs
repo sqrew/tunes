@@ -23,7 +23,7 @@ pub use modulation::{Chorus, Phaser, Flanger, RingModulator, Tremolo};
 pub use spatial::AutoPan;
 pub use eq::{EQ, EQBand, ParametricEQ, EQPreset};
 pub use convolution::{Convolution, ConvolutionReverb, IRParams};
-pub use spectral::{FilterType, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralMorphTarget, SpectralDynamics, SpectralScramble};
+pub use spectral::{FilterType, FormantShifter, HarmonyVoice, PanPoint, PhaseVocoder, Resonance, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralHarmonizer, SpectralPanner, SpectralResonator, SpectralRobotize, SpectralDelay, SpectralFilter, SpectralBlur, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralMorphTarget, SpectralDynamics, SpectralScramble};
 
 /// Effect chain for processing audio through multiple effects in priority order
 ///
@@ -75,6 +75,10 @@ pub struct EffectChain {
     pub spectral_morph: Option<SpectralMorph>,
     pub spectral_dynamics: Option<SpectralDynamics>,
     pub spectral_scramble: Option<SpectralScramble>,
+    pub formant_shifter: Option<FormantShifter>,
+    pub spectral_harmonizer: Option<SpectralHarmonizer>,
+    pub spectral_resonator: Option<SpectralResonator>,
+    pub spectral_panner: Option<SpectralPanner>,
 
     // Pre-computed effect processing order (cached for performance)
     // Effect IDs: 0=EQ, 1=Compressor, 2=Gate, 3=Saturation, 4=BitCrusher, 5=Distortion,
@@ -83,7 +87,8 @@ pub struct EffectChain {
     //             16=PhaseVocoder, 17=SpectralFreeze, 18=SpectralGate, 19=SpectralCompressor,
     //             20=SpectralRobotize, 21=SpectralDelay, 22=SpectralFilter, 23=SpectralBlur,
     //             24=SpectralShift, 25=SpectralExciter, 26=SpectralInvert, 27=SpectralWiden, 28=SpectralMorph,
-    //             29=SpectralDynamics, 30=SpectralScramble
+    //             29=SpectralDynamics, 30=SpectralScramble, 31=FormantShifter, 32=SpectralHarmonizer,
+    //             33=SpectralResonator, 34=SpectralPanner
     // (AutoPan excluded - handled separately in stereo stage)
     pub(crate) effect_order: Vec<u8>,
 }
@@ -132,6 +137,10 @@ impl EffectChain {
             spectral_morph: None,
             spectral_dynamics: None,
             spectral_scramble: None,
+            formant_shifter: None,
+            spectral_harmonizer: None,
+            spectral_resonator: None,
+            spectral_panner: None,
             effect_order: Vec::new(),
         }
     }
@@ -236,6 +245,18 @@ impl EffectChain {
         }
         if let Some(ref spectral_scramble) = self.spectral_scramble {
             effects.push((spectral_scramble.priority, 30));
+        }
+        if let Some(ref formant_shifter) = self.formant_shifter {
+            effects.push((formant_shifter.priority, 31));
+        }
+        if let Some(ref spectral_harmonizer) = self.spectral_harmonizer {
+            effects.push((spectral_harmonizer.priority, 32));
+        }
+        if let Some(ref spectral_resonator) = self.spectral_resonator {
+            effects.push((spectral_resonator.priority, 33));
+        }
+        if let Some(ref spectral_panner) = self.spectral_panner {
+            effects.push((spectral_panner.priority, 34));
         }
 
         // Sort by priority (lower = earlier in chain)
@@ -609,6 +630,30 @@ impl EffectChain {
                     // SpectralScramble (block-based spectral effect)
                     if let Some(ref mut spectral_scramble) = self.spectral_scramble {
                         spectral_scramble.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                31 => {
+                    // FormantShifter (block-based spectral effect)
+                    if let Some(ref mut formant_shifter) = self.formant_shifter {
+                        formant_shifter.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                32 => {
+                    // SpectralHarmonizer (block-based spectral effect)
+                    if let Some(ref mut spectral_harmonizer) = self.spectral_harmonizer {
+                        spectral_harmonizer.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                33 => {
+                    // SpectralResonator (block-based spectral effect)
+                    if let Some(ref mut spectral_resonator) = self.spectral_resonator {
+                        spectral_resonator.process_block(buffer, sample_rate, time, sample_count);
+                    }
+                }
+                34 => {
+                    // SpectralPanner (block-based spectral effect)
+                    if let Some(ref mut spectral_panner) = self.spectral_panner {
+                        spectral_panner.process_block(buffer, sample_rate, time, sample_count);
                     }
                 }
                 _ => {}

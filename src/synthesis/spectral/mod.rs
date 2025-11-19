@@ -30,6 +30,7 @@ mod delay;
 mod dynamics;
 mod exciter;
 mod filter;
+mod formant_shifter;
 mod freeze;
 mod gate;
 mod invert;
@@ -38,6 +39,9 @@ mod phase_vocoder;
 mod robotize;
 mod scramble;
 mod shift;
+mod spectral_harmonizer;
+mod spectral_panner;
+mod spectral_resonator;
 mod widen;
 
 // Re-exports
@@ -47,6 +51,7 @@ pub use delay::SpectralDelay;
 pub use dynamics::SpectralDynamics;
 pub use exciter::SpectralExciter;
 pub use filter::SpectralFilter;
+pub use formant_shifter::FormantShifter;
 pub use freeze::SpectralFreeze;
 pub use gate::SpectralGate;
 pub use invert::SpectralInvert;
@@ -55,6 +60,9 @@ pub use phase_vocoder::PhaseVocoder;
 pub use robotize::SpectralRobotize;
 pub use scramble::SpectralScramble;
 pub use shift::SpectralShift;
+pub use spectral_harmonizer::{HarmonyVoice, SpectralHarmonizer};
+pub use spectral_panner::{PanPoint, SpectralPanner};
+pub use spectral_resonator::{Resonance, SpectralResonator};
 pub use widen::SpectralWiden;
 
 /// Window function types for spectral processing

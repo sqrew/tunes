@@ -4,15 +4,20 @@
 //! They provide high-quality time-stretching, pitch-shifting, and spectral freezing.
 
 use crate::synthesis::spectral::{
-    PhaseVocoder as CorePhaseVocoder, SpectralBlur as CoreSpectralBlur,
-    SpectralCompressor as CoreSpectralCompressor, SpectralDynamics as CoreSpectralDynamics,
-    SpectralFilter as CoreSpectralFilter, SpectralFreeze as CoreSpectralFreeze,
-    SpectralGate as CoreSpectralGate, SpectralRobotize as CoreSpectralRobotize,
+    FormantShifter as CoreFormantShifter, PhaseVocoder as CorePhaseVocoder,
+    SpectralBlur as CoreSpectralBlur, SpectralCompressor as CoreSpectralCompressor,
+    SpectralDynamics as CoreSpectralDynamics, SpectralFilter as CoreSpectralFilter,
+    SpectralFreeze as CoreSpectralFreeze, SpectralGate as CoreSpectralGate,
+    SpectralHarmonizer as CoreSpectralHarmonizer, SpectralPanner as CoreSpectralPanner,
+    SpectralResonator as CoreSpectralResonator, SpectralRobotize as CoreSpectralRobotize,
     SpectralScramble as CoreSpectralScramble, WindowType,
 };
 
-// Re-export FilterType for public use
+// Re-export FilterType, HarmonyVoice, PanPoint, and Resonance for public use
 pub use crate::synthesis::spectral::FilterType;
+pub use crate::synthesis::spectral::HarmonyVoice;
+pub use crate::synthesis::spectral::PanPoint;
+pub use crate::synthesis::spectral::Resonance;
 
 /// Phase vocoder effect for time-stretching and pitch-shifting
 ///
@@ -3603,6 +3608,917 @@ impl std::fmt::Debug for SpectralScramble {
             .field("scramble_amount", &self.core.scramble_amount())
             .field("low_freq", &self.core.low_freq())
             .field("high_freq", &self.core.high_freq())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Formant shifter effect - shift formants independently from pitch
+///
+/// Formants are the resonant frequencies that define the timbre/color of a sound.
+/// This effect shifts the spectral envelope without changing pitch, enabling
+/// vocal gender changes, character effects, and timbral transformations.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::FormantShifter;
+/// let shifter = FormantShifter::new(1.6, 1.0, 44100.0); // Male to female
+/// ```
+#[derive(Clone)]
+pub struct FormantShifter {
+    /// Core formant shifter engine
+    core: CoreFormantShifter,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl FormantShifter {
+    /// Create a new formant shifter with specified parameters
+    ///
+    /// # Arguments
+    /// * `shift_ratio` - Formant shift ratio (0.5 = down octave, 2.0 = up octave)
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::FormantShifter;
+    /// let shifter = FormantShifter::new(0.7, 1.0, 44100.0);
+    /// ```
+    pub fn new(shift_ratio: f32, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, shift_ratio, mix, sample_rate)
+    }
+
+    /// Create a formant shifter with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `shift_ratio` - Formant shift ratio
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::FormantShifter;
+    /// let shifter = FormantShifter::with_params(4096, 1024, 1.5, 0.8, 44100.0);
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        shift_ratio: f32,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreFormantShifter::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_shift_ratio(shift_ratio);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 146, // After spectral shift
+            enabled: true,
+        }
+    }
+
+    /// Male voice → female voice preset
+    pub fn male_to_female() -> Self {
+        let core = CoreFormantShifter::male_to_female();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Female voice → male voice preset
+    pub fn female_to_male() -> Self {
+        let core = CoreFormantShifter::female_to_male();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Adult voice → child voice preset
+    pub fn adult_to_child() -> Self {
+        let core = CoreFormantShifter::adult_to_child();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Subtle brightening preset
+    pub fn brighten() -> Self {
+        let core = CoreFormantShifter::brighten();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Subtle darkening preset
+    pub fn darken() -> Self {
+        let core = CoreFormantShifter::darken();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Monster/creature voice preset
+    pub fn monster() -> Self {
+        let core = CoreFormantShifter::monster();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Chipmunk/cartoon voice preset
+    pub fn chipmunk() -> Self {
+        let core = CoreFormantShifter::chipmunk();
+        Self {
+            core,
+            priority: 146,
+            enabled: true,
+        }
+    }
+
+    /// Set formant shift ratio
+    pub fn set_shift_ratio(&mut self, ratio: f32) {
+        self.core.set_shift_ratio(ratio);
+    }
+
+    /// Set wet/dry mix
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current shift ratio
+    pub fn shift_ratio(&self) -> f32 {
+        self.core.shift_ratio()
+    }
+
+    /// Get current mix
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio (called by effect chain)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for FormantShifter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FormantShifter")
+            .field("shift_ratio", &self.core.shift_ratio())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral harmonizer effect - add harmonically-related pitch-shifted voices
+///
+/// Creates rich harmonies by adding multiple pitch-shifted copies of the input.
+/// Each voice has independent pitch shift and mix level, perfect for vocal
+/// harmonies, thick synth sounds, and choir effects.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{SpectralHarmonizer, HarmonyVoice};
+/// let mut harmonizer = SpectralHarmonizer::major_chord();
+/// ```
+#[derive(Clone)]
+pub struct SpectralHarmonizer {
+    /// Core spectral harmonizer engine
+    core: CoreSpectralHarmonizer,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralHarmonizer {
+    /// Create a new spectral harmonizer with specified parameters
+    ///
+    /// # Arguments
+    /// * `voices` - List of harmony voices (pitch shift + mix level)
+    /// * `dry_mix` - Dry signal mix level
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralHarmonizer, HarmonyVoice};
+    /// let harmonizer = SpectralHarmonizer::new(
+    ///     vec![HarmonyVoice::new(7.0, 0.8)],  // Perfect fifth
+    ///     1.0,  // Full dry signal
+    ///     44100.0
+    /// );
+    /// ```
+    pub fn new(voices: Vec<HarmonyVoice>, dry_mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, voices, dry_mix, sample_rate)
+    }
+
+    /// Create a spectral harmonizer with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `voices` - List of harmony voices
+    /// * `dry_mix` - Dry signal mix level
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralHarmonizer, HarmonyVoice};
+    /// let harmonizer = SpectralHarmonizer::with_params(
+    ///     4096, 1024,
+    ///     vec![HarmonyVoice::new(4.0, 0.7)],
+    ///     0.9,
+    ///     44100.0
+    /// );
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        voices: Vec<HarmonyVoice>,
+        dry_mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralHarmonizer::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_voices(voices);
+        core.set_dry_mix(dry_mix);
+
+        Self {
+            core,
+            priority: 147, // After formant shifter
+            enabled: true,
+        }
+    }
+
+    /// Major chord preset (major third + perfect fifth)
+    pub fn major_chord() -> Self {
+        let core = CoreSpectralHarmonizer::major_chord();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Minor chord preset (minor third + perfect fifth)
+    pub fn minor_chord() -> Self {
+        let core = CoreSpectralHarmonizer::minor_chord();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Perfect fifth harmony preset
+    pub fn fifth() -> Self {
+        let core = CoreSpectralHarmonizer::fifth();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Octave up preset
+    pub fn octave_up() -> Self {
+        let core = CoreSpectralHarmonizer::octave_up();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Octave down preset
+    pub fn octave_down() -> Self {
+        let core = CoreSpectralHarmonizer::octave_down();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Octave doubling preset (both up and down)
+    pub fn octave_double() -> Self {
+        let core = CoreSpectralHarmonizer::octave_double();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Choir effect preset (multiple voices)
+    pub fn choir() -> Self {
+        let core = CoreSpectralHarmonizer::choir();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Barbershop quartet preset (tight 4-part harmony)
+    pub fn barbershop() -> Self {
+        let core = CoreSpectralHarmonizer::barbershop();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Thick synth preset (slight detuning)
+    pub fn thick() -> Self {
+        let core = CoreSpectralHarmonizer::thick();
+        Self {
+            core,
+            priority: 147,
+            enabled: true,
+        }
+    }
+
+    /// Add a harmony voice
+    pub fn add_voice(&mut self, voice: HarmonyVoice) {
+        self.core.add_voice(voice);
+    }
+
+    /// Clear all voices
+    pub fn clear_voices(&mut self) {
+        self.core.clear_voices();
+    }
+
+    /// Set voices from a list
+    pub fn set_voices(&mut self, voices: Vec<HarmonyVoice>) {
+        self.core.set_voices(voices);
+    }
+
+    /// Get reference to current voices
+    pub fn voices(&self) -> &[HarmonyVoice] {
+        self.core.voices()
+    }
+
+    /// Set dry signal mix level
+    pub fn set_dry_mix(&mut self, mix: f32) {
+        self.core.set_dry_mix(mix);
+    }
+
+    /// Get current dry mix level
+    pub fn dry_mix(&self) -> f32 {
+        self.core.dry_mix()
+    }
+
+    /// Process a block of audio (called by effect chain)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for SpectralHarmonizer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralHarmonizer")
+            .field("voices", &self.core.voices().len())
+            .field("dry_mix", &self.core.dry_mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral resonator effect - emphasize specific frequencies with resonant peaks
+///
+/// Creates narrow resonant peaks at specified frequencies, similar to a bank of
+/// very narrow bandpass filters. Perfect for pitched resonance effects, formant-like
+/// sounds, bell timbres, and harmonic enhancement.
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{SpectralResonator, Resonance};
+/// let mut resonator = SpectralResonator::bell();
+/// ```
+#[derive(Clone)]
+pub struct SpectralResonator {
+    /// Core spectral resonator engine
+    core: CoreSpectralResonator,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralResonator {
+    /// Create a new spectral resonator with specified parameters
+    ///
+    /// # Arguments
+    /// * `resonances` - List of resonance peaks
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralResonator, Resonance};
+    /// let resonator = SpectralResonator::new(
+    ///     vec![Resonance::new(440.0, 5.0, 10.0)],
+    ///     1.0,
+    ///     44100.0
+    /// );
+    /// ```
+    pub fn new(resonances: Vec<crate::synthesis::spectral::Resonance>, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, resonances, mix, sample_rate)
+    }
+
+    /// Create a spectral resonator with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `resonances` - List of resonance peaks
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralResonator, Resonance};
+    /// let resonator = SpectralResonator::with_params(
+    ///     4096, 1024,
+    ///     vec![Resonance::new(440.0, 5.0, 10.0)],
+    ///     0.8,
+    ///     44100.0
+    /// );
+    /// ```
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        resonances: Vec<crate::synthesis::spectral::Resonance>,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralResonator::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_resonances(resonances);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 148, // After spectral harmonizer
+            enabled: true,
+        }
+    }
+
+    /// Pitched resonance at 440Hz (A4) with harmonics
+    pub fn pitched_a440() -> Self {
+        let core = CoreSpectralResonator::pitched_a440();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Bell-like timbre with strong harmonics
+    pub fn bell() -> Self {
+        let core = CoreSpectralResonator::bell();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Metallic timbre with inharmonic partials
+    pub fn metallic() -> Self {
+        let core = CoreSpectralResonator::metallic();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Vocal formants (simulates vowel 'a' as in "father")
+    pub fn vowel_a() -> Self {
+        let core = CoreSpectralResonator::vowel_a();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Vocal formants (simulates vowel 'e' as in "beet")
+    pub fn vowel_e() -> Self {
+        let core = CoreSpectralResonator::vowel_e();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Vocal formants (simulates vowel 'i' as in "beat")
+    pub fn vowel_i() -> Self {
+        let core = CoreSpectralResonator::vowel_i();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Vocal formants (simulates vowel 'o' as in "boat")
+    pub fn vowel_o() -> Self {
+        let core = CoreSpectralResonator::vowel_o();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Vocal formants (simulates vowel 'u' as in "boot")
+    pub fn vowel_u() -> Self {
+        let core = CoreSpectralResonator::vowel_u();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Gentle harmonic enhancement
+    pub fn gentle() -> Self {
+        let core = CoreSpectralResonator::gentle();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Comb filter effect
+    pub fn comb() -> Self {
+        let core = CoreSpectralResonator::comb();
+        Self {
+            core,
+            priority: 148,
+            enabled: true,
+        }
+    }
+
+    /// Add a resonance peak
+    pub fn add_resonance(&mut self, resonance: crate::synthesis::spectral::Resonance) {
+        self.core.add_resonance(resonance);
+    }
+
+    /// Clear all resonances
+    pub fn clear_resonances(&mut self) {
+        self.core.clear_resonances();
+    }
+
+    /// Set resonances from a list
+    pub fn set_resonances(&mut self, resonances: Vec<crate::synthesis::spectral::Resonance>) {
+        self.core.set_resonances(resonances);
+    }
+
+    /// Get reference to current resonances
+    pub fn resonances(&self) -> &[crate::synthesis::spectral::Resonance] {
+        self.core.resonances()
+    }
+
+    /// Set harmonic series resonances
+    pub fn set_harmonic_series(&mut self, fundamental: f32, num_harmonics: usize, gain: f32, q: f32) {
+        self.core.set_harmonic_series(fundamental, num_harmonics, gain, q);
+    }
+
+    /// Set wet/dry mix
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix level
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio (called by effect chain)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for SpectralResonator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralResonator")
+            .field("resonances", &self.core.resonances().len())
+            .field("mix", &self.core.mix())
+            .field("priority", &self.priority)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
+}
+
+/// Spectral panner effect - pan different frequencies to different stereo positions
+///
+/// Creates spatial effects by positioning different frequency ranges at different
+/// points in the stereo field. Perfect for game audio where you want frequency-based
+/// spatial positioning (e.g., low rumble centered, high sparkles wide).
+///
+/// **Important**: This is a block-based effect that requires buffering.
+/// It processes audio in frames for STFT analysis.
+///
+/// # Example
+/// ```
+/// # use tunes::synthesis::effects::{SpectralPanner, PanPoint};
+/// let mut panner = SpectralPanner::bass_center();
+/// ```
+#[derive(Clone)]
+pub struct SpectralPanner {
+    /// Core spectral panner engine
+    core: CoreSpectralPanner,
+
+    /// Effect priority (higher = later in chain)
+    pub priority: u8,
+
+    /// Whether this effect is enabled
+    pub enabled: bool,
+}
+
+impl SpectralPanner {
+    /// Create a new spectral panner with specified pan points
+    ///
+    /// # Arguments
+    /// * `pan_points` - List of frequency-to-pan mapping points
+    /// * `mix` - Wet/dry mix (0.0 = dry, 1.0 = wet)
+    /// * `sample_rate` - Audio sample rate in Hz
+    ///
+    /// Uses default FFT size of 2048 and hop size of 512 (75% overlap).
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::synthesis::effects::{SpectralPanner, PanPoint};
+    /// let panner = SpectralPanner::new(
+    ///     vec![PanPoint::new(100.0, 0.0), PanPoint::new(8000.0, 0.8)],
+    ///     1.0,
+    ///     44100.0
+    /// );
+    /// ```
+    pub fn new(pan_points: Vec<crate::synthesis::spectral::PanPoint>, mix: f32, sample_rate: f32) -> Self {
+        Self::with_params(2048, 512, pan_points, mix, sample_rate)
+    }
+
+    /// Create a spectral panner with custom FFT parameters
+    ///
+    /// # Arguments
+    /// * `fft_size` - FFT size (must be power of 2)
+    /// * `hop_size` - Hop size in samples
+    /// * `pan_points` - List of frequency-to-pan mapping points
+    /// * `mix` - Wet/dry mix (0.0-1.0)
+    /// * `sample_rate` - Audio sample rate in Hz
+    pub fn with_params(
+        fft_size: usize,
+        hop_size: usize,
+        pan_points: Vec<crate::synthesis::spectral::PanPoint>,
+        mix: f32,
+        sample_rate: f32,
+    ) -> Self {
+        let mut core = CoreSpectralPanner::new(fft_size, hop_size, WindowType::Hann, sample_rate);
+        core.set_pan_points(pan_points);
+        core.set_mix(mix);
+
+        Self {
+            core,
+            priority: 149, // After spectral resonator
+            enabled: true,
+        }
+    }
+
+    /// All frequencies centered (bypass)
+    pub fn center() -> Self {
+        let core = CoreSpectralPanner::center();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Bass centered, highs progressively wider
+    pub fn bass_center() -> Self {
+        let core = CoreSpectralPanner::bass_center();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Highs wide, everything else centered
+    pub fn highs_wide() -> Self {
+        let core = CoreSpectralPanner::highs_wide();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Low frequencies left, high frequencies right (sweep)
+    pub fn low_left_high_right() -> Self {
+        let core = CoreSpectralPanner::low_left_high_right();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Reverse sweep: low right, high left
+    pub fn low_right_high_left() -> Self {
+        let core = CoreSpectralPanner::low_right_high_left();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Mids wide, bass and treble centered
+    pub fn mid_wide() -> Self {
+        let core = CoreSpectralPanner::mid_wide();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Circular/spiral effect (for game audio ambience)
+    pub fn circular() -> Self {
+        let core = CoreSpectralPanner::circular();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Gentle widening for subtle spatial enhancement
+    pub fn gentle() -> Self {
+        let core = CoreSpectralPanner::gentle();
+        Self {
+            core,
+            priority: 149,
+            enabled: true,
+        }
+    }
+
+    /// Add a pan point
+    pub fn add_pan_point(&mut self, point: crate::synthesis::spectral::PanPoint) {
+        self.core.add_pan_point(point);
+    }
+
+    /// Clear all pan points
+    pub fn clear_pan_points(&mut self) {
+        self.core.clear_pan_points();
+    }
+
+    /// Set pan points from a list
+    pub fn set_pan_points(&mut self, pan_points: Vec<crate::synthesis::spectral::PanPoint>) {
+        self.core.set_pan_points(pan_points);
+    }
+
+    /// Get reference to current pan points
+    pub fn pan_points(&self) -> &[crate::synthesis::spectral::PanPoint] {
+        self.core.pan_points()
+    }
+
+    /// Set wet/dry mix
+    pub fn set_mix(&mut self, mix: f32) {
+        self.core.set_mix(mix);
+    }
+
+    /// Get current mix level
+    pub fn mix(&self) -> f32 {
+        self.core.mix()
+    }
+
+    /// Process a block of audio (called by effect chain)
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        _sample_rate: f32,
+        _time: f32,
+        _sample_count: u64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+
+        let input = buffer.to_vec();
+        self.core.process(buffer, &input);
+    }
+
+    /// Reset internal state
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+}
+
+impl std::fmt::Debug for SpectralPanner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpectralPanner")
+            .field("pan_points", &self.core.pan_points().len())
             .field("mix", &self.core.mix())
             .field("priority", &self.priority)
             .field("enabled", &self.enabled)
