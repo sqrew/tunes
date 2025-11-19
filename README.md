@@ -4,7 +4,7 @@ A standalone Rust library for music composition, synthesis, and audio generation
 Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
-> **Performance:** CPU synthesis measured at 90x realtime (uncached) and 18.6x realtime (cached complex compositions) on modern hardware. SIMD sample playback: **11-17x realtime with true concurrent playback (all samples playing simultaneously)** - can handle 550-1,100+ concurrent samples in real-world scenarios. SIMD effects: 98.8x realtime with all effects stacked. Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.1x) but scales with discrete GPU hardware.
+> **Performance:** CPU synthesis measured at 100x realtime (uncached) and 18.6x realtime (cached complex compositions) on modern hardware. SIMD sample playback: **11-17x realtime with true concurrent playback (all samples playing simultaneously)** - can handle 550-1,100+ concurrent samples in real-world scenarios. SIMD effects: 98.8x realtime with all effects stacked. Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.1x) but scales with discrete GPU hardware.
 
 ## Features
 
@@ -51,7 +51,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     music theory integration
     batteries included approach
     composition and code first environment (rust's ide integration and your choice of ide is everything here)
-    high CPU performance (90x realtime synthesis uncached, 18.6x cached on complex compositions)
+    high CPU performance (100x realtime synthesis uncached, 18.6x cached on complex compositions)
     automatic SIMD acceleration for concurrent sample playback (11-17x realtime, 550-1,100+ concurrent samples)
     automatic SIMD acceleration for effects (98.8x realtime with all effects stacked)
     multi-core parallelism (automatic via Rayon)
@@ -444,7 +444,7 @@ Tunes is designed for exceptional performance with automatic optimizations:
 ### Measured Performance (i5-6500 @ 3.2GHz, Intel HD 530)
 
 **CPU Performance (SIMD + Rayon):**
-- Uncached synthesis: 90.0x realtime (192 FM notes)
+- Uncached synthesis: 100x realtime (192 FM notes)
 - Cached complex composition: 18.6x realtime
 - SIMD concurrent sample playback: 11-17x realtime (25-100 samples playing simultaneously)
 - Conservative concurrent capacity: **550-1,100+ samples** in real-world scenarios
@@ -464,7 +464,7 @@ Tunes is designed for exceptional performance with automatic optimizations:
 ### What This Means
 
 **For a 16-bar drum pattern (192 notes, 13.6 seconds of audio):**
-- CPU renders in: **0.15 seconds** (90x realtime)
+- CPU renders in: **0.136 seconds** (100x realtime)
 
 **For game audio with true concurrent samples:**
 - SIMD handles 50-100 samples playing **simultaneously** at **11-17x realtime**
@@ -531,7 +531,7 @@ cargo bench --bench pipeline_benchmark --features gpu
 
 | Library | SIMD | Multi-core | GPU | CPU Performance |
 |---------|------|------------|-----|-----------------|
-| **Tunes** | ✅ | ✅ (Rayon) | ✅ (wgpu) | 90x realtime (uncached) |
+| **Tunes** | ✅ | ✅ (Rayon) | ✅ (wgpu) | 100x realtime (uncached) |
 | Kira | Unknown | No | No | ~10-30x (estimated) |
 | Rodio | Unknown | No | No | ~10-20x (estimated) |
 | SoLoud (C++) | ✅ | Yes | No | ~10-50x (estimated) |
@@ -548,7 +548,7 @@ Tunes is the only Rust audio library with GPU compute shader acceleration via wg
 - Generate sound variations at runtime (procedural synthesis)
 - Each variation unique
 - Zero disk space for variations
-- 90x realtime synthesis on CPU (fast enough for most games)
+- 100x realtime synthesis on CPU (fast enough for most games)
 - Can handle **550-1,100+ concurrent samples** at realtime (10-20x more than other libraries!)
 
 **Example: Procedural game audio**

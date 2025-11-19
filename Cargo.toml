@@ -164,6 +164,11 @@ harness = false
 name = "large_sample_pool_test"
 harness = false
 
+[[bench]]
+name = "library_comparison"
+harness = false
+path = "benches/library_comparison/concurrent_spatial.rs"
+
 # GPU examples require the gpu feature to be enabled
 [[example]]
 name = "gpu_export_demo"
@@ -172,3 +177,15 @@ required-features = ["gpu"]
 [[example]]
 name = "two_line_gpu"
 required-features = ["gpu"]
+
+# Development dependencies for benchmarks and tests
+[dev-dependencies]
+anyhow = "1.0"
+criterion = "0.5"
+
+# Competitor libraries for fair comparison benchmarks
+kira = "0.9"
+rodio = "0.19"
+oddio = "0.7"
+hound = "3.5"  # Already in dependencies, but also needed for dev
+glam = "0.29"  # Required by kira for Vec3

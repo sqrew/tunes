@@ -8,7 +8,7 @@ Tunes is **framework-agnostic** and integrates trivially with any Rust game engi
 
 The integration pattern is identical across all engines:
 
-1. **Add dependency:** `tunes = "0.22.0"` in `Cargo.toml`
+1. **Add dependency:** `tunes = "1.0.0"` in `Cargo.toml`
 2. **Create engine:** `AudioEngine::new()` or `AudioEngine::new_with_gpu()`
 3. **Store in game state:** Engine resource, struct field, or global
 4. **Call from game logic:** `engine.play_sample("sound.wav")`
@@ -31,7 +31,7 @@ Bevy integration uses the ECS resource system.
 ```toml
 [dependencies]
 bevy = "0.14"
-tunes = "0.22.0"
+tunes = "1.0.0"
 ```
 
 **2. Create the AudioEngine resource:**
@@ -204,15 +204,21 @@ fn setup_audio(mut commands: Commands) {
 
 ### Volume Control
 
-Use `stream_file()` if you need to control sounds after playing:
+Use `play_mixer_realtime()` if you need to control sounds after playing:
 
 ```rust
 #[derive(Resource)]
 struct MusicHandle(SoundId);
 
 fn play_music(mut commands: Commands, engine: Res<AudioEngine>) {
-    // Use stream_file() to get a SoundId for later control
-    let id = engine.stream_file("assets/audio/music.wav")
+    let mut comp = Composition::new(Tempo::new(120.0));
+    comp.instrument("bgm", &Instrument::synth_pad())
+        .notes(&[C4, E4, G4], 2.0);
+
+    let mixer = comp.into_mixer();
+
+    // Use play_mixer_realtime() to get a SoundId for later control
+    let id = engine.play_mixer_realtime(&mixer)
         .expect("Failed to play music");
 
     // Store handle for later control
@@ -227,7 +233,7 @@ fn adjust_music_volume(
 }
 ```
 
-> **💡 Tip:** `play_sample()` uses a builder pattern for fire-and-forget playback. Use `stream_file()` when you need a `SoundId` to control volume, panning, or stop the sound later.
+> **💡 Tip:** `play_sample()` is fire-and-forget. Use `play_mixer_realtime()` when you need a `SoundId` to control volume, panning, or stop the sound later.
 
 ### Stopping Sounds
 
@@ -359,7 +365,7 @@ ggez integration stores `AudioEngine` in your game state struct.
 ```toml
 [dependencies]
 ggez = "0.9"
-tunes = "0.22.0"
+tunes = "1.0.0"
 ```
 
 **Basic Integration:**
@@ -421,7 +427,7 @@ macroquad integration is the simplest - just create `AudioEngine` at the start o
 ```toml
 [dependencies]
 macroquad = "0.4"
-tunes = "0.22.0"
+tunes = "1.0.0"
 ```
 
 **Basic Integration:**
@@ -476,7 +482,7 @@ bracket-lib (formerly RLTK) integration uses the state pattern.
 ```toml
 [dependencies]
 bracket-lib = "0.8"
-tunes = "0.22.0"
+tunes = "1.0.0"
 ```
 
 **Basic Integration:**
@@ -566,20 +572,9 @@ fn main() {
 
 ---
 
+
 ## Performance Across All Engines
-
-Performance is identical across all engines:
-
-**Measured on i5-6500 @ 3.2GHz:**
-- **47x realtime** with 50 concurrent samples (SIMD acceleration)
-- **54x realtime** with multi-core parallelism (Rayon)
-- **68x realtime** for CPU synthesis baseline
-- **50x realtime** with GPU acceleration on Intel HD 530 (integrated)
-- **~100-300x realtime** with GPU acceleration on discrete GPUs (estimated)
-
 **Your choice of engine doesn't affect Tunes performance.** The audio runs on a dedicated thread with lock-free communication regardless of which engine you use.
-
----
 
 **That's it!** Tunes integrates with any Rust game engine in just a few lines. No complex setup, no audio thread management, no wrapper crates - just call `play_sample()` and go.
 

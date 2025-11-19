@@ -248,7 +248,7 @@ Reason: No GPU available
 **1. Enable the `gpu` feature in Cargo.toml:**
 ```toml
 [dependencies]
-tunes = { version = "0.16.0", features = ["gpu"] }
+tunes = { version = "1.0.0", features = ["gpu"] }
 ```
 
 **2. Ensure wgpu-compatible graphics drivers:**

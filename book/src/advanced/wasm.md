@@ -40,7 +40,7 @@ rustup target add wasm32-unknown-unknown
 
 ```toml
 [dependencies]
-tunes = { version = "0.22.0", features = ["web"] }
+tunes = { version = "1.0.0", features = ["web"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["console"] }
 console_error_panic_hook = "0.1"  # Better error messages

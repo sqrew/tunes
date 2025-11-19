@@ -66,5 +66,6 @@
 
 ---
 
+[Quick Reference](./quick_reference.md)
 [Comparisons](./comparisons.md)
 [API Reference](./api-reference.md)

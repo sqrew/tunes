@@ -1,0 +1,515 @@
+#+TITLE: Fast Filters - SIMD & GPU Learning Project
+#+AUTHOR: Learning SIMD, Inline Assembly, and GPU Compute
+#+DATE: 2025-11-19
+
+* Overview
+
+A hands-on learning project to master SIMD (Single Instruction Multiple Data), inline assembly, and GPU compute through building high-performance image and audio filters.
+
+** Goals
+- Learn ~core::arch~ SIMD intrinsics (stable Rust)
+- Write inline assembly and understand x86-64 ISA
+- Master GPU compute shaders with wgpu
+- Achieve 10-100x speedups through optimization
+- Build reusable knowledge for audio DSP work
+
+** Why Image/Audio Filtering?
+- Clear correctness (compare output to reference implementation)
+- Obvious performance gains (measurable speedup)
+- Works well for SIMD, assembly, AND GPU
+- Practical applications (can apply to Tunes later)
+- Visual/audible feedback (satisfying to see results)
+
+* Learning Path
+
+** Phase 1: Scalar Baseline [Week 1]
+*** Goals
+- Get something working
+- Establish performance baseline
+- Understand the algorithm deeply
+
+*** Tasks
+- [ ] Implement 3x3 box blur (scalar)
+- [ ] Implement Gaussian blur (scalar)
+- [ ] Add benchmarks with Criterion
+- [ ] Verify correctness with test images
+- [ ] Measure baseline performance
+
+*** Example: Box Blur
+#+BEGIN_SRC rust
+fn box_blur_3x3(image: &[f32], width: usize, height: usize) -> Vec<f32> {
+    let mut output = vec![0.0; image.len()];
+
+    for y in 1..height-1 {
+        for x in 1..width-1 {
+            let idx = y * width + x;
+
+            // Average 3x3 neighborhood
+            let sum =
+                image[idx - width - 1] + image[idx - width] + image[idx - width + 1] +
+                image[idx - 1]         + image[idx]         + image[idx + 1] +
+                image[idx + width - 1] + image[idx + width] + image[idx + width + 1];
+
+            output[idx] = sum / 9.0;
+        }
+    }
+
+    output
+}
+#+END_SRC
+
+** Phase 2: SIMD with core::arch [Week 2]
+*** Goals
+- Learn AVX2/SSE intrinsics
+- Achieve 4-8x speedup over scalar
+- Understand vectorization principles
+
+*** Tasks
+- [ ] Rewrite box blur with ~_mm256_*~ intrinsics
+- [ ] Handle edge cases (width not multiple of 8)
+- [ ] Add SIMD feature detection
+- [ ] Benchmark against scalar version
+- [ ] Study generated assembly (~cargo asm~)
+
+*** Example: SIMD Setup
+#+BEGIN_SRC rust
+#[cfg(target_arch = "x86_64")]
+fn blur_simd(image: &[f32], width: usize, height: usize) -> Vec<f32> {
+    unsafe {
+        use core::arch::x86_64::*;
+
+        let mut output = vec![0.0; image.len()];
+
+        // Process 8 pixels at once with AVX2
+        for y in 1..height-1 {
+            let mut x = 1;
+
+            // Main loop: process 8 pixels at a time
+            while x + 8 < width - 1 {
+                let idx = y * width + x;
+
+                // Load 8 pixels from each position
+                let top_left = _mm256_loadu_ps(&image[idx - width - 1]);
+                let top = _mm256_loadu_ps(&image[idx - width]);
+                // ... load all 9 positions
+
+                // Add them all
+                let sum = _mm256_add_ps(top_left, top);
+                // ... add remaining
+
+                // Divide by 9
+                let nine = _mm256_set1_ps(9.0);
+                let result = _mm256_div_ps(sum, nine);
+
+                // Store result
+                _mm256_storeu_ps(&mut output[idx], result);
+
+                x += 8;
+            }
+
+            // Handle remaining pixels with scalar code
+            // ...
+        }
+
+        output
+    }
+}
+#+END_SRC
+
+*** Key Intrinsics to Learn
+- ~_mm256_loadu_ps~ - Load unaligned floats
+- ~_mm256_storeu_ps~ - Store unaligned floats
+- ~_mm256_add_ps~ - Add 8 floats in parallel
+- ~_mm256_mul_ps~ - Multiply 8 floats in parallel
+- ~_mm256_div_ps~ - Divide 8 floats in parallel
+- ~_mm256_set1_ps~ - Broadcast scalar to vector
+
+** Phase 3: Inline Assembly [Week 3]
+*** Goals
+- Write x86-64 assembly by hand
+- Match SIMD performance with manual assembly
+- Learn to read compiler output
+
+*** Tasks
+- [ ] Study LLVM IR output from SIMD version
+- [ ] Study assembly output (~cargo asm~)
+- [ ] Rewrite critical loop in inline assembly
+- [ ] Verify correctness
+- [ ] Benchmark vs intrinsics
+
+*** Example: Inline Assembly Template
+#+BEGIN_SRC rust
+fn blur_asm(image: &[f32], width: usize, height: usize) -> Vec<f32> {
+    let mut output = vec![0.0; image.len()];
+
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        use core::arch::asm;
+
+        let src = image.as_ptr();
+        let dst = output.as_mut_ptr();
+
+        asm!(
+            // Load 8 floats into ymm0
+            "vmovups ymm0, [{src}]",
+
+            // Load 8 floats into ymm1
+            "vmovups ymm1, [{src} + 32]",
+
+            // Add them
+            "vaddps ymm0, ymm0, ymm1",
+
+            // Store result
+            "vmovups [{dst}], ymm0",
+
+            src = in(reg) src,
+            dst = in(reg) dst,
+            out("ymm0") _,
+            out("ymm1") _,
+            options(nostack),
+        );
+    }
+
+    output
+}
+#+END_SRC
+
+*** Assembly Resources
+- [[https://www.felixcloutier.com/x86/][x86-64 Instruction Reference]]
+- [[https://godbolt.org/][Compiler Explorer (Godbolt)]]
+- [[https://doc.rust-lang.org/stable/reference/inline-assembly.html][Rust Inline Assembly Docs]]
+
+** Phase 4: GPU with wgpu [Week 4]
+*** Goals
+- Learn GPU compute concepts
+- Achieve 50-100x speedup (discrete GPU)
+- Understand workgroups and shared memory
+
+*** Tasks
+- [ ] Set up wgpu compute pipeline
+- [ ] Write WGSL blur shader
+- [ ] Handle GPU memory transfers
+- [ ] Optimize with shared memory
+- [ ] Benchmark CPU vs GPU
+
+*** Example: WGSL Compute Shader
+#+BEGIN_SRC wgsl
+@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(2) var<uniform> params: Params;
+
+struct Params {
+    width: u32,
+    height: u32,
+}
+
+@compute @workgroup_size(16, 16)
+fn blur_kernel(@builtin(global_invocation_id) id: vec3<u32>) {
+    let x = id.x;
+    let y = id.y;
+
+    if (x >= params.width || y >= params.height) {
+        return;
+    }
+
+    // Skip edges
+    if (x == 0u || y == 0u || x >= params.width - 1u || y >= params.height - 1u) {
+        let idx = y * params.width + x;
+        output[idx] = input[idx];
+        return;
+    }
+
+    let idx = y * params.width + x;
+
+    // 3x3 box blur
+    var sum = 0.0;
+    for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+            let sample_idx = (y + u32(dy)) * params.width + (x + u32(dx));
+            sum += input[sample_idx];
+        }
+    }
+
+    output[idx] = sum / 9.0;
+}
+#+END_SRC
+
+*** GPU Concepts to Learn
+- Workgroups and thread blocks
+- Global vs shared memory
+- Memory coalescing
+- Synchronization barriers
+- Occupancy optimization
+
+* Repository Structure
+
+#+BEGIN_SRC
+fast-filters/
+├── Cargo.toml
+├── README.md
+├── src/
+│   ├── lib.rs              # Public API
+│   ├── scalar.rs           # Baseline scalar implementations
+│   ├── simd.rs             # core::arch SIMD (AVX2, SSE, NEON)
+│   ├── asm.rs              # Inline assembly versions
+│   └── gpu.rs              # wgpu compute shaders
+├── benches/
+│   ├── blur.rs             # Blur benchmarks
+│   ├── convolution.rs      # Convolution benchmarks
+│   └── audio_effects.rs    # Audio DSP benchmarks
+├── examples/
+│   ├── image_blur.rs       # Visual demo with images
+│   ├── audio_reverb.rs     # Audio processing demo
+│   └── benchmark_all.rs    # Run all implementations
+└── tests/
+    ├── correctness.rs      # Verify output matches reference
+    └── edge_cases.rs       # Test boundary conditions
+#+END_SRC
+
+* Dependencies
+
+** Cargo.toml
+#+BEGIN_SRC toml
+[package]
+name = "fast-filters"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# No dependencies needed for core::arch SIMD!
+
+# Optional: Image loading for examples
+image = { version = "0.24", optional = true }
+
+# Optional: GPU compute
+wgpu = { version = "0.19", optional = true }
+bytemuck = { version = "1.14", optional = true }
+pollster = { version = "0.3", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+approx = "0.5"  # For floating point comparisons in tests
+
+[features]
+default = []
+gpu = ["wgpu", "bytemuck", "pollster"]
+examples = ["image"]
+
+[[bench]]
+name = "blur"
+harness = false
+
+[[bench]]
+name = "convolution"
+harness = false
+
+[profile.bench]
+opt-level = 3
+lto = true
+codegen-units = 1
+#+END_SRC
+
+* Getting Started
+
+** Weekend Task: Build Scalar Baseline
+
+#+BEGIN_SRC bash
+# Create the project
+cargo new --lib fast-filters
+cd fast-filters
+
+# Add dependencies
+cargo add --dev criterion
+cargo add --dev approx
+
+# Create benchmark directory
+mkdir benches
+#+END_SRC
+
+** First Implementation (src/scalar.rs)
+
+#+BEGIN_SRC rust
+//! Scalar baseline implementations - intentionally simple and slow
+
+/// 3x3 box blur - averages each pixel with its 8 neighbors
+pub fn box_blur_3x3(image: &[f32], width: usize, height: usize) -> Vec<f32> {
+    let mut output = vec![0.0; image.len()];
+
+    // Skip edges (simplification for now)
+    for y in 1..height-1 {
+        for x in 1..width-1 {
+            let idx = y * width + x;
+
+            let sum =
+                image[idx - width - 1] + image[idx - width] + image[idx - width + 1] +
+                image[idx - 1]         + image[idx]         + image[idx + 1] +
+                image[idx + width - 1] + image[idx + width] + image[idx + width + 1];
+
+            output[idx] = sum / 9.0;
+        }
+    }
+
+    output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_box_blur_simple() {
+        // 5x5 image, all ones
+        let image = vec![1.0; 25];
+        let blurred = box_blur_3x3(&image, 5, 5);
+
+        // Center pixels should be 1.0 (average of 1.0s)
+        assert!((blurred[12] - 1.0).abs() < 0.001);
+    }
+}
+#+END_SRC
+
+** First Benchmark (benches/blur.rs)
+
+#+BEGIN_SRC rust
+use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use fast_filters::scalar;
+
+fn benchmark_blur(c: &mut Criterion) {
+    let mut group = c.benchmark_group("box_blur_3x3");
+
+    for size in [256, 512, 1024, 2048].iter() {
+        let image = vec![1.0f32; size * size];
+
+        group.bench_with_input(
+            BenchmarkId::new("scalar", size),
+            size,
+            |b, &size| {
+                b.iter(|| {
+                    scalar::box_blur_3x3(
+                        black_box(&image),
+                        black_box(size),
+                        black_box(size),
+                    )
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+criterion_group!(benches, benchmark_blur);
+criterion_main!(benches);
+#+END_SRC
+
+** Run Benchmarks
+
+#+BEGIN_SRC bash
+# Run benchmarks
+cargo bench
+
+# View HTML report
+open target/criterion/report/index.html
+
+# See assembly output (install cargo-asm first)
+cargo install cargo-show-asm
+cargo asm fast_filters::scalar::box_blur_3x3
+#+END_SRC
+
+* Performance Targets
+
+| Implementation | Expected Speedup | Notes                          |
+|----------------+------------------+--------------------------------|
+| Scalar         | 1x (baseline)    | Simple nested loops            |
+| SIMD (AVX2)    | 4-8x             | Process 8 floats at once       |
+| Inline ASM     | 4-8x             | Match SIMD, learn assembly     |
+| GPU (discrete) | 50-100x          | Massive parallelism            |
+| GPU (integrated)| 10-20x          | Shared memory with CPU         |
+
+* Next Steps After Baseline
+
+1. Profile the scalar version to find hotspots
+2. Implement SIMD version using ~core::arch::x86_64~
+3. Add feature detection (~is_x86_feature_detected!~)
+4. Write fallback for non-AVX2 systems
+5. Study the generated assembly
+6. Attempt inline assembly version
+7. Move to GPU compute
+
+* Resources for Learning
+
+** SIMD
+- [[https://doc.rust-lang.org/core/arch/index.html][Rust core::arch Documentation]]
+- [[https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html][Intel Intrinsics Guide]]
+- [[https://chryswoods.com/vector_c++/][SIMD Tutorial (C++ but concepts apply)]]
+
+** x86-64 Assembly
+- [[https://www.felixcloutier.com/x86/][x86-64 Instruction Reference]]
+- [[https://godbolt.org/][Compiler Explorer]]
+- [[https://doc.rust-lang.org/stable/reference/inline-assembly.html][Rust Inline Assembly]]
+- [[https://www.agner.org/optimize/][Agner Fog's Optimization Manuals]]
+
+** GPU Compute
+- [[https://wgpu.rs/][wgpu Documentation]]
+- [[https://webgpufundamentals.org/][WebGPU Fundamentals]]
+- [[https://github.com/gfx-rs/wgpu/tree/trunk/examples][wgpu Examples]]
+
+** Benchmarking
+- [[https://bheisler.github.io/criterion.rs/book/][Criterion.rs Book]]
+- [[https://easyperf.net/blog/][Performance Analysis Blog]]
+
+* Ideas for Later Expansion
+
+** More Filters
+- Gaussian blur (separable convolution)
+- Sobel edge detection
+- Median filter (more challenging!)
+- Bilateral filter
+
+** Audio DSP
+- FIR filters
+- IIR filters
+- Reverb convolution
+- FFT-based effects
+
+** Advanced Optimization
+- Cache blocking
+- Loop unrolling
+- Prefetching
+- SIMD with multiple accumulators
+
+* Notes
+
+** Why f32 instead of u8?
+- Easier to work with in SIMD (no overflow concerns)
+- Can convert to/from u8 for image I/O
+- More representative of audio processing
+
+** Why Box Blur First?
+- Simplest possible filter
+- All coefficients are equal (1/9)
+- Easy to verify correctness
+- Good learning foundation
+
+** Performance Tips
+- Always benchmark with ~--release~
+- Use ~black_box~ to prevent optimization
+- Test with realistic data sizes
+- Profile before optimizing further
+
+* TODO List
+- [ ] Create repository structure
+- [ ] Implement scalar box blur
+- [ ] Add basic tests
+- [ ] Set up Criterion benchmarks
+- [ ] Implement SIMD version (AVX2)
+- [ ] Study generated assembly
+- [ ] Write inline assembly version
+- [ ] Set up wgpu project
+- [ ] Write WGSL compute shader
+- [ ] Compare all implementations
+- [ ] Document findings
+
+---
+
+*Good luck and have fun learning!* Remember: the goal is to understand deeply, not just make things fast.
