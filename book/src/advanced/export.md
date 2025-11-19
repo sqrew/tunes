@@ -4,7 +4,7 @@ Export your compositions to standard audio and MIDI formats for use in DAWs, gam
 
 ## WAV Export
 
-Export to uncompressed WAV format - maximum compatibility and quality:
+Export to uncompressed WAV format:
 
 ```rust
 use tunes::prelude::*;
@@ -28,11 +28,11 @@ fn main() -> anyhow::Result<()> {
 - `48000` - Professional audio/video
 - `96000` - High-resolution audio
 
-**When to use WAV:**
-- Maximum compatibility
-- Real-time applications (low decode overhead)
-- When file size isn't a concern
-- Final delivery format for games
+**Characteristics:**
+- Uncompressed PCM audio
+- No decode overhead
+- Larger file sizes than compressed formats
+- Universal format support
 
 ## FLAC Export
 
@@ -57,17 +57,16 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-**Benefits:**
-- 50-60% smaller than WAV
-- Bit-perfect quality (lossless)
-- Widely supported by DAWs
-- Great for archival
+**Characteristics:**
+- Lossless compression (typically 50-60% of WAV size)
+- Bit-perfect audio reproduction
+- Decode overhead required for playback
+- Supported by most DAWs and audio software
 
-**When to use FLAC:**
-- Archiving compositions
-- Sharing online (faster uploads)
-- Professional workflows
-- When storage matters
+**Use cases:**
+- Storage-constrained environments
+- Network transfer of lossless audio
+- Archival storage
 
 ## MIDI Export
 
@@ -109,11 +108,10 @@ fn main() -> anyhow::Result<()> {
 - Synthesis parameters
 - Custom waveforms
 
-**When to use MIDI:**
-- Edit in DAW with your own instruments
-- Share compositions as editable scores
-- Use in notation software
-- Collaboration workflows
+**Use cases:**
+- DAW import for re-instrumentation
+- Notation software input
+- Collaborative editing workflows
 
 ## Exporting Sections
 
@@ -168,6 +166,55 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+## GPU-Accelerated Export
+
+Enable GPU acceleration for faster export processing on large compositions:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    // Initialize AudioEngine with GPU acceleration
+    let engine = AudioEngine::new_with_gpu()?;
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    comp.instrument("melody", &Instrument::synth_lead())
+        .notes(&[C4, E4, G4], 0.5);
+
+    let mixer = comp.into_mixer();
+
+    // Export operations will use GPU when available
+    engine.export_wav(&mixer, "output.wav", 44100)?;
+    engine.export_flac(&mixer, "output.flac", 48000)?;
+
+    Ok(())
+}
+```
+
+**Performance characteristics:**
+
+GPU acceleration offloads audio rendering computations to the graphics processor. This provides performance improvements through:
+
+- Parallel processing of multiple audio tracks simultaneously
+- SIMD operations for sample-level computations (mixing, effects)
+- Reduced CPU utilization during export
+- Faster processing of effects chains (reverb, delay, filters)
+
+**When GPU acceleration provides benefit:**
+
+- Compositions with 8+ concurrent tracks
+- Heavy use of real-time effects (reverb, convolution)
+- High sample rates (96kHz, 192kHz)
+- Batch export operations (stems, multiple sections)
+- Long-duration compositions (>3 minutes)
+
+**Limitations:**
+
+- Requires compatible GPU (OpenCL or CUDA support)
+- Falls back to CPU if GPU is unavailable or initialization fails
+- Initial overhead (~50-100ms) for GPU context setup
+- May not improve performance on simple compositions (<4 tracks, minimal effects)
+
 ## Stems Export
 
 Export individual tracks as separate files for mixing:
@@ -221,9 +268,8 @@ engine.export_wav(&mixer, "file.wav", 44100)?;
 engine.export_flac(&mixer, "file.flac", 48000)?;
 ```
 
-**Recommended workflow:**
-1. Create composition during development
-2. Export to WAV for testing
-3. Export to MIDI for editing in DAW
-4. Export stems for professional mixing
-5. Export to FLAC for archival
+**Common workflow patterns:**
+1. Iterative development with WAV exports for verification
+2. MIDI export for DAW-based editing
+3. Stems export for multi-track mixing
+4. FLAC export for archival storage

@@ -154,6 +154,83 @@ comp.track("phi_drums")
 
 **Musical use:** Never quite repeats, sounds organic and natural.
 
+### Shepard Tone Rhythm
+
+Creates the illusion of an infinitely rising or falling rhythm.
+
+```rust
+let shepard = sequences::shepard_tone::generate(16, 4);
+// Returns rhythm pattern with perceived ascending/descending quality
+
+comp.track("shepard_drums")
+    .drum_grid(16, 0.125)
+    .kick(&shepard);
+```
+
+**Musical use:** Hypnotic, gradually intensifying rhythmic patterns.
+
+### Circle Map
+
+Uses the circle map equation to generate quasi-periodic rhythms based on rotation numbers.
+
+```rust
+// Generate circle map sequence
+let circle = sequences::circle_map::generate(0.5, 0.2, 32);
+
+// Convert to hit indices
+let hits = sequences::circle_map_to_hits(&circle, 16);
+
+// Or create hocket pattern (complementary rhythms)
+let (rhythm_a, rhythm_b) = sequences::circle_map_hocket(&circle, 16);
+
+comp.track("circle_drums")
+    .drum_grid(16, 0.125)
+    .kick(&hits);
+```
+
+**Musical use:** Complex rhythmic patterns that hover between periodic and chaotic.
+
+### Additive Meter
+
+Traditional rhythms based on additive groupings (like 2+2+3 or 3+3+2).
+
+```rust
+// Create custom additive meter: groups of [2, 2, 3]
+let meter = sequences::additive_meter::generate(vec![2, 2, 3]);
+
+// Traditional Bulgarian rhythms:
+let rachenitsa = sequences::rachenitsa();        // 2+2+3 (7/8)
+let kopanitsa = sequences::kopanitsa();          // 2+2+2+3 (9/8)
+let kalamatianos = sequences::kalamatianos();    // 3+2+2 (7/8)
+let aksak = sequences::aksak_9_8();              // 2+2+2+3 (9/8)
+
+comp.track("folk_drums")
+    .drum_grid(7, 0.125)
+    .kick(&rachenitsa);
+```
+
+**Musical use:** Folk rhythms from Balkans, Turkey, and other traditions.
+
+### Phase Shifting
+
+Steve Reich-style phasing where rhythms gradually shift out of sync.
+
+```rust
+// Create base pattern
+let base_pattern = sequences::euclidean::generate(5, 12);
+
+// Shift by 1 step
+let shifted = sequences::phase_shift_by(&base_pattern, 1, 12);
+
+// Or use timed phase shifting (for gradual phasing effect)
+let phase_states = sequences::phase_shift_timed(&base_pattern, 12, 8);
+
+// Classic "Clapping Music" pattern
+let (a, b) = sequences::clapping_music();
+```
+
+**Musical use:** Minimalist techniques, creating complex patterns from simple material.
+
 ---
 
 ## Generative Algorithms
@@ -226,23 +303,80 @@ for (gen_idx, generation) in rule30.iter().take(4).enumerate() {
 
 ```rust
 // Thue-Morse: Binary sequence avoiding repetition
-let thue_morse = sequences::thue_morse(32);  // [0,1,1,0,1,0,0,1,...]
+let thue_morse = sequences::thue_morse::generate(32);  // [0,1,1,0,1,0,0,1,...]
 
 // Recamán: Back-and-forth spiraling
-let recaman = sequences::recaman(24);
+let recaman = sequences::recaman::generate(24);
 
 // Van der Corput: Quasi-random low-discrepancy
-let quasi = sequences::van_der_corput(32, 2);
+let quasi = sequences::van_der_corput::generate(32, 2);
 
 // Tent Map: Simple chaotic map
-let tent = sequences::tent_map(0.9, 0.5, 32);
+let tent = sequences::tent_map::generate(0.9, 0.5, 32);
 
 // Sine Map: Musical chaotic sequences
-let sine = sequences::sine_map(0.9, 0.5, 32);
+let sine = sequences::sine_map::generate(0.9, 0.5, 32);
 
 // Hénon Map: 2D chaotic attractor
+let henon = sequences::henon_map::generate(1.4, 0.3, 0.1, 0.1, 100);
 let (x_vals, y_vals) = sequences::henon_x(1.4, 0.3, 0.1, 0.1, 100);
+
+// Baker's Map: Fractal mixing and distribution
+let bakers = sequences::bakers_map::generate(0.3, 0.7, 100);
+let (x_vals, y_vals) = sequences::bakers_x(0.3, 0.7, 100);
+
+// Rössler Attractor: 3D chaotic system with spiral structure
+let rossler = sequences::rossler_attractor::generate(0.2, 0.2, 5.7, 0.1, 0.1, 0.1, 1000);
+let spiral = sequences::rossler_spiral(0.2, 0.2, 5.7, 0.1, 0.1, 0.1, 1000);
+
+// Clifford Attractor: Strange attractor with flowing patterns
+let clifford = sequences::clifford_attractor::generate(-1.4, 1.6, 1.0, -0.7, 0.0, 0.0, 1000);
+let (x_vals, y_vals) = sequences::clifford_x(-1.4, 1.6, 1.0, -0.7, 0.0, 0.0, 1000);
+let flow = sequences::clifford_flow(-1.4, 1.6, 1.0, -0.7, 0.0, 0.0, 1000);
+
+// Ikeda Map: Complex dynamics from laser physics
+let ikeda = sequences::ikeda_map::generate(0.9, 0.4, 6.0, 0.85, 0.85, 1000);
+let (x_vals, y_vals) = sequences::ikeda_x(0.9, 0.4, 6.0, 0.85, 0.85, 1000);
+let spiral = sequences::ikeda_spiral(0.9, 0.4, 6.0, 0.85, 0.85, 1000);
 ```
+
+### L-Systems
+
+Generate sequences using Lindenmayer systems (fractal growth patterns).
+
+```rust
+// Define an L-system with rewriting rules
+let axiom = "A".to_string();
+let rules = vec![
+    ('A', "AB".to_string()),
+    ('B', "A".to_string()),
+];
+
+// Generate iterations
+let lsystem = sequences::lsystem::generate(axiom, rules, 6);
+
+// Convert L-system string to numeric sequence
+let sequence = sequences::lsystem_to_sequence(&lsystem);
+```
+
+**Musical use:** Fractal melodies and self-similar structures.
+
+### Markov Chains
+
+Generate probabilistic sequences learned from existing patterns.
+
+```rust
+// Learn from example melody
+let training_data = vec![60, 62, 64, 62, 60, 64, 65, 67];
+
+// Build transition probabilities
+let transitions = sequences::build_markov_transitions(&training_data, 1);
+
+// Generate new sequence following learned patterns
+let markov_melody = sequences::markov::generate(transitions, 60, 16);
+```
+
+**Musical use:** Style imitation, probabilistic variations, AI-assisted composition.
 
 ---
 
@@ -493,8 +627,17 @@ Don't just stick to one type - combine mathematical, rhythmic, and generative se
 - `euclidean(pulses, steps)` - Optimal beat distribution
 - `euclidean_pattern(pulses, steps)` - Full binary pattern
 - `golden_ratio_rhythm(steps)` - Non-periodic rhythm
+- `shepard_tone(steps, layers)` - Infinitely rising/falling rhythm illusion
+- `circle_map(omega, k, n)` - Quasi-periodic rhythms
+- `circle_map_to_hits(seq, steps)`, `circle_map_hocket(seq, steps)` - Convert circle map to rhythms
 - `polyrhythm(a, b, cycles)` - Layered rhythms
-- `son_clave_3_2()`, `rumba_clave_3_2()`, `bossa_clave()` - Traditional claves
+- `polyrhythm_cycle(a, b)`, `polyrhythm_timings(a, b, cycles)` - Polyrhythm helpers
+- `son_clave_3_2()`, `son_clave_2_3()`, `rumba_clave_3_2()`, `rumba_clave_2_3()`, `bossa_clave()` - Traditional claves
+- `additive_meter(groups)` - Custom additive groupings
+- `rachenitsa()`, `kopanitsa()`, `kalamatianos()`, `aksak_9_8()` - Traditional folk rhythms
+- `phase_shift_by(pattern, shift, steps)` - Shift rhythm by n steps
+- `phase_shift_timed(pattern, steps, phases)` - Gradual phase shifting
+- `phase_relationship(a, b)`, `clapping_music()` - Phase relationship helpers
 
 ### Generative
 - `logistic_map(r, initial, n)` - Chaos theory
@@ -503,13 +646,30 @@ Don't just stick to one type - combine mathematical, rhythmic, and generative se
 - `tent_map(r, initial, n)` - Simple chaotic map
 - `sine_map(r, initial, n)` - Musical chaotic sequences
 - `henon_map(a, b, x0, y0, n)` - 2D attractor
+- `henon_x(a, b, x0, y0, n)`, `henon_y(a, b, x0, y0, n)` - Extract x/y coordinates
+- `bakers_map(x0, y0, n)` - Fractal mixing and distribution
+- `bakers_x(x0, y0, n)`, `bakers_y(x0, y0, n)` - Extract x/y coordinates
 - `thue_morse(n)` - Fair binary sequences
 - `recaman(n)` - Spiraling back-and-forth
 - `van_der_corput(n, base)` - Quasi-random
 - `cellular_automaton(rule, gens, width, initial)` - Rule-based evolution
+- `lsystem(axiom, rules, iterations)` - L-system fractal growth
+- `lsystem_to_sequence(lsystem)` - Convert L-system to numbers
+- `markov(transitions, start, n)` - Probabilistic sequences
+- `build_markov_transitions(data, order)` - Learn from data
 - `cantor_set(depth, steps)` - Fractal rhythms
-- `lorenz_butterfly(n)` - 3D chaotic attractor
+- `lorenz_attractor(sigma, rho, beta, x0, y0, z0, n)` - 3D chaotic attractor
+- `lorenz_butterfly(n)` - Lorenz attractor with default parameters
 - `perlin_noise(seed, freq, octaves, persistence, n)` - Smooth noise
+- `perlin_noise_bipolar(seed, freq, octaves, persistence, n)` - Perlin in [-1, 1] range
+- `rossler_attractor(a, b, c, x0, y0, z0, n)` - 3D spiral attractor
+- `rossler_spiral(a, b, c, x0, y0, z0, n)` - Rössler with default view
+- `clifford_attractor(a, b, c, d, x0, y0, n)` - Strange attractor
+- `clifford_x(a, b, c, d, x0, y0, n)`, `clifford_y(...)` - Extract coordinates
+- `clifford_flow(a, b, c, d, x0, y0, n)` - Flowing pattern variant
+- `ikeda_map(u, rho, c, x0, y0, n)` - Complex dynamics from laser physics
+- `ikeda_x(u, rho, c, x0, y0, n)`, `ikeda_y(...)` - Extract coordinates
+- `ikeda_spiral(u, rho, c, x0, y0, n)` - Spiral pattern variant
 
 ### Musical Transformations
 - `normalize(seq, min, max)` - Map to range
@@ -520,9 +680,11 @@ Don't just stick to one type - combine mathematical, rhythmic, and generative se
 - `undertone_series(fundamental, n)` - Mirror of harmonics
 - `golden_ratio(n)` - Powers of φ
 - `golden_sections(value, divisions)` - Divide by φ recursively
-- `circle_of_fifths(root, n)` - Key relationships
+- `circle_of_fifths(root, n)` - Key relationships (ascending fifths)
+- `circle_of_fourths(root, n)` - Key relationships (ascending fourths)
 - `pythagorean_tuning(root, n)` - Pure fifth tuning
-- `just_intonation_major(root)` - Pure harmonic ratios
+- `just_intonation_major(root)` - Pure harmonic ratios for major scale
+- `just_intonation_minor(root)` - Pure harmonic ratios for minor scale
 
 ---
 

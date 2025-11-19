@@ -535,7 +535,7 @@ comp.track("outro")
 
 ```rust
 let mixer = comp.into_mixer();
-mixer.export_midi("song.mid", Tempo::new(120.0))?;
+mixer.export_midi("song.mid")?;
 ```
 
 - MIDI files include tempo change events

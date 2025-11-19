@@ -269,8 +269,7 @@ fn create_footstep() -> Mixer {
 fn create_jump_sound() -> Mixer {
     let mut comp = Composition::new(Tempo::new(120.0));
     comp.track("jump")
-        .note(&[200.0], 0.1)
-        .fade_to(400.0, 0.1);
+        .notes(&[200.0, 300.0, 400.0], 0.033);  // Rising pitch sweep
     comp.into_mixer()
 }
 
