@@ -54,6 +54,7 @@ lazy_static = "1.4"
 midly = "0.5"
 notify = "6.1"
 crossbeam = "0.8"
+arc-swap = "1.7"    # Lock-free atomic Arc swapping for audio callback
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 wide = "0.7"        # SIMD vectorization for DSP performance
 rayon = "1.10"      # Data parallelism for multi-core performance
