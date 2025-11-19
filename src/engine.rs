@@ -6,6 +6,7 @@ use crate::synthesis::spatial::{
 use crate::track::Mixer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam::channel::{Receiver, Sender, unbounded};
+use crossbeam::epoch::{self, Atomic, Owned};  // Lock-free epoch-based reclamation
 use ringbuf::{
     HeapRb,
     traits::{Consumer, Observer, Producer, Split},
@@ -225,11 +226,12 @@ impl Drop for StreamingSound {
 /// Holds pre-allocated buffers to avoid allocations in the real-time audio thread.
 /// All buffers are reused across callback invocations.
 struct AudioCallbackState {
-    /// Active sounds being mixed
-    active_sounds: HashMap<SoundId, ActiveSound>,
+    /// Active sounds being mixed (sparse vector indexed by SoundId for cache-friendly iteration)
+    /// Uses Vec<Option<>> instead of HashMap for sequential memory access (better cache locality)
+    active_sounds: Vec<Option<ActiveSound>>,
     /// Streaming sounds (separate from pre-rendered sounds, native only)
     #[cfg(not(target_arch = "wasm32"))]
-    streaming_sounds: HashMap<SoundId, StreamingSound>,
+    streaming_sounds: Vec<Option<StreamingSound>>,
     /// Pre-allocated temp buffer for mixing (stereo interleaved)
     /// Size is determined by the maximum buffer size we expect
     temp_buffer: Vec<f32>,
@@ -243,9 +245,10 @@ struct AudioCallbackState {
 impl AudioCallbackState {
     fn new() -> Self {
         Self {
-            active_sounds: HashMap::new(),
+            // Pre-allocate space for 128 concurrent sounds (typical max for games)
+            active_sounds: Vec::with_capacity(128),
             #[cfg(not(target_arch = "wasm32"))]
-            streaming_sounds: HashMap::new(),
+            streaming_sounds: Vec::with_capacity(16),
             // Pre-allocate for a reasonably large buffer (2048 frames stereo = 4096 samples)
             temp_buffer: vec![0.0; 4096],
             finished_sounds: Vec::with_capacity(16),
@@ -448,9 +451,9 @@ pub struct AudioEngine {
     next_id: Arc<AtomicU64>,
     callback_state: Arc<Mutex<AudioCallbackState>>,
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
-    listener_config: Arc<Mutex<ListenerConfig>>,
+    listener_config: Arc<Atomic<ListenerConfig>>,  // Lock-free reads via epoch-based reclamation
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
-    spatial_params: Arc<Mutex<SpatialParams>>,
+    spatial_params: Arc<Atomic<SpatialParams>>,    // Lock-free reads via epoch-based reclamation
     sample_rate: f32,
     sample_cache: Arc<Mutex<HashMap<String, crate::synthesis::Sample>>>, // Automatic sample caching
     _stream: cpal::Stream, // Persistent stream, kept alive
@@ -542,11 +545,11 @@ impl AudioEngine {
             Arc::new(Mutex::new(AudioCallbackState::new()));
         let callback_state_for_stream = Arc::clone(&callback_state);
 
-        // Shared state for spatial audio
-        let listener_config = Arc::new(Mutex::new(ListenerConfig::new()));
+        // Lock-free shared state for spatial audio (epoch-based reclamation)
+        let listener_config = Arc::new(Atomic::new(ListenerConfig::new()));
         let listener_config_for_stream = Arc::clone(&listener_config);
 
-        let spatial_params = Arc::new(Mutex::new(SpatialParams::default()));
+        let spatial_params = Arc::new(Atomic::new(SpatialParams::default()));
         let spatial_params_for_stream = Arc::clone(&spatial_params);
 
         // Build stream configuration
@@ -561,10 +564,17 @@ impl AudioEngine {
             .build_output_stream(
                 &stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    // Lock once for entire audio callback
+                    // Lock only AudioCallbackState (one lock instead of three!)
                     let mut state = callback_state_for_stream.lock().unwrap();
-                    let mut listener = listener_config_for_stream.lock().unwrap();
-                    let mut spatial = spatial_params_for_stream.lock().unwrap();
+
+                    // Lock-free reads of spatial audio config via epoch-based reclamation
+                    let guard = epoch::pin();
+                    let listener = unsafe {
+                        listener_config_for_stream.load(Ordering::Acquire, &guard).as_ref().unwrap()
+                    };
+                    let spatial = unsafe {
+                        spatial_params_for_stream.load(Ordering::Acquire, &guard).as_ref().unwrap()
+                    };
 
                     // Destructure state FIRST to get separate mutable references (satisfies borrow checker)
                     let AudioCallbackState {
@@ -584,8 +594,8 @@ impl AudioEngine {
                             active_sounds,
                             #[cfg(not(target_arch = "wasm32"))]
                             streaming_sounds,
-                            &mut listener,
-                            &mut spatial,
+                            &listener_config_for_stream,
+                            &spatial_params_for_stream,
                             sample_rate,
                         );
                     }
@@ -596,8 +606,8 @@ impl AudioEngine {
                         active_sounds,
                         temp_buffer,
                         finished_sounds,
-                        &listener,
-                        &spatial,
+                        listener,
+                        spatial,
                         sample_rate,
                         channels,
                     );
@@ -606,7 +616,7 @@ impl AudioEngine {
                     #[cfg(not(target_arch = "wasm32"))]
                     Self::mix_streaming_sounds(data, streaming_sounds, finished_streams, channels);
 
-                    // Unlock at end of scope
+                    // Guard dropped here - safe to reclaim old epochs
                 },
                 err_fn,
                 None,
@@ -686,134 +696,158 @@ impl AudioEngine {
     /// Handle commands from the main thread (called from audio thread)
     fn handle_command(
         cmd: AudioCommand,
-        active_sounds: &mut HashMap<SoundId, ActiveSound>,
-        #[cfg(not(target_arch = "wasm32"))] streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
-        listener: &mut ListenerConfig,
-        spatial: &mut SpatialParams,
+        active_sounds: &mut Vec<Option<ActiveSound>>,
+        #[cfg(not(target_arch = "wasm32"))] streaming_sounds: &mut Vec<Option<StreamingSound>>,
+        listener_atomic: &Arc<Atomic<ListenerConfig>>,
+        spatial_atomic: &Arc<Atomic<SpatialParams>>,
         sample_rate: f32,
     ) {
         match cmd {
             AudioCommand::Play { id, mixer, looping } => {
-                active_sounds.insert(
-                    id,
-                    ActiveSound {
-                        mixer: *mixer,
-                        sample_clock: 0.0,
-                        elapsed_time: 0.0,
-                        volume: 1.0,
-                        pan: 0.0,
-                        playback_rate: 1.0,
-                        paused: false,
-                        looping,
-                        spatial_position: None,
-                        spatial_cone: None,
-                        occlusion: 0.0,
-                        // Initialize spatial cache (will be calculated on first frame)
-                        cached_spatial_volume: 1.0,
-                        cached_spatial_pan: 0.0,
-                        cached_spatial_pitch: 1.0,
-                        spatial_dirty: true, // Force calculation on first frame
-                        fade_start_time: None,
-                        fade_duration: 0.0,
-                        fade_start_volume: 1.0,
-                        fade_target_volume: 1.0,
-                        pan_tween_start_time: None,
-                        pan_tween_duration: 0.0,
-                        pan_tween_start_value: 0.0,
-                        pan_tween_target_value: 0.0,
-                        rate_tween_start_time: None,
-                        rate_tween_duration: 0.0,
-                        rate_tween_start_value: 1.0,
-                        rate_tween_target_value: 1.0,
-                    },
-                );
+                // Ensure Vec has enough capacity (sparse vector indexed by SoundId)
+                let index = id as usize;
+                while active_sounds.len() <= index {
+                    active_sounds.push(None);
+                }
+
+                active_sounds[index] = Some(ActiveSound {
+                    mixer: *mixer,
+                    sample_clock: 0.0,
+                    elapsed_time: 0.0,
+                    volume: 1.0,
+                    pan: 0.0,
+                    playback_rate: 1.0,
+                    paused: false,
+                    looping,
+                    spatial_position: None,
+                    spatial_cone: None,
+                    occlusion: 0.0,
+                    // Initialize spatial cache (will be calculated on first frame)
+                    cached_spatial_volume: 1.0,
+                    cached_spatial_pan: 0.0,
+                    cached_spatial_pitch: 1.0,
+                    spatial_dirty: true, // Force calculation on first frame
+                    fade_start_time: None,
+                    fade_duration: 0.0,
+                    fade_start_volume: 1.0,
+                    fade_target_volume: 1.0,
+                    pan_tween_start_time: None,
+                    pan_tween_duration: 0.0,
+                    pan_tween_start_value: 0.0,
+                    pan_tween_target_value: 0.0,
+                    rate_tween_start_time: None,
+                    rate_tween_duration: 0.0,
+                    rate_tween_start_value: 1.0,
+                    rate_tween_target_value: 1.0,
+                });
             }
             AudioCommand::Stop { id } => {
-                active_sounds.remove(&id);
+                let index = id as usize;
+                if index < active_sounds.len() {
+                    active_sounds[index] = None;
+                }
             }
             AudioCommand::SetVolume { id, volume } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.volume = volume.clamp(0.0, 1.0);
                 }
             }
             AudioCommand::SetPan { id, pan } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.pan = pan.clamp(-1.0, 1.0);
                 }
             }
             AudioCommand::SetPlaybackRate { id, rate } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     // Clamp to reasonable range (0.1x to 4.0x speed)
                     sound.playback_rate = rate.clamp(0.1, 4.0);
                 }
             }
             AudioCommand::Pause { id } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.paused = true;
                 }
             }
             AudioCommand::Resume { id } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.paused = false;
                 }
             }
             AudioCommand::SetSoundPosition { id, position } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.spatial_position = Some(position);
                     sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::SetSoundVelocity { id, vx, vy, vz } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     if let Some(pos) = &mut sound.spatial_position {
                         pos.set_velocity(vx, vy, vz);
                     }
                 }
             }
             AudioCommand::SetListenerPosition { x, y, z } => {
-                listener.position.x = x;
-                listener.position.y = y;
-                listener.position.z = z;
+                // Lock-free update: load, clone, modify, store
+                let guard = epoch::pin();
+                let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
+                let mut new_config = current.clone();
+                new_config.position.x = x;
+                new_config.position.y = y;
+                new_config.position.z = z;
+                listener_atomic.store(Owned::new(new_config), Ordering::Release);
             }
             AudioCommand::SetListenerVelocity { vx, vy, vz } => {
-                listener.velocity.x = vx;
-                listener.velocity.y = vy;
-                listener.velocity.z = vz;
+                let guard = epoch::pin();
+                let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
+                let mut new_config = current.clone();
+                new_config.velocity.x = vx;
+                new_config.velocity.y = vy;
+                new_config.velocity.z = vz;
+                listener_atomic.store(Owned::new(new_config), Ordering::Release);
             }
             AudioCommand::SetListenerForward { x, y, z } => {
                 use crate::synthesis::spatial::Vec3;
-                listener.forward = Vec3::new(x, y, z).normalize();
+                let guard = epoch::pin();
+                let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
+                let mut new_config = current.clone();
+                new_config.forward = Vec3::new(x, y, z).normalize();
+                listener_atomic.store(Owned::new(new_config), Ordering::Release);
             }
             AudioCommand::SetSpatialParams { params } => {
-                *spatial = params;
+                // Direct replacement - just store the new params
+                spatial_atomic.store(Owned::new(params), Ordering::Release);
             }
             AudioCommand::SetSoundCone { id, cone } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.spatial_cone = cone;
                     sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::SetSoundOcclusion { id, occlusion } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.occlusion = occlusion.clamp(0.0, 1.0);
                     sound.spatial_dirty = true; // Mark for recalculation
                 }
             }
             AudioCommand::PauseAll => {
-                for sound in active_sounds.values_mut() {
-                    sound.paused = true;
+                for sound_opt in active_sounds.iter_mut() {
+                    if let Some(sound) = sound_opt {
+                        sound.paused = true;
+                    }
                 }
             }
             AudioCommand::ResumeAll => {
-                for sound in active_sounds.values_mut() {
-                    sound.paused = false;
+                for sound_opt in active_sounds.iter_mut() {
+                    if let Some(sound) = sound_opt {
+                        sound.paused = false;
+                    }
                 }
             }
             AudioCommand::StopAll => {
-                active_sounds.clear();
+                active_sounds.iter_mut().for_each(|slot| *slot = None); // Clear all slots
             }
             AudioCommand::FadeOut { id, duration } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.fade_start_time = Some(sound.elapsed_time);
                     sound.fade_duration = duration;
                     sound.fade_start_volume = sound.volume;
@@ -825,7 +859,7 @@ impl AudioEngine {
                 duration,
                 target_volume,
             } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.fade_start_time = Some(sound.elapsed_time);
                     sound.fade_duration = duration;
                     sound.fade_start_volume = sound.volume;
@@ -837,7 +871,7 @@ impl AudioEngine {
                 target_pan,
                 duration,
             } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.pan_tween_start_time = Some(sound.elapsed_time);
                     sound.pan_tween_duration = duration;
                     sound.pan_tween_start_value = sound.pan;
@@ -849,7 +883,7 @@ impl AudioEngine {
                 target_rate,
                 duration,
             } => {
-                if let Some(sound) = active_sounds.get_mut(&id) {
+                let index = id as usize; if let Some(Some(sound)) = active_sounds.get_mut(index) {
                     sound.rate_tween_start_time = Some(sound.elapsed_time);
                     sound.rate_tween_duration = duration;
                     sound.rate_tween_start_value = sound.playback_rate;
@@ -887,46 +921,55 @@ impl AudioEngine {
                     );
                 });
 
-                // Add to streaming sounds
-                streaming_sounds.insert(
-                    id,
-                    StreamingSound {
-                        ring_consumer,
-                        decoder_thread: Some(decoder_thread),
-                        stop_signal,
-                        pause_signal,
-                        volume,
-                        pan,
-                        looping,
-                    },
-                );
+                // Add to streaming sounds (sparse vector)
+                let index = id as usize;
+                while streaming_sounds.len() <= index {
+                    streaming_sounds.push(None);
+                }
+
+                streaming_sounds[index] = Some(StreamingSound {
+                    ring_consumer,
+                    decoder_thread: Some(decoder_thread),
+                    stop_signal,
+                    pause_signal,
+                    volume,
+                    pan,
+                    looping,
+                });
             }
             #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::StopStream { id } => {
-                // Removing from HashMap will trigger Drop, which signals thread to stop
-                streaming_sounds.remove(&id);
+                // Setting to None will trigger Drop, which signals thread to stop
+                let index = id as usize;
+                if index < streaming_sounds.len() {
+                    streaming_sounds[index] = None;
+                }
             }
             #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::PauseStream { id } => {
-                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                let index = id as usize;
+                if let Some(Some(stream)) = streaming_sounds.get_mut(index) {
                     stream.pause_signal.store(true, Ordering::Relaxed);
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::ResumeStream { id } => {
-                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                let index = id as usize;
+                if let Some(Some(stream)) = streaming_sounds.get_mut(index) {
                     stream.pause_signal.store(false, Ordering::Relaxed);
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::SetStreamVolume { id, volume } => {
-                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                let index = id as usize;
+                if let Some(Some(stream)) = streaming_sounds.get_mut(index) {
                     stream.volume = volume.clamp(0.0, 1.0);
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             AudioCommand::SetStreamPan { id, pan } => {
-                if let Some(stream) = streaming_sounds.get_mut(&id) {
+                let index = id as usize;
+                if let Some(Some(stream)) = streaming_sounds.get_mut(index) {
                     stream.pan = pan.clamp(-1.0, 1.0);
                 }
             }
@@ -939,7 +982,7 @@ impl AudioEngine {
     #[allow(clippy::too_many_arguments)]
     fn mix_sounds(
         output: &mut [f32],
-        active_sounds: &mut HashMap<SoundId, ActiveSound>,
+        active_sounds: &mut Vec<Option<ActiveSound>>,
         temp_buffer: &mut Vec<f32>,
         finished_sounds: &mut Vec<SoundId>,
         listener: &ListenerConfig,
@@ -960,8 +1003,13 @@ impl AudioEngine {
             temp_buffer.resize(required_size, 0.0);
         }
 
-        // Mix each active sound using block processing
-        for (id, sound) in active_sounds.iter_mut() {
+        // Mix each active sound using block processing (cache-friendly sequential iteration)
+        for (idx, sound_opt) in active_sounds.iter_mut().enumerate() {
+            let sound = match sound_opt {
+                Some(s) => s,
+                None => continue, // Skip empty slots
+            };
+
             if sound.paused {
                 continue;
             }
@@ -977,7 +1025,7 @@ impl AudioEngine {
                     sound.elapsed_time = 0.0;
                     sound.sample_clock = 0.0;
                 } else {
-                    finished_sounds.push(*id);
+                    finished_sounds.push(idx as u64);
                     continue;
                 }
             }
@@ -1098,72 +1146,43 @@ impl AudioEngine {
                         let left_pan_vec = f32x8::splat(left_pan);
                         let right_pan_vec = f32x8::splat(right_pan);
 
+                        // Pre-allocate temp arrays for SIMD operations (stack allocated, fast)
+                        let mut input_left = [0.0f32; 8];
+                        let mut input_right = [0.0f32; 8];
+                        let mut output_left = [0.0f32; 8];
+                        let mut output_right = [0.0f32; 8];
+
                         for chunk_idx in 0..chunks_of_16 {
                             let frame_start = chunk_idx * 8;
                             let temp_start = frame_start * 2;
                             let out_start = frame_start * 2;
 
-                            // Load 8 left samples
-                            let left = f32x8::new([
-                                temp_buffer[temp_start],
-                                temp_buffer[temp_start + 2],
-                                temp_buffer[temp_start + 4],
-                                temp_buffer[temp_start + 6],
-                                temp_buffer[temp_start + 8],
-                                temp_buffer[temp_start + 10],
-                                temp_buffer[temp_start + 12],
-                                temp_buffer[temp_start + 14],
-                            ]);
+                            // Deinterleave input using SIMD (dispatches to AVX2/SSE/scalar)
+                            SIMD.deinterleave_stereo(&temp_buffer[temp_start..], &mut input_left, &mut input_right);
 
-                            // Load 8 right samples
-                            let right = f32x8::new([
-                                temp_buffer[temp_start + 1],
-                                temp_buffer[temp_start + 3],
-                                temp_buffer[temp_start + 5],
-                                temp_buffer[temp_start + 7],
-                                temp_buffer[temp_start + 9],
-                                temp_buffer[temp_start + 11],
-                                temp_buffer[temp_start + 13],
-                                temp_buffer[temp_start + 15],
-                            ]);
+                            // Deinterleave output using SIMD
+                            SIMD.deinterleave_stereo(&output[out_start..], &mut output_left, &mut output_right);
+
+                            // Load into SIMD vectors for processing
+                            let left = f32x8::from(input_left);
+                            let right = f32x8::from(input_right);
+                            let out_left = f32x8::from(output_left);
+                            let out_right = f32x8::from(output_right);
 
                             // Apply volume and pan
                             let left_out = left * vol_vec * left_pan_vec;
                             let right_out = right * vol_vec * right_pan_vec;
 
-                            // Load current output values
-                            let out_left = f32x8::new([
-                                output[out_start],
-                                output[out_start + 2],
-                                output[out_start + 4],
-                                output[out_start + 6],
-                                output[out_start + 8],
-                                output[out_start + 10],
-                                output[out_start + 12],
-                                output[out_start + 14],
-                            ]);
-                            let out_right = f32x8::new([
-                                output[out_start + 1],
-                                output[out_start + 3],
-                                output[out_start + 5],
-                                output[out_start + 7],
-                                output[out_start + 9],
-                                output[out_start + 11],
-                                output[out_start + 13],
-                                output[out_start + 15],
-                            ]);
-
                             // Add (mix)
                             let mixed_left = out_left + left_out;
                             let mixed_right = out_right + right_out;
 
-                            // Store back (interleaved)
-                            let left_arr = mixed_left.to_array();
-                            let right_arr = mixed_right.to_array();
-                            for i in 0..8 {
-                                output[out_start + i * 2] = left_arr[i];
-                                output[out_start + i * 2 + 1] = right_arr[i];
-                            }
+                            // Store back to arrays
+                            output_left = mixed_left.to_array();
+                            output_right = mixed_right.to_array();
+
+                            // Interleave and store using SIMD (dispatches to AVX2/SSE/scalar)
+                            SIMD.interleave_stereo(&output_left, &output_right, &mut output[out_start..]);
                         }
 
                         // Handle remainder frames with scalar code
@@ -1256,9 +1275,12 @@ impl AudioEngine {
                 (sound.sample_clock + (num_frames as f32 * effective_playback_rate)) % sample_rate;
         }
 
-        // Remove finished sounds
+        // Remove finished sounds (set slots to None)
         for id in finished_sounds {
-            active_sounds.remove(id);
+            let index = *id as usize;
+            if index < active_sounds.len() {
+                active_sounds[index] = None;
+            }
         }
 
         // Clamp output to prevent distortion
@@ -1274,20 +1296,25 @@ impl AudioEngine {
     /// This is ALLOCATION-FREE and lock-free (uses lockless ring buffer).
     fn mix_streaming_sounds(
         output: &mut [f32],
-        streaming_sounds: &mut HashMap<SoundId, StreamingSound>,
+        streaming_sounds: &mut Vec<Option<StreamingSound>>,
         finished_streams: &mut Vec<SoundId>,
         channels: usize,
     ) {
         // Clear finished streams list
         finished_streams.clear();
 
-        // Mix each streaming sound
-        for (id, stream) in streaming_sounds.iter_mut() {
+        // Mix each streaming sound (cache-friendly sequential iteration)
+        for (idx, stream_opt) in streaming_sounds.iter_mut().enumerate() {
+            let stream = match stream_opt {
+                Some(s) => s,
+                None => continue, // Skip empty slots
+            };
+
             // Check if the decoder thread has finished
             if let Some(handle) = &stream.decoder_thread {
                 if handle.is_finished() {
                     // Thread finished - mark for removal
-                    finished_streams.push(*id);
+                    finished_streams.push(idx as u64);
                     continue;
                 }
             }
@@ -1327,9 +1354,12 @@ impl AudioEngine {
             }
         }
 
-        // Remove finished streams
+        // Remove finished streams (set slots to None)
         for id in finished_streams.iter() {
-            streaming_sounds.remove(id);
+            let index = *id as usize;
+            if index < streaming_sounds.len() {
+                streaming_sounds[index] = None;
+            }
         }
     }
 
@@ -1949,11 +1979,9 @@ impl AudioEngine {
 
     /// Check if a sound is still playing
     pub fn is_playing(&self, id: SoundId) -> bool {
-        self.callback_state
-            .lock()
-            .unwrap()
-            .active_sounds
-            .contains_key(&id)
+        let state = self.callback_state.lock().unwrap();
+        let index = id as usize;
+        index < state.active_sounds.len() && state.active_sounds[index].is_some()
     }
 
     // ============================================================================
