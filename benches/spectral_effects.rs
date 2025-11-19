@@ -1,6 +1,9 @@
 use std::time::Instant;
 use tunes::prelude::*;
-use tunes::synthesis::effects::{FilterType, SpectralFilter, SpectralShift, SpectralExciter, SpectralInvert, SpectralWiden, SpectralMorph, SpectralDynamics, SpectralScramble};
+use tunes::synthesis::effects::{
+    FilterType, SpectralDynamics, SpectralExciter, SpectralFilter, SpectralInvert, SpectralMorph,
+    SpectralScramble, SpectralShift, SpectralWiden,
+};
 
 /// Benchmark spectral (frequency-domain) effects
 ///
@@ -76,9 +79,13 @@ fn main() -> anyhow::Result<()> {
                 "SpectralCompressor" => track.spectral_compressor(SpectralCompressor::glue()),
                 "SpectralRobotize" => track.spectral_robotize(SpectralRobotize::robot()),
                 "SpectralDelay" => track.spectral_delay(SpectralDelay::shimmer()),
-                "SpectralFilter" => track.spectral_filter(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0),
-                "SpectralShift" => track.spectral_shift(SpectralShift::up()),
-                "SpectralExciter" => track.spectral_exciter(SpectralExciter::warm()),
+                "SpectralFilter" => {
+                    let filter =
+                        SpectralFilter::new(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0);
+                    track.spectral_filter(filter)
+                }
+                "SpectralShift" => track.spectral_shift(SpectralShift::metallic()),
+                "SpectralExciter" => track.spectral_exciter(SpectralExciter::moderate()),
                 "SpectralDynamics" => track.spectral_dynamics(SpectralDynamics::moderate()),
                 "SpectralInvert" => track.spectral_invert(SpectralInvert::full()),
                 "SpectralWiden" => track.spectral_widen(SpectralWiden::wide()),
@@ -137,9 +144,11 @@ fn main() -> anyhow::Result<()> {
             44100.0,
         );
 
+        let filter = SpectralFilter::new(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0);
+
         comp.instrument("filtered", &Instrument::synth_lead())
             .at(0.0)
-            .spectral_filter(FilterType::LowPass, 1000.0, 1.0, 1.0, 44100.0)
+            .spectral_filter(filter)
             .notes(&[440.0, 554.0, 659.0], 1.0);
 
         let mut mixer = comp.into_mixer();
@@ -172,11 +181,13 @@ fn main() -> anyhow::Result<()> {
 
     let mut comp = Composition::new(Tempo::new(120.0));
 
+    let filter = SpectralFilter::new(FilterType::LowPass, 5000.0, 1.0, 1.0, 44100.0);
+
     comp.instrument("kitchen_sink", &Instrument::synth_lead())
         .at(0.0)
         .spectral_gate(SpectralGate::gentle())
         .spectral_compressor(SpectralCompressor::gentle())
-        .spectral_filter(FilterType::LowPass, 5000.0, 1.0, 1.0, 44100.0)
+        .spectral_filter(filter)
         .spectral_delay(SpectralDelay::new(150.0, 0.3, 1.0, 0.4, 44100.0))
         .notes(&[440.0, 554.0, 659.0, 784.0], 0.5);
 
@@ -234,7 +245,8 @@ fn main() -> anyhow::Result<()> {
         process_times.push(elapsed);
     }
 
-    let avg_time = process_times.iter().map(|d| d.as_secs_f64()).sum::<f64>() / process_times.len() as f64;
+    let avg_time =
+        process_times.iter().map(|d| d.as_secs_f64()).sum::<f64>() / process_times.len() as f64;
     let max_time = process_times.iter().max().unwrap().as_secs_f64();
     let min_time = process_times.iter().min().unwrap().as_secs_f64();
     let block_duration = block_size as f64 / sample_rate as f64;
@@ -244,7 +256,10 @@ fn main() -> anyhow::Result<()> {
     println!("  Min process time: {:.3}ms", min_time * 1000.0);
     println!("  Avg process time: {:.3}ms", avg_time * 1000.0);
     println!("  Max process time: {:.3}ms", max_time * 1000.0);
-    println!("  CPU headroom: {:.1}%", (1.0 - avg_time / block_duration) * 100.0);
+    println!(
+        "  CPU headroom: {:.1}%",
+        (1.0 - avg_time / block_duration) * 100.0
+    );
     println!("  Realtime ratio: {:.1}x", block_duration / avg_time);
 
     if max_time < block_duration * 0.5 {
@@ -266,10 +281,6 @@ fn main() -> anyhow::Result<()> {
     println!("  • {} SIMD lanes for parallel processing", simd_width);
     println!("  • Real-time capable on modern CPUs");
     println!("  • Stackable with moderate CPU usage");
-    println!("\nNext Steps:");
-    println!("  • GPU acceleration can improve throughput 10-100x");
-    println!("  • Batch processing multiple tracks on GPU");
-    println!("  • Lower latency with GPU-accelerated FFT\n");
 
     Ok(())
 }

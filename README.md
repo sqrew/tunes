@@ -69,13 +69,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tunes = "0.22.0"
+tunes = "1.0.0"
 
 # Optional: Enable GPU acceleration (requires discrete GPU for best results)
-# tunes = { version = "0.22.0", features = ["gpu"] }
+# tunes = { version = "1.0.0", features = ["gpu"] }
 
 # Optional: Enable WebAssembly support for browser-based applications
-# tunes = { version = "0.22.0", features = ["web"] }
+# tunes = { version = "1.0.0", features = ["web"] }
 ```
 
 ### Platform Requirements
@@ -488,7 +488,7 @@ Tunes automatically applies:
 
 Enable with the `gpu` feature flag in Cargo.toml:
 ```toml
-tunes = { version = "0.22.0", features = ["gpu"] }
+tunes = { version = "1.0.0", features = ["gpu"] }
 ```
 
 **Transparent API (recommended):**

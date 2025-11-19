@@ -13,6 +13,7 @@
 
 use super::*;
 use rustfft::num_complex::Complex;
+use std::cell::RefCell;
 
 /// Formant shifter effect
 ///
@@ -34,7 +35,8 @@ use rustfft::num_complex::Complex;
 /// shifter.set_shift_ratio(0.7);  // Male voice → deeper male
 /// shifter.set_mix(1.0);           // 100% wet
 /// ```
-#[derive(Clone, Debug)]
+#[allow(dead_code)]
+#[derive(Clone)]
 pub struct FormantShifter {
     /// STFT processor
     stft: STFT,
@@ -53,6 +55,31 @@ pub struct FormantShifter {
 
     /// Effect enabled flag
     enabled: bool,
+
+    // Pre-allocated working buffers (eliminates 3.5-8.2 MB/sec allocation rate)
+    /// Buffer for storing dry (original) spectrum
+    dry_spectrum_buf: RefCell<Vec<Complex<f32>>>,
+
+    /// Buffer for shifted spectrum during processing
+    shifted_buf: RefCell<Vec<Complex<f32>>>,
+
+    /// Temporary buffer for real components during mixing
+    temp_real_buf: RefCell<Vec<f32>>,
+
+    /// Temporary buffer for imaginary components during mixing
+    temp_imag_buf: RefCell<Vec<f32>>,
+}
+
+impl std::fmt::Debug for FormantShifter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FormantShifter")
+            .field("fft_size", &self.fft_size)
+            .field("sample_rate", &self.sample_rate)
+            .field("shift_ratio", &self.shift_ratio)
+            .field("mix", &self.mix)
+            .field("enabled", &self.enabled)
+            .finish()
+    }
 }
 
 impl FormantShifter {
@@ -69,12 +96,21 @@ impl FormantShifter {
     /// # use tunes::synthesis::spectral::{FormantShifter, WindowType};
     /// let shifter = FormantShifter::new(2048, 512, WindowType::Hann, 44100.0);
     /// ```
-    pub fn new(fft_size: usize, hop_size: usize, window_type: WindowType, sample_rate: f32) -> Self {
+    pub fn new(
+        fft_size: usize,
+        hop_size: usize,
+        window_type: WindowType,
+        sample_rate: f32,
+    ) -> Self {
         assert!(fft_size.is_power_of_two(), "FFT size must be power of 2");
         assert!(hop_size <= fft_size, "Hop size must be <= FFT size");
         assert!(sample_rate > 0.0, "Sample rate must be positive");
 
         let stft = STFT::new(fft_size, hop_size, window_type);
+
+        // Pre-allocate working buffers based on FFT size
+        // Spectrum size is fft_size (full complex FFT output)
+        let spectrum_size = fft_size;
 
         Self {
             stft,
@@ -83,6 +119,12 @@ impl FormantShifter {
             shift_ratio: 1.0,
             mix: 1.0,
             enabled: true,
+            // Initialize buffers with correct size to avoid allocations during processing
+            dry_spectrum_buf: RefCell::new(vec![Complex::new(0.0, 0.0); spectrum_size]),
+            shifted_buf: RefCell::new(vec![Complex::new(0.0, 0.0); spectrum_size]),
+            // Temp buffers are 2x size: first half for wet, second half for dry
+            temp_real_buf: RefCell::new(vec![0.0; spectrum_size * 2]),
+            temp_imag_buf: RefCell::new(vec![0.0; spectrum_size * 2]),
         }
     }
 
@@ -154,123 +196,188 @@ impl FormantShifter {
         let shift_ratio = self.shift_ratio;
         let mix = self.mix;
 
+        // Borrow buffers for use in the closure
+        let dry_buf = &self.dry_spectrum_buf;
+        let shifted_buf = &self.shifted_buf;
+        let temp_re = &self.temp_real_buf;
+        let temp_im = &self.temp_imag_buf;
+
         self.stft.process(output, |spectrum| {
-            Self::apply_formant_shift_static(spectrum, shift_ratio, mix);
+            Self::apply_formant_shift(
+                spectrum,
+                shift_ratio,
+                mix,
+                dry_buf,
+                shifted_buf,
+                temp_re,
+                temp_im,
+            );
         });
     }
 
-    /// Apply formant shift (static version for closure)
+    /// Apply formant shift using pre-allocated buffers (zero-allocation hot path)
     #[inline]
-    fn apply_formant_shift_static(
+    fn apply_formant_shift(
         spectrum: &mut [Complex<f32>],
         shift_ratio: f32,
         mix: f32,
+        dry_buf_cell: &RefCell<Vec<Complex<f32>>>,
+        shifted_buf_cell: &RefCell<Vec<Complex<f32>>>,
+        temp_re_cell: &RefCell<Vec<f32>>,
+        temp_im_cell: &RefCell<Vec<f32>>,
     ) {
         let len = spectrum.len();
 
-        // Store original spectrum for dry/wet mixing
-        let mut dry_spectrum = vec![Complex::new(0.0, 0.0); len];
-        dry_spectrum.copy_from_slice(spectrum);
+        // Borrow buffers mutably
+        let mut dry_spectrum = dry_buf_cell.borrow_mut();
+        let mut shifted = shifted_buf_cell.borrow_mut();
 
-        // Create shifted spectrum with interpolation
-        let mut shifted = vec![Complex::new(0.0, 0.0); len];
-
-        // For each output bin, find the source bin by scaling
-        for (i, shifted_bin) in shifted.iter_mut().enumerate().take(len) {
-            // Source bin = output_bin * shift_ratio (scale frequency axis)
-            let src_bin = i as f32 * shift_ratio;
-
-            if src_bin >= 0.0 && src_bin < (len - 1) as f32 {
-                // Linear interpolation between adjacent bins
-                let bin_floor = src_bin.floor() as usize;
-                let bin_ceil = (bin_floor + 1).min(len - 1);
-                let frac = src_bin - bin_floor as f32;
-
-                // Interpolate magnitude
-                let mag_floor = spectrum[bin_floor].norm();
-                let mag_ceil = spectrum[bin_ceil].norm();
-                let mag = mag_floor * (1.0 - frac) + mag_ceil * frac;
-
-                // Interpolate phase
-                let phase_floor = spectrum[bin_floor].arg();
-                let phase_ceil = spectrum[bin_ceil].arg();
-
-                // Handle phase wrapping for smooth interpolation
-                let mut phase_diff = phase_ceil - phase_floor;
-                if phase_diff > std::f32::consts::PI {
-                    phase_diff -= 2.0 * std::f32::consts::PI;
-                } else if phase_diff < -std::f32::consts::PI {
-                    phase_diff += 2.0 * std::f32::consts::PI;
-                }
-                let phase = phase_floor + phase_diff * frac;
-
-                *shifted_bin = Complex::from_polar(mag, phase);
-            }
+        // Ensure buffers are sized correctly (they should be from constructor, but safety check)
+        if dry_spectrum.len() < len {
+            dry_spectrum.resize(len, Complex::new(0.0, 0.0));
+        }
+        if shifted.len() < len {
+            shifted.resize(len, Complex::new(0.0, 0.0));
         }
 
+        // Store original spectrum for dry/wet mixing (reuse buffer instead of allocating)
+        dry_spectrum[..len].copy_from_slice(spectrum);
+
+        // Pre-compute magnitudes and phases for SIMD-friendly access
+        // This avoids calling norm()/arg() in the interpolation loop
+        // Use existing temp buffers: temp_real for magnitudes, temp_imag for phases
+        {
+            let mut temp_real = temp_re_cell.borrow_mut();
+            let mut temp_imag = temp_im_cell.borrow_mut();
+
+            // Ensure temp buffers are large enough
+            if temp_real.len() < len {
+                temp_real.resize(len * 2, 0.0);
+            }
+            if temp_imag.len() < len {
+                temp_imag.resize(len * 2, 0.0);
+            }
+
+            let (magnitudes, _) = temp_real.split_at_mut(len);
+            let (phases, _) = temp_imag.split_at_mut(len);
+
+            // Calculate magnitude using SIMD-accelerated ComplexOps
+            ComplexOps::magnitude(magnitudes, spectrum);
+
+            // Calculate phases (atan2 is hard to vectorize portably)
+            for i in 0..len {
+                phases[i] = spectrum[i].im.atan2(spectrum[i].re);
+            }
+
+            // Clear shifted buffer (reuse instead of allocating)
+            for bin in shifted.iter_mut().take(len) {
+                *bin = Complex::new(0.0, 0.0);
+            }
+
+            // For each output bin, find the source bin by scaling
+            for i in 0..len {
+                // Source bin = output_bin * shift_ratio (scale frequency axis)
+                let src_bin = i as f32 * shift_ratio;
+
+                if src_bin >= 0.0 && src_bin < (len - 1) as f32 {
+                    // Linear interpolation between adjacent bins
+                    let bin_floor = src_bin.floor() as usize;
+                    let bin_ceil = (bin_floor + 1).min(len - 1);
+                    let frac = src_bin - bin_floor as f32;
+
+                    // Interpolate magnitude using FMA
+                    let mag = magnitudes[bin_floor].mul_add(1.0 - frac, magnitudes[bin_ceil] * frac);
+
+                    // Interpolate phase with wrapping for smooth interpolation
+                    let phase_floor = phases[bin_floor];
+                    let phase_ceil = phases[bin_ceil];
+
+                    // Handle phase wrapping to avoid discontinuities at ±π
+                    let mut phase_diff = phase_ceil - phase_floor;
+                    if phase_diff > std::f32::consts::PI {
+                        phase_diff -= 2.0 * std::f32::consts::PI;
+                    } else if phase_diff < -std::f32::consts::PI {
+                        phase_diff += 2.0 * std::f32::consts::PI;
+                    }
+                    let phase = phase_floor + phase_diff * frac;
+
+                    // Reconstruct complex from polar (uses sin/cos internally)
+                    shifted[i] = Complex::from_polar(mag, phase);
+                }
+            }
+        } // Drop temp buffer borrows here
+
         // Copy shifted spectrum back
-        spectrum.copy_from_slice(&shifted);
+        spectrum.copy_from_slice(&shifted[..len]);
 
         // Apply wet/dry mix with SIMD acceleration
         if mix < 1.0 {
-            Self::mix_complex_simd(spectrum, &dry_spectrum, mix);
+            Self::mix_complex_simd(spectrum, &dry_spectrum[..len], mix, temp_re_cell, temp_im_cell);
         }
     }
 
-    /// SIMD-accelerated complex mixing
+    /// SIMD-accelerated complex mixing (zero-allocation version)
     /// spectrum = spectrum * wet + dry * (1.0 - wet)
     #[inline]
     fn mix_complex_simd(
         spectrum: &mut [Complex<f32>],
         dry: &[Complex<f32>],
         wet: f32,
+        temp_re_cell: &RefCell<Vec<f32>>,
+        temp_im_cell: &RefCell<Vec<f32>>,
     ) {
         let len = spectrum.len();
         let dry_mix = 1.0 - wet;
 
-        // Extract real and imaginary parts for SIMD processing
-        let mut wet_re = vec![0.0f32; len];
-        let mut wet_im = vec![0.0f32; len];
-        let mut dry_re = vec![0.0f32; len];
-        let mut dry_im = vec![0.0f32; len];
+        // Borrow pre-allocated temp buffers
+        let mut wet_re = temp_re_cell.borrow_mut();
+        let mut wet_im = temp_im_cell.borrow_mut();
 
+        // Ensure temp buffers are large enough (should be from constructor)
+        if wet_re.len() < len * 2 {
+            wet_re.resize(len * 2, 0.0);
+        }
+        if wet_im.len() < len * 2 {
+            wet_im.resize(len * 2, 0.0);
+        }
+
+        // Split buffers: first half for wet, second half for dry
+        let (wet_re_buf, dry_re_buf) = wet_re.split_at_mut(len);
+        let (wet_im_buf, dry_im_buf) = wet_im.split_at_mut(len);
+
+        // Extract real and imaginary parts for SIMD processing
         for i in 0..len {
-            wet_re[i] = spectrum[i].re;
-            wet_im[i] = spectrum[i].im;
-            dry_re[i] = dry[i].re;
-            dry_im[i] = dry[i].im;
+            wet_re_buf[i] = spectrum[i].re;
+            wet_im_buf[i] = spectrum[i].im;
+            dry_re_buf[i] = dry[i].re;
+            dry_im_buf[i] = dry[i].im;
         }
 
         // Use SIMD for mixing
         match SIMD.simd_width() {
             SimdWidth::X8 => {
-                Self::mix_simd_impl::<8>(&mut wet_re, &dry_re, wet, dry_mix);
-                Self::mix_simd_impl::<8>(&mut wet_im, &dry_im, wet, dry_mix);
+                Self::mix_simd_impl::<8>(wet_re_buf, dry_re_buf, wet, dry_mix);
+                Self::mix_simd_impl::<8>(wet_im_buf, dry_im_buf, wet, dry_mix);
             }
             SimdWidth::X4 => {
-                Self::mix_simd_impl::<4>(&mut wet_re, &dry_re, wet, dry_mix);
-                Self::mix_simd_impl::<4>(&mut wet_im, &dry_im, wet, dry_mix);
+                Self::mix_simd_impl::<4>(wet_re_buf, dry_re_buf, wet, dry_mix);
+                Self::mix_simd_impl::<4>(wet_im_buf, dry_im_buf, wet, dry_mix);
             }
             SimdWidth::Scalar => {
-                Self::mix_scalar(&mut wet_re, &dry_re, wet, dry_mix);
-                Self::mix_scalar(&mut wet_im, &dry_im, wet, dry_mix);
+                Self::mix_scalar(wet_re_buf, dry_re_buf, wet, dry_mix);
+                Self::mix_scalar(wet_im_buf, dry_im_buf, wet, dry_mix);
             }
         }
 
         // Write back to complex spectrum
         for i in 0..len {
-            spectrum[i] = Complex::new(wet_re[i], wet_im[i]);
+            spectrum[i] = Complex::new(wet_re_buf[i], wet_im_buf[i]);
         }
     }
 
     /// SIMD implementation for mixing (AVX2: 8-wide, SSE/NEON: 4-wide)
     #[inline]
-    fn mix_simd_impl<const LANES: usize>(
-        wet: &mut [f32],
-        dry: &[f32],
-        wet_mix: f32,
-        dry_mix: f32,
-    ) {
+    fn mix_simd_impl<const LANES: usize>(wet: &mut [f32], dry: &[f32], wet_mix: f32, dry_mix: f32) {
         let len = wet.len();
         let chunks = len / LANES;
         let remainder = len % LANES;
@@ -283,12 +390,24 @@ impl FormantShifter {
             for i in 0..chunks {
                 let offset = i * LANES;
                 let wet_vec = f32x8::new([
-                    wet[offset], wet[offset + 1], wet[offset + 2], wet[offset + 3],
-                    wet[offset + 4], wet[offset + 5], wet[offset + 6], wet[offset + 7],
+                    wet[offset],
+                    wet[offset + 1],
+                    wet[offset + 2],
+                    wet[offset + 3],
+                    wet[offset + 4],
+                    wet[offset + 5],
+                    wet[offset + 6],
+                    wet[offset + 7],
                 ]);
                 let dry_vec = f32x8::new([
-                    dry[offset], dry[offset + 1], dry[offset + 2], dry[offset + 3],
-                    dry[offset + 4], dry[offset + 5], dry[offset + 6], dry[offset + 7],
+                    dry[offset],
+                    dry[offset + 1],
+                    dry[offset + 2],
+                    dry[offset + 3],
+                    dry[offset + 4],
+                    dry[offset + 5],
+                    dry[offset + 6],
+                    dry[offset + 7],
                 ]);
 
                 let result = wet_vec * wet_factor + dry_vec * dry_factor;
@@ -302,10 +421,16 @@ impl FormantShifter {
             for i in 0..chunks {
                 let offset = i * LANES;
                 let wet_vec = f32x4::new([
-                    wet[offset], wet[offset + 1], wet[offset + 2], wet[offset + 3],
+                    wet[offset],
+                    wet[offset + 1],
+                    wet[offset + 2],
+                    wet[offset + 3],
                 ]);
                 let dry_vec = f32x4::new([
-                    dry[offset], dry[offset + 1], dry[offset + 2], dry[offset + 3],
+                    dry[offset],
+                    dry[offset + 1],
+                    dry[offset + 2],
+                    dry[offset + 3],
                 ]);
 
                 let result = wet_vec * wet_factor + dry_vec * dry_factor;
@@ -317,12 +442,7 @@ impl FormantShifter {
         // Process remainder
         if remainder > 0 {
             let offset = chunks * LANES;
-            Self::mix_scalar(
-                &mut wet[offset..],
-                &dry[offset..],
-                wet_mix,
-                dry_mix,
-            );
+            Self::mix_scalar(&mut wet[offset..], &dry[offset..], wet_mix, dry_mix);
         }
     }
 

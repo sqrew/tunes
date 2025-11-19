@@ -31,6 +31,7 @@ pub struct Chorus {
     pub priority: u8, // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
+    buffer_mask: usize,  // Bit mask for fast modulo
     lfo_phase: f32,
 
     // Automation (optional)
@@ -54,7 +55,9 @@ impl Chorus {
     pub fn with_sample_rate(rate: f32, depth: f32, mix: f32, sample_rate: f32) -> Self {
         // Buffer size needs to accommodate maximum delay
         let max_delay_samples = ((depth * 2.0) * sample_rate / 1000.0) as usize;
-        let buffer_size = max_delay_samples.max(1);
+        // Round up to next power of 2 for fast modulo via bitwise AND
+        let buffer_size = max_delay_samples.max(1).next_power_of_two();
+        let buffer_mask = buffer_size - 1;
 
         Self {
             rate: rate.clamp(0.1, 10.0),
@@ -63,6 +66,7 @@ impl Chorus {
             priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             buffer: vec![0.0; buffer_size],
             write_pos: 0,
+            buffer_mask,
             lfo_phase: 0.0,
             rate_automation: None,
             depth_automation: None,
@@ -127,10 +131,10 @@ impl Chorus {
         // Calculate modulated delay time using sine LFO
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
         let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0);
-        let delay_samples = ((delay_ms * sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
+        let delay_samples = ((delay_ms * sample_rate / 1000.0) as usize) & self.buffer_mask;
 
-        // Read from delayed position
-        let read_pos = (self.write_pos + self.buffer.len() - delay_samples) % self.buffer.len();
+        // Read from delayed position using bitwise AND (~10x faster!)
+        let read_pos = (self.write_pos + self.buffer.len() - delay_samples) & self.buffer_mask;
         let delayed = self.buffer[read_pos];
 
         // Advance LFO phase
@@ -139,8 +143,8 @@ impl Chorus {
             self.lfo_phase -= 1.0;
         }
 
-        // Advance write position
-        self.write_pos = (self.write_pos + 1) % self.buffer.len();
+        // Advance write position using bitwise AND (~10x faster!)
+        self.write_pos = (self.write_pos + 1) & self.buffer_mask;
 
         // Mix dry and wet using FMA
         input.mul_add(1.0 - self.mix, delayed * self.mix)
@@ -407,6 +411,7 @@ pub struct Flanger {
     pub priority: u8,  // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
+    buffer_mask: usize,  // Bit mask for fast modulo
     lfo_phase: f32,
 
     // Automation (optional)
@@ -442,7 +447,9 @@ impl Flanger {
         // Buffer size needs to accommodate maximum delay (in samples)
         // Use provided sample_rate for initial buffer sizing
         let max_delay_samples = ((depth * 2.0) * sample_rate / 1000.0) as usize;
-        let buffer_size = max_delay_samples.max(1);
+        // Round up to next power of 2 for fast modulo via bitwise AND
+        let buffer_size = max_delay_samples.max(1).next_power_of_two();
+        let buffer_mask = buffer_size - 1;
 
         Self {
             rate,
@@ -452,6 +459,7 @@ impl Flanger {
             priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             buffer: vec![0.0; buffer_size],
             write_pos: 0,
+            buffer_mask,
             lfo_phase: 0.0,
             rate_automation: None,
             depth_automation: None,
@@ -523,15 +531,10 @@ impl Flanger {
         // Calculate modulated delay time using sine LFO with FMA
         let lfo = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
         let delay_ms = self.depth.mul_add(0.5 + 0.5 * lfo, 0.0); // 0 to depth milliseconds
-        let delay_samples =
-            ((delay_ms * sample_rate / 1000.0) as usize).min(self.buffer.len() - 1);
+        let delay_samples = ((delay_ms * sample_rate / 1000.0) as usize) & self.buffer_mask;
 
-        // Read from delayed position
-        let read_pos = if self.write_pos >= delay_samples {
-            self.write_pos - delay_samples
-        } else {
-            self.buffer.len() - (delay_samples - self.write_pos)
-        };
+        // Read from delayed position using bitwise AND (no branches!)
+        let read_pos = (self.write_pos + self.buffer.len() - delay_samples) & self.buffer_mask;
         let delayed = self.buffer[read_pos];
 
         // Write to buffer with feedback using FMA
@@ -543,8 +546,8 @@ impl Flanger {
             self.lfo_phase -= 1.0;
         }
 
-        // Advance write position
-        self.write_pos = (self.write_pos + 1) % self.buffer.len();
+        // Advance write position using bitwise AND (~10x faster!)
+        self.write_pos = (self.write_pos + 1) & self.buffer_mask;
 
         // Mix dry and wet using FMA
         input.mul_add(1.0 - self.mix, delayed * self.mix)

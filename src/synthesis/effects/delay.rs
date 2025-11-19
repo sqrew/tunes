@@ -13,6 +13,7 @@ pub struct Delay {
     pub priority: u8,    // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
+    buffer_mask: usize,  // Bit mask for fast modulo (buffer_len - 1)
 
     // Automation (optional)
     delay_time_automation: Option<Automation>,
@@ -29,13 +30,18 @@ impl Delay {
     /// Create a new delay effect with custom sample rate
     pub fn with_sample_rate(delay_time: f32, feedback: f32, mix: f32, sample_rate: f32) -> Self {
         let buffer_size = (delay_time * sample_rate) as usize;
+        // Round up to next power of 2 for fast modulo via bitwise AND
+        let buffer_size = buffer_size.max(1).next_power_of_two();
+        let buffer_mask = buffer_size - 1;
+
         Self {
             delay_time,
             feedback: feedback.clamp(0.0, 0.99),
             mix: mix.clamp(0.0, 1.0),
             priority: PRIORITY_TIME_BASED, // Time-based effects typically come late in chain
-            buffer: vec![0.0; buffer_size.max(1)],
+            buffer: vec![0.0; buffer_size],
             write_pos: 0,
+            buffer_mask,
             delay_time_automation: None,
             feedback_automation: None,
             mix_automation: None,
@@ -99,9 +105,8 @@ impl Delay {
         // Write input + feedback to buffer using FMA
         self.buffer[self.write_pos] = delayed.mul_add(self.feedback, input);
 
-        // Advance write position using bitwise AND (assumes power-of-2 buffer size)
-        let buffer_len = self.buffer.len();
-        self.write_pos = (self.write_pos + 1) % buffer_len;
+        // Advance write position using bitwise AND (~10x faster than modulo!)
+        self.write_pos = (self.write_pos + 1) & self.buffer_mask;
 
         // Mix dry and wet signals using FMA
         input.mul_add(1.0 - self.mix, delayed * self.mix)

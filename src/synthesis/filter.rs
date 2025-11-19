@@ -21,7 +21,7 @@ pub enum FilterSlope {
 
 /// A simple state-variable filter implementation
 /// This is a 2-pole resonant filter with controllable cutoff and resonance
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Filter {
     pub filter_type: FilterType,
     pub cutoff: f32,    // Cutoff frequency in Hz
@@ -48,6 +48,20 @@ pub struct Filter {
     moog_stage: [f32; 4],
     moog_stage_tanh: [f32; 4],
     moog_delay: [f32; 4],
+
+    // Function pointer for branchless dispatch (set at construction)
+    process_fn: fn(&mut Filter, f32, f32) -> f32,
+}
+
+impl std::fmt::Debug for Filter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Filter")
+            .field("filter_type", &self.filter_type)
+            .field("cutoff", &self.cutoff)
+            .field("resonance", &self.resonance)
+            .field("slope", &self.slope)
+            .finish()
+    }
 }
 
 impl Filter {
@@ -60,6 +74,14 @@ impl Filter {
     pub fn with_slope(filter_type: FilterType, cutoff: f32, resonance: f32, slope: FilterSlope) -> Self {
         let cutoff = cutoff.clamp(20.0, 20000.0);
         let resonance = resonance.clamp(0.0, 0.99);
+
+        // Select appropriate process function (eliminates per-sample branches!)
+        let process_fn: fn(&mut Filter, f32, f32) -> f32 = match filter_type {
+            FilterType::None => Self::process_none,
+            FilterType::Moog => Self::process_moog,
+            _ => Self::process_svf,  // All state-variable filters (LowPass, HighPass, etc.)
+        };
+
         Self {
             filter_type,
             cutoff,
@@ -78,6 +100,7 @@ impl Filter {
             moog_stage: [0.0; 4],
             moog_stage_tanh: [0.0; 4],
             moog_delay: [0.0; 4],
+            process_fn,
         }
     }
 
@@ -116,18 +139,21 @@ impl Filter {
         Self::new(FilterType::None, 20000.0, 0.0)
     }
 
-    /// Process a single sample through the filter
+    /// Process a single sample through the filter (branchless dispatch via function pointer!)
     #[inline]
     pub fn process(&mut self, input: f32, sample_rate: f32) -> f32 {
-        if self.filter_type == FilterType::None {
-            return input;
-        }
+        (self.process_fn)(self, input, sample_rate)
+    }
 
-        // Use Moog ladder filter algorithm for Moog type
-        if self.filter_type == FilterType::Moog {
-            return self.process_moog(input, sample_rate);
-        }
+    /// Bypass filter (no processing)
+    #[inline]
+    fn process_none(&mut self, input: f32, _sample_rate: f32) -> f32 {
+        input
+    }
 
+    /// State-variable filter processing (LowPass, HighPass, BandPass, Notch, AllPass)
+    #[inline]
+    fn process_svf(&mut self, input: f32, sample_rate: f32) -> f32 {
         // Smooth parameter changes to avoid zipper noise (simple one-pole smoothing)
         // Rewritten to use FMA operations
         // Reduced smoothing for better modulation response
