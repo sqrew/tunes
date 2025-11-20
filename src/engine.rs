@@ -790,7 +790,7 @@ impl AudioEngine {
                 // Lock-free update: load, clone, modify, store
                 let guard = epoch::pin();
                 let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
-                let mut new_config = current.clone();
+                let mut new_config = *current;
                 new_config.position.x = x;
                 new_config.position.y = y;
                 new_config.position.z = z;
@@ -799,7 +799,7 @@ impl AudioEngine {
             AudioCommand::SetListenerVelocity { vx, vy, vz } => {
                 let guard = epoch::pin();
                 let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
-                let mut new_config = current.clone();
+                let mut new_config = *current;
                 new_config.velocity.x = vx;
                 new_config.velocity.y = vy;
                 new_config.velocity.z = vz;
@@ -809,7 +809,7 @@ impl AudioEngine {
                 use crate::synthesis::spatial::Vec3;
                 let guard = epoch::pin();
                 let current = unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
-                let mut new_config = current.clone();
+                let mut new_config = *current;
                 new_config.forward = Vec3::new(x, y, z).normalize();
                 listener_atomic.store(Owned::new(new_config), Ordering::Release);
             }
@@ -830,17 +830,13 @@ impl AudioEngine {
                 }
             }
             AudioCommand::PauseAll => {
-                for sound_opt in active_sounds.iter_mut() {
-                    if let Some(sound) = sound_opt {
-                        sound.paused = true;
-                    }
+                for sound in active_sounds.iter_mut().flatten() {
+                    sound.paused = true;
                 }
             }
             AudioCommand::ResumeAll => {
-                for sound_opt in active_sounds.iter_mut() {
-                    if let Some(sound) = sound_opt {
-                        sound.paused = false;
-                    }
+                for sound in active_sounds.iter_mut().flatten() {
+                    sound.paused = false;
                 }
             }
             AudioCommand::StopAll => {

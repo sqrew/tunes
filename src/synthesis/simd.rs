@@ -208,7 +208,7 @@ macro_rules! impl_simd_lanes {
                     .add(s.mul(s).mul(<$type>::splat(0.19354346)))
                     .add(s.mul(s).mul(s).mul(<$type>::splat(-0.11643287)))
                     .add(s.mul(s).mul(s).mul(s).mul(<$type>::splat(0.05265332)))
-                    .add(s.mul(s).mul(s).mul(s).mul(s).mul(<$type>::splat(-0.01172120)));
+                    .add(s.mul(s).mul(s).mul(s).mul(s).mul(<$type>::splat(-0.011_721_2)));
 
                 // Adjust for |x| < |y| case: result = π/2 - r
                 let pi_2 = <$type>::splat(std::f32::consts::FRAC_PI_2);
@@ -359,7 +359,7 @@ impl SimdLanes for f32 {
             + s * s * 0.19354346
             + s * s * s * -0.11643287
             + s * s * s * s * 0.05265332
-            + s * s * s * s * s * -0.01172120;
+            + s * s * s * s * s * -0.011_721_2;
 
         // Adjust for |x| < |y|
         if abs_y > abs_x {
