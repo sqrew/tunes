@@ -1632,8 +1632,8 @@ impl Mixer {
 
                                     // Calculate 8 phases and sample waveform
                                     let freqs_array = freqs.to_array();
-                                    for i in 0..8 {
-                                        let phase = (time_in_note * freqs_array[i]) % 1.0;
+                                    for &freq in &freqs_array {
+                                        let phase = (time_in_note * freq) % 1.0;
                                         track_value += note_event.waveform.sample(phase) * envelope_amp;
                                     }
                                 }
@@ -1662,8 +1662,8 @@ impl Mixer {
 
                                     // Calculate 4 phases and sample waveform
                                     let freqs_array = freqs.to_array();
-                                    for i in 0..4 {
-                                        let phase = (time_in_note * freqs_array[i]) % 1.0;
+                                    for &freq in &freqs_array {
+                                        let phase = (time_in_note * freq) % 1.0;
                                         track_value += note_event.waveform.sample(phase) * envelope_amp;
                                     }
                                 }

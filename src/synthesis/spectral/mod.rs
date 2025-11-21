@@ -66,10 +66,13 @@ pub use spectral_panner::{PanPoint, SpectralPanner};
 pub use spectral_resonator::{Resonance, SpectralResonator};
 pub use widen::SpectralWiden;
 
+// Type alias for the window cache to reduce complexity
+type WindowCache = Mutex<HashMap<(WindowType, usize), Arc<Vec<f32>>>>;
+
 // Global cache for pre-computed window functions
 // Common sizes: 256, 512, 1024, 2048, 4096, 8192
 lazy_static! {
-    static ref WINDOW_CACHE: Mutex<HashMap<(WindowType, usize), Arc<Vec<f32>>>> = {
+    static ref WINDOW_CACHE: WindowCache = {
         let mut cache = HashMap::new();
 
         // Pre-compute common window sizes for each type

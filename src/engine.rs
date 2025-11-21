@@ -978,7 +978,7 @@ impl AudioEngine {
     #[allow(clippy::too_many_arguments)]
     fn mix_sounds(
         output: &mut [f32],
-        active_sounds: &mut Vec<Option<ActiveSound>>,
+        active_sounds: &mut [Option<ActiveSound>],
         temp_buffer: &mut Vec<f32>,
         finished_sounds: &mut Vec<SoundId>,
         listener: &ListenerConfig,
@@ -1292,7 +1292,7 @@ impl AudioEngine {
     /// This is ALLOCATION-FREE and lock-free (uses lockless ring buffer).
     fn mix_streaming_sounds(
         output: &mut [f32],
-        streaming_sounds: &mut Vec<Option<StreamingSound>>,
+        streaming_sounds: &mut [Option<StreamingSound>],
         finished_streams: &mut Vec<SoundId>,
         channels: usize,
     ) {

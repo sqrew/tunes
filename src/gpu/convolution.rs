@@ -372,9 +372,9 @@ impl GpuConvolution {
             let samples_to_output = self
                 .block_size
                 .min(self.partition_delays[partition_idx].len());
-            for i in 0..samples_to_output {
+            for (i, output_sample) in output.iter_mut().enumerate().take(samples_to_output) {
                 if delay_samples == 0 || i >= delay_samples {
-                    output[i] += self.partition_delays[partition_idx][i];
+                    *output_sample += self.partition_delays[partition_idx][i];
                 }
             }
 
