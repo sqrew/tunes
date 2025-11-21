@@ -206,8 +206,8 @@ impl<'a> TrackBuilder<'a> {
     ///     .filter(Filter::new(FilterType::LowPass, 500.0, 0.8));  // Low-pass for bass
     /// ```
     pub fn noise(mut self, noise_type: NoiseType, duration: f32, amplitude: f32) -> Self {
-        // Calculate sample rate and duration in samples
-        let sample_rate = 44100; // TODO: Could make this configurable
+        // Get sample rate from composition
+        let sample_rate = self.composition.sample_rate;
         // duration is already in seconds (consistent with .note() and other methods)
         let sample_count = (duration * sample_rate as f32) as usize;
 

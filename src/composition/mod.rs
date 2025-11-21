@@ -80,6 +80,7 @@ pub struct Composition {
     tracks: HashMap<String, Track>,
     pub(crate) sections: HashMap<String, sections::Section>,
     tempo: Tempo,
+    sample_rate: u32, // Sample rate in Hz (default: 44100)
     samples: HashMap<String, Sample>, // Cache of loaded samples
     markers: HashMap<String, f32>,    // Named time positions for easy navigation
     templates: HashMap<String, TrackTemplate>, // Named track templates for reuse
@@ -107,6 +108,7 @@ impl Composition {
             tracks: HashMap::new(),
             sections: HashMap::new(),
             tempo,
+            sample_rate: 44100, // CD quality, most compatible default
             samples: HashMap::new(),
             markers: HashMap::new(),
             templates: HashMap::new(),
@@ -115,6 +117,28 @@ impl Composition {
             bus_name_to_id,
             bus_id_to_name,
         }
+    }
+
+    /// Set the sample rate for this composition
+    ///
+    /// The sample rate determines the quality and characteristics of synthesized audio.
+    /// Common values:
+    /// - 44100 Hz (CD quality, default) - Most compatible, good for general use
+    /// - 48000 Hz (professional) - Standard for video production and professional audio
+    /// - 96000 Hz (high-res) - For high-resolution audio applications
+    ///
+    /// # Arguments
+    /// * `sample_rate` - Sample rate in Hz
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0))
+    ///     .set_sample_rate(48000); // Professional quality
+    /// ```
+    pub fn set_sample_rate(mut self, sample_rate: u32) -> Self {
+        self.sample_rate = sample_rate;
+        self
     }
 
     /// Load an audio file as a sample and cache it with a name
