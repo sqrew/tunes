@@ -17,7 +17,7 @@ use std::collections::HashMap;
 // Use rayon for parallel processing on native platforms
 #[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Envelope cache for sidechaining (OPTIMIZED: Vec-based for O(1) access)
 ///
@@ -139,8 +139,8 @@ pub struct Mixer {
     bus_outputs: Vec<BusOutput>,
     envelope_cache: EnvelopeCache,
 
-    // Sample cache for pre-rendered synthesis (thread-safe for Rayon)
-    cache: Option<Arc<Mutex<SampleCache>>>,
+    // Sample cache for pre-rendered synthesis (lock-free with DashMap)
+    cache: Option<Arc<SampleCache>>,
 
     // GPU synthesizer for experimental acceleration (optional, falls back to CPU)
     #[cfg(feature = "gpu")]
@@ -407,7 +407,7 @@ impl Mixer {
     /// mixer.enable_cache();
     /// ```
     pub fn enable_cache(&mut self) -> &mut Self {
-        self.cache = Some(Arc::new(Mutex::new(SampleCache::new())));
+        self.cache = Some(Arc::new(SampleCache::new()));
         self
     }
 
@@ -428,7 +428,7 @@ impl Mixer {
     /// mixer.enable_cache_with(cache);
     /// ```
     pub fn enable_cache_with(&mut self, cache: SampleCache) -> &mut Self {
-        self.cache = Some(Arc::new(Mutex::new(cache)));
+        self.cache = Some(Arc::new(cache));
         self
     }
 
@@ -441,28 +441,25 @@ impl Mixer {
     /// Get cache statistics (if caching is enabled)
     ///
     /// Returns `None` if caching is disabled.
-    pub fn cache_stats(&self) -> Option<crate::cache::storage::CacheStats> {
+    pub fn cache_stats(&self) -> Option<crate::cache::CacheStatsSnapshot> {
         self.cache
             .as_ref()
-            .map(|c| c.lock().unwrap_or_else(|e| e.into_inner()).stats().clone())
+            .map(|c| c.stats().snapshot())
     }
 
     /// Print cache statistics (if caching is enabled)
     pub fn print_cache_stats(&self) {
         if let Some(cache) = &self.cache {
-            cache
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .print_stats();
+            cache.print_stats();
         } else {
             println!("Sample caching is disabled");
         }
     }
 
     /// Clear the sample cache (if caching is enabled)
-    pub fn clear_cache(&mut self) {
-        if let Some(cache) = &mut self.cache {
-            cache.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    pub fn clear_cache(&self) {
+        if let Some(cache) = &self.cache {
+            cache.clear();
         }
     }
 
@@ -611,12 +608,7 @@ impl Mixer {
 
         for (cache_key, note_event) in unique_notes {
             // Check if already cached
-            if cache
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .get(&cache_key)
-                .is_some()
-            {
+            if cache.get(&cache_key).is_some() {
                 continue; // Already in cache
             }
 
@@ -638,10 +630,7 @@ impl Mixer {
                     note_event.frequencies[0],
                 );
 
-                cache
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .insert(cache_key, cached_sample);
+                cache.insert(cache_key, cached_sample);
                 rendered_count += 1;
             }
         }
@@ -1407,7 +1396,7 @@ impl Mixer {
         sample_rate: f32,
         start_time: f32,
         start_sample_count: u64,
-        cache: Option<&Arc<Mutex<SampleCache>>>,
+        cache: Option<&Arc<SampleCache>>,
         #[cfg(feature = "gpu")] gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
         prerendered: bool,
     ) {
@@ -1435,14 +1424,11 @@ impl Mixer {
         // We need to search at the start of the block
         let (start_idx, end_idx) = track.find_active_range(start_time);
 
-        // OPTIMIZED: Single mutex lock for ALL cache operations
-        // Combines: cache miss handling, index building, and sample copying
+        // OPTIMIZED: Lock-free cache operations with DashMap
+        // No mutex overhead - concurrent cache access from Rayon threads!
         let mut cached_note_indices = std::collections::HashSet::new();
 
-        if let Some(cache_arc) = cache {
-            // Lock cache ONCE for ALL operations - minimize mutex overhead!
-            let mut cache_lock = cache_arc.lock().unwrap_or_else(|e| e.into_inner());
-
+        if let Some(cache_ref) = cache {
             // Special case: if pre-rendered, all notes are cached
             if prerendered {
                 for (idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
@@ -1458,7 +1444,7 @@ impl Mixer {
                     let cache_key = CacheKey::from_note_event(note_event, sample_rate);
 
                     // Step 1: Handle cache miss (render if needed)
-                    if !prerendered && cache_lock.get(&cache_key).is_none() {
+                    if !prerendered && cache_ref.get(&cache_key).is_none() {
                         let total_duration =
                             note_event.envelope.total_duration(note_event.duration);
 
@@ -1477,12 +1463,12 @@ impl Mixer {
                                 total_duration,
                                 note_event.frequencies[0],
                             );
-                            cache_lock.insert(cache_key, cached_sample);
+                            cache_ref.insert(cache_key, cached_sample);
                         }
                     }
 
                     // Step 2 & 3: If cached, build index AND copy to buffer
-                    if let Some(cached_sample) = cache_lock.get(&cache_key) {
+                    if let Some(cached_sample) = cache_ref.get(&cache_key) {
                         // Add to cached indices (for synthesis loop to skip)
                         if !prerendered {
                             cached_note_indices.insert(start_idx + idx);
@@ -1547,7 +1533,6 @@ impl Mixer {
                     }
                 }
             }
-            // Drop cache_lock here - mutex released before main synthesis loop
         }
 
         // Pre-render sample events with SIMD for better performance

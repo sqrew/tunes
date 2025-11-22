@@ -4,8 +4,12 @@
 //! memory limits are exceeded.
 
 use super::key::CacheKey;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+use dashmap::DashMap;
+use std::collections::VecDeque;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+};
 
 /// A cached audio sample
 #[derive(Debug, Clone)]
@@ -83,60 +87,91 @@ impl Default for CachePolicy {
 /// Stores pre-rendered synthesis output in memory. When the cache
 /// exceeds `max_size_mb`, least-recently-used entries are evicted.
 ///
+/// Uses DashMap for lock-free concurrent access during parallel bus rendering.
+/// Only the LRU queue requires synchronization.
+///
 /// # Example
 ///
 /// ```no_run
 /// use tunes::cache::{SampleCache, CachePolicy};
 ///
-/// let mut cache = SampleCache::new()
+/// let cache = SampleCache::new()
 ///     .with_max_size_mb(500);
 ///
 /// // Cache is automatically populated during synthesis
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SampleCache {
     /// Policy configuration
     policy: CachePolicy,
 
-    /// Cached samples by key
-    cache: HashMap<CacheKey, CachedSample>,
+    /// Cached samples by key (lock-free concurrent HashMap)
+    cache: DashMap<CacheKey, CachedSample>,
 
     /// LRU tracking - most recent at the back
-    lru_queue: VecDeque<CacheKey>,
+    /// Only this field needs a Mutex, not the entire cache
+    lru_state: Mutex<LruState>,
 
-    /// Total cache size in bytes
-    total_size_bytes: usize,
-
-    /// Statistics
+    /// Statistics (lock-free atomic counters)
     stats: CacheStats,
 }
 
-/// Cache statistics
-#[derive(Debug, Clone, Default)]
+/// LRU state that requires synchronization
+#[derive(Debug)]
+struct LruState {
+    /// LRU queue - most recent at the back
+    queue: VecDeque<CacheKey>,
+    /// Total cache size in bytes
+    total_size_bytes: usize,
+}
+
+/// Cache statistics with atomic counters for lock-free updates
+#[derive(Debug, Default)]
 pub struct CacheStats {
     /// Number of cache hits
-    pub hits: u64,
+    pub hits: AtomicU64,
 
     /// Number of cache misses
-    pub misses: u64,
+    pub misses: AtomicU64,
 
     /// Number of evictions
-    pub evictions: u64,
+    pub evictions: AtomicU64,
 
     /// Total samples inserted
-    pub insertions: u64,
+    pub insertions: AtomicU64,
 }
 
 impl CacheStats {
     /// Calculate hit rate (0.0 - 1.0)
     pub fn hit_rate(&self) -> f32 {
-        let total = self.hits + self.misses;
+        let hits = self.hits.load(Ordering::Relaxed);
+        let misses = self.misses.load(Ordering::Relaxed);
+        let total = hits + misses;
         if total == 0 {
             0.0
         } else {
-            self.hits as f32 / total as f32
+            hits as f32 / total as f32
         }
     }
+
+    /// Get a snapshot of the stats for debugging
+    pub fn snapshot(&self) -> CacheStatsSnapshot {
+        CacheStatsSnapshot {
+            hits: self.hits.load(Ordering::Relaxed),
+            misses: self.misses.load(Ordering::Relaxed),
+            evictions: self.evictions.load(Ordering::Relaxed),
+            insertions: self.insertions.load(Ordering::Relaxed),
+        }
+    }
+}
+
+/// Snapshot of cache statistics at a point in time
+#[derive(Debug, Clone)]
+pub struct CacheStatsSnapshot {
+    pub hits: u64,
+    pub misses: u64,
+    pub evictions: u64,
+    pub insertions: u64,
 }
 
 impl SampleCache {
@@ -144,9 +179,11 @@ impl SampleCache {
     pub fn new() -> Self {
         Self {
             policy: CachePolicy::default(),
-            cache: HashMap::new(),
-            lru_queue: VecDeque::new(),
-            total_size_bytes: 0,
+            cache: DashMap::new(),
+            lru_state: Mutex::new(LruState {
+                queue: VecDeque::new(),
+                total_size_bytes: 0,
+            }),
             stats: CacheStats::default(),
         }
     }
@@ -175,16 +212,17 @@ impl SampleCache {
     /// Updates LRU tracking on cache hit.
     ///
     /// Note: Returns a clone of the CachedSample (cheap via Arc).
-    pub fn get(&mut self, key: &CacheKey) -> Option<CachedSample> {
-        if self.cache.contains_key(key) {
+    /// This is lock-free for cache reads!
+    pub fn get(&self, key: &CacheKey) -> Option<CachedSample> {
+        if let Some(entry) = self.cache.get(key) {
             // Cache hit! Update LRU
-            self.stats.hits += 1;
+            self.stats.hits.fetch_add(1, Ordering::Relaxed);
             self.touch(key);
             // Return a clone (Arc makes this cheap)
-            self.cache.get(key).cloned()
+            Some(entry.clone())
         } else {
             // Cache miss
-            self.stats.misses += 1;
+            self.stats.misses.fetch_add(1, Ordering::Relaxed);
             None
         }
     }
@@ -192,7 +230,7 @@ impl SampleCache {
     /// Insert a sample into the cache
     ///
     /// If the cache is full, evicts least-recently-used entries.
-    pub fn insert(&mut self, key: CacheKey, sample: CachedSample) {
+    pub fn insert(&self, key: CacheKey, sample: CachedSample) {
         // Check if this sample is worth caching
         if sample.duration < self.policy.min_cache_duration_ms / 1000.0 {
             return; // Too short, not worth caching
@@ -207,65 +245,73 @@ impl SampleCache {
 
         // Evict until we have enough space
         let max_bytes = self.policy.max_size_mb * 1024 * 1024;
-        while self.total_size_bytes + sample_size > max_bytes && !self.lru_queue.is_empty() {
-            self.evict_lru();
+        {
+            let mut lru = self.lru_state.lock().unwrap();
+            while lru.total_size_bytes + sample_size > max_bytes && !lru.queue.is_empty() {
+                self.evict_lru_locked(&mut lru);
+            }
+
+            // Insert the sample and update LRU
+            self.cache.insert(key, sample);
+            lru.queue.push_back(key);
+            lru.total_size_bytes += sample_size;
         }
 
-        // Insert the sample
-        self.cache.insert(key, sample);
-        self.lru_queue.push_back(key);
-        self.total_size_bytes += sample_size;
-        self.stats.insertions += 1;
+        self.stats.insertions.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Remove a specific key from the cache
-    fn remove(&mut self, key: &CacheKey) {
-        if let Some(sample) = self.cache.remove(key) {
-            self.total_size_bytes = self.total_size_bytes.saturating_sub(sample.size_bytes());
+    fn remove(&self, key: &CacheKey) {
+        if let Some((_, sample)) = self.cache.remove(key) {
+            let mut lru = self.lru_state.lock().unwrap();
+            lru.total_size_bytes = lru.total_size_bytes.saturating_sub(sample.size_bytes());
 
             // Remove from LRU queue
-            if let Some(pos) = self.lru_queue.iter().position(|k| k == key) {
-                self.lru_queue.remove(pos);
+            if let Some(pos) = lru.queue.iter().position(|k| k == key) {
+                lru.queue.remove(pos);
             }
         }
     }
 
     /// Mark a key as recently used (move to back of LRU queue)
-    fn touch(&mut self, key: &CacheKey) {
+    fn touch(&self, key: &CacheKey) {
+        let mut lru = self.lru_state.lock().unwrap();
+
         // Remove from current position
-        if let Some(pos) = self.lru_queue.iter().position(|k| k == key) {
-            self.lru_queue.remove(pos);
+        if let Some(pos) = lru.queue.iter().position(|k| k == key) {
+            lru.queue.remove(pos);
         }
 
         // Add to back (most recent)
-        self.lru_queue.push_back(*key);
+        lru.queue.push_back(*key);
     }
 
-    /// Evict the least recently used entry
-    fn evict_lru(&mut self) {
-        if let Some(key) = self.lru_queue.pop_front() {
-            if let Some(sample) = self.cache.remove(&key) {
-                self.total_size_bytes = self.total_size_bytes.saturating_sub(sample.size_bytes());
-                self.stats.evictions += 1;
+    /// Evict the least recently used entry (caller must hold lru_state lock)
+    fn evict_lru_locked(&self, lru: &mut LruState) {
+        if let Some(key) = lru.queue.pop_front() {
+            if let Some((_, sample)) = self.cache.remove(&key) {
+                lru.total_size_bytes = lru.total_size_bytes.saturating_sub(sample.size_bytes());
+                self.stats.evictions.fetch_add(1, Ordering::Relaxed);
             }
         }
     }
 
     /// Clear the entire cache
-    pub fn clear(&mut self) {
+    pub fn clear(&self) {
         self.cache.clear();
-        self.lru_queue.clear();
-        self.total_size_bytes = 0;
+        let mut lru = self.lru_state.lock().unwrap();
+        lru.queue.clear();
+        lru.total_size_bytes = 0;
     }
 
     /// Get current cache size in bytes
     pub fn size_bytes(&self) -> usize {
-        self.total_size_bytes
+        self.lru_state.lock().unwrap().total_size_bytes
     }
 
     /// Get current cache size in megabytes
     pub fn size_mb(&self) -> f32 {
-        self.total_size_bytes as f32 / (1024.0 * 1024.0)
+        self.size_bytes() as f32 / (1024.0 * 1024.0)
     }
 
     /// Get number of cached entries
@@ -280,14 +326,15 @@ impl SampleCache {
 
     /// Print cache statistics
     pub fn print_stats(&self) {
+        let stats = self.stats.snapshot();
         println!("\n📊 Sample Cache Statistics:");
         println!("  Entries: {}", self.entry_count());
         println!("  Size: {:.2} MB / {} MB", self.size_mb(), self.policy.max_size_mb);
-        println!("  Hits: {}", self.stats.hits);
-        println!("  Misses: {}", self.stats.misses);
+        println!("  Hits: {}", stats.hits);
+        println!("  Misses: {}", stats.misses);
         println!("  Hit rate: {:.1}%", self.stats.hit_rate() * 100.0);
-        println!("  Evictions: {}", self.stats.evictions);
-        println!("  Insertions: {}", self.stats.insertions);
+        println!("  Evictions: {}", stats.evictions);
+        println!("  Insertions: {}", stats.insertions);
     }
 }
 
@@ -309,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_cache_insert_and_get() {
-        let mut cache = SampleCache::new();
+        let cache = SampleCache::new();
         let key = CacheKey::new(12345);
         let sample = make_test_sample(1.0, 44100.0);
 
@@ -317,23 +364,25 @@ mod tests {
 
         assert!(cache.get(&key).is_some());
         assert_eq!(cache.entry_count(), 1);
-        assert_eq!(cache.stats().hits, 1);
-        assert_eq!(cache.stats().misses, 0);
+        let stats = cache.stats().snapshot();
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
     }
 
     #[test]
     fn test_cache_miss() {
-        let mut cache = SampleCache::new();
+        let cache = SampleCache::new();
         let key = CacheKey::new(12345);
 
         assert!(cache.get(&key).is_none());
-        assert_eq!(cache.stats().hits, 0);
-        assert_eq!(cache.stats().misses, 1);
+        let stats = cache.stats().snapshot();
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 1);
     }
 
     #[test]
     fn test_lru_eviction() {
-        let mut cache = SampleCache::new().with_max_size_mb(1); // 1 MB limit
+        let cache = SampleCache::new().with_max_size_mb(1); // 1 MB limit
 
         // Each sample is ~176 KB (44100 samples * 4 bytes)
         let key1 = CacheKey::new(1);
@@ -357,24 +406,26 @@ mod tests {
 
         assert!(cache.get(&key1).is_none()); // key1 should be evicted
         assert!(cache.get(&key6).is_some()); // key6 should be present
-        assert!(cache.stats().evictions > 0);
+        let stats = cache.stats().snapshot();
+        assert!(stats.evictions > 0);
     }
 
     #[test]
     fn test_min_duration_filter() {
-        let mut cache = SampleCache::new().with_min_duration_ms(100.0);
+        let cache = SampleCache::new().with_min_duration_ms(100.0);
 
         // Try to cache a 50ms sound (below threshold)
         let key = CacheKey::new(1);
         cache.insert(key, make_test_sample(0.05, 44100.0));
 
         assert_eq!(cache.entry_count(), 0); // Should not be cached
-        assert_eq!(cache.stats().insertions, 0);
+        let stats = cache.stats().snapshot();
+        assert_eq!(stats.insertions, 0);
     }
 
     #[test]
     fn test_clear() {
-        let mut cache = SampleCache::new();
+        let cache = SampleCache::new();
 
         cache.insert(CacheKey::new(1), make_test_sample(1.0, 44100.0));
         cache.insert(CacheKey::new(2), make_test_sample(1.0, 44100.0));

@@ -28,4 +28,4 @@ pub mod key;
 pub mod storage;
 
 pub use key::CacheKey;
-pub use storage::{SampleCache, CachePolicy, CachedSample};
+pub use storage::{SampleCache, CachePolicy, CachedSample, CacheStatsSnapshot};
