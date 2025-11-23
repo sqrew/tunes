@@ -123,10 +123,6 @@ name = "realtime_latency"
 harness = false
 
 [[bench]]
-name = "cache_benchmark"
-harness = false
-
-[[bench]]
 name = "cache_realistic"
 harness = false
 
@@ -139,10 +135,6 @@ required-features = ["gpu"]
 name = "pipeline_benchmark"
 harness = false
 required-features = ["gpu"]
-
-[[bench]]
-name = "gpu_stress_test"
-harness = false
 
 [[bench]]
 name = "realistic_game_audio"
@@ -172,11 +164,6 @@ harness = false
 [[bench]]
 name = "large_sample_pool_test"
 harness = false
-
-[[bench]]
-name = "library_comparison"
-harness = false
-path = "benches/library_comparison/concurrent_spatial.rs"
 
 # GPU examples require the gpu feature to be enabled
 [[example]]
