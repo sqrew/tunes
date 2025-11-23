@@ -145,6 +145,31 @@ impl Filter {
         (self.process_fn)(self, input, sample_rate)
     }
 
+    /// Process an entire buffer of samples (optimized for reduced overhead)
+    ///
+    /// This is significantly faster than calling process() in a loop because:
+    /// - Reduced function call overhead
+    /// - Better inlining and optimization opportunities
+    /// - Improved cache locality
+    /// - Branch predictor friendly
+    #[inline]
+    pub fn process_buffer(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        // Dispatch to specialized buffer processing based on filter type
+        match self.filter_type {
+            FilterType::None => {
+                // Bypass - no processing needed
+                return;
+            }
+            FilterType::Moog => {
+                self.process_buffer_moog(buffer, sample_rate);
+            }
+            _ => {
+                // State-variable filters (LowPass, HighPass, BandPass, Notch, AllPass)
+                self.process_buffer_svf(buffer, sample_rate);
+            }
+        }
+    }
+
     /// Bypass filter (no processing)
     #[inline]
     fn process_none(&mut self, input: f32, _sample_rate: f32) -> f32 {
@@ -306,6 +331,133 @@ impl Filter {
         self.moog_stage = [0.0; 4];
         self.moog_stage_tanh = [0.0; 4];
         self.moog_delay = [0.0; 4];
+    }
+
+    /// Optimized buffer processing for state-variable filters
+    #[inline]
+    fn process_buffer_svf(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        // Precompute smoothing constants (outside the loop!)
+        const SMOOTHING: f32 = 0.95;
+        const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+
+        // Process buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Smooth parameter changes
+            self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+            self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+
+            // Calculate filter coefficients
+            let f = 2.0 * (PI * self.smooth_cutoff / sample_rate).sin();
+            let q = 1.0 - self.smooth_resonance;
+
+            // First stage: State-variable filter
+            self.low = self.low.mul_add(1.0, f * self.band);
+            self.high = input - self.low - q * self.band;
+            self.band = self.band.mul_add(1.0, f * self.high);
+            self.notch = self.high + self.low;
+
+            // Flush denormals (branchless with min trick)
+            const DENORMAL_THRESHOLD: f32 = 1e-15;
+            self.low *= (self.low.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+            self.band *= (self.band.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+
+            // Clamp state for stability (branchless)
+            self.low = self.low.clamp(-100.0, 100.0);
+            self.band = self.band.clamp(-100.0, 100.0);
+            self.high = self.high.clamp(-100.0, 100.0);
+
+            // Get output from first stage (branchless using multiplication)
+            let stage1_output = match self.filter_type {
+                FilterType::LowPass => self.low,
+                FilterType::HighPass => self.high,
+                FilterType::BandPass => self.band,
+                FilterType::Notch => self.notch,
+                FilterType::AllPass => self.notch - self.band,
+                _ => input,
+            };
+
+            // Second stage for 24dB/octave
+            let output = if matches!(self.slope, FilterSlope::Pole24dB) {
+                self.low2 = self.low2.mul_add(1.0, f * self.band2);
+                self.high2 = stage1_output - self.low2 - q * self.band2;
+                self.band2 = self.band2.mul_add(1.0, f * self.high2);
+                self.notch2 = self.high2 + self.low2;
+
+                // Flush denormals
+                self.low2 *= (self.low2.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+                self.band2 *= (self.band2.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+
+                // Clamp for stability
+                self.low2 = self.low2.clamp(-100.0, 100.0);
+                self.band2 = self.band2.clamp(-100.0, 100.0);
+                self.high2 = self.high2.clamp(-100.0, 100.0);
+
+                match self.filter_type {
+                    FilterType::LowPass => self.low2,
+                    FilterType::HighPass => self.high2,
+                    FilterType::BandPass => self.band2,
+                    FilterType::Notch => self.notch2,
+                    FilterType::AllPass => self.notch2 - self.band2,
+                    _ => stage1_output,
+                }
+            } else {
+                stage1_output
+            };
+
+            *sample = output.clamp(-2.0, 2.0);
+        }
+    }
+
+    /// Optimized buffer processing for Moog ladder filter with fast_tanh
+    #[inline]
+    fn process_buffer_moog(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        use crate::synthesis::simd::SimdLanes;
+
+        const SMOOTHING: f32 = 0.95;
+        const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Smooth parameters
+            self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+            self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+
+            // Calculate coefficients
+            let fc = self.smooth_cutoff / sample_rate;
+            let f = fc.mul_add(1.16, 0.0);
+            let k = self.smooth_resonance.mul_add(3.96, 0.0);
+
+            // Input with feedback
+            let input_compensated = input - k * self.moog_delay[3];
+
+            // OPTIMIZATION: Use fast_tanh instead of stdlib tanh!
+            let input_tanh = f32::fast_tanh(input_compensated);
+
+            // Process through 4 stages
+            for i in 0..4 {
+                let stage_input = if i == 0 {
+                    input_tanh
+                } else {
+                    self.moog_stage_tanh[i - 1]
+                };
+
+                // One-pole lowpass
+                self.moog_stage[i] = self.moog_delay[i].mul_add(1.0 - f, stage_input * f);
+
+                // OPTIMIZATION: Use fast_tanh!
+                self.moog_stage_tanh[i] = f32::fast_tanh(self.moog_stage[i]);
+
+                // Store for next sample
+                self.moog_delay[i] = self.moog_stage[i];
+            }
+
+            // Output from 4th stage
+            let output = self.moog_stage_tanh[3];
+            *sample = output.clamp(-2.0, 2.0);
+        }
     }
 }
 

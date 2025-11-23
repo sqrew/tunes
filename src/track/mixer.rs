@@ -1709,11 +1709,11 @@ impl Mixer {
             // Apply track volume
             track_value *= track.volume;
 
-            // Apply filter (per-sample, maintains state)
-            track_value = track.filter.process(track_value, sample_rate);
-
             *sample_out = track_value;
         }
+
+        // Apply filter to entire buffer (optimized block processing!)
+        track.filter.process_buffer(buffer, sample_rate);
 
         // Apply effects to entire buffer (block processing!)
         track
