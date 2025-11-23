@@ -613,6 +613,10 @@ pub struct RingModulator {
     pub priority: u8,      // Processing priority (lower = earlier in signal chain)
     phase: f32,
 
+    // Pre-allocated buffers for SIMD processing (grow once, then reused)
+    modulation_buffer: Vec<f32>,
+    dry_buffer: Vec<f32>,
+
     // Automation (optional)
     carrier_freq_automation: Option<Automation>,
     mix_automation: Option<Automation>,
@@ -637,6 +641,8 @@ impl RingModulator {
             mix: mix.clamp(0.0, 1.0),
             priority: PRIORITY_MODULATION, // Modulation effects in middle-late position
             phase: 0.0,
+            modulation_buffer: Vec::new(),
+            dry_buffer: Vec::new(),
             carrier_freq_automation: None,
             mix_automation: None,
         }
@@ -725,83 +731,40 @@ impl RingModulator {
             return;
         }
 
-        // Dispatch to SIMD implementation
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.process_block_simd::<8>(buffer, sample_rate),
-            SimdWidth::X4 => self.process_block_simd::<4>(buffer, sample_rate),
-            SimdWidth::Scalar => self.process_block_scalar(buffer, sample_rate),
-        }
-    }
-
-    /// SIMD implementation - processes N samples at once
-    #[inline(always)]
-    fn process_block_simd<const N: usize>(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        // TRUE SIMD implementation using multiply_buffers()
         let phase_increment = self.carrier_freq / sample_rate;
         let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
 
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        // Reuse pre-allocated buffers (grow once, then reused)
+        self.modulation_buffer.clear();
+        self.modulation_buffer.reserve(buffer.len());
+        self.dry_buffer.clear();
+        self.dry_buffer.extend_from_slice(buffer);
 
-        // Process N samples at a time
-        for chunk_idx in 0..num_chunks {
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
-
-            // Generate N carrier phases
-            let mut phases = [0.0f32; 8]; // Max size for N=8
-            for (i, phase) in phases.iter_mut().enumerate().take(N) {
-                *phase = self.phase + (i as f32) * phase_increment;
-                if *phase >= 1.0 {
-                    *phase -= 1.0;
-                }
-            }
-
-            // Process N samples
-            for i in 0..N {
-                let carrier = crate::synthesis::wavetable::WAVETABLE.sample(phases[i]);
-                let input = chunk[i];
-                let modulated = input * carrier;
-                chunk[i] = input.mul_add(one_minus_mix, modulated * mix);
-            }
-
-            self.phase += (N as f32) * phase_increment;
-            if self.phase >= 1.0 {
-                self.phase -= 1.0;
-            }
-        }
-
-        // Handle remainder with scalar
-        for sample in buffer.iter_mut().skip(remainder_start) {
+        // Generate carrier wave (scalar - can't vectorize wavetable lookup)
+        for _ in 0..buffer.len() {
             let carrier = crate::synthesis::wavetable::WAVETABLE.sample(self.phase);
-            let input = *sample;
-            let modulated = input * carrier;
-            *sample = input.mul_add(one_minus_mix, modulated * mix);
+            self.modulation_buffer.push(carrier);
 
             self.phase += phase_increment;
             if self.phase >= 1.0 {
                 self.phase -= 1.0;
             }
         }
-    }
 
-    /// Scalar fallback
-    #[inline(always)]
-    fn process_block_scalar(&mut self, buffer: &mut [f32], sample_rate: f32) {
-        let phase_increment = self.carrier_freq / sample_rate;
-        let mix = self.mix;
-        let one_minus_mix = 1.0 - mix;
+        // Apply ring modulation using TRUE SIMD
+        SIMD.multiply_buffers(buffer, &self.modulation_buffer);
 
-        for sample in buffer.iter_mut() {
-            let carrier = crate::synthesis::wavetable::WAVETABLE.sample(self.phase);
-            let input = *sample;
-            let modulated = input * carrier;
-            *sample = input.mul_add(one_minus_mix, modulated * mix);
+        // Wet/dry mix: output = dry * (1-mix) + wet * mix
+        // Currently in buffer: wet signal
+        // In dry_buffer: dry signal
+        let wet_gain = mix;
+        let dry_gain = 1.0 - mix;
 
-            self.phase += phase_increment;
-            if self.phase >= 1.0 {
-                self.phase -= 1.0;
-            }
+        // SIMD-optimized wet/dry mix
+        SIMD.multiply_const(buffer, wet_gain);
+        for (output, &dry_sample) in buffer.iter_mut().zip(self.dry_buffer.iter()) {
+            *output = dry_sample.mul_add(dry_gain, *output);
         }
     }
 
@@ -855,6 +818,9 @@ pub struct Tremolo {
     pub priority: u8, // Processing priority
     phase: f32,       // LFO phase (0.0 to 1.0)
 
+    // Pre-allocated buffer for SIMD processing (grows once, then reused)
+    modulation_buffer: Vec<f32>,
+
     // Automation (optional)
     rate_automation: Option<Automation>,
     depth_automation: Option<Automation>,
@@ -875,6 +841,7 @@ impl Tremolo {
             depth: depth.clamp(0.0, 1.0),
             priority: PRIORITY_MODULATION,
             phase: 0.0,
+            modulation_buffer: Vec::new(),
             rate_automation: None,
             depth_automation: None,
         }
@@ -969,83 +936,31 @@ impl Tremolo {
             return;
         }
 
-        // Dispatch to SIMD implementation
-        match SIMD.simd_width() {
-            SimdWidth::X8 => self.process_block_simd::<8>(buffer, sample_rate),
-            SimdWidth::X4 => self.process_block_simd::<4>(buffer, sample_rate),
-            SimdWidth::Scalar => self.process_block_scalar(buffer, sample_rate),
-        }
-    }
-
-    /// SIMD implementation - processes N samples at once
-    #[inline(always)]
-    fn process_block_simd<const N: usize>(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        // TRUE SIMD implementation using multiply_buffers()
         use std::f32::consts::PI;
         let phase_increment = self.rate / sample_rate;
         let depth = self.depth;
         let two_pi = 2.0 * PI;
 
-        let num_chunks = buffer.len() / N;
-        let remainder_start = num_chunks * N;
+        // Reuse pre-allocated buffer (grows once, then reused)
+        self.modulation_buffer.clear();
+        self.modulation_buffer.reserve(buffer.len());
 
-        // Process N samples at a time
-        for chunk_idx in 0..num_chunks {
-            let chunk_start = chunk_idx * N;
-            let chunk = &mut buffer[chunk_start..chunk_start + N];
-
-            // Generate N phases
-            let mut phases = [0.0f32; 8]; // Max size for N=8
-            for (i, phase) in phases.iter_mut().enumerate().take(N) {
-                *phase = self.phase + (i as f32) * phase_increment;
-                if *phase >= 1.0 {
-                    *phase -= 1.0;
-                }
-            }
-
-            // Process N samples
-            for i in 0..N {
-                let lfo = (phases[i] * two_pi).sin();
-                let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
-                chunk[i] *= modulation;
-            }
-
-            self.phase += (N as f32) * phase_increment;
-            if self.phase >= 1.0 {
-                self.phase -= 1.0;
-            }
-        }
-
-        // Handle remainder with scalar
-        for sample in buffer.iter_mut().skip(remainder_start) {
+        // Generate LFO modulation values (scalar - can't vectorize sin())
+        for _ in 0..buffer.len() {
             let lfo = (self.phase * two_pi).sin();
+            // Convert bipolar LFO (-1 to 1) to unipolar amplitude modulation
             let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
-            *sample *= modulation;
+            self.modulation_buffer.push(modulation);
 
             self.phase += phase_increment;
             if self.phase >= 1.0 {
                 self.phase -= 1.0;
             }
         }
-    }
 
-    /// Scalar fallback
-    #[inline(always)]
-    fn process_block_scalar(&mut self, buffer: &mut [f32], sample_rate: f32) {
-        use std::f32::consts::PI;
-        let phase_increment = self.rate / sample_rate;
-        let depth = self.depth;
-        let two_pi = 2.0 * PI;
-
-        for sample in buffer.iter_mut() {
-            let lfo = (self.phase * two_pi).sin();
-            let modulation = 1.0 - (depth * (1.0 - lfo) * 0.5);
-            *sample *= modulation;
-
-            self.phase += phase_increment;
-            if self.phase >= 1.0 {
-                self.phase -= 1.0;
-            }
-        }
+        // Apply tremolo using TRUE SIMD
+        SIMD.multiply_buffers(buffer, &self.modulation_buffer);
     }
 
     /// Reset the tremolo state

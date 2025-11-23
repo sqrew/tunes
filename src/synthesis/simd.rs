@@ -507,6 +507,43 @@ impl SimdDispatcher {
         }
     }
 
+    /// Element-wise multiply two buffers: buffer[i] *= modulation[i]
+    ///
+    /// Multiplies each element of `buffer` by the corresponding element in `modulation`.
+    /// Processes min(buffer.len(), modulation.len()) elements.
+    /// Used for amplitude modulation effects like tremolo and ring modulation.
+    #[inline]
+    pub fn multiply_buffers(&self, buffer: &mut [f32], modulation: &[f32]) {
+        match self.width {
+            SimdWidth::X8 => self.multiply_buffers_impl::<f32x8>(buffer, modulation),
+            SimdWidth::X4 => self.multiply_buffers_impl::<f32x4>(buffer, modulation),
+            SimdWidth::Scalar => self.multiply_buffers_impl::<f32>(buffer, modulation),
+        }
+    }
+
+    #[inline(always)]
+    fn multiply_buffers_impl<V: SimdLanes>(&self, buffer: &mut [f32], modulation: &[f32]) {
+        let len = buffer.len().min(modulation.len());
+        let (buffer_chunks, buffer_rem) = buffer[..len].split_at_mut(len - (len % V::LANES));
+        let (mod_chunks, mod_rem) = modulation[..len].split_at(len - (len % V::LANES));
+
+        // SIMD path
+        for (buf_chunk, mod_chunk) in buffer_chunks
+            .chunks_exact_mut(V::LANES)
+            .zip(mod_chunks.chunks_exact(V::LANES))
+        {
+            let buf_vec = V::from_array(buf_chunk);
+            let mod_vec = V::from_array(mod_chunk);
+            let result = buf_vec.mul(mod_vec);
+            result.write_to_slice(buf_chunk);
+        }
+
+        // Scalar remainder
+        for i in 0..buffer_rem.len() {
+            buffer_rem[i] *= mod_rem[i];
+        }
+    }
+
     /// FMA (fused multiply-add): buffer = buffer * mul + add, using SIMD
     #[inline]
     pub fn fma(&self, buffer: &mut [f32], mul: f32, add: f32) {
