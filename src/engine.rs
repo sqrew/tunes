@@ -565,16 +565,38 @@ impl AudioEngine {
                 &stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     // Lock only AudioCallbackState (one lock instead of three!)
-                    let mut state = callback_state_for_stream.lock().unwrap();
+                    // If mutex is poisoned, output silence and return early
+                    let mut state = match callback_state_for_stream.lock() {
+                        Ok(state) => state,
+                        Err(e) => {
+                            eprintln!("Audio callback: mutex poisoned: {}", e);
+                            // Fill buffer with silence
+                            for sample in data.iter_mut() {
+                                *sample = 0.0;
+                            }
+                            return;
+                        }
+                    };
 
                     // Lock-free reads of spatial audio config via epoch-based reclamation
                     let guard = epoch::pin();
+
+                    // Use defaults if atomic loads return null (graceful degradation)
+                    let default_listener = ListenerConfig::default();
                     let listener = unsafe {
-                        listener_config_for_stream.load(Ordering::Acquire, &guard).as_ref().unwrap()
+                        listener_config_for_stream
+                            .load(Ordering::Acquire, &guard)
+                            .as_ref()
                     };
+                    let listener = listener.unwrap_or(&default_listener);
+
+                    let default_spatial = SpatialParams::default();
                     let spatial = unsafe {
-                        spatial_params_for_stream.load(Ordering::Acquire, &guard).as_ref().unwrap()
+                        spatial_params_for_stream
+                            .load(Ordering::Acquire, &guard)
+                            .as_ref()
                     };
+                    let spatial = spatial.unwrap_or(&default_spatial);
 
                     // Destructure state FIRST to get separate mutable references (satisfies borrow checker)
                     let AudioCallbackState {
