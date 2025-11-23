@@ -63,12 +63,6 @@ pub struct CachePolicy {
     /// Minimum synthesis duration (ms) to cache
     /// Sounds shorter than this won't be cached (not worth it)
     pub min_cache_duration_ms: f32,
-
-    /// Enable disk persistence (not implemented yet)
-    pub enable_disk_cache: bool,
-
-    /// Disk cache directory (if enabled)
-    pub cache_dir: Option<std::path::PathBuf>,
 }
 
 impl Default for CachePolicy {
@@ -76,8 +70,6 @@ impl Default for CachePolicy {
         Self {
             max_size_mb: 500,                  // 500 MB default
             min_cache_duration_ms: 100.0,      // Only cache sounds > 100ms
-            enable_disk_cache: false,          // RAM only by default
-            cache_dir: None,
         }
     }
 }
@@ -197,12 +189,6 @@ impl SampleCache {
     /// Set minimum cacheable duration in milliseconds
     pub fn with_min_duration_ms(mut self, min_ms: f32) -> Self {
         self.policy.min_cache_duration_ms = min_ms;
-        self
-    }
-
-    /// Enable disk caching (not implemented yet)
-    pub fn with_disk_cache(mut self, enable: bool) -> Self {
-        self.policy.enable_disk_cache = enable;
         self
     }
 

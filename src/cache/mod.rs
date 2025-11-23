@@ -7,7 +7,7 @@
 //! # Architecture
 //!
 //! - **Cache Keys**: Hash synthesis parameters (waveform, envelope, FM, etc.)
-//! - **Cache Storage**: LRU-based in-memory cache with optional disk persistence
+//! - **Cache Storage**: LRU-based in-memory cache
 //! - **GPU Acceleration**: Optional GPU compute shader rendering (future)
 //!
 //! # Example
@@ -17,8 +17,7 @@
 //! use tunes::cache::SampleCache;
 //!
 //! let cache = SampleCache::new()
-//!     .with_max_size_mb(500)
-//!     .with_disk_cache(false);  // RAM only, no persistence
+//!     .with_max_size_mb(500);
 //!
 //! // Cache is automatically used during synthesis
 //! let mut comp = Composition::new(Tempo::new(120.0));
