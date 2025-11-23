@@ -67,6 +67,85 @@ fn seconds_to_ticks(time: f32, tempo: f32, ppq: u16) -> u32 {
     ticks.round() as u32
 }
 
+/// Helper struct to track tempo changes and convert time to ticks accurately
+///
+/// This struct maintains a sorted list of tempo changes and calculates MIDI ticks
+/// by integrating through tempo segments, ensuring accurate timing even with
+/// multiple tempo changes.
+struct TempoMap {
+    changes: Vec<(f32, f32)>, // (time in seconds, bpm)
+    ppq: u16,
+}
+
+impl TempoMap {
+    /// Create a new TempoMap with an initial tempo
+    fn new(initial_bpm: f32, ppq: u16) -> Self {
+        Self {
+            changes: vec![(0.0, initial_bpm)],
+            ppq,
+        }
+    }
+
+    /// Add a tempo change at a specific time
+    fn add_change(&mut self, time: f32, bpm: f32) {
+        self.changes.push((time, bpm));
+    }
+
+    /// Sort tempo changes by time (must be called after all changes are added)
+    fn finalize(&mut self) {
+        self.changes
+            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        // Remove duplicates at same time (keep last)
+        self.changes.dedup_by(|a, b| (a.0 - b.0).abs() < 0.001);
+    }
+
+    /// Convert time in seconds to MIDI ticks, accounting for tempo changes
+    ///
+    /// This method integrates through tempo segments:
+    /// - For each tempo segment, calculate ticks for time spent in that segment
+    /// - Sum up ticks from all segments up to the target time
+    ///
+    /// # Example
+    /// ```text
+    /// Tempo changes: [(0.0, 120.0), (2.0, 60.0)]
+    /// Converting 3.0 seconds:
+    /// - First 2 seconds at 120 BPM = 1920 ticks
+    /// - Next 1 second at 60 BPM = 480 ticks
+    /// - Total = 2400 ticks
+    /// ```
+    fn seconds_to_ticks(&self, time: f32) -> u32 {
+        if time <= 0.0 {
+            return 0;
+        }
+
+        let mut accumulated_ticks = 0u32;
+        let mut prev_time = 0.0;
+        let mut prev_bpm = self.changes[0].1;
+
+        for &(change_time, change_bpm) in &self.changes {
+            if change_time >= time {
+                // Target time is before this tempo change
+                // Calculate ticks from prev_time to time at prev_bpm
+                let duration = time - prev_time;
+                accumulated_ticks += seconds_to_ticks(duration, prev_bpm, self.ppq);
+                return accumulated_ticks;
+            }
+
+            // Calculate ticks from prev_time to change_time at prev_bpm
+            let duration = change_time - prev_time;
+            accumulated_ticks += seconds_to_ticks(duration, prev_bpm, self.ppq);
+
+            prev_time = change_time;
+            prev_bpm = change_bpm;
+        }
+
+        // Time is after all tempo changes - use last tempo
+        let duration = time - prev_time;
+        accumulated_ticks += seconds_to_ticks(duration, prev_bpm, self.ppq);
+        accumulated_ticks
+    }
+}
+
 /// Convert MIDI ticks to time in seconds
 ///
 /// # Arguments
@@ -372,6 +451,26 @@ fn semitones_to_pitch_bend(semitones: f32, range: f32) -> u16 {
     bend_value.round().clamp(0.0, 16383.0) as u16
 }
 
+/// Convert MIDI pitch bend value (14-bit) to semitones
+///
+/// MIDI pitch bend is a 14-bit value (0-16383) with center at 8192.
+/// Standard pitch bend range is ±2 semitones.
+///
+/// Note: The midly library returns pitch bend as a signed i16 value
+/// relative to center (-8192 to +8191), not the raw 14-bit value.
+///
+/// # Arguments
+/// * `bend_value` - Pitch bend value from midly (signed, relative to center)
+/// * `range` - Pitch bend range in semitones (default is 2.0 for ±2 semitones)
+///
+/// # Returns
+/// Pitch bend in semitones (positive = up, negative = down)
+fn pitch_bend_to_semitones_from_signed(bend_value: i16, range: f32) -> f32 {
+    // midly returns pitch bend as signed value relative to center
+    // -8192 to +8191, where 0 = center (no bend)
+    (bend_value as f32 / 8192.0) * range
+}
+
 /// Convert a modulation LFO value to MIDI CC value (0-127)
 ///
 /// For unipolar modulation (volume): 0.0 -> 0, 1.0 -> 127
@@ -383,6 +482,198 @@ fn mod_value_to_cc(value: f32, bipolar: bool) -> u8 {
     } else {
         // Unipolar: 0.0 to 1.0 -> 0 to 127
         (value * 127.0).round().clamp(0.0, 127.0) as u8
+    }
+}
+
+/// Map General MIDI program number (0-127) to an Instrument preset
+///
+/// This provides automatic instrument selection when importing MIDI files.
+/// The mapping follows the General MIDI standard and uses the best available
+/// preset from the library's 160+ instruments.
+///
+/// # General MIDI Program Categories
+/// - 0-7: Piano
+/// - 8-15: Chromatic Percussion
+/// - 16-23: Organ
+/// - 24-31: Guitar
+/// - 32-39: Bass
+/// - 40-47: Strings
+/// - 48-55: Ensemble
+/// - 56-63: Brass
+/// - 64-71: Reed
+/// - 72-79: Pipe
+/// - 80-87: Synth Lead
+/// - 88-95: Synth Pad
+/// - 96-103: Synth Effects
+/// - 104-111: Ethnic
+/// - 112-119: Percussive
+/// - 120-127: Sound Effects
+pub fn gm_program_to_instrument(program: u8) -> crate::instruments::Instrument {
+    use crate::instruments::Instrument;
+
+    match program {
+        // Piano (0-7)
+        0 => Instrument::acoustic_piano(),      // Acoustic Grand Piano
+        1 => Instrument::acoustic_piano(),      // Bright Acoustic Piano
+        2 => Instrument::electric_piano(),      // Electric Grand Piano
+        3 => Instrument::honky_tonk_piano(),    // Honky-tonk Piano
+        4 => Instrument::electric_piano(),      // Electric Piano 1 (Rhodes)
+        5 => Instrument::stage_73(),            // Electric Piano 2 (Chorus)
+        6 => Instrument::harpsichord(),         // Harpsichord
+        7 => Instrument::clavinet(),            // Clavinet
+
+        // Chromatic Percussion (8-15)
+        8 => Instrument::celesta(),             // Celesta
+        9 => Instrument::glockenspiel(),        // Glockenspiel
+        10 => Instrument::music_box(),          // Music Box
+        11 => Instrument::vibraphone(),         // Vibraphone
+        12 => Instrument::marimba(),            // Marimba
+        13 => Instrument::xylophone(),          // Xylophone
+        14 => Instrument::tubular_bells(),      // Tubular Bells
+        15 => Instrument::dulcimer(),           // Dulcimer
+
+        // Organ (16-23)
+        16 => Instrument::hammond_organ(),      // Drawbar Organ
+        17 => Instrument::organ(),              // Percussive Organ
+        18 => Instrument::church_organ(),       // Rock Organ
+        19 => Instrument::church_organ(),       // Church Organ
+        20 => Instrument::reed_organ(),         // Reed Organ
+        21 => Instrument::accordion(),          // Accordion
+        22 => Instrument::accordion(),          // Harmonica
+        23 => Instrument::accordion(),          // Tango Accordion
+
+        // Guitar (24-31)
+        24 => Instrument::acoustic_guitar(),    // Acoustic Guitar (nylon)
+        25 => Instrument::acoustic_guitar(),    // Acoustic Guitar (steel)
+        26 => Instrument::electric_guitar_clean(), // Electric Guitar (jazz)
+        27 => Instrument::electric_guitar_clean(), // Electric Guitar (clean)
+        28 => Instrument::guitar_palm_muted(),  // Electric Guitar (muted)
+        29 => Instrument::electric_guitar_distorted(), // Overdriven Guitar
+        30 => Instrument::electric_guitar_distorted(), // Distortion Guitar
+        31 => Instrument::guitar_harmonics(),   // Guitar Harmonics
+
+        // Bass (32-39)
+        32 => Instrument::upright_bass(),       // Acoustic Bass
+        33 => Instrument::fingerstyle_bass(),   // Electric Bass (finger)
+        34 => Instrument::slap_bass(),          // Electric Bass (pick)
+        35 => Instrument::fretless_bass(),      // Fretless Bass
+        36 => Instrument::slap_bass(),          // Slap Bass 1
+        37 => Instrument::slap_bass(),          // Slap Bass 2
+        38 => Instrument::synth_bass(),         // Synth Bass 1
+        39 => Instrument::synth_bass(),         // Synth Bass 2
+
+        // Strings (40-47)
+        40 => Instrument::violin(),             // Violin
+        41 => Instrument::viola(),              // Viola
+        42 => Instrument::cello(),              // Cello
+        43 => Instrument::double_bass(),        // Contrabass
+        44 => Instrument::tremolo_strings(),    // Tremolo Strings
+        45 => Instrument::pizzicato_strings(),  // Pizzicato Strings
+        46 => Instrument::harp(),               // Orchestral Harp
+        47 => Instrument::timpani(),            // Timpani
+
+        // Ensemble (48-55)
+        48 => Instrument::strings(),            // String Ensemble 1
+        49 => Instrument::slow_strings(),       // String Ensemble 2
+        50 => Instrument::strings(),            // Synth Strings 1
+        51 => Instrument::strings(),            // Synth Strings 2
+        52 => Instrument::choir_aahs(),         // Choir Aahs
+        53 => Instrument::choir_oohs(),         // Voice Oohs
+        54 => Instrument::synth_voice(),        // Synth Voice
+        55 => Instrument::strings(),            // Orchestra Hit
+
+        // Brass (56-63)
+        56 => Instrument::solo_trumpet(),       // Trumpet
+        57 => Instrument::trombone(),           // Trombone
+        58 => Instrument::tuba(),               // Tuba
+        59 => Instrument::muted_trumpet(),      // Muted Trumpet
+        60 => Instrument::french_horn(),        // French Horn
+        61 => Instrument::brass_section(),      // Brass Section
+        62 => Instrument::prophet_brass(),      // Synth Brass 1
+        63 => Instrument::analog_brass(),       // Synth Brass 2
+
+        // Reed (64-71)
+        64 => Instrument::soprano_sax(),        // Soprano Sax
+        65 => Instrument::alto_sax(),           // Alto Sax
+        66 => Instrument::tenor_sax(),          // Tenor Sax
+        67 => Instrument::baritone_sax(),       // Baritone Sax
+        68 => Instrument::oboe(),               // Oboe
+        69 => Instrument::english_horn(),       // English Horn
+        70 => Instrument::bassoon(),            // Bassoon
+        71 => Instrument::clarinet(),           // Clarinet
+
+        // Pipe (72-79)
+        72 => Instrument::piccolo(),            // Piccolo
+        73 => Instrument::flute(),              // Flute
+        74 => Instrument::flute(),              // Recorder
+        75 => Instrument::pan_flute(),          // Pan Flute
+        76 => Instrument::didgeridoo(),         // Blown Bottle
+        77 => Instrument::shakuhachi(),         // Shakuhachi
+        78 => Instrument::shakuhachi(),         // Whistle
+        79 => Instrument::uilleann_pipes(),     // Ocarina
+
+        // Synth Lead (80-87)
+        80 => Instrument::square_lead(),        // Lead 1 (square)
+        81 => Instrument::saw_lead(),           // Lead 2 (sawtooth)
+        82 => Instrument::synth_voice(),        // Lead 3 (calliope)
+        83 => Instrument::chiptune(),           // Lead 4 (chiff)
+        84 => Instrument::synth_lead(),         // Lead 5 (charang)
+        85 => Instrument::synth_voice(),        // Lead 6 (voice)
+        86 => Instrument::supersaw(),           // Lead 7 (fifths)
+        87 => Instrument::saw_lead(),           // Lead 8 (bass + lead)
+
+        // Synth Pad (88-95)
+        88 => Instrument::warm_pad(),           // Pad 1 (new age)
+        89 => Instrument::ambient_pad(),        // Pad 2 (warm)
+        90 => Instrument::vocal_pad(),          // Pad 3 (polysynth)
+        91 => Instrument::choir_oohs(),         // Pad 4 (choir)
+        92 => Instrument::shimmer_pad(),        // Pad 5 (bowed)
+        93 => Instrument::ambient_pad(),        // Pad 6 (metallic)
+        94 => Instrument::warm_pad(),           // Pad 7 (halo)
+        95 => Instrument::juno_pad(),           // Pad 8 (sweep)
+
+        // Synth Effects (96-103)
+        96 => Instrument::cosmic_rays(),        // FX 1 (rain)
+        97 => Instrument::wind_chimes(),        // FX 2 (soundtrack)
+        98 => Instrument::glass_harmonica(),    // FX 3 (crystal)
+        99 => Instrument::ambient_pad(),        // FX 4 (atmosphere)
+        100 => Instrument::shimmer_pad(),       // FX 5 (brightness)
+        101 => Instrument::granular_pad(),      // FX 6 (goblins)
+        102 => Instrument::cosmic_rays(),       // FX 7 (echoes)
+        103 => Instrument::glitch(),            // FX 8 (sci-fi)
+
+        // Ethnic (104-111)
+        104 => Instrument::sitar(),             // Sitar
+        105 => Instrument::banjo(),             // Banjo
+        106 => Instrument::shamisen(),          // Shamisen
+        107 => Instrument::koto(),              // Koto
+        108 => Instrument::kalimba(),           // Kalimba
+        109 => Instrument::bagpipes(),          // Bag pipe
+        110 => Instrument::erhu(),              // Fiddle
+        111 => Instrument::duduk(),             // Shanai
+
+        // Percussive (112-119)
+        112 => Instrument::steel_drums(),       // Tinkle Bell
+        113 => Instrument::cowbell(),           // Agogo
+        114 => Instrument::steel_drums(),       // Steel Drums
+        115 => Instrument::taiko_drum(),        // Woodblock
+        116 => Instrument::taiko(),             // Taiko Drum
+        117 => Instrument::timpani(),           // Melodic Tom
+        118 => Instrument::djembe(),            // Synth Drum
+        119 => Instrument::metallic_perc(),     // Reverse Cymbal
+
+        // Sound Effects (120-127)
+        120 => Instrument::guitar_harmonics(),  // Guitar Fret Noise
+        121 => Instrument::glitch(),            // Breath Noise
+        122 => Instrument::wind_chimes(),       // Seashore
+        123 => Instrument::cosmic_rays(),       // Bird Tweet
+        124 => Instrument::glitch(),            // Telephone Ring
+        125 => Instrument::impact(),            // Helicopter
+        126 => Instrument::riser(),             // Applause
+        127 => Instrument::laser(),             // Gunshot
+
+        // Default fallback (should never reach here)
+        _ => Instrument::acoustic_piano(),
     }
 }
 
@@ -417,11 +708,11 @@ impl Mixer {
     pub fn export_midi(&self, path: &str) -> Result<()> {
         let mut tracks = Vec::new();
 
-        // Keep initial BPM for time-to-tick conversions
+        // Keep initial BPM for reference
         let bpm = self.tempo.bpm;
 
-        // Track 0: Tempo track (meta information)
-        let mut tempo_track = Vec::new();
+        // Build tempo map for accurate time-to-tick conversions
+        let mut tempo_map = TempoMap::new(bpm, PPQ);
 
         // Collect all tempo changes from all tracks
         let mut tempo_changes = Vec::new();
@@ -441,6 +732,20 @@ impl Mixer {
         // Sort by time and remove duplicates at same time (keep last)
         tempo_changes.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
         tempo_changes.dedup_by(|a, b| (a.0 - b.0).abs() < 0.001);
+
+        // Add all tempo changes to the tempo map
+        for (time, tempo_bpm) in &tempo_changes {
+            if *time > 0.0 {
+                // Skip initial tempo (already added in TempoMap::new)
+                tempo_map.add_change(*time, *tempo_bpm);
+            }
+        }
+
+        // Finalize the tempo map (sorts and deduplicates)
+        tempo_map.finalize();
+
+        // Track 0: Tempo track (meta information)
+        let mut tempo_track = Vec::new();
 
         // Collect all time signature changes from all tracks
         let mut time_sig_changes: Vec<(f32, u8, u8)> = Vec::new();
@@ -465,12 +770,32 @@ impl Mixer {
         time_sig_changes.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
         time_sig_changes.dedup_by(|a, b| (a.0 - b.0).abs() < 0.001);
 
-        // Combine tempo and time signature changes into a single sorted list
-        // We'll use an enum to distinguish between the two types
+        // Collect all key signature changes from all tracks
+        let mut key_sig_changes: Vec<(f32, crate::theory::key_signature::KeySignature)> =
+            Vec::new();
+
+        // Collect key signature changes from all tracks
+        for track in self.all_tracks() {
+            for event in &track.events {
+                if let AudioEvent::KeySignature(key_sig_event) = event {
+                    key_sig_changes
+                        .push((key_sig_event.start_time, key_sig_event.key_signature));
+                }
+            }
+        }
+
+        // Sort by time and remove duplicates at same time (keep last)
+        key_sig_changes
+            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        key_sig_changes.dedup_by(|a, b| (a.0 - b.0).abs() < 0.001);
+
+        // Combine tempo, time signature, and key signature changes into a single sorted list
+        // We'll use an enum to distinguish between the types
         #[derive(Debug, Clone, Copy)]
         enum MetaChange {
             Tempo(f32, f32),            // (time, bpm)
             TimeSignature(f32, u8, u8), // (time, numerator, denominator)
+            KeySignature(f32, crate::theory::key_signature::KeySignature), // (time, key_signature)
         }
 
         let mut meta_changes: Vec<MetaChange> = Vec::new();
@@ -485,15 +810,22 @@ impl Mixer {
             meta_changes.push(MetaChange::TimeSignature(time, numerator, denominator));
         }
 
+        // Add all key signature changes
+        for (time, key_signature) in key_sig_changes {
+            meta_changes.push(MetaChange::KeySignature(time, key_signature));
+        }
+
         // Sort by time
         meta_changes.sort_by(|a, b| {
             let time_a = match a {
                 MetaChange::Tempo(t, _) => *t,
                 MetaChange::TimeSignature(t, _, _) => *t,
+                MetaChange::KeySignature(t, _) => *t,
             };
             let time_b = match b {
                 MetaChange::Tempo(t, _) => *t,
                 MetaChange::TimeSignature(t, _, _) => *t,
+                MetaChange::KeySignature(t, _) => *t,
             };
             time_a
                 .partial_cmp(&time_b)
@@ -505,7 +837,7 @@ impl Mixer {
         for meta_change in meta_changes {
             match meta_change {
                 MetaChange::Tempo(time, tempo_bpm) => {
-                    let tick = seconds_to_ticks(time, bpm, PPQ);
+                    let tick = tempo_map.seconds_to_ticks(time);
                     let delta = tick.saturating_sub(last_tick);
                     last_tick = tick;
 
@@ -518,7 +850,7 @@ impl Mixer {
                     });
                 }
                 MetaChange::TimeSignature(time, numerator, denominator) => {
-                    let tick = seconds_to_ticks(time, bpm, PPQ);
+                    let tick = tempo_map.seconds_to_ticks(time);
                     let delta = tick.saturating_sub(last_tick);
                     last_tick = tick;
 
@@ -543,6 +875,25 @@ impl Mixer {
                         )),
                     });
                 }
+                MetaChange::KeySignature(time, key_signature) => {
+                    let tick = tempo_map.seconds_to_ticks(time);
+                    let delta = tick.saturating_sub(last_tick);
+                    last_tick = tick;
+
+                    // Convert key signature to MIDI format
+                    // sf: -7 to +7 (negative = flats, positive = sharps)
+                    // mi: false = major, true = minor
+                    let sharps_flats = key_signature.to_midi_sharps_flats();
+                    let is_minor = key_signature.is_minor();
+
+                    tempo_track.push(TrackEvent {
+                        delta: u28::new(delta),
+                        kind: TrackEventKind::Meta(MetaMessage::KeySignature(
+                            sharps_flats,
+                            is_minor,
+                        )),
+                    });
+                }
             }
         }
 
@@ -553,6 +904,12 @@ impl Mixer {
         });
 
         tracks.push(tempo_track);
+
+        // Channel allocator for melodic tracks
+        // MIDI has 16 channels (0-15): channel 9 is reserved for drums
+        // Available melodic channels: 0-8, 10-15 (15 channels total)
+        let melodic_channels: Vec<u8> = (0..16).filter(|&ch| ch != 9).collect();
+        let mut next_channel_idx = 0;
 
         // Convert each audio track to a MIDI track
         for track in self.all_tracks().iter() {
@@ -566,11 +923,16 @@ impl Mixer {
                 kind: TrackEventKind::Meta(MetaMessage::TrackName(track_name_bytes)),
             });
 
-            // Determine channel (drums on channel 10, melodic on channel 0)
+            // Determine channel based on track type
             let channel = if matches!(track.events.first(), Some(AudioEvent::Drum(_))) {
-                u4::new(9) // Channel 10 (0-indexed as 9) for drums
+                // Drums always go to channel 10 (0-indexed as 9)
+                u4::new(9)
             } else {
-                u4::new(0) // Channel 1 for melodic instruments (we'll improve this later)
+                // Melodic tracks: allocate next available channel
+                // If we run out of channels, wrap around (multiple tracks can share a channel)
+                let ch = melodic_channels[next_channel_idx % melodic_channels.len()];
+                next_channel_idx += 1;
+                u4::new(ch)
             };
 
             // Add program change if specified
@@ -630,8 +992,8 @@ impl Mixer {
             for event in &track.events {
                 match event {
                     AudioEvent::Note(note) => {
-                        let start_tick = seconds_to_ticks(note.start_time, bpm, PPQ);
-                        let end_tick = seconds_to_ticks(note.start_time + note.duration, bpm, PPQ);
+                        let start_tick = tempo_map.seconds_to_ticks(note.start_time);
+                        let end_tick = tempo_map.seconds_to_ticks(note.start_time + note.duration);
                         // Combine per-note velocity with track volume for final MIDI velocity
                         let combined_velocity = (note.velocity * track.volume).clamp(0.0, 1.0);
                         let velocity = volume_to_velocity(combined_velocity);
@@ -669,7 +1031,7 @@ impl Mixer {
                         }
                     }
                     AudioEvent::Drum(drum) => {
-                        let tick = seconds_to_ticks(drum.start_time, bpm, PPQ);
+                        let tick = tempo_map.seconds_to_ticks(drum.start_time);
                         let midi_note = drum_type_to_midi_note(drum.drum_type);
                         let velocity = DEFAULT_VELOCITY;
 
@@ -732,7 +1094,7 @@ impl Mixer {
                         let mut lfo_copy = mod_route.lfo;
                         for i in 0..num_samples {
                             let time = i as f32 * sample_interval;
-                            let tick = seconds_to_ticks(time, bpm, PPQ);
+                            let tick = tempo_map.seconds_to_ticks(time);
 
                             // Tick the LFO and get value
                             lfo_copy.tick();
@@ -943,9 +1305,23 @@ impl Mixer {
             let mut channel: Option<u8> = None;
             let mut midi_program: Option<u8> = None;
 
+            // Track CC values for this track
+            let mut track_volume: Option<f32> = None; // CC7
+            let mut track_pan: Option<f32> = None;    // CC10
+
+            // Track pitch bend state per channel
+            // Key: channel, Value: pitch bend in semitones
+            let mut pitch_bend_state: std::collections::HashMap<u8, f32> =
+                std::collections::HashMap::new();
+
+            // Track instrument per channel (for program changes)
+            // Key: channel, Value: Instrument preset
+            let mut channel_instruments: std::collections::HashMap<u8, crate::instruments::Instrument> =
+                std::collections::HashMap::new();
+
             // Track active notes for Note On/Off pairing
-            // Key: (channel, note), Value: (start_time, velocity)
-            let mut active_notes: std::collections::HashMap<(u8, u8), (f32, u8)> =
+            // Key: (channel, note), Value: (start_time, velocity, pitch_bend)
+            let mut active_notes: std::collections::HashMap<(u8, u8), (f32, u8, f32)> =
                 std::collections::HashMap::new();
 
             for event in midi_track {
@@ -973,7 +1349,7 @@ impl Mixer {
 
                                 if velocity == 0 {
                                     // Note off (velocity 0)
-                                    if let Some((start_time, start_vel)) =
+                                    if let Some((start_time, start_vel, pitch_bend)) =
                                         active_notes.remove(&(ch_num, note))
                                     {
                                         let duration = time - start_time;
@@ -989,16 +1365,26 @@ impl Mixer {
                                             let freq = midi_note_to_frequency(note);
                                             let vel_normalized = start_vel as f32 / 127.0;
 
+                                            // Get waveform and envelope from channel's instrument (if set via program change)
+                                            // Otherwise use defaults (Sine, default envelope)
+                                            let (waveform, envelope) = channel_instruments
+                                                .get(&ch_num)
+                                                .map(|inst| (inst.waveform, inst.envelope.clone()))
+                                                .unwrap_or((
+                                                    crate::synthesis::waveform::Waveform::Sine,
+                                                    crate::synthesis::envelope::Envelope::default(),
+                                                ));
+
                                             let note_event = crate::track::NoteEvent::with_complete_params(
                                                 &[freq],
                                                 start_time,
                                                 duration,
-                                                crate::synthesis::waveform::Waveform::Sine,
-                                                crate::synthesis::envelope::Envelope::default(),
+                                                waveform,
+                                                envelope,
                                                 crate::synthesis::filter_envelope::FilterEnvelope::default(),
                                                 crate::synthesis::fm_synthesis::FMParams::default(),
-                                                0.0, // No pitch bend
-                                                None, // No custom wavetable
+                                                pitch_bend, // Apply captured pitch bend
+                                                None,       // No custom wavetable
                                                 vel_normalized,
                                             );
                                             track
@@ -1008,14 +1394,15 @@ impl Mixer {
                                         }
                                     }
                                 } else {
-                                    // Note on
-                                    active_notes.insert((ch_num, note), (time, velocity));
+                                    // Note on - capture current pitch bend for this channel
+                                    let current_pitch_bend = *pitch_bend_state.get(&ch_num).unwrap_or(&0.0);
+                                    active_notes.insert((ch_num, note), (time, velocity, current_pitch_bend));
                                 }
                             }
                             MidiMessage::NoteOff { key, .. } => {
                                 let note = key.as_int();
 
-                                if let Some((start_time, start_vel)) =
+                                if let Some((start_time, start_vel, pitch_bend)) =
                                     active_notes.remove(&(ch_num, note))
                                 {
                                     let duration = time - start_time;
@@ -1039,8 +1426,8 @@ impl Mixer {
                                             crate::synthesis::envelope::Envelope::default(),
                                             crate::synthesis::filter_envelope::FilterEnvelope::default(),
                                             crate::synthesis::fm_synthesis::FMParams::default(),
-                                            0.0, // No pitch bend
-                                            None, // No custom wavetable
+                                            pitch_bend, // Apply captured pitch bend
+                                            None,       // No custom wavetable
                                             vel_normalized,
                                         );
                                         track
@@ -1051,10 +1438,47 @@ impl Mixer {
                                 }
                             }
                             MidiMessage::ProgramChange { program } => {
-                                midi_program = Some(program.as_int());
+                                let program_num = program.as_int();
+                                midi_program = Some(program_num);
+
+                                // Map GM program to instrument preset and store for this channel
+                                let instrument = gm_program_to_instrument(program_num);
+                                channel_instruments.insert(ch_num, instrument);
+                            }
+                            MidiMessage::Controller { controller, value } => {
+                                let cc_num = controller.as_int();
+                                let cc_value = value.as_int();
+
+                                match cc_num {
+                                    7 => {
+                                        // Volume (CC7): 0-127 → 0.0-1.0
+                                        track_volume = Some(cc_value as f32 / 127.0);
+                                    }
+                                    10 => {
+                                        // Pan (CC10): 0-127 → -1.0 to 1.0 (64 = center)
+                                        track_pan = Some((cc_value as f32 - 64.0) / 63.5);
+                                    }
+                                    11 => {
+                                        // Expression (CC11): Treat as volume
+                                        // If both CC7 and CC11 are present, CC11 takes precedence
+                                        track_volume = Some(cc_value as f32 / 127.0);
+                                    }
+                                    _ => {
+                                        // Ignore other CCs (modulation wheel, sustain pedal, etc.)
+                                        // These could be added in the future
+                                    }
+                                }
+                            }
+                            MidiMessage::PitchBend { bend } => {
+                                // Convert MIDI pitch bend to semitones
+                                // Standard range is ±2 semitones
+                                // Note: midly returns signed value relative to center
+                                let bend_value = bend.as_int();
+                                let semitones = pitch_bend_to_semitones_from_signed(bend_value, 2.0);
+                                pitch_bend_state.insert(ch_num, semitones);
                             }
                             _ => {
-                                // Ignore other MIDI messages (CC, pitch bend, aftertouch, etc.)
+                                // Ignore other MIDI messages (aftertouch, etc.)
                             }
                         }
                     }
@@ -1064,7 +1488,7 @@ impl Mixer {
 
             // Handle any "hanging" notes that never received a Note Off
             // Give them a default duration of 0.1 seconds
-            for ((ch_num, note), (start_time, start_vel)) in active_notes.drain() {
+            for ((ch_num, note), (start_time, start_vel, pitch_bend)) in active_notes.drain() {
                 let duration = 0.1; // Default duration for hanging notes
 
                 if ch_num == 9 {
@@ -1077,15 +1501,25 @@ impl Mixer {
                     let freq = midi_note_to_frequency(note);
                     let vel_normalized = start_vel as f32 / 127.0;
 
+                    // Get waveform and envelope from channel's instrument (if set via program change)
+                    // Otherwise use defaults (Sine, default envelope)
+                    let (waveform, envelope) = channel_instruments
+                        .get(&ch_num)
+                        .map(|inst| (inst.waveform, inst.envelope.clone()))
+                        .unwrap_or((
+                            crate::synthesis::waveform::Waveform::Sine,
+                            crate::synthesis::envelope::Envelope::default(),
+                        ));
+
                     let note_event = crate::track::NoteEvent::with_complete_params(
                         &[freq],
                         start_time,
                         duration,
-                        crate::synthesis::waveform::Waveform::Sine,
-                        crate::synthesis::envelope::Envelope::default(),
+                        waveform,
+                        envelope,
                         crate::synthesis::filter_envelope::FilterEnvelope::default(),
                         crate::synthesis::fm_synthesis::FMParams::default(),
-                        0.0,
+                        pitch_bend, // Apply captured pitch bend
                         None,
                         vel_normalized,
                     );
@@ -1099,6 +1533,14 @@ impl Mixer {
             // Set track metadata
             track.name = track_name;
             track.midi_program = midi_program;
+
+            // Apply CC values to track
+            if let Some(volume) = track_volume {
+                track.volume = volume;
+            }
+            if let Some(pan) = track_pan {
+                track.pan = pan.clamp(-1.0, 1.0);
+            }
 
             // Only add tracks that have events
             if !track.events.is_empty() {
@@ -1352,5 +1794,101 @@ mod tests {
             let converted_back = midi_note_to_drum_type(midi_note);
             assert!(converted_back.is_some());
         }
+    }
+
+    #[test]
+    fn test_tempo_map_single_tempo() {
+        // Test TempoMap with no tempo changes (single tempo throughout)
+        let tempo_map = TempoMap::new(120.0, 480);
+
+        // At 120 BPM: 1 beat = 0.5 seconds = 480 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(0.0), 0);
+        assert_eq!(tempo_map.seconds_to_ticks(0.5), 480); // 1 beat
+        assert_eq!(tempo_map.seconds_to_ticks(1.0), 960); // 2 beats
+        assert_eq!(tempo_map.seconds_to_ticks(2.0), 1920); // 4 beats
+    }
+
+    #[test]
+    fn test_tempo_map_multiple_tempos() {
+        // Test TempoMap with tempo changes
+        let mut tempo_map = TempoMap::new(120.0, 480);
+
+        // Add tempo change at 2 seconds: switch to 60 BPM
+        tempo_map.add_change(2.0, 60.0);
+        tempo_map.finalize();
+
+        // First 2 seconds at 120 BPM:
+        // - 2 seconds = 4 beats = 1920 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(0.0), 0);
+        assert_eq!(tempo_map.seconds_to_ticks(0.5), 480); // 1 beat at 120 BPM
+        assert_eq!(tempo_map.seconds_to_ticks(1.0), 960); // 2 beats at 120 BPM
+        assert_eq!(tempo_map.seconds_to_ticks(2.0), 1920); // 4 beats at 120 BPM
+
+        // After 2 seconds at 60 BPM:
+        // - Base: 1920 ticks (from first 2 seconds)
+        // - 1 second at 60 BPM = 1 beat = 480 ticks
+        // - Total at 3 seconds: 1920 + 480 = 2400 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(3.0), 2400);
+
+        // 2 seconds at 60 BPM = 2 beats = 960 ticks
+        // Total at 4 seconds: 1920 + 960 = 2880 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(4.0), 2880);
+    }
+
+    #[test]
+    fn test_tempo_map_complex_scenario() {
+        // Test with multiple tempo changes
+        let mut tempo_map = TempoMap::new(120.0, 480);
+
+        // Add multiple tempo changes
+        tempo_map.add_change(1.0, 90.0); // Switch to 90 BPM at 1 second
+        tempo_map.add_change(3.0, 180.0); // Switch to 180 BPM at 3 seconds
+        tempo_map.finalize();
+
+        // First 1 second at 120 BPM:
+        // - 1 second = 2 beats = 960 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(1.0), 960);
+
+        // Next 2 seconds (1-3s) at 90 BPM:
+        // - 2 seconds at 90 BPM = 3 beats = 1440 ticks
+        // - Total at 3 seconds: 960 + 1440 = 2400 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(3.0), 2400);
+
+        // Next 1 second (3-4s) at 180 BPM:
+        // - 1 second at 180 BPM = 3 beats = 1440 ticks
+        // - Total at 4 seconds: 2400 + 1440 = 3840 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(4.0), 3840);
+    }
+
+    #[test]
+    fn test_tempo_map_tempo_speedup() {
+        // Test tempo doubling (should double tick rate)
+        let mut tempo_map = TempoMap::new(60.0, 480);
+
+        // At 60 BPM: 1 beat per second
+        assert_eq!(tempo_map.seconds_to_ticks(1.0), 480);
+
+        // Add tempo change to 120 BPM at 2 seconds
+        tempo_map.add_change(2.0, 120.0);
+        tempo_map.finalize();
+
+        // First 2 seconds at 60 BPM: 2 beats = 960 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(2.0), 960);
+
+        // Next 1 second at 120 BPM: 2 beats = 960 ticks
+        // Total at 3 seconds: 960 + 960 = 1920 ticks
+        assert_eq!(tempo_map.seconds_to_ticks(3.0), 1920);
+    }
+
+    #[test]
+    fn test_tempo_map_edge_cases() {
+        let tempo_map = TempoMap::new(120.0, 480);
+
+        // Test zero and negative times
+        assert_eq!(tempo_map.seconds_to_ticks(0.0), 0);
+        assert_eq!(tempo_map.seconds_to_ticks(-1.0), 0);
+
+        // Test very small times
+        assert!(tempo_map.seconds_to_ticks(0.001) > 0);
     }
 }
