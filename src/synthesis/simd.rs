@@ -426,7 +426,7 @@ pub enum SimdWidth {
 ///
 /// // Later, in your DSP code:
 /// fn process_audio(buffer: &mut [f32]) {
-///     SIMD.process(buffer, |sample| sample * 0.5);
+///     SIMD.multiply_const(buffer, 0.5);
 /// }
 /// ```
 pub struct SimdDispatcher {
@@ -479,65 +479,6 @@ impl SimdDispatcher {
     /// Returns the detected SIMD width enum for manual dispatching
     pub fn simd_width(&self) -> SimdWidth {
         self.width
-    }
-
-    /// Process an audio buffer using the optimal SIMD width.
-    ///
-    /// The function `f` is applied to each sample (or vector of samples).
-    /// The buffer is processed in chunks matching the SIMD width, with
-    /// remainder samples handled with scalar code.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use tunes::synthesis::simd::SimdDispatcher;
-    /// let simd = SimdDispatcher::detect();
-    /// let mut buffer = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    ///
-    /// // Multiply all samples by 0.5
-    /// simd.process(&mut buffer, |sample| sample * 0.5);
-    /// ```
-    #[inline]
-    pub fn process<F>(&self, buffer: &mut [f32], f: F)
-    where
-        F: Fn(f32) -> f32,
-    {
-        match self.width {
-            SimdWidth::X8 => self.process_simd::<f32x8, _>(buffer, f),
-            SimdWidth::X4 => self.process_simd::<f32x4, _>(buffer, f),
-            SimdWidth::Scalar => {
-                // Scalar fallback - process one sample at a time
-                for sample in buffer.iter_mut() {
-                    *sample = f(*sample);
-                }
-            }
-        }
-    }
-
-    /// Generic SIMD processing implementation - works for any lane width.
-    ///
-    /// This is where the magic happens: the same code processes 4 or 8
-    /// samples at once depending on the type parameter V.
-    #[inline(always)]
-    fn process_simd<V, F>(&self, buffer: &mut [f32], f: F)
-    where
-        V: SimdLanes,
-        F: Fn(f32) -> f32,
-    {
-        let (chunks, remainder) = buffer.split_at_mut(buffer.len() - (buffer.len() % V::LANES));
-
-        // Process aligned chunks with SIMD
-        for chunk in chunks.chunks_exact_mut(V::LANES) {
-            // For now, apply scalar function to each element
-            // TODO: Make this truly SIMD-aware with vectorized operations
-            for sample in chunk.iter_mut() {
-                *sample = f(*sample);
-            }
-        }
-
-        // Handle remainder with scalar code
-        for sample in remainder.iter_mut() {
-            *sample = f(*sample);
-        }
     }
 
     /// Multiply all samples in buffer by a constant using SIMD
@@ -1025,26 +966,6 @@ mod tests {
         let result = a.mul(b);
         let arr = result.to_array();
         assert_eq!(arr, [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0]);
-    }
-
-    #[test]
-    fn test_simd_process() {
-        let simd = SimdDispatcher::detect();
-        let mut buffer = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-
-        simd.process(&mut buffer, |x| x * 2.0);
-
-        assert_eq!(buffer, vec![2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0]);
-    }
-
-    #[test]
-    fn test_simd_process_non_aligned() {
-        let simd = SimdDispatcher::detect();
-        let mut buffer = vec![1.0, 2.0, 3.0]; // Not divisible by any SIMD width
-
-        simd.process(&mut buffer, |x| x + 1.0);
-
-        assert_eq!(buffer, vec![2.0, 3.0, 4.0]);
     }
 
     #[test]
