@@ -139,12 +139,6 @@ pub struct Mixer {
     bus_outputs: Vec<BusOutput>,
     envelope_cache: EnvelopeCache,
 
-    // Pre-allocated working buffers for process_block (eliminates allocations in hot path)
-    // These grow once to the maximum size needed, then are reused
-    bus_buffer_pool: Vec<Vec<f32>>,   // One buffer per bus (indexed by bus order)
-    track_buffer_pool: Vec<Vec<f32>>, // Buffers for sequential track processing (web target)
-    sample_buffer_pool: Vec<Vec<f32>>, // Buffers for sample playback
-
     // Sample cache for pre-rendered synthesis (lock-free with DashMap)
     cache: Option<Arc<SampleCache>>,
 
@@ -177,9 +171,6 @@ impl Mixer {
             track_outputs: Vec::with_capacity(INITIAL_TRACK_CAPACITY),
             bus_outputs: Vec::with_capacity(INITIAL_BUS_CAPACITY),
             envelope_cache: EnvelopeCache::new(INITIAL_TRACK_CAPACITY, INITIAL_BUS_CAPACITY),
-            bus_buffer_pool: Vec::new(),
-            track_buffer_pool: Vec::new(),
-            sample_buffer_pool: Vec::new(),
             cache: None, // Cache disabled by default
             #[cfg(feature = "gpu")]
             gpu_synthesizer: None, // GPU disabled by default (requires explicit enable_gpu call)
@@ -1091,45 +1082,34 @@ impl Mixer {
                 let prerendered = self.prerendered;
 
                 // Process each track in this bus IN PARALLEL using Rayon
-                // Use map_init() to provide each thread with reusable buffers (eliminates allocations)
                 let track_results: Vec<_> = bus
                     .tracks
                     .par_iter_mut()
-                    .map_init(
-                        || {
-                            // Each thread gets its own pair of buffers (allocated once per thread)
-                            (vec![0.0f32; num_frames], vec![0.0f32; num_frames])
-                        },
-                        |(track_buffer, sample_buffer), track| {
-                            let track_id = track.id;
+                    .map(|track| {
+                        let track_id = track.id;
+                        let mut track_buffer = vec![0.0f32; num_frames];
 
-                            // Reuse the buffers (fill with zeros, no allocation)
-                            track_buffer.fill(0.0);
+                        // Generate mono track audio using block processing
+                        // Cache is thread-safe via Arc<Mutex>, GPU synthesizer via Arc
+                        Self::process_track_block(
+                            track,
+                            &mut track_buffer,
+                            sample_rate,
+                            start_time,
+                            start_sample_count,
+                            cache_clone.as_ref(),
+                            #[cfg(feature = "gpu")]
+                            gpu_clone.as_ref(),
+                            prerendered,
+                        );
 
-                            // Generate mono track audio using block processing
-                            // Cache is thread-safe via Arc<Mutex>, GPU synthesizer via Arc
-                            Self::process_track_block(
-                                track,
-                                track_buffer,
-                                sample_rate,
-                                start_time,
-                                start_sample_count,
-                                cache_clone.as_ref(),
-                                #[cfg(feature = "gpu")]
-                                gpu_clone.as_ref(),
-                                prerendered,
-                                sample_buffer, // Reusable sample buffer
-                            );
+                        // Calculate RMS envelope for this track (SIMD-optimized)
+                        use crate::synthesis::simd::SIMD;
+                        let sum_squares = SIMD.sum_of_squares(&track_buffer);
+                        let track_envelope = (sum_squares / num_frames as f32).sqrt();
 
-                            // Calculate RMS envelope for this track (SIMD-optimized)
-                            use crate::synthesis::simd::SIMD;
-                            let sum_squares = SIMD.sum_of_squares(track_buffer);
-                            let track_envelope = (sum_squares / num_frames as f32).sqrt();
-
-                            // Clone the buffer to return (track_buffer is borrowed)
-                            (track_id, track_buffer.clone(), track_envelope, track.pan)
-                        },
-                    )
+                        (track_id, track_buffer, track_envelope, track.pan)
+                    })
                     .collect();
 
                 // Mix track results into bus buffer
@@ -1183,18 +1163,12 @@ impl Mixer {
                 let prerendered = self.prerendered;
 
                 // Process each track in this bus SEQUENTIALLY on web
-                // Create reusable buffers for all tracks
-                let mut track_buffer = vec![0.0f32; num_frames];
-                let mut sample_buffer = vec![0.0f32; num_frames];
-
                 let track_results: Vec<_> = bus
                     .tracks
                     .iter_mut()
                     .map(|track| {
                         let track_id = track.id;
-
-                        // Reuse the buffer (fill with zeros)
-                        track_buffer.fill(0.0);
+                        let mut track_buffer = vec![0.0f32; num_frames];
 
                         // Generate mono track audio using block processing
                         Self::process_track_block(
@@ -1207,7 +1181,6 @@ impl Mixer {
                             #[cfg(feature = "gpu")]
                             gpu_clone.as_ref(),
                             prerendered,
-                            &mut sample_buffer, // Reusable sample buffer
                         );
 
                         // Calculate RMS envelope for this track (SIMD-optimized)
@@ -1215,8 +1188,7 @@ impl Mixer {
                         let sum_squares = SIMD.sum_of_squares(&track_buffer);
                         let track_envelope = (sum_squares / num_frames as f32).sqrt();
 
-                        // Clone the buffer to return (will be optimized by compiler)
-                        (track_id, track_buffer.clone(), track_envelope, track.pan)
+                        (track_id, track_buffer, track_envelope, track.pan)
                     })
                     .collect();
 
@@ -1427,7 +1399,6 @@ impl Mixer {
         cache: Option<&Arc<SampleCache>>,
         #[cfg(feature = "gpu")] gpu_synthesizer: Option<&Arc<GpuSynthesizer>>,
         prerendered: bool,
-        sample_buffer: &mut Vec<f32>, // Pre-allocated buffer for sample playback
     ) {
         // Clear output buffer
         buffer.fill(0.0);
@@ -1566,13 +1537,11 @@ impl Mixer {
 
         // Pre-render sample events with SIMD for better performance
         // This processes whole blocks instead of per-sample, enabling vectorization
-        // Reuse the provided sample_buffer (resize if needed, no allocation if capacity sufficient)
-        sample_buffer.clear();
-        sample_buffer.resize(buffer.len(), 0.0);
+        let mut sample_buffer = vec![0.0f32; buffer.len()];
         for event in &track.events[start_idx..end_idx] {
             if let AudioEvent::Sample(sample_event) = event {
                 sample_event.sample.fill_buffer_simd_mono(
-                    sample_buffer,
+                    &mut sample_buffer,
                     sample_event.start_time,
                     start_time,
                     time_delta,

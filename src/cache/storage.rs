@@ -1,18 +1,21 @@
-//! Cache storage with LRU eviction
+//! Cache storage with approximate LRU eviction
 //!
 //! Stores pre-rendered samples in memory with automatic eviction when
 //! memory limits are exceeded.
+//!
+//! Uses approximate LRU with lock-free access tracking for high-performance
+//! concurrent reads. Generation counters track access order without requiring
+//! mutex locks on every cache hit.
 
 use super::key::CacheKey;
 use dashmap::DashMap;
-use std::collections::VecDeque;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
 };
 
-/// A cached audio sample
-#[derive(Debug, Clone)]
+/// A cached audio sample with generation tracking for approximate LRU
+#[derive(Debug)]
 pub struct CachedSample {
     /// Pre-rendered mono samples at reference pitch (usually C4 = 261.63 Hz)
     pub samples: Arc<Vec<f32>>,
@@ -28,6 +31,24 @@ pub struct CachedSample {
 
     /// Size in bytes (for memory tracking)
     size_bytes: usize,
+
+    /// Last access generation (for approximate LRU eviction)
+    /// Updated atomically on each access - no lock required!
+    last_access: AtomicU64,
+}
+
+// Manual Clone implementation since AtomicU64 doesn't implement Clone
+impl Clone for CachedSample {
+    fn clone(&self) -> Self {
+        Self {
+            samples: self.samples.clone(),
+            sample_rate: self.sample_rate,
+            duration: self.duration,
+            reference_frequency: self.reference_frequency,
+            size_bytes: self.size_bytes,
+            last_access: AtomicU64::new(self.last_access.load(Ordering::Relaxed)),
+        }
+    }
 }
 
 impl CachedSample {
@@ -40,6 +61,7 @@ impl CachedSample {
             duration,
             reference_frequency,
             size_bytes,
+            last_access: AtomicU64::new(0),
         }
     }
 
@@ -74,13 +96,19 @@ impl Default for CachePolicy {
     }
 }
 
-/// Sample cache with LRU eviction
+/// Sample cache with approximate LRU eviction
 ///
 /// Stores pre-rendered synthesis output in memory. When the cache
 /// exceeds `max_size_mb`, least-recently-used entries are evicted.
 ///
 /// Uses DashMap for lock-free concurrent access during parallel bus rendering.
-/// Only the LRU queue requires synchronization.
+/// Approximate LRU with generation counters allows lock-free cache hits.
+///
+/// # Performance
+///
+/// - Lock-free reads: No mutex on cache hits, only atomic generation update
+/// - O(1) access tracking: Generation counter incremented atomically
+/// - O(n) eviction: Only occurs when cache is full (rare operation)
 ///
 /// # Example
 ///
@@ -100,19 +128,21 @@ pub struct SampleCache {
     /// Cached samples by key (lock-free concurrent HashMap)
     cache: DashMap<CacheKey, CachedSample>,
 
-    /// LRU tracking - most recent at the back
-    /// Only this field needs a Mutex, not the entire cache
-    lru_state: Mutex<LruState>,
+    /// Global generation counter for approximate LRU
+    /// Incremented on each access, stored in each CachedSample
+    generation: AtomicU64,
+
+    /// Cache metadata (size tracking)
+    /// Only locked during insert/remove, not on reads!
+    metadata: Mutex<CacheMetadata>,
 
     /// Statistics (lock-free atomic counters)
     stats: CacheStats,
 }
 
-/// LRU state that requires synchronization
+/// Cache metadata that requires synchronization
 #[derive(Debug)]
-struct LruState {
-    /// LRU queue - most recent at the back
-    queue: VecDeque<CacheKey>,
+struct CacheMetadata {
     /// Total cache size in bytes
     total_size_bytes: usize,
 }
@@ -172,8 +202,8 @@ impl SampleCache {
         Self {
             policy: CachePolicy::default(),
             cache: DashMap::new(),
-            lru_state: Mutex::new(LruState {
-                queue: VecDeque::new(),
+            generation: AtomicU64::new(1),
+            metadata: Mutex::new(CacheMetadata {
                 total_size_bytes: 0,
             }),
             stats: CacheStats::default(),
@@ -195,15 +225,16 @@ impl SampleCache {
     /// Get a cached sample if it exists (returns a clone via Arc)
     ///
     /// Returns `None` if not in cache (cache miss).
-    /// Updates LRU tracking on cache hit.
+    /// Updates generation counter on cache hit - completely lock-free!
     ///
     /// Note: Returns a clone of the CachedSample (cheap via Arc).
-    /// This is lock-free for cache reads!
+    /// This operation requires NO mutex locks, only atomic operations!
     pub fn get(&self, key: &CacheKey) -> Option<CachedSample> {
         if let Some(entry) = self.cache.get(key) {
-            // Cache hit! Update LRU
+            // Cache hit! Update generation atomically (lock-free!)
             self.stats.hits.fetch_add(1, Ordering::Relaxed);
-            self.touch(key);
+            let gen = self.generation.fetch_add(1, Ordering::Relaxed);
+            entry.last_access.store(gen, Ordering::Relaxed);
             // Return a clone (Arc makes this cheap)
             Some(entry.clone())
         } else {
@@ -215,7 +246,7 @@ impl SampleCache {
 
     /// Insert a sample into the cache
     ///
-    /// If the cache is full, evicts least-recently-used entries.
+    /// If the cache is full, evicts least-recently-used entries based on generation.
     pub fn insert(&self, key: CacheKey, sample: CachedSample) {
         // Check if this sample is worth caching
         if sample.duration < self.policy.min_cache_duration_ms / 1000.0 {
@@ -223,60 +254,55 @@ impl SampleCache {
         }
 
         let sample_size = sample.size_bytes();
+        let max_bytes = self.policy.max_size_mb * 1024 * 1024;
 
-        // If this sample already exists, remove old version first
-        if self.cache.contains_key(&key) {
-            self.remove(&key);
+        // Set initial generation for this sample
+        let gen = self.generation.fetch_add(1, Ordering::Relaxed);
+        sample.last_access.store(gen, Ordering::Relaxed);
+
+        // Check if we need to evict before inserting
+        let needs_eviction = {
+            let metadata = self.metadata.lock().unwrap();
+            metadata.total_size_bytes + sample_size > max_bytes
+        };
+
+        if needs_eviction {
+            // Evict oldest entries until we have space
+            while self.size_bytes() + sample_size > max_bytes && !self.cache.is_empty() {
+                self.evict_oldest();
+            }
         }
 
-        // Evict until we have enough space
-        let max_bytes = self.policy.max_size_mb * 1024 * 1024;
-        {
-            let mut lru = self.lru_state.lock().unwrap();
-            while lru.total_size_bytes + sample_size > max_bytes && !lru.queue.is_empty() {
-                self.evict_lru_locked(&mut lru);
-            }
-
-            // Insert the sample and update LRU
-            self.cache.insert(key, sample);
-            lru.queue.push_back(key);
-            lru.total_size_bytes += sample_size;
+        // Remove old version if it exists (DashMap::insert returns old value)
+        if let Some(old_sample) = self.cache.insert(key, sample) {
+            // Key already existed, adjust size tracking
+            let mut metadata = self.metadata.lock().unwrap();
+            metadata.total_size_bytes = metadata.total_size_bytes
+                .saturating_sub(old_sample.size_bytes())
+                .saturating_add(sample_size);
+        } else {
+            // New key, just add size
+            let mut metadata = self.metadata.lock().unwrap();
+            metadata.total_size_bytes += sample_size;
         }
 
         self.stats.insertions.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Remove a specific key from the cache
-    fn remove(&self, key: &CacheKey) {
-        if let Some((_, sample)) = self.cache.remove(key) {
-            let mut lru = self.lru_state.lock().unwrap();
-            lru.total_size_bytes = lru.total_size_bytes.saturating_sub(sample.size_bytes());
+    /// Evict the entry with the oldest generation (least recently used)
+    ///
+    /// Scans all cache entries to find the oldest. This is O(n) but only happens
+    /// when the cache is full, which is relatively rare.
+    fn evict_oldest(&self) {
+        // Find the key with the smallest generation number
+        let oldest = self.cache.iter()
+            .min_by_key(|entry| entry.last_access.load(Ordering::Relaxed))
+            .map(|entry| *entry.key());
 
-            // Remove from LRU queue
-            if let Some(pos) = lru.queue.iter().position(|k| k == key) {
-                lru.queue.remove(pos);
-            }
-        }
-    }
-
-    /// Mark a key as recently used (move to back of LRU queue)
-    fn touch(&self, key: &CacheKey) {
-        let mut lru = self.lru_state.lock().unwrap();
-
-        // Remove from current position
-        if let Some(pos) = lru.queue.iter().position(|k| k == key) {
-            lru.queue.remove(pos);
-        }
-
-        // Add to back (most recent)
-        lru.queue.push_back(*key);
-    }
-
-    /// Evict the least recently used entry (caller must hold lru_state lock)
-    fn evict_lru_locked(&self, lru: &mut LruState) {
-        if let Some(key) = lru.queue.pop_front() {
+        if let Some(key) = oldest {
             if let Some((_, sample)) = self.cache.remove(&key) {
-                lru.total_size_bytes = lru.total_size_bytes.saturating_sub(sample.size_bytes());
+                let mut metadata = self.metadata.lock().unwrap();
+                metadata.total_size_bytes = metadata.total_size_bytes.saturating_sub(sample.size_bytes());
                 self.stats.evictions.fetch_add(1, Ordering::Relaxed);
             }
         }
@@ -285,14 +311,13 @@ impl SampleCache {
     /// Clear the entire cache
     pub fn clear(&self) {
         self.cache.clear();
-        let mut lru = self.lru_state.lock().unwrap();
-        lru.queue.clear();
-        lru.total_size_bytes = 0;
+        let mut metadata = self.metadata.lock().unwrap();
+        metadata.total_size_bytes = 0;
     }
 
     /// Get current cache size in bytes
     pub fn size_bytes(&self) -> usize {
-        self.lru_state.lock().unwrap().total_size_bytes
+        self.metadata.lock().unwrap().total_size_bytes
     }
 
     /// Get current cache size in megabytes

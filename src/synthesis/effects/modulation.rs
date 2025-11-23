@@ -31,7 +31,7 @@ pub struct Chorus {
     pub priority: u8, // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
-    buffer_mask: usize,  // Bit mask for fast modulo
+    buffer_mask: usize, // Bit mask for fast modulo
     lfo_phase: f32,
 
     // Automation (optional)
@@ -158,7 +158,13 @@ impl Chorus {
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
         let time_delta = 1.0 / sample_rate;
         for (i, sample) in buffer.iter_mut().enumerate() {
             let current_time = time + (i as f32 * time_delta);
@@ -358,7 +364,13 @@ impl Phaser {
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
         let time_delta = 1.0 / sample_rate;
         for (i, sample) in buffer.iter_mut().enumerate() {
             let current_time = time + (i as f32 * time_delta);
@@ -411,7 +423,7 @@ pub struct Flanger {
     pub priority: u8,  // Processing priority (lower = earlier in signal chain)
     buffer: Vec<f32>,
     write_pos: usize,
-    buffer_mask: usize,  // Bit mask for fast modulo
+    buffer_mask: usize, // Bit mask for fast modulo
     lfo_phase: f32,
 
     // Automation (optional)
@@ -561,7 +573,13 @@ impl Flanger {
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
         let time_delta = 1.0 / sample_rate;
         for (i, sample) in buffer.iter_mut().enumerate() {
             let current_time = time + (i as f32 * time_delta);
@@ -713,8 +731,14 @@ impl RingModulator {
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
+        use crate::synthesis::simd::SIMD;
 
         // Update automation params if needed
         if sample_count & 63 == 0 {
@@ -918,8 +942,14 @@ impl Tremolo {
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
+    pub fn process_block(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: f32,
+        time: f32,
+        sample_count: u64,
+    ) {
+        use crate::synthesis::simd::SIMD;
 
         // Update automation params if needed
         if sample_count & 63 == 0 {

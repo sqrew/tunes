@@ -63,6 +63,7 @@ notify = "6.1"
 crossbeam = "0.8"   # Lock-free structures (epoch-based reclamation for audio callback)
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 dashmap = "6.1"     # Lock-free concurrent HashMap for sample cache
+ahash = "0.8"       # Fast non-cryptographic hashing for cache keys
 wide = "0.7"        # SIMD vectorization for DSP performance
 rayon = "1.10"      # Data parallelism for multi-core performance
 rustfft = "6.2"     # Fast FFT library for convolution reverb

@@ -9,7 +9,7 @@ use crate::synthesis::filter_envelope::FilterEnvelope;
 use crate::synthesis::fm_synthesis::FMParams;
 use crate::synthesis::waveform::Waveform;
 use crate::track::NoteEvent; // Re-exported from track module
-use std::collections::hash_map::DefaultHasher;
+use ahash::AHasher;
 use std::hash::{Hash, Hasher};
 
 /// Cache key for synthesized audio
@@ -39,7 +39,7 @@ impl CacheKey {
     ///
     /// Each unique combination gets its own cache entry for fast playback.
     pub fn from_note_event(note: &NoteEvent, sample_rate: f32) -> Self {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = AHasher::default();
 
         // Frequency - each pitch gets its own cache entry
         for i in 0..note.num_freqs {
@@ -88,7 +88,7 @@ impl CacheKey {
     /// Note: Most users should cache the raw oscillator output and apply
     /// filters at runtime for more flexibility.
     pub fn from_note_with_filter(note: &NoteEvent, filter: &Filter, sample_rate: f32) -> Self {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = AHasher::default();
 
         // Start with the base note hash
         let base_key = Self::from_note_event(note, sample_rate);
@@ -108,17 +108,17 @@ impl CacheKey {
 
 // Helper functions for hashing synthesis parameters
 
-fn hash_f32(value: f32, hasher: &mut DefaultHasher) {
+fn hash_f32(value: f32, hasher: &mut AHasher) {
     // Convert f32 to bits for hashing (handles NaN/infinity correctly)
     value.to_bits().hash(hasher);
 }
 
-fn hash_waveform(waveform: &Waveform, hasher: &mut DefaultHasher) {
+fn hash_waveform(waveform: &Waveform, hasher: &mut AHasher) {
     // Waveform is an enum, can use discriminant
     std::mem::discriminant(waveform).hash(hasher);
 }
 
-fn hash_envelope(envelope: &Envelope, hasher: &mut DefaultHasher) {
+fn hash_envelope(envelope: &Envelope, hasher: &mut AHasher) {
     hash_f32(envelope.attack, hasher);
     hash_f32(envelope.decay, hasher);
     hash_f32(envelope.sustain, hasher);
@@ -126,7 +126,7 @@ fn hash_envelope(envelope: &Envelope, hasher: &mut DefaultHasher) {
     std::mem::discriminant(&envelope.curve).hash(hasher);
 }
 
-fn hash_fm_params(fm: &FMParams, hasher: &mut DefaultHasher) {
+fn hash_fm_params(fm: &FMParams, hasher: &mut AHasher) {
     hash_f32(fm.mod_ratio, hasher);
     hash_f32(fm.mod_index, hasher);
     hash_f32(fm.index_envelope_attack, hasher);
@@ -136,7 +136,7 @@ fn hash_fm_params(fm: &FMParams, hasher: &mut DefaultHasher) {
     hash_f32(fm.index_env_amount, hasher);
 }
 
-fn hash_filter_envelope(filter_env: &FilterEnvelope, hasher: &mut DefaultHasher) {
+fn hash_filter_envelope(filter_env: &FilterEnvelope, hasher: &mut AHasher) {
     hash_f32(filter_env.attack, hasher);
     hash_f32(filter_env.decay, hasher);
     hash_f32(filter_env.sustain, hasher);
@@ -146,7 +146,7 @@ fn hash_filter_envelope(filter_env: &FilterEnvelope, hasher: &mut DefaultHasher)
     hash_f32(filter_env.amount, hasher);
 }
 
-fn hash_filter(filter: &Filter, hasher: &mut DefaultHasher) {
+fn hash_filter(filter: &Filter, hasher: &mut AHasher) {
     std::mem::discriminant(&filter.filter_type).hash(hasher);
     hash_f32(filter.cutoff, hasher);
     hash_f32(filter.resonance, hasher);
