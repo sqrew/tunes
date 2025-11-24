@@ -567,7 +567,6 @@ impl Sample {
 
         // Precompute constants
         let sample_rate_f32 = self.sample_rate as f32;
-        let half_volume = volume * 0.5;
 
         // SIMD constants
         let playback_vec = V::splat(playback_rate);
@@ -687,7 +686,7 @@ impl Sample {
             }
 
             // Apply volume
-            let result = interpolated.mul(V::splat(half_volume));
+            let result = interpolated.mul(V::splat(volume));
 
             // Write output
             let chunk_start = chunk_idx * lanes;
