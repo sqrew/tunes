@@ -1706,10 +1706,13 @@ impl Mixer {
 
             // Note: Cached notes are already in track_value (read from buffer at loop start)
 
-            // Apply track volume
-            track_value *= track.volume;
-
             *sample_out = track_value;
+        }
+
+        // Apply track volume to entire buffer (SIMD-optimized, ~8x faster than per-sample!)
+        if track.volume != 1.0 {
+            use crate::synthesis::simd::SIMD;
+            SIMD.multiply_const(buffer, track.volume);
         }
 
         // Apply filter to entire buffer (optimized block processing!)
