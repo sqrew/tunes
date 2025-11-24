@@ -849,6 +849,8 @@ impl EffectChain {
         let num_frames = buffer.len() / 2;
 
         // Allocate temporary buffers for deinterleaved L/R channels
+        // Note: Modern allocators are fast enough that caching these buffers
+        // actually hurts performance due to resize/clear overhead
         let mut left_buffer = vec![0.0f32; num_frames];
         let mut right_buffer = vec![0.0f32; num_frames];
 
