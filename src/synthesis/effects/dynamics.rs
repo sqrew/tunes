@@ -699,6 +699,103 @@ impl Compressor {
         }
     }
 
+    /// Process an interleaved stereo block with stereo-linked compression
+    ///
+    /// # Arguments
+    /// * `buffer` - Interleaved stereo buffer [L0, R0, L1, R1, ...] to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    /// * `sidechain_envelope` - Optional external envelope for sidechaining
+    #[inline]
+    pub fn process_stereo_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64, sidechain_envelope: Option<f32>) {
+        // If multiband is enabled, fall back to per-sample processing
+        if self.bands.is_some() {
+            for (i, frame) in buffer.chunks_mut(2).enumerate() {
+                if frame.len() == 2 {
+                    let (left, right) = self.process_stereo_linked(
+                        frame[0],
+                        frame[1],
+                        sample_rate,
+                        time,
+                        sample_count + i as u64,
+                        sidechain_envelope,
+                    );
+                    frame[0] = left;
+                    frame[1] = right;
+                }
+            }
+            return;
+        }
+
+        // Optimized single-band stereo-linked compression
+        // Update automation parameters once at buffer start
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+            if let Some(auto) = &self.attack_automation {
+                self.attack = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.release_automation {
+                self.release = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.makeup_gain_automation {
+                self.makeup_gain = auto.value_at(time).max(0.1);
+            }
+
+            // Update cached coefficients
+            self.cached_attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+            self.cached_release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.cached_sample_rate = sample_rate;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let threshold = self.threshold;
+        let ratio = self.ratio;
+        let makeup_gain = self.makeup_gain;
+        let cached_attack_coeff = self.cached_attack_coeff;
+        let cached_release_coeff = self.cached_release_coeff;
+        let threshold_max = threshold.max(0.001);
+        let inv_ratio = 1.0 / ratio;
+
+        // Process entire interleaved stereo buffer
+        for frame in buffer.chunks_mut(2) {
+            if frame.len() == 2 {
+                let left = frame[0];
+                let right = frame[1];
+
+                // Use sidechain envelope if provided, otherwise use max of both channels
+                let input_level = sidechain_envelope.unwrap_or_else(|| left.abs().max(right.abs()));
+
+                // Envelope follower with cached coefficients
+                let coeff = if input_level > self.envelope {
+                    cached_attack_coeff
+                } else {
+                    cached_release_coeff
+                };
+                self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
+                self.envelope = self.envelope.clamp(0.0, 2.0);
+
+                // Calculate gain reduction (same for both channels)
+                let gain = if self.envelope > threshold {
+                    let over_threshold = self.envelope / threshold_max;
+                    let compressed = over_threshold.powf(inv_ratio);
+                    (compressed * threshold / self.envelope).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+
+                // Apply same gain to both channels with makeup gain
+                frame[0] = (left * gain * makeup_gain).clamp(-2.0, 2.0);
+                frame[1] = (right * gain * makeup_gain).clamp(-2.0, 2.0);
+            }
+        }
+    }
+
     /// Reset the compressor state
     pub fn reset(&mut self) {
         self.envelope = 0.0;
@@ -1153,6 +1250,56 @@ impl Limiter {
 
             // Apply limiting
             *sample = input * self.gain_reduction;
+        }
+    }
+
+    /// Process an interleaved stereo block with stereo-linked limiting
+    ///
+    /// # Arguments
+    /// * `buffer` - Interleaved stereo buffer [L0, R0, L1, R1, ...] to process in-place
+    /// * `sample_rate` - Sample rate in Hz
+    /// * `time` - Starting time in seconds (for automation)
+    /// * `sample_count` - Starting sample counter (for quantized automation lookups)
+    #[inline]
+    pub fn process_stereo_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
+        // Update automation parameters once at buffer start
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let threshold_linear = 10.0_f32.powf(self.threshold / 20.0);
+        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+
+        // Process entire interleaved stereo buffer
+        for frame in buffer.chunks_mut(2) {
+            if frame.len() == 2 {
+                let left = frame[0];
+                let right = frame[1];
+
+                // Detect peak from both channels (use maximum)
+                let peak = left.abs().max(right.abs());
+
+                // Calculate required gain reduction
+                let target_gain = if peak > threshold_linear {
+                    threshold_linear / peak
+                } else {
+                    1.0
+                };
+
+                // Apply gain reduction with instant attack and release envelope
+                if target_gain < self.gain_reduction {
+                    self.gain_reduction = target_gain;
+                } else {
+                    self.gain_reduction = target_gain + release_coeff * (self.gain_reduction - target_gain);
+                }
+
+                // Apply same limiting to both channels
+                frame[0] = left * self.gain_reduction;
+                frame[1] = right * self.gain_reduction;
+            }
         }
     }
 

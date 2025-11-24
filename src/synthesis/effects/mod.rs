@@ -823,7 +823,9 @@ impl EffectChain {
 
     /// Process a block of stereo audio samples through the effect chain
     ///
-    /// OPTIMIZED: Inlined effect chain processing to eliminate per-sample function call overhead
+    /// OPTIMIZED: Process effect-by-effect on full buffer instead of sample-by-sample.
+    /// Uses temporary buffers to deinterleave, process with optimized process_block methods,
+    /// then reinterleave.
     ///
     /// # Arguments
     /// * `buffer` - Interleaved stereo buffer [L0, R0, L1, R1, ...] to process in-place
@@ -840,148 +842,159 @@ impl EffectChain {
         sample_count: u64,
         sidechain_envelope: Option<f32>,
     ) {
-        let time_delta = 1.0 / sample_rate;
+        // OPTIMIZATION: Process each effect on the full buffer instead of
+        // processing each sample through all effects. This allows effects
+        // to calculate constants once and improves cache locality.
 
-        // OPTIMIZATION: Inline effect chain processing directly in the loop
-        // This eliminates 256 function calls per buffer (for 512-sample buffer)
-        for (i, frame) in buffer.chunks_mut(2).enumerate() {
-            if frame.len() == 2 {
-                let current_time = time + (i as f32 * time_delta);
-                let current_sample_count = sample_count + i as u64;
+        let num_frames = buffer.len() / 2;
 
-                let mut left_signal = frame[0];
-                let mut right_signal = frame[1];
+        // Allocate temporary buffers for deinterleaved L/R channels
+        let mut left_buffer = vec![0.0f32; num_frames];
+        let mut right_buffer = vec![0.0f32; num_frames];
 
-                // Process effects in pre-computed priority order (inlined!)
-                for &effect_id in &self.effect_order {
-                    match effect_id {
-                        0 => {
-                            // EQ (process each channel)
-                            if let Some(ref mut eq) = self.eq {
-                                left_signal = eq.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = eq.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        1 => {
-                            // Compressor (stereo-linked)
-                            if let Some(ref mut compressor) = self.compressor {
-                                let (left_out, right_out) = compressor.process_stereo_linked(
-                                    left_signal,
-                                    right_signal,
-                                    sample_rate,
-                                    current_time,
-                                    current_sample_count,
-                                    sidechain_envelope,
-                                );
-                                left_signal = left_out;
-                                right_signal = right_out;
-                            }
-                        }
-                        2 => {
-                            // Gate (process each channel)
-                            if let Some(ref mut gate) = self.gate {
-                                left_signal = gate.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = gate.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        3 => {
-                            // Saturation (process each channel)
-                            if let Some(ref mut saturation) = self.saturation {
-                                left_signal = saturation.process(left_signal, current_time, current_sample_count);
-                                right_signal = saturation.process(right_signal, current_time, current_sample_count);
-                            }
-                        }
-                        4 => {
-                            // BitCrusher (process each channel)
-                            if let Some(ref mut bitcrusher) = self.bitcrusher {
-                                left_signal = bitcrusher.process(left_signal, current_time, current_sample_count);
-                                right_signal = bitcrusher.process(right_signal, current_time, current_sample_count);
-                            }
-                        }
-                        5 => {
-                            // Distortion (process each channel)
-                            if let Some(ref mut distortion) = self.distortion {
-                                left_signal = distortion.process(left_signal, current_time, current_sample_count);
-                                right_signal = distortion.process(right_signal, current_time, current_sample_count);
-                            }
-                        }
-                        6 => {
-                            // Chorus (process each channel)
-                            if let Some(ref mut chorus) = self.chorus {
-                                left_signal = chorus.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = chorus.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        7 => {
-                            // Phaser (process each channel)
-                            if let Some(ref mut phaser) = self.phaser {
-                                left_signal = phaser.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = phaser.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        8 => {
-                            // Flanger (process each channel)
-                            if let Some(ref mut flanger) = self.flanger {
-                                left_signal = flanger.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = flanger.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        9 => {
-                            // Ring Modulator (process each channel)
-                            if let Some(ref mut ring_mod) = self.ring_mod {
-                                left_signal = ring_mod.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = ring_mod.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        10 => {
-                            // Tremolo (process each channel)
-                            if let Some(ref mut tremolo) = self.tremolo {
-                                left_signal = tremolo.process(left_signal, sample_rate, current_time, current_sample_count);
-                                right_signal = tremolo.process(right_signal, sample_rate, current_time, current_sample_count);
-                            }
-                        }
-                        11 => {
-                            // Delay (process each channel)
-                            if let Some(ref mut delay) = self.delay {
-                                left_signal = delay.process(left_signal, current_time, current_sample_count);
-                                right_signal = delay.process(right_signal, current_time, current_sample_count);
-                            }
-                        }
-                        12 => {
-                            // Reverb (process each channel)
-                            if let Some(ref mut reverb) = self.reverb {
-                                left_signal = reverb.process(left_signal, current_time, current_sample_count);
-                                right_signal = reverb.process(right_signal, current_time, current_sample_count);
-                            }
-                        }
-                        13 => {
-                            // Limiter (stereo-linked)
-                            if let Some(ref mut limiter) = self.limiter {
-                                let (left_out, right_out) = limiter.process_stereo_linked(
-                                    left_signal,
-                                    right_signal,
-                                    sample_rate,
-                                    current_time,
-                                    current_sample_count,
-                                );
-                                left_signal = left_out;
-                                right_signal = right_out;
-                            }
-                        }
-                        14 => {
-                            // ParametricEQ (process each channel)
-                            if let Some(ref mut parametric_eq) = self.parametric_eq {
-                                left_signal = parametric_eq.process(left_signal, current_time, current_sample_count as usize);
-                                right_signal = parametric_eq.process(right_signal, current_time, current_sample_count as usize);
-                            }
-                        }
-                        _ => {}
+        // Deinterleave stereo buffer into separate L/R channels
+        for (i, frame) in buffer.chunks_exact(2).enumerate() {
+            left_buffer[i] = frame[0];
+            right_buffer[i] = frame[1];
+        }
+
+        // Process each effect on the full buffer
+        for &effect_id in &self.effect_order {
+            match effect_id {
+                1 => {
+                    // Compressor (stereo-linked): reinterleave, process, deinterleave
+                    for (i, frame) in buffer.chunks_exact_mut(2).enumerate() {
+                        frame[0] = left_buffer[i];
+                        frame[1] = right_buffer[i];
+                    }
+                    if let Some(ref mut compressor) = self.compressor {
+                        compressor.process_stereo_block(buffer, sample_rate, time, sample_count, sidechain_envelope);
+                    }
+                    for (i, frame) in buffer.chunks_exact(2).enumerate() {
+                        left_buffer[i] = frame[0];
+                        right_buffer[i] = frame[1];
                     }
                 }
-
-                frame[0] = left_signal;
-                frame[1] = right_signal;
+                13 => {
+                    // Limiter (stereo-linked): reinterleave, process, deinterleave
+                    for (i, frame) in buffer.chunks_exact_mut(2).enumerate() {
+                        frame[0] = left_buffer[i];
+                        frame[1] = right_buffer[i];
+                    }
+                    if let Some(ref mut limiter) = self.limiter {
+                        limiter.process_stereo_block(buffer, sample_rate, time, sample_count);
+                    }
+                    for (i, frame) in buffer.chunks_exact(2).enumerate() {
+                        left_buffer[i] = frame[0];
+                        right_buffer[i] = frame[1];
+                    }
+                }
+                6 => {
+                    // Chorus: use optimized process_block
+                    if let Some(ref mut chorus) = self.chorus {
+                        chorus.process_block(&mut left_buffer, sample_rate, time, sample_count);
+                        chorus.process_block(&mut right_buffer, sample_rate, time, sample_count);
+                    }
+                }
+                7 => {
+                    // Phaser: use optimized process_block
+                    if let Some(ref mut phaser) = self.phaser {
+                        phaser.process_block(&mut left_buffer, sample_rate, time, sample_count);
+                        phaser.process_block(&mut right_buffer, sample_rate, time, sample_count);
+                    }
+                }
+                8 => {
+                    // Flanger: use optimized process_block
+                    if let Some(ref mut flanger) = self.flanger {
+                        flanger.process_block(&mut left_buffer, sample_rate, time, sample_count);
+                        flanger.process_block(&mut right_buffer, sample_rate, time, sample_count);
+                    }
+                }
+                11 => {
+                    // Delay: use optimized process_block
+                    if let Some(ref mut delay) = self.delay {
+                        delay.process_block(&mut left_buffer, time, sample_count, sample_rate);
+                        delay.process_block(&mut right_buffer, time, sample_count, sample_rate);
+                    }
+                }
+                12 => {
+                    // Reverb: use optimized process_block
+                    if let Some(ref mut reverb) = self.reverb {
+                        reverb.process_block(&mut left_buffer, time, sample_count, sample_rate);
+                        reverb.process_block(&mut right_buffer, time, sample_count, sample_rate);
+                    }
+                }
+                2 => {
+                    // Gate: use optimized process_block
+                    if let Some(ref mut gate) = self.gate {
+                        gate.process_block(&mut left_buffer, sample_rate, time, sample_count);
+                        gate.process_block(&mut right_buffer, sample_rate, time, sample_count);
+                    }
+                }
+                _ => {
+                    // Other effects: fall back to per-sample processing
+                    for i in 0..num_frames {
+                        match effect_id {
+                            0 => {
+                                // EQ
+                                if let Some(ref mut eq) = self.eq {
+                                    left_buffer[i] = eq.process(left_buffer[i], sample_rate, time, sample_count);
+                                    right_buffer[i] = eq.process(right_buffer[i], sample_rate, time, sample_count);
+                                }
+                            }
+                            3 => {
+                                // Saturation
+                                if let Some(ref mut saturation) = self.saturation {
+                                    left_buffer[i] = saturation.process(left_buffer[i], time, sample_count);
+                                    right_buffer[i] = saturation.process(right_buffer[i], time, sample_count);
+                                }
+                            }
+                            4 => {
+                                // BitCrusher
+                                if let Some(ref mut bitcrusher) = self.bitcrusher {
+                                    left_buffer[i] = bitcrusher.process(left_buffer[i], time, sample_count);
+                                    right_buffer[i] = bitcrusher.process(right_buffer[i], time, sample_count);
+                                }
+                            }
+                            5 => {
+                                // Distortion
+                                if let Some(ref mut distortion) = self.distortion {
+                                    left_buffer[i] = distortion.process(left_buffer[i], time, sample_count);
+                                    right_buffer[i] = distortion.process(right_buffer[i], time, sample_count);
+                                }
+                            }
+                            9 => {
+                                // Ring Modulator
+                                if let Some(ref mut ring_mod) = self.ring_mod {
+                                    left_buffer[i] = ring_mod.process(left_buffer[i], sample_rate, time, sample_count);
+                                    right_buffer[i] = ring_mod.process(right_buffer[i], sample_rate, time, sample_count);
+                                }
+                            }
+                            10 => {
+                                // Tremolo
+                                if let Some(ref mut tremolo) = self.tremolo {
+                                    left_buffer[i] = tremolo.process(left_buffer[i], sample_rate, time, sample_count);
+                                    right_buffer[i] = tremolo.process(right_buffer[i], sample_rate, time, sample_count);
+                                }
+                            }
+                            14 => {
+                                // ParametricEQ
+                                if let Some(ref mut parametric_eq) = self.parametric_eq {
+                                    left_buffer[i] = parametric_eq.process(left_buffer[i], time, sample_count as usize);
+                                    right_buffer[i] = parametric_eq.process(right_buffer[i], time, sample_count as usize);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
             }
+        }
+
+        // Reinterleave L/R channels back into stereo buffer
+        for (i, frame) in buffer.chunks_exact_mut(2).enumerate() {
+            frame[0] = left_buffer[i];
+            frame[1] = right_buffer[i];
         }
     }
 
