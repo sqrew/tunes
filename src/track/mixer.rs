@@ -1603,6 +1603,7 @@ impl Mixer {
                                 // SIMD path: process 8 frequencies at once
                                 let chunks = num_freqs / 8;
                                 let bend_simd = f32x8::splat(bend_multiplier);
+                                let time_simd = f32x8::splat(time_in_note);
 
                                 for chunk_idx in 0..chunks {
                                     let base_idx = chunk_idx * 8;
@@ -1612,14 +1613,17 @@ impl Mixer {
                                     freq_array.copy_from_slice(&note_event.frequencies[base_idx..base_idx+8]);
                                     let base_freqs = f32x8::from(freq_array);
 
-                                    // Apply pitch bend to all 8 frequencies at once
+                                    // Apply pitch bend to all 8 frequencies at once (SIMD)
                                     let freqs = base_freqs * bend_simd;
 
-                                    // Calculate 8 phases and sample waveform
-                                    let freqs_array = freqs.to_array();
-                                    for &freq in &freqs_array {
-                                        let phase = (time_in_note * freq) % 1.0;
-                                        track_value += note_event.waveform.sample(phase) * envelope_amp;
+                                    // Calculate 8 phases at once (SIMD multiplication - this is the win!)
+                                    let phases_raw = time_simd * freqs;
+                                    let phases = phases_raw.to_array();
+
+                                    // Sample waveform for each phase (wavetable lookups remain scalar)
+                                    for &phase in &phases {
+                                        let phase_wrapped = phase.fract();  // Wrap to [0, 1)
+                                        track_value += note_event.waveform.sample(phase_wrapped) * envelope_amp;
                                     }
                                 }
 
@@ -1633,6 +1637,7 @@ impl Mixer {
                                 // SSE path: process 4 frequencies at once
                                 let chunks = num_freqs / 4;
                                 let bend_simd = f32x4::splat(bend_multiplier);
+                                let time_simd = f32x4::splat(time_in_note);
 
                                 for chunk_idx in 0..chunks {
                                     let base_idx = chunk_idx * 4;
@@ -1642,14 +1647,17 @@ impl Mixer {
                                     freq_array.copy_from_slice(&note_event.frequencies[base_idx..base_idx+4]);
                                     let base_freqs = f32x4::from(freq_array);
 
-                                    // Apply pitch bend to all 4 frequencies at once
+                                    // Apply pitch bend to all 4 frequencies at once (SIMD)
                                     let freqs = base_freqs * bend_simd;
 
-                                    // Calculate 4 phases and sample waveform
-                                    let freqs_array = freqs.to_array();
-                                    for &freq in &freqs_array {
-                                        let phase = (time_in_note * freq) % 1.0;
-                                        track_value += note_event.waveform.sample(phase) * envelope_amp;
+                                    // Calculate 4 phases at once (SIMD multiplication - this is the win!)
+                                    let phases_raw = time_simd * freqs;
+                                    let phases = phases_raw.to_array();
+
+                                    // Sample waveform for each phase (wavetable lookups remain scalar)
+                                    for &phase in &phases {
+                                        let phase_wrapped = phase.fract();  // Wrap to [0, 1)
+                                        track_value += note_event.waveform.sample(phase_wrapped) * envelope_amp;
                                     }
                                 }
 
