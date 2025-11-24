@@ -17,13 +17,12 @@ This page provides honest, technical comparisons between Tunes and other audio l
 **What Tunes does better:**
 - Simpler API: `engine.play_sample()` vs manual pre-loading
 - Automatic sample caching (Kira requires manual management)
-- SIMD-accelerated sample playback (47x realtime measured on i5-6500 with 50 concurrent samples)
+- SIMD-accelerated sample playback (1000+ concurrent samples on decade old hardware)
 - Optional GPU compute shader acceleration (experimental, requires `gpu` feature)
-- Built-in synthesis (FM, wavetable, drums) - Kira has none
+- Built-in synthesis (FM, wavetable, drums, additive, granular) - Kira has none
 - Sample manipulation (time stretch, pitch shift, slicing) - Kira has none
 - Complete composition system with generators and transformations - Kira has basic sequencing
-- More comprehensive effects chain (15+ effects vs Kira's basic set)
-- Multi-format import/export (MP3, OGG, FLAC, WAV, MIDI) - Kira is more limited
+- More comprehensive effects chain (30+ effects vs Kira's basic set)
 - Advanced spatial audio with Doppler effect
 
 **When to choose Kira:**
@@ -36,6 +35,7 @@ This page provides honest, technical comparisons between Tunes and other audio l
 - You need sample manipulation capabilities
 - You prefer simpler APIs with less manual setup
 - You're building procedural or generative audio
+- You're performance is throttled by audio but you don't want to use oddio
 
 **Bottom line:** Kira is a solid playback library. Tunes is a complete audio engine.
 
@@ -126,6 +126,8 @@ This page provides honest, technical comparisons between Tunes and other audio l
 - You need low-level signal graph control
 - You want to build custom audio architectures
 - You're comfortable with advanced audio programming concepts
+- You need a more performant engine if tunes is a bottleneck
+- VR audio needs
 
 **When to choose Tunes:**
 - You want to make audio quickly without deep audio programming knowledge
@@ -517,7 +519,7 @@ Tunes prioritizes:
 - Production stability
 - Framework-agnostic design
 
-**Can you live code with Tunes?** Not really. Rust requires compilation. Use TidalCycles or Sonic Pi for that.
+**Can you live code with Tunes?** Not really. Rust requires compilation. We use hot-reloading to loop but it's not a perfect solution. Use TidalCycles or Sonic Pi or Strudel for a real live coding experience.
 
 **Can you build games with TidalCycles?** Technically yes, but it's not designed for it. Tunes is.
 
@@ -567,7 +569,7 @@ Tunes prioritizes:
 1. Integrated GPUs (Intel HD, AMD Vega) are often slower than CPU for synthesis
 2. GPU acceleration is experimental - requires `gpu` feature flag
 3. Cache overhead is significant for small workloads (<100 unique sounds)
-4. CPU performance (81x realtime) is already excellent for most use cases
+4. CPU performance (100x realtime) is already excellent for most use cases
 5. GPU might benefit very large workloads on discrete GPUs (not yet measured)
 
 **Tunes automatically detects integrated GPUs and displays warnings.**
@@ -576,7 +578,7 @@ Tunes prioritizes:
 
 | Library | GPU Acceleration | Performance |
 |---------|------------------|-------------|
-| Tunes | Yes (experimental, optional) | 81x CPU (measured), GPU experimental |
+| Tunes | Yes (experimental, optional) | 100x CPU (measured), GPU experimental |
 | Kira | No | ~10-30x realtime (estimated) |
 | Rodio | No | ~10-20x realtime (estimated) |
 | SoLoud | No | ~10-50x realtime (estimated) |
@@ -617,7 +619,7 @@ Tunes prioritizes:
 **CPU usage for 50 concurrent sounds:**
 - **Tunes:** ~2-5% (depends on effects)
 - **Kira:** ~2-5% (similar)
-- **SoLoud:** ~1-3% (C++ optimization advantage)
+- **SoLoud:** ~2-3% (C++ optimization advantage)
 - **Rodio:** ~2-5% (similar)
 
 **Verdict:** SoLoud wins on CPU efficiency. Tunes is comparable to other Rust libraries.
@@ -627,7 +629,7 @@ Tunes prioritizes:
 ### Build Times
 
 **Time to compile with audio library (release build):**
-- **Tunes:** ~30-60s (pure Rust, many features)
+- **Tunes:** ~30-60s (pure Rust, many features, optimization flags enabled)
 - **Kira:** ~20-40s (pure Rust, fewer features)
 - **Rodio:** ~10-20s (pure Rust, minimal features)
 - **SoLoud:** ~40-80s (C++ compilation + Rust bindings)
@@ -638,24 +640,24 @@ Tunes prioritizes:
 
 ## Feature Matrix
 
-| Feature | Tunes | Kira | Rodio | SoLoud | Oddio |
-|---------|-------|------|-------|--------|-------|
-| **Basic Playback** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Auto-caching** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **SIMD Acceleration** | ✅ (47x measured) | Unknown | Unknown | ✅ | Unknown |
-| **GPU Acceleration** | ✅ (wgpu) | ❌ | ❌ | ❌ | ❌ |
-| **Synthesis** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Composition System** | ✅ | Basic | ❌ | ❌ | ❌ |
-| **Sample Manipulation** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Effects Chain** | ✅ (15+) | Basic | Basic | Basic | ❌ |
-| **Spatial Audio** | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Doppler Effect** | ✅ | ❌ | ❌ | ✅ | ❌ |
-| **Multi-format Import** | ✅ | ✅ | ✅ | ✅ | Limited |
-| **MIDI Support** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Export/Render** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Pure Rust** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Lines for Simple Play** | 2 | 3 | 4+ | 4 | 5+ |
-| **GPU Enabled** | 2 (change constructor) | N/A | N/A | N/A | N/A |
+| Feature                   | Tunes                  | Kira    | Rodio   | SoLoud | Oddio   |
+|---------------------------|------------------------|---------|---------|--------|---------|
+| **Basic Playback**        | ✅                     | ✅      | ✅      | ✅     | ✅      |
+| **Auto-caching**          | ✅                     | ❌      | ❌      | ❌     | ❌      |
+| **SIMD Acceleration**     | ✅ (100x measured)      | Unknown | Unknown | ✅     | Unknown |
+| **GPU Acceleration**      | ✅ (wgpu)              | ❌      | ❌      | ❌     | ❌      |
+| **Synthesis**             | ✅                     | ❌      | ❌      | ❌     | ❌      |
+| **Composition System**    | ✅                     | Basic   | ❌      | ❌     | ❌      |
+| **Sample Manipulation**   | ✅                     | ❌      | ❌      | ❌     | ❌      |
+| **Effects Chain**         | ✅ (15+)               | Basic   | Basic   | Basic  | ❌      |
+| **Spatial Audio**         | ✅                     | ✅      | ❌      | ✅     | ✅      |
+| **Doppler Effect**        | ✅                     | ❌      | ❌      | ✅     | ❌      |
+| **Multi-format Import**   | ✅                     | ✅      | ✅      | ✅     | Limited |
+| **MIDI Support**          | ✅                     | ❌      | ❌      | ❌     | ❌      |
+| **Export/Render**         | ✅                     | ❌      | ❌      | ❌     | ❌      |
+| **Pure Rust**             | ✅                     | ✅      | ✅      | ❌     | ✅      |
+| **Lines for Simple Play** | 2                      | 3       | 4+      | 4      | 5+      |
+| **GPU Enabled**           | 2 (change constructor) | N/A     | N/A     | N/A    | N/A     |
 
 ---
 
@@ -667,13 +669,11 @@ Tunes prioritizes:
 - You prefer simple APIs with automatic optimization
 - You're building procedural or generative audio
 - You want framework-agnostic code
-- You have a discrete GPU and want 500-5000x synthesis performance
 
 **Choose Kira if:**
 - You only need playback and basic control
 - You want maximum stability and community support
 - You need a proven, battle-tested solution
-- Complex timing/scheduling is critical
 
 **Choose Rodio if:**
 - You need absolute minimal dependencies
@@ -704,9 +704,9 @@ let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::defa
 let sound = StaticSoundData::from_file("sound.wav")?;
 manager.play(sound)?;
 
-// Tunes equivalent
+// Tunes
 let engine = AudioEngine::new()?;
-engine.play_sample("sound.wav")?;
+engine.play_sample("sound.wav");
 ```
 
 **Migration effort:** Low. Most APIs are similar or simpler.
@@ -756,21 +756,14 @@ Tunes aims to provide a complete, ergonomic solution for Rust game audio with op
 **Measured strengths:**
 - Complete feature set (synthesis, composition, effects, playback)
 - Simple API (2 lines for basic playback)
-- SIMD acceleration (47x realtime measured)
+- SIMD acceleration (100x realtime measured)
 - Optional GPU compute shaders (first Rust audio library, experimental)
-- Excellent CPU performance (81x realtime)
 
 **Measured limitations:**
 - Less battle-tested than Kira or SoLoud
 - Smaller community and ecosystem
 - GPU acceleration is experimental and untested on discrete GPUs
-- Larger compile times than minimal libraries (Rodio) when `gpu` feature enabled
-
-**Performance summary:**
-- CPU baseline: 81x realtime (measured)
-- SIMD sample playback: 47x realtime (measured)
-- Multi-core: 54x realtime with Rayon (measured)
-- GPU: Experimental feature (integrated GPUs measured slower than CPU)
+- Larger compile times than minimal libraries (Rodio) when `gpu` or `web` feature enabled
 
 **Recommendation:** Evaluate based on your specific requirements. If you need only playback, Kira or Rodio may be simpler. If you need synthesis + composition + GPU acceleration, Tunes provides unique capabilities not available elsewhere.
 

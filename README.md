@@ -4,7 +4,7 @@ A standalone Rust library for music composition, synthesis, and audio generation
 Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
-> **Performance:** CPU synthesis measured at 100x realtime (uncached) and 18.6x realtime (cached complex compositions) on modern hardware. SIMD sample playback: **11-17x realtime with true concurrent playback (all samples playing simultaneously)** - can handle 550-1,100+ concurrent samples in real-world scenarios. SIMD effects: 98.8x realtime with all effects stacked. Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.1x) but scales with discrete GPU hardware.
+> **Performance:** CPU synthesis measured at 100x realtime (uncached) and 2.0x realtime (cached complex compositions) on decade old hardware. SIMD sample playback: 1000+ with true concurrent playback (all samples playing simultaneously)** - can handle 500-1500+ concurrent samples in real-world scenarios.  Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.0x on i5 6500) but scales with discrete GPU hardware.
 
 ## Features
 
@@ -14,7 +14,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
 - **Synthesis**: FM synthesis, Granular synthesis, Karplus Strong, additive synthesis, filter envelopes, wavetable oscillators
 - **Instruments**: 150+ Pre-configured synthesizers, bass, pads, leads, guitars, percussion, brass, strings, woodwinds and more
 - **Rhythm & Drums**: 100+ pre-configured drum sounds, drum grids, euclidean rhythms, 808-style synthesis, and pattern sequencing
-- **Effects, Automation and Filters**: Delay, convolution reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor (with multiband support), bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters
+- **Effects, Automation and Filters**: Delay, convolution reverb, distortion, parametric EQ, chorus, modulation, tremolo, autopan, gate, limiter, compressor (with multiband support), bitcrusher, eq, phaser, flanger, saturation, sidechaining/ducking, various filters, many spectral effects
 - **Musical Patterns**: Arpeggios, ornaments, tuplets, and many classical techniques and patterns built-in
 - **Algorithmic Sequences**: 50+ algorithms, including Primes, Fib, 2^x, Markov, L-map, Collatz, Euclidean, Golden ratio, random/bounded walks, Thue-Morse, Recamán's, Van der Corput, L-System, Cantor, Shepherd, Cellular Automaton, and many more
 - **Tempo & Timing**: Tempo changes, time signatures (3/4, 5/4, 7/8, etc.), key signatures with modal support
@@ -47,7 +47,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
         live-repl-first musicians
 
 ## PROS
-    rust
+    rust making music is cool
     music theory integration
     batteries included approach
     composition and code first environment (rust's ide integration and your choice of ide is everything here)
@@ -119,44 +119,6 @@ fn main() -> Result<(), anyhow::Error> {
         .note(&[280.0], eighth); //plays 280.0 hz note for half a second
         //continue chaining methods after the second note if you want.
     engine.play_mixer(&comp.into_mixer())?;
-    Ok(())
-}
-```
-
-### Export to WAV
-
-```rust
-use tunes::prelude::*;
-
-fn main() -> Result<(), anyhow::Error> {
-    let mut comp = Composition::new(Tempo::new(120.0));
-
-    // Create a melody with instruments and effects
-    comp.instrument("lead", &Instrument::synth_lead())
-        .filter(Filter::low_pass(1200.0, 0.6))
-        .notes(&[C4, E4, G4, C5], 0.5);
-
-    // Export to WAV file
-    let mut mixer = comp.into_mixer();
-    mixer.export_wav("my_song.wav", 44100)?;
-    Ok(())
-}
-```
-
-### Export to FLAC (Lossless Compression)
-
-```rust
-use tunes::prelude::*;
-
-fn main() -> Result<(), anyhow::Error> {
-    let mut comp = Composition::new(Tempo::new(120.0));
-
-    comp.instrument("piano", &Instrument::electric_piano())
-        .notes(&[C4, E4, G4, C5], 0.5);
-
-    // Export to FLAC (50-60% smaller than WAV, lossless quality)
-    let mut mixer = comp.into_mixer();
-    mixer.export_flac("my_song.flac", 44100)?;
     Ok(())
 }
 ```
@@ -234,6 +196,32 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
+### Export to WAV or FLAC
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> Result<(), anyhow::Error> {
+    let engine = AudioEngine::new()?;
+    let mut comp = Composition::new(Tempo::new(120.0));
+
+    // Create a melody with instruments and effects
+    comp.instrument("lead", &Instrument::synth_lead())
+        .filter(Filter::low_pass(1200.0, 0.6))
+        .notes(&[C4, E4, G4, C5], 0.5);
+
+    // Export to WAV (sample rate inferred from engine)
+    let mut mixer = comp.into_mixer();
+    engine.export_wav(&mut mixer, "my_song.wav")?;
+
+    // Or export to FLAC (lossless compression)
+    engine.export_flac(&mut mixer, "my_song.flac")?;
+
+    Ok(())
+}
+```
+
+
 ### MIDI Import/Export
 
 ```rust
@@ -253,11 +241,11 @@ fn main() -> Result<(), anyhow::Error> {
     mixer.export_midi("song.mid")?;
 
     // Import: Load a MIDI file and render to audio
+    let engine = AudioEngine::new()?;
     let mut imported = Mixer::import_midi("song.mid")?;
-    imported.export_wav("output.wav", 44100)?;
+    engine.export_wav(&mut imported, "output.wav")?;
 
     // Or play it directly
-    let engine = AudioEngine::new()?;
     engine.play_mixer(&imported)?;
     Ok(())
 }
@@ -281,7 +269,7 @@ The live coding system watches your file and automatically:
 - ✅ Starts playing the new version
 - ✅ Shows compilation errors in real-time
 
-Perfect for iterative composition, live performances, and experimentation!
+Perfect for iterative composition and experimentation!
 
 ```rust
 // my_live.rs - edit and save to hear changes!
@@ -335,10 +323,7 @@ fn main() -> anyhow::Result<()> {
 | **FLAC export**          | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
 | **MIDI import**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **MIDI export**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
-| **Live coding**          | Yes           | Yes             | Partial         | Yes               | **Yes**            | No      |
-| **Easy to learn**        | No            | Yes             | Medium          | Yes               | **Yes**            | Yes     |
 | **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
-| **Algorithmic patterns** | Yes           | Yes             | Yes             | Yes               | **Yes**            | Yes     |
 | **Music theory**         | Manual        | Manual          | Yes             | Some              | **Yes (built-in)** | Yes     |
 | **Standalone binary**    | No            | No              | No              | No                | **Yes**            | No      |
 | **Embeddable**           | No            | No              | No              | No                | **Yes**            | No      |
@@ -445,35 +430,18 @@ Tunes is designed for exceptional performance with automatic optimizations:
 
 **CPU Performance (SIMD + Rayon):**
 - Uncached synthesis: 100x realtime (192 FM notes)
-- Cached complex composition: 18.6x realtime
-- SIMD concurrent sample playback: 11-17x realtime (25-100 samples playing simultaneously)
-- Conservative concurrent capacity: **550-1,100+ samples** in real-world scenarios
+- Cached complex composition: 20.0-x realtime
+- SIMD concurrent sample playback: 15x realtime (25-100 samples playing simultaneously)
+- Conservative concurrent capacity: **1000+ samples** in real-world scenarios
 - SIMD effects (all stacked): 98.8x realtime
 - WAV export: 12.2x realtime (124-second multi-track composition)
 
-**GPU Performance (Intel HD 530 integrated):**
-- Speedup: ~1.1x vs CPU (marginal improvement on integrated graphics)
-- WAV export: 12.2x realtime (marginal improvement vs CPU baseline)
-- Note: Integrated GPUs show minimal benefit - CPU performance already excellent
-
-**Hardware Scaling:**
-- Integrated GPUs show 1.0-1.2x speedup (marginal improvement)
-- Discrete GPUs: Performance scales with compute capacity and memory bandwidth
-- Note: Integrated GPU matches full CPU performance while using a fraction of system resources
-
-### What This Means
-
-**For a 16-bar drum pattern (192 notes, 13.6 seconds of audio):**
-- CPU renders in: **0.136 seconds** (100x realtime)
-
 **For game audio with true concurrent samples:**
-- SIMD handles 50-100 samples playing **simultaneously** at **11-17x realtime**
-- Conservative estimate: **550-1,100+ concurrent samples** in real-world scenarios
+- SIMD handles 50-100 samples playing **simultaneously** at **15x realtime**
+- Conservative estimate: **1000+ concurrent samples** in real-world scenarios
 - This is **10-20x more than other libraries** claiming "50 or dozens" of concurrent samples!
 - Automatic caching and multi-core parallelism optimize performance
 
-**For effects processing:**
-- All SIMD effects stacked: **98.8x realtime** (incredibly fast)
 
 ### Automatic Optimizations
 
@@ -491,71 +459,50 @@ Enable with the `gpu` feature flag in Cargo.toml:
 tunes = { version = "1.0.2", features = ["gpu"] }
 ```
 
-**Transparent API (recommended):**
+**Automatic GPU acceleration (recommended):**
 ```rust
-// Automatic GPU acceleration for all operations
+// GPU automatically enabled for all export/render operations
 let engine = AudioEngine::new_with_gpu()?;
-engine.export_wav(&mut comp.into_mixer(), "output.wav")?;  // GPU accelerated
+let mut mixer = comp.into_mixer();
+
+engine.export_wav(&mut mixer, "output.wav")?;  // GPU accelerated
+engine.export_flac(&mut mixer, "output.flac")?;  // GPU accelerated
 engine.play_mixer_realtime(&mixer)?;  // GPU accelerated
 ```
 
-**Manual control:**
+**Manual GPU control (per-mixer):**
 ```rust
+let engine = AudioEngine::new()?;  // CPU-only engine
 let mut mixer = comp.into_mixer();
-mixer.enable_gpu();  // Explicit GPU enablement
+
+mixer.enable_gpu();  // Enable GPU for this mixer
+engine.export_wav(&mut mixer, "output.wav")?;  // Uses GPU
+
+mixer.disable_gpu();  // Disable GPU for this mixer
+engine.export_wav(&mut mixer, "output2.wav")?;  // Uses CPU
 ```
 
 **Performance characteristics:**
-- Integrated GPUs: 1.0-1.2x speedup (minimal benefit)
-- Discrete GPUs: Performance scales with hardware capabilities
 - Fallback-safe: Automatically uses CPU if GPU unavailable
 - Transparent: No API changes required beyond engine initialization
 - Cross-platform: wgpu supports Vulkan, Metal, DX12, WebGPU
 
+**GPU Performance (Intel HD 530 integrated):**
+- Speedup: ~1.1x vs CPU (marginal improvement on integrated graphics)
+- Note: Integrated GPUs show minimal benefit
+- Discrete GPUs: Performance scales with compute capacity and memory bandwidth
+- Note: Integrated GPU matches full CPU performance while using a fraction of system resources
 ### Run Benchmarks Yourself
 
 ```bash
-# GPU vs CPU comparison with transparent API
-cargo bench --bench gpu_benchmark --features gpu
+# CPU performance on concurrent sample playback
+cargo bench --bench realistic_game_audio
 
 # Export performance (CPU and GPU)
 cargo bench --bench export_speed --features gpu
 
-# Two-stage GPU pipeline demonstration
-cargo bench --bench pipeline_benchmark --features gpu
-
 # Additional benchmarks to be found in the benches/ directory!
 ```
-
-### Comparison with Other Rust Audio Libraries
-
-| Library | SIMD | Multi-core | GPU | CPU Performance |
-|---------|------|------------|-----|-----------------|
-| **Tunes** | ✅ | ✅ (Rayon) | ✅ (wgpu) | 100x realtime (uncached) |
-| Kira | Unknown | No | No | ~10-30x (estimated) |
-| Rodio | Unknown | No | No | ~10-20x (estimated) |
-| SoLoud (C++) | ✅ | Yes | No | ~10-50x (estimated) |
-
-Tunes is the only Rust audio library with GPU compute shader acceleration via wgpu.
-
-### Why This Matters for Games
-
-**Traditional approach:**
-- Pre-record all sound variations → Large asset files
-- Limited variations → Repetitive audio
-
-**With Tunes:**
-- Generate sound variations at runtime (procedural synthesis)
-- Each variation unique
-- Zero disk space for variations
-- 100x realtime synthesis on CPU (fast enough for most games)
-- Can handle **550-1,100+ concurrent samples** at realtime (10-20x more than other libraries!)
-
-**Example: Procedural game audio**
-- Synthesize unique sounds per enemy type
-- Dynamic music that responds to gameplay
-- Algorithmic sound effects with variations
-- Result: **Unique audio without large asset files**
 
 ---
 

@@ -32,7 +32,7 @@ use tunes::sequences;
 let mut comp = Composition::new(Tempo::new(120.0));
 
 // 1. Generate Fibonacci sequence: [1, 1, 2, 3, 5, 8, 13, 21]
-let fib = sequences::fibonacci(8);
+let fib = sequences::fibonacci::generate(8);
 
 // 2. Transform to frequency range (200-800 Hz)
 let melody = sequences::normalize(&fib, 200.0, 800.0);
@@ -59,7 +59,7 @@ Classic number sequences that create interesting patterns.
 **Pattern:** Each number is the sum of the previous two: 1, 1, 2, 3, 5, 8, 13, 21...
 
 ```rust
-let fib = sequences::fibonacci(10);
+let fib = sequences::fibonacci::generate(10);
 // Result: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
 ```
 
@@ -70,7 +70,7 @@ let fib = sequences::fibonacci(10);
 **Pattern:** Numbers divisible only by 1 and themselves: 2, 3, 5, 7, 11, 13, 17...
 
 ```rust
-let primes = sequences::primes(10);
+let primes = sequences::primes::generate(10);
 // Result: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
 
 let melody = sequences::normalize(&primes, 220.0, 880.0);
@@ -85,7 +85,7 @@ comp.track("primes").notes(&melody, 0.2);
 
 ```rust
 // Start at 27, generate up to 40 terms
-let collatz = sequences::collatz(27, 40);
+let collatz = sequences::collatz::generate(27, 40);
 // Result: [27, 82, 41, 124, 62, 31, 94, 47, 142, 71, ...]
 
 let melody = sequences::normalize(&collatz, 150.0, 700.0);
@@ -98,16 +98,16 @@ comp.track("collatz").notes(&melody, 0.15);
 
 ```rust
 // Arithmetic: a, a+d, a+2d, ... (linear progression)
-let arithmetic = sequences::arithmetic(5, 3, 10);  // [5, 8, 11, 14, 17, 20, 23, 26, 29, 32]
+let arithmetic = sequences::arithmetic::generate(5, 3, 10);  // [5, 8, 11, 14, 17, 20, 23, 26, 29, 32]
 
 // Geometric: a, ar, ar², ar³, ... (exponential growth)
-let geometric = sequences::geometric(2, 2, 8);  // [2, 4, 8, 16, 32, 64, 128, 256]
+let geometric = sequences::geometric::generate(2, 2, 8);  // [2, 4, 8, 16, 32, 64, 128, 256]
 
 // Triangular: 1, 3, 6, 10, 15, 21... (sum of integers)
-let triangular = sequences::triangular(8);
+let triangular = sequences::triangular::generate(8);
 
 // Powers of two: 1, 2, 4, 8, 16, 32...
-let powers = sequences::powers_of_two(8);
+let powers = sequences::powers_of_two::generate(8);
 ```
 
 ---
@@ -120,9 +120,9 @@ Distribute `k` pulses as evenly as possible across `n` steps using Bjorklund's a
 
 ```rust
 // Returns step indices where hits occur
-let kick = sequences::euclidean(4, 16);     // [0, 4, 8, 12] - Four-on-floor
-let snare = sequences::euclidean(3, 16);    // [0, 5, 11] - Syncopated
-let hihat = sequences::euclidean(7, 16);    // Complex pattern
+let kick = sequences::euclidean::generate(4, 16);     // [0, 4, 8, 12] - Four-on-floor
+let snare = sequences::euclidean::generate(3, 16);    // [0, 5, 11] - Syncopated
+let hihat = sequences::euclidean::generate(7, 16);    // Complex pattern
 
 comp.track("drums")
     .drum_grid(16, 0.125)
@@ -132,10 +132,10 @@ comp.track("drums")
 ```
 
 **Common patterns:**
-- `euclidean(3, 8)` - Cuban tresillo
-- `euclidean(5, 8)` - Cuban cinquillo
-- `euclidean(5, 16)` - Bossa nova clave
-- `euclidean(4, 16)` - Standard four-on-floor kick
+- `euclidean::generate(3, 8)` - Cuban tresillo
+- `euclidean::generate(5, 8)` - Cuban cinquillo
+- `euclidean::generate(5, 16)` - Bossa nova clave
+- `euclidean::generate(4, 16)` - Standard four-on-floor kick
 
 **What's happening:** The algorithm spaces pulses as evenly as possible, creating the most balanced rhythm distribution mathematically.
 
@@ -144,7 +144,7 @@ comp.track("drums")
 Non-periodic rhythm based on the golden ratio (φ ≈ 1.618).
 
 ```rust
-let phi_rhythm = sequences::golden_ratio_rhythm(32);
+let phi_rhythm = sequences::golden_ratio_rhythm::generate(32);
 // Returns indices following golden ratio spacing
 
 comp.track("phi_drums")
@@ -175,7 +175,7 @@ Uses the circle map equation to generate quasi-periodic rhythms based on rotatio
 
 ```rust
 // Generate circle map sequence
-let circle = sequences::circle_map::generate(0.5, 0.2, 32);
+let circle = sequences::circle_map::generate(0.5, 0.2, 0.0, 32);
 
 // Convert to hit indices
 let hits = sequences::circle_map_to_hits(&circle, 16);
@@ -196,7 +196,7 @@ Traditional rhythms based on additive groupings (like 2+2+3 or 3+3+2).
 
 ```rust
 // Create custom additive meter: groups of [2, 2, 3]
-let meter = sequences::additive_meter::generate(vec![2, 2, 3]);
+let meter = sequences::additive_meter::generate(&[2, 2, 3]);
 
 // Traditional Bulgarian rhythms:
 let rachenitsa = sequences::rachenitsa();        // 2+2+3 (7/8)
@@ -244,10 +244,10 @@ The logistic map demonstrates how simple equations can produce complex chaotic b
 ```rust
 // r parameter controls behavior:
 // r=2.5: Stable (converges to fixed point)
-let stable = sequences::logistic_map(2.5, 0.5, 16);
+let stable = sequences::logistic_map::generate(2.5, 0.5, 16);
 
 // r=3.9: Chaotic (unpredictable but deterministic)
-let chaotic = sequences::logistic_map(3.9, 0.5, 32);
+let chaotic = sequences::logistic_map::generate(3.9, 0.5, 32);
 
 // Convert to frequencies
 let melody = sequences::normalize(
@@ -264,11 +264,11 @@ Smooth, organic wandering patterns.
 
 ```rust
 // Unbounded walk (can go anywhere)
-let walk = sequences::random_walk(440.0, 20.0, 20);
+let walk = sequences::random_walk::generate(440.0, 20.0, 20);
 comp.track("walk").notes(&walk, 0.25);
 
 // Bounded walk (constrained to range)
-let bounded = sequences::bounded_walk(440.0, 30.0, 220.0, 880.0, 32);
+let bounded = sequences::bounded_walk::generate(440.0, 30.0, 220.0, 880.0, 32);
 comp.track("bounded").notes(&bounded, 0.2);
 ```
 
@@ -280,7 +280,7 @@ Generate patterns using rule-based evolution (like Conway's Game of Life but 1D)
 
 ```rust
 // Rule 30 - chaotic patterns
-let rule30 = sequences::cellular_automaton(30, 8, 16, None);
+let rule30 = sequences::cellular_automaton::generate(30, 8, 16, None);
 // Returns 8 generations, each with 16 cells (0 or 1)
 
 for (gen_idx, generation) in rule30.iter().take(4).enumerate() {
@@ -353,7 +353,7 @@ let rules = vec![
 ];
 
 // Generate iterations
-let lsystem = sequences::lsystem::generate(axiom, rules, 6);
+let lsystem = sequences::lsystem::generate(&axiom, &rules, 6);
 
 // Convert L-system string to numeric sequence
 let sequence = sequences::lsystem_to_sequence(&lsystem);
@@ -373,7 +373,7 @@ let training_data = vec![60, 62, 64, 62, 60, 64, 65, 67];
 let transitions = sequences::build_markov_transitions(&training_data, 1);
 
 // Generate new sequence following learned patterns
-let markov_melody = sequences::markov::generate(transitions, 60, 16);
+let markov_melody = sequences::markov::generate(&transitions, 60, 16);
 ```
 
 **Musical use:** Style imitation, probabilistic variations, AI-assisted composition.
@@ -387,7 +387,7 @@ let markov_melody = sequences::markov::generate(transitions, 60, 16);
 Convert any sequence to a frequency, duration, or parameter range.
 
 ```rust
-let seq = sequences::fibonacci(8);
+let seq = sequences::fibonacci::generate(8);
 
 // Map to frequency range (melody)
 let melody = sequences::normalize(&seq, 220.0, 880.0);
@@ -406,7 +406,7 @@ let volumes = sequences::normalize(&seq, 0.3, 0.9);
 Convert sequences to notes in a specific musical scale.
 
 ```rust
-let fib = sequences::fibonacci(16);
+let fib = sequences::fibonacci::generate(16);
 
 // Map to C major pentatonic, spanning 2 octaves
 let melody = sequences::map_to_scale(&fib, &sequences::Scale::major_pentatonic(), C4, 2);
@@ -430,7 +430,7 @@ comp.track("scale_melody").notes(&melody, 0.25);
 
 ```rust
 // Chaos theory, Perlin noise, Lorenz attractor, etc.
-let chaos = sequences::logistic_map(3.9, 0.5, 32);
+let chaos = sequences::logistic_map::generate(3.9, 0.5, 32);
 let melody = sequences::map_to_scale_f32(&chaos, &sequences::Scale::minor(), D4, 2);
 ```
 
@@ -478,14 +478,14 @@ fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
 
     // === BASS: Recamán sequence (interesting contour) ===
-    let recaman = sequences::recaman(16);
+    let recaman = sequences::recaman::generate(16);
     let bass_freqs = sequences::normalize(&recaman, 55.0, 110.0);
 
     comp.instrument("bass", &Instrument::sub_bass())
         .notes(&bass_freqs, 0.5);
 
     // === MELODY: Chaotic but in-scale ===
-    let chaos = sequences::logistic_map(3.7, 0.5, 32);
+    let chaos = sequences::logistic_map::generate(3.7, 0.5, 32);
     let melody = sequences::map_to_scale_f32(
         &chaos,
         &sequences::Scale::minor_pentatonic(),
@@ -506,7 +506,7 @@ fn main() -> anyhow::Result<()> {
         .note(&harmonics[4..7], 4.0);
 
     // === DRUMS: Euclidean + Thue-Morse ===
-    let thue_morse = sequences::thue_morse(16);
+    let thue_morse = sequences::thue_morse::generate(16);
     let tm_hits: Vec<usize> = thue_morse
         .iter()
         .enumerate()
@@ -516,9 +516,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("drums")
         .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean(4, 16))  // Four-on-floor
+        .kick(&sequences::euclidean::generate(4, 16))  // Four-on-floor
         .snare(&tm_hits)                     // Non-repetitive
-        .hihat(&sequences::euclidean(7, 16));// Complex pattern
+        .hihat(&sequences::euclidean::generate(7, 16));// Complex pattern
 
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
@@ -541,7 +541,7 @@ Raw sequences like Fibonacci produce unusable frequency values (e.g., 13 Hz is t
 
 ```rust
 // ❌ BAD: Raw Fibonacci as frequencies
-let fib = sequences::fibonacci(8);
+let fib = sequences::fibonacci::generate(8);
 comp.track("bad").notes(&fib.iter().map(|&x| x as f32).collect::<Vec<_>>(), 0.25);
 
 // ✅ GOOD: Normalized to playable range
@@ -560,9 +560,9 @@ Euclidean rhythms are perfect for drum patterns because they're mathematically o
 ```rust
 comp.track("drums")
     .drum_grid(16, 0.125)
-    .kick(&sequences::euclidean(4, 16))    // Even kick
-    .snare(&sequences::euclidean(3, 16))   // Syncopated snare
-    .hihat(&sequences::euclidean(7, 16));  // Complex hi-hat
+    .kick(&sequences::euclidean::generate(4, 16))    // Even kick
+    .snare(&sequences::euclidean::generate(3, 16))   // Syncopated snare
+    .hihat(&sequences::euclidean::generate(7, 16));  // Complex hi-hat
 ```
 
 ### 3. Combine Sequences for Complexity
@@ -571,15 +571,15 @@ Layer different sequences for rich patterns:
 
 ```rust
 // Bass: Slow-moving Fibonacci
-let fib_bass = sequences::normalize(&sequences::fibonacci(8), 55.0, 110.0);
+let fib_bass = sequences::normalize(&sequences::fibonacci::generate(8), 55.0, 110.0);
 
 // Melody: Fast chaotic pattern in-scale
-let chaos = sequences::logistic_map(3.9, 0.5, 32);
+let chaos = sequences::logistic_map::generate(3.9, 0.5, 32);
 let chaos_melody = sequences::map_to_scale_f32(&chaos, &sequences::Scale::minor(), C5, 2);
 
 // Rhythm: Euclidean with cellular automaton variation
-let base_rhythm = sequences::euclidean(5, 16);
-let ca_variation = sequences::cellular_automaton(30, 4, 16, None);
+let base_rhythm = sequences::euclidean::generate(5, 16);
+let ca_variation = sequences::cellular_automaton::generate(30, 4, 16, None);
 ```
 
 ### 4. Use Chaos Theory for Dynamic Intensity
@@ -590,7 +590,7 @@ Map game state or intensity to the `r` parameter in logistic map:
 fn generate_melody_for_intensity(intensity: f32) -> Vec<f32> {
     // intensity: 0.0 (calm) to 1.0 (chaotic)
     let r = 2.5 + intensity * 1.5;  // r ranges from 2.5 (stable) to 4.0 (chaos)
-    let chaos = sequences::logistic_map(r, 0.5, 32);
+    let chaos = sequences::logistic_map::generate(r, 0.5, 32);
     sequences::normalize(
         &chaos.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
         220.0,
@@ -614,60 +614,60 @@ Don't just stick to one type - combine mathematical, rhythmic, and generative se
 ## Full Sequence Reference
 
 ### Mathematical
-- `fibonacci(n)` - Fibonacci sequence
-- `primes(n)` - Prime numbers
-- `arithmetic(start, step, n)` - Linear progression
-- `geometric(start, ratio, n)` - Exponential growth
-- `triangular(n)` - Triangular numbers
-- `powers_of_two(n)` - Powers of 2
-- `collatz(start, max)` - 3n+1 problem
-- `lucas(n)`, `catalan(n)`, `padovan(n)`, `pell(n)`, `pentagonal(n)` - Other sequences
+- `fibonacci::generate(n)` - Fibonacci sequence
+- `primes::generate(n)` - Prime numbers
+- `arithmetic::generate(start, step, n)` - Linear progression
+- `geometric::generate(start, ratio, n)` - Exponential growth
+- `triangular::generate(n)` - Triangular numbers
+- `powers_of_two::generate(n)` - Powers of 2
+- `collatz::generate(start, max)` - 3n+1 problem
+- `lucas::generate(n)`, `catalan::generate(n)`, `padovan::generate(n)`, `pell::generate(n)`, `pentagonal::generate(n)` - Other sequences
 
 ### Rhythmic
-- `euclidean(pulses, steps)` - Optimal beat distribution
-- `euclidean_pattern(pulses, steps)` - Full binary pattern
-- `golden_ratio_rhythm(steps)` - Non-periodic rhythm
-- `shepard_tone(steps, layers)` - Infinitely rising/falling rhythm illusion
-- `circle_map(omega, k, n)` - Quasi-periodic rhythms
+- `euclidean::generate(pulses, steps)` - Optimal beat distribution
+- `euclidean::pattern(pulses, steps)` - Full binary pattern
+- `golden_ratio_rhythm::generate(steps)` - Non-periodic rhythm
+- `shepard_tone::generate(steps, layers)` - Infinitely rising/falling rhythm illusion
+- `circle_map::generate(omega, k, theta, n)` - Quasi-periodic rhythms
 - `circle_map_to_hits(seq, steps)`, `circle_map_hocket(seq, steps)` - Convert circle map to rhythms
-- `polyrhythm(a, b, cycles)` - Layered rhythms
+- `polyrhythm::generate(a, b, cycles)` - Layered rhythms
 - `polyrhythm_cycle(a, b)`, `polyrhythm_timings(a, b, cycles)` - Polyrhythm helpers
 - `son_clave_3_2()`, `son_clave_2_3()`, `rumba_clave_3_2()`, `rumba_clave_2_3()`, `bossa_clave()` - Traditional claves
-- `additive_meter(groups)` - Custom additive groupings
+- `additive_meter::generate(groups)` - Custom additive groupings
 - `rachenitsa()`, `kopanitsa()`, `kalamatianos()`, `aksak_9_8()` - Traditional folk rhythms
 - `phase_shift_by(pattern, shift, steps)` - Shift rhythm by n steps
 - `phase_shift_timed(pattern, steps, phases)` - Gradual phase shifting
 - `phase_relationship(a, b)`, `clapping_music()` - Phase relationship helpers
 
 ### Generative
-- `logistic_map(r, initial, n)` - Chaos theory
-- `random_walk(start, step, n)` - Brownian motion
-- `bounded_walk(start, step, min, max, n)` - Constrained walk
-- `tent_map(r, initial, n)` - Simple chaotic map
-- `sine_map(r, initial, n)` - Musical chaotic sequences
-- `henon_map(a, b, x0, y0, n)` - 2D attractor
+- `logistic_map::generate(r, initial, n)` - Chaos theory
+- `random_walk::generate(start, step, n)` - Brownian motion
+- `bounded_walk::generate(start, step, min, max, n)` - Constrained walk
+- `tent_map::generate(r, initial, n)` - Simple chaotic map
+- `sine_map::generate(r, initial, n)` - Musical chaotic sequences
+- `henon_map::generate(a, b, x0, y0, n)` - 2D attractor
 - `henon_x(a, b, x0, y0, n)`, `henon_y(a, b, x0, y0, n)` - Extract x/y coordinates
-- `bakers_map(x0, y0, n)` - Fractal mixing and distribution
+- `bakers_map::generate(x0, y0, n)` - Fractal mixing and distribution
 - `bakers_x(x0, y0, n)`, `bakers_y(x0, y0, n)` - Extract x/y coordinates
-- `thue_morse(n)` - Fair binary sequences
-- `recaman(n)` - Spiraling back-and-forth
-- `van_der_corput(n, base)` - Quasi-random
-- `cellular_automaton(rule, gens, width, initial)` - Rule-based evolution
-- `lsystem(axiom, rules, iterations)` - L-system fractal growth
+- `thue_morse::generate(n)` - Fair binary sequences
+- `recaman::generate(n)` - Spiraling back-and-forth
+- `van_der_corput::generate(n, base)` - Quasi-random
+- `cellular_automaton::generate(rule, gens, width, initial)` - Rule-based evolution
+- `lsystem::generate(axiom, rules, iterations)` - L-system fractal growth
 - `lsystem_to_sequence(lsystem)` - Convert L-system to numbers
-- `markov(transitions, start, n)` - Probabilistic sequences
+- `markov::generate(transitions, start, n)` - Probabilistic sequences
 - `build_markov_transitions(data, order)` - Learn from data
-- `cantor_set(depth, steps)` - Fractal rhythms
-- `lorenz_attractor(sigma, rho, beta, x0, y0, z0, n)` - 3D chaotic attractor
+- `cantor_set::generate(depth, steps)` - Fractal rhythms
+- `lorenz_attractor::generate(sigma, rho, beta, x0, y0, z0, n)` - 3D chaotic attractor
 - `lorenz_butterfly(n)` - Lorenz attractor with default parameters
-- `perlin_noise(seed, freq, octaves, persistence, n)` - Smooth noise
+- `perlin_noise::generate(seed, freq, octaves, persistence, n)` - Smooth noise
 - `perlin_noise_bipolar(seed, freq, octaves, persistence, n)` - Perlin in [-1, 1] range
-- `rossler_attractor(a, b, c, x0, y0, z0, n)` - 3D spiral attractor
+- `rossler_attractor::generate(a, b, c, x0, y0, z0, n)` - 3D spiral attractor
 - `rossler_spiral(a, b, c, x0, y0, z0, n)` - Rössler with default view
-- `clifford_attractor(a, b, c, d, x0, y0, n)` - Strange attractor
+- `clifford_attractor::generate(a, b, c, d, x0, y0, n)` - Strange attractor
 - `clifford_x(a, b, c, d, x0, y0, n)`, `clifford_y(...)` - Extract coordinates
 - `clifford_flow(a, b, c, d, x0, y0, n)` - Flowing pattern variant
-- `ikeda_map(u, rho, c, x0, y0, n)` - Complex dynamics from laser physics
+- `ikeda_map::generate(u, rho, c, x0, y0, n)` - Complex dynamics from laser physics
 - `ikeda_x(u, rho, c, x0, y0, n)`, `ikeda_y(...)` - Extract coordinates
 - `ikeda_spiral(u, rho, c, x0, y0, n)` - Spiral pattern variant
 

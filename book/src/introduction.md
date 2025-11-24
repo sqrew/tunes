@@ -43,7 +43,7 @@ Create command-line music generators, audio processors, or batch rendering tools
 **If you need:**
 - ✅ Synthesis and composition in Rust
 - ✅ Real-time concurrent playback
-- ✅ Export to WAV/FLAC/MIDI
+- ✅ Export to WAV/FLAC/MIDI/STEM
 - ✅ Algorithmic/generative music
 - ✅ No runtime dependencies
 

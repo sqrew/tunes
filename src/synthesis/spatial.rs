@@ -256,6 +256,24 @@ impl SoundCone {
         Self::new(Vec3::forward(), 90.0, 150.0, 0.5)
     }
 
+    /// Create a 45° cone (tight directional)
+    /// Inner: 20°, Outer: 45°, Outer gain: 0.2
+    pub fn cone_45() -> Self {
+        Self::new(Vec3::forward(), 20.0, 45.0, 0.2)
+    }
+
+    /// Create a 90° cone (quarter sphere)
+    /// Inner: 45°, Outer: 90°, Outer gain: 0.3
+    pub fn cone_90() -> Self {
+        Self::new(Vec3::forward(), 45.0, 90.0, 0.3)
+    }
+
+    /// Create a 180° cone (hemisphere)
+    /// Inner: 90°, Outer: 180°, Outer gain: 0.5
+    pub fn cone_180() -> Self {
+        Self::new(Vec3::forward(), 90.0, 180.0, 0.5)
+    }
+
     /// Set the direction the cone is pointing
     pub fn with_direction(mut self, x: f32, y: f32, z: f32) -> Self {
         self.direction = Vec3::new(x, y, z).normalize();

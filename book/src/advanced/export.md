@@ -185,6 +185,7 @@ fn main() -> anyhow::Result<()> {
 
     // Export operations will use GPU when available
     engine.export_wav(&mixer, "output.wav", 44100)?;
+    // Flac encoding does not benefit from gpu acceleration because it's inherently sequential
     engine.export_flac(&mixer, "output.flac", 48000)?;
 
     Ok(())

@@ -11,7 +11,7 @@ fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(140.0));
 
     // Generate melody from Collatz sequence
-    let collatz_seq = sequences::collatz(27, 20);  // Start at 27, take 20 values
+    let collatz_seq = sequences::collatz::generate(27, 20);  // Start at 27, take 20 values
     let melody = sequences::map_to_scale(
         &collatz_seq,
         &sequences::Scale::minor_pentatonic(),

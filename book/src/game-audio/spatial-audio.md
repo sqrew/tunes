@@ -399,6 +399,7 @@ fn directional_speaker() -> anyhow::Result<()> {
 ```rust
 use tunes::synthesis::spatial::SoundCone;
 
+// Descriptive presets
 // Narrow cone (megaphone, directional speaker)
 // Inner: 20°, Outer: 40°, Outer gain: 0.2
 let cone = SoundCone::narrow();
@@ -410,6 +411,19 @@ let cone = SoundCone::medium();
 // Wide cone (person talking, general directionality)
 // Inner: 90°, Outer: 150°, Outer gain: 0.5
 let cone = SoundCone::wide();
+
+// Degree-based presets
+// 45° cone (tight directional)
+// Inner: 20°, Outer: 45°, Outer gain: 0.2
+let cone = SoundCone::cone_45();
+
+// 90° cone (quarter sphere)
+// Inner: 45°, Outer: 90°, Outer gain: 0.3
+let cone = SoundCone::cone_90();
+
+// 180° cone (hemisphere)
+// Inner: 90°, Outer: 180°, Outer gain: 0.5
+let cone = SoundCone::cone_180();
 
 // Custom cone
 let cone = SoundCone::new(

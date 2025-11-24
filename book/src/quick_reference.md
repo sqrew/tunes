@@ -6,11 +6,11 @@ A concise guide to common Tunes operations. For detailed explanations, see the f
 
 ```toml
 [dependencies]
-tunes = "1.0.0"
+tunes = "1.0.2"
 
 # Optional features
-tunes = { version = "1.0.0", features = ["gpu"] }    # GPU acceleration
-tunes = { version = "1.0.0", features = ["web"] }    # WebAssembly support
+tunes = { version = "1.0.2", features = ["gpu"] }    # GPU acceleration
+tunes = { version = "1.0.2", features = ["web"] }    # WebAssembly support
 ```
 
 ## Basic Setup
@@ -69,7 +69,7 @@ comp.track("drums")
     .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);  // Hi-hats on every other step
 
 // Euclidean rhythms (using sequences)
-let pattern = sequences::euclidean(5, 8);  // 5 hits over 8 steps
+let pattern = sequences::euclidean::generate(5, 8);  // 5 hits over 8 steps
 comp.track("perc")
     .drum_grid(8, 0.125)
     .rimshot(&pattern);
@@ -104,7 +104,7 @@ comp.track("sweep")
 use tunes::sequences;
 
 // Map sequence to musical scale
-let fib = sequences::fibonacci(8);
+let fib = sequences::fibonacci::generate(8);
 let melody = sequences::map_to_scale(&fib, &sequences::Scale::major_pentatonic(), C4, 2);
 comp.track("melody").notes(&melody, 0.5);
 
@@ -115,7 +115,7 @@ let blues = sequences::Scale::blues();
 let pentatonic = sequences::Scale::major_pentatonic();
 
 // Map to minor scale
-let primes = sequences::primes(10);
+let primes = sequences::primes::generate(10);
 let dark_melody = sequences::map_to_scale(&primes, &sequences::Scale::minor(), A4, 2);
 comp.track("dark").notes(&dark_melody, 0.5);
 
@@ -232,32 +232,32 @@ engine.stop(loop_id)?;
 use tunes::sequences;
 
 // Fibonacci sequence
-let fib = sequences::fibonacci(8);
+let fib = sequences::fibonacci::generate(8);
 let melody = sequences::normalize(&fib, 200.0, 800.0);
 comp.track("fib").notes(&melody, 0.25);
 
 // Prime numbers
-let primes = sequences::primes(10);
+let primes = sequences::primes::generate(10);
 let melody = sequences::normalize(&primes, 220.0, 880.0);
 comp.track("primes").notes(&melody, 0.25);
 
 // Collatz conjecture
-let collatz = sequences::collatz(27, 40);
+let collatz = sequences::collatz::generate(27, 40);
 let melody = sequences::normalize(&collatz, 150.0, 700.0);
 comp.track("collatz").notes(&melody, 0.15);
 
 // Euclidean rhythm (for drums)
-let kick = sequences::euclidean(4, 16);     // [0, 4, 8, 12]
+let kick = sequences::euclidean::generate(4, 16);     // [0, 4, 8, 12]
 comp.track("drums")
     .drum_grid(16, 0.125)
     .kick(&kick);
 
 // Random walk
-let walk = sequences::random_walk(440.0, 20.0, 20);
+let walk = sequences::random_walk::generate(440.0, 20.0, 20);
 comp.track("walk").notes(&walk, 0.25);
 
 // Chaos theory (Logistic Map)
-let chaotic = sequences::logistic_map(3.9, 0.5, 32);
+let chaotic = sequences::logistic_map::generate(3.9, 0.5, 32);
 let melody = sequences::normalize(
     &chaotic.iter().map(|&x| (x * 100.0) as u32).collect::<Vec<_>>(),
     200.0, 800.0
@@ -395,7 +395,7 @@ engine.play_mixer(&mixer)?;
 
 ```toml
 [dependencies]
-tunes = { version = "1.0.0", features = ["web"] }
+tunes = { version = "1.0.2", features = ["web"] }
 ```
 
 ```bash
@@ -458,11 +458,8 @@ fn laser_sound(frequency: f32) -> Composition {
     let mut comp = Composition::new(Tempo::new(120.0));
     comp.track("laser")
         .note(&[frequency], 0.05)
-        .filter_sweep(
-            Filter::low_pass(frequency * 2.0, 0.5),
-            Filter::low_pass(frequency * 0.5, 0.5),
-            0.05
-        );
+        .filter(Filter::low_pass(frequency * 2.0, 0.5))
+        .filter_sweep(frequency * 0.5, 0.05);
     comp
 }
 
