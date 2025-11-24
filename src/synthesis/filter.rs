@@ -57,6 +57,10 @@ pub struct Filter {
     last_smooth_cutoff: f32,
     last_smooth_resonance: f32,
 
+    // Track previous parameter values to skip smoothing when stable
+    last_cutoff: f32,
+    last_resonance: f32,
+
     // Function pointer for branchless dispatch (set at construction)
     process_fn: fn(&mut Filter, f32, f32) -> f32,
 }
@@ -114,6 +118,8 @@ impl Filter {
             cached_moog_k: 0.0,
             last_smooth_cutoff: -1.0,  // Force initial calculation
             last_smooth_resonance: -1.0,
+            last_cutoff: cutoff,
+            last_resonance: resonance,
             process_fn,
         }
     }
@@ -347,6 +353,8 @@ impl Filter {
         self.moog_delay = [0.0; 4];
         self.last_smooth_cutoff = -1.0;  // Force recalculation
         self.last_smooth_resonance = -1.0;
+        self.last_cutoff = self.cutoff;
+        self.last_resonance = self.resonance;
     }
 
     /// Optimized buffer processing for state-variable filters
@@ -358,14 +366,28 @@ impl Filter {
         const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
         const COEFF_UPDATE_THRESHOLD: f32 = 0.0001;  // 0.01% change threshold
+        const CONVERGENCE_THRESHOLD: f32 = 0.0001;   // Consider converged when this close to target
+
+        // Check if parameters have changed or if smoothing is still needed
+        let params_changed = self.cutoff != self.last_cutoff || self.resonance != self.last_resonance;
+        let cutoff_converged = (self.smooth_cutoff - self.cutoff).abs() < CONVERGENCE_THRESHOLD;
+        let resonance_converged = (self.smooth_resonance - self.resonance).abs() < CONVERGENCE_THRESHOLD;
+        let needs_smoothing = params_changed || !cutoff_converged || !resonance_converged;
+
+        if params_changed {
+            self.last_cutoff = self.cutoff;
+            self.last_resonance = self.resonance;
+        }
 
         // Process buffer
         for sample in buffer.iter_mut() {
             let input = *sample;
 
-            // Smooth parameter changes
-            self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
-            self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+            // Only smooth if parameters changed or not yet converged (saves 2 FMA ops per sample!)
+            if needs_smoothing {
+                self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+                self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+            }
 
             // Update cached coefficients only if parameters changed significantly
             // This avoids expensive sin() calls when parameters are stable
@@ -452,13 +474,27 @@ impl Filter {
         const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
         const COEFF_UPDATE_THRESHOLD: f32 = 0.0001;
+        const CONVERGENCE_THRESHOLD: f32 = 0.0001;
+
+        // Check if parameters have changed or if smoothing is still needed
+        let params_changed = self.cutoff != self.last_cutoff || self.resonance != self.last_resonance;
+        let cutoff_converged = (self.smooth_cutoff - self.cutoff).abs() < CONVERGENCE_THRESHOLD;
+        let resonance_converged = (self.smooth_resonance - self.resonance).abs() < CONVERGENCE_THRESHOLD;
+        let needs_smoothing = params_changed || !cutoff_converged || !resonance_converged;
+
+        if params_changed {
+            self.last_cutoff = self.cutoff;
+            self.last_resonance = self.resonance;
+        }
 
         for sample in buffer.iter_mut() {
             let input = *sample;
 
-            // Smooth parameters
-            self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
-            self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+            // Only smooth if parameters changed or not yet converged (saves 2 FMA ops per sample!)
+            if needs_smoothing {
+                self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
+                self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
+            }
 
             // Update cached coefficients only if needed
             let cutoff_changed = (self.smooth_cutoff - self.last_smooth_cutoff).abs()
