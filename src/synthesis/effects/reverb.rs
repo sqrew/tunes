@@ -155,20 +155,71 @@ impl Reverb {
         input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
-    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    /// * `sample_rate` - Sample rate in Hz (unused but kept for API consistency)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, current_time, current_sample_count);
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.room_size_automation {
+                self.room_size = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.damping_automation {
+                self.damping = auto.value_at(time).clamp(0.0, 1.0);
+            }
+        }
+
+        // Early exit if effect is bypassed
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let feedback = self.room_size.mul_add(0.48, 0.5);
+        let inv_damping = 1.0 - self.damping;
+        let num_combs = self.comb_buffers.len();
+        let mix_wet = self.mix;
+        let mix_dry = 1.0 - self.mix;
+        let output_scale = 1.0 / num_combs as f32;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+            let mut output = 0.0;
+
+            // Process through all comb filters
+            for i in 0..num_combs {
+                let buffer = &mut self.comb_buffers[i];
+                let pos = self.comb_positions[i];
+
+                // Read from delay buffer
+                let delayed = buffer[pos];
+
+                // Apply damping filter (simple lowpass) using FMA
+                self.filter_state[i] =
+                    delayed.mul_add(inv_damping, self.filter_state[i] * self.damping);
+
+                // Write to buffer with feedback using FMA
+                buffer[pos] = self.filter_state[i].mul_add(feedback, input);
+
+                // Advance position using bitwise AND (~10x faster than modulo!)
+                self.comb_positions[i] = (pos + 1) & self.comb_masks[i];
+
+                // Accumulate output
+                output += delayed;
+            }
+
+            // Average and mix using FMA
+            output *= output_scale;
+            *sample = input.mul_add(mix_dry, output * mix_wet);
         }
     }
 

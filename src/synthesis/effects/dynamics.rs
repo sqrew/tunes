@@ -621,11 +621,81 @@ impl Compressor {
     /// * `sidechain_envelope` - Optional external envelope for sidechaining
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64, sidechain_envelope: Option<f32>) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count, sidechain_envelope);
+        // If multiband is enabled, fall back to per-sample processing
+        if self.bands.is_some() {
+            let time_delta = 1.0 / sample_rate;
+            for (i, sample) in buffer.iter_mut().enumerate() {
+                let current_time = time + (i as f32 * time_delta);
+                let current_sample_count = sample_count + i as u64;
+                *sample = self.process(*sample, sample_rate, current_time, current_sample_count, sidechain_envelope);
+            }
+            return;
+        }
+
+        // Optimized single-band compression buffer processing
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+            if let Some(auto) = &self.attack_automation {
+                self.attack = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.release_automation {
+                self.release = auto.value_at(time).max(0.001);
+            }
+            if let Some(auto) = &self.makeup_gain_automation {
+                self.makeup_gain = auto.value_at(time).max(0.1);
+            }
+
+            // Update cached coefficients
+            self.cached_attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+            self.cached_release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+            self.cached_sample_rate = sample_rate;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let threshold = self.threshold;
+        let ratio = self.ratio;
+        let makeup_gain = self.makeup_gain;
+        let cached_attack_coeff = self.cached_attack_coeff;
+        let cached_release_coeff = self.cached_release_coeff;
+        let threshold_max = threshold.max(0.001); // Prevent division by zero
+        let inv_ratio = 1.0 / ratio;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Use sidechain envelope if provided, otherwise use input level
+            let input_level = sidechain_envelope.unwrap_or_else(|| input.abs());
+
+            // Use FMA for envelope calculation with cached coefficients
+            let coeff = if input_level > self.envelope {
+                cached_attack_coeff
+            } else {
+                cached_release_coeff
+            };
+            self.envelope = self.envelope.mul_add(coeff, input_level * (1.0 - coeff));
+
+            // Clamp envelope to prevent runaway values
+            self.envelope = self.envelope.clamp(0.0, 2.0);
+
+            // Calculate gain reduction
+            let gain = if self.envelope > threshold {
+                let over_threshold = self.envelope / threshold_max;
+                let compressed = over_threshold.powf(inv_ratio);
+                (compressed * threshold / self.envelope).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+
+            // Apply compression and makeup gain using FMA, clamp output to prevent clipping
+            let output = input * gain * makeup_gain;
+            *sample = output.clamp(-2.0, 2.0);
         }
     }
 
@@ -794,7 +864,7 @@ impl Gate {
         input * self.envelope
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -803,11 +873,55 @@ impl Gate {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+            if let Some(auto) = &self.ratio_automation {
+                self.ratio = auto.value_at(time).max(1.0);
+            }
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let threshold = self.threshold;
+        let ratio = self.ratio;
+        let attack_coeff = (-1.0 / (self.attack * sample_rate)).exp();
+        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+        let ratio_inv = (ratio - 1.0) / ratio;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Convert input to dB
+            let input_db = if input.abs() > 0.0001 {
+                20.0 * input.abs().log10()
+            } else {
+                -100.0 // Very quiet = -100 dB
+            };
+
+            // Determine target envelope based on threshold
+            let target_envelope = if input_db > threshold {
+                1.0 // Above threshold: gate open
+            } else {
+                // Below threshold: apply expansion/gating
+                let db_below = threshold - input_db;
+                let expansion = db_below * ratio_inv;
+                10.0_f32.powf(-expansion / 20.0) // Convert back to linear
+            };
+
+            // Smooth envelope with attack/release
+            let coeff = if target_envelope > self.envelope {
+                attack_coeff
+            } else {
+                release_coeff
+            };
+
+            self.envelope = target_envelope + coeff * (self.envelope - target_envelope);
+
+            // Apply gating
+            *sample = input * self.envelope;
         }
     }
 
@@ -1003,11 +1117,42 @@ impl Limiter {
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
     #[inline]
     pub fn process_block(&mut self, buffer: &mut [f32], sample_rate: f32, time: f32, sample_count: u64) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.threshold_automation {
+                self.threshold = auto.value_at(time);
+            }
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let threshold_linear = 10.0_f32.powf(self.threshold / 20.0);
+        let release_coeff = (-1.0 / (self.release * sample_rate)).exp();
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Detect peak
+            let input_abs = input.abs();
+
+            // Calculate required gain reduction
+            let target_gain = if input_abs > threshold_linear {
+                threshold_linear / input_abs
+            } else {
+                1.0
+            };
+
+            // Apply gain reduction with instant attack and release envelope
+            // Instant attack (0 ms) for true peak limiting
+            if target_gain < self.gain_reduction {
+                self.gain_reduction = target_gain;
+            } else {
+                // Smooth release
+                self.gain_reduction = target_gain + release_coeff * (self.gain_reduction - target_gain);
+            }
+
+            // Apply limiting
+            *sample = input * self.gain_reduction;
         }
     }
 

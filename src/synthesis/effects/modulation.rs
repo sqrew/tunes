@@ -150,7 +150,7 @@ impl Chorus {
         input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -165,11 +165,59 @@ impl Chorus {
         time: f32,
         sample_count: u64,
     ) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.5, 50.0);
+            }
+        }
+
+        // Early exit if effect is bypassed
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let mix_wet = self.mix;
+        let mix_dry = 1.0 - self.mix;
+        let lfo_phase_increment = self.rate / sample_rate;
+        let two_pi = 2.0 * std::f32::consts::PI;
+        let depth = self.depth;
+        let sample_rate_ms = sample_rate / 1000.0;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Write input to buffer
+            self.buffer[self.write_pos] = input;
+
+            // Calculate modulated delay time using sine LFO
+            let lfo = (self.lfo_phase * two_pi).sin();
+            let delay_ms = depth.mul_add(0.5 + 0.5 * lfo, 0.0);
+            let delay_samples = ((delay_ms * sample_rate_ms) as usize) & self.buffer_mask;
+
+            // Read from delayed position using bitwise AND (~10x faster!)
+            let read_pos = (self.write_pos + self.buffer.len() - delay_samples) & self.buffer_mask;
+            let delayed = self.buffer[read_pos];
+
+            // Advance LFO phase
+            self.lfo_phase += lfo_phase_increment;
+            if self.lfo_phase >= 1.0 {
+                self.lfo_phase -= 1.0;
+            }
+
+            // Advance write position using bitwise AND (~10x faster!)
+            self.write_pos = (self.write_pos + 1) & self.buffer_mask;
+
+            // Mix dry and wet using FMA
+            *sample = input.mul_add(mix_dry, delayed * mix_wet);
         }
     }
 
@@ -356,7 +404,7 @@ impl Phaser {
         input.mul_add(1.0 - self.mix, output * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -371,11 +419,66 @@ impl Phaser {
         time: f32,
         sample_count: u64,
     ) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.95);
+            }
+        }
+
+        // Early exit if effect is bypassed
+        if self.mix < 0.0001 || self.depth < 0.0001 {
+            return;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let mix_wet = self.mix;
+        let mix_dry = 1.0 - self.mix;
+        let lfo_phase_increment = self.rate / sample_rate;
+        let two_pi = 2.0 * std::f32::consts::PI;
+        let depth = self.depth;
+        let feedback = self.feedback;
+        let min_delay = 0.5;
+        let max_delay = 5.0;
+        let delay_range = max_delay - min_delay;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Generate LFO
+            let lfo = (self.lfo_phase * two_pi).sin();
+
+            // Map LFO to delay range (affects frequency of notches) using FMA
+            let delay = (0.5 + 0.5 * lfo * depth).mul_add(delay_range, min_delay);
+
+            // Process through all-pass filter stages
+            let mut output = input;
+            for filter in &mut self.allpass_states {
+                output = filter.process(output, delay);
+            }
+
+            // Apply feedback using FMA
+            let feedback_sample = output * feedback;
+            output = input + feedback_sample;
+
+            // Advance LFO phase
+            self.lfo_phase += lfo_phase_increment;
+            if self.lfo_phase >= 1.0 {
+                self.lfo_phase -= 1.0;
+            }
+
+            // Mix dry and wet using FMA
+            *sample = input.mul_add(mix_dry, output * mix_wet);
         }
     }
 
@@ -565,7 +668,7 @@ impl Flanger {
         input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
@@ -580,11 +683,63 @@ impl Flanger {
         time: f32,
         sample_count: u64,
     ) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, sample_rate, current_time, current_sample_count);
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.rate_automation {
+                self.rate = auto.value_at(time).clamp(0.1, 10.0);
+            }
+            if let Some(auto) = &self.depth_automation {
+                self.depth = auto.value_at(time).clamp(0.5, 50.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.95);
+            }
+        }
+
+        // Safety check: if buffer is empty, just pass through
+        if self.buffer.is_empty() || self.mix < 0.0001 {
+            return;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let mix_wet = self.mix;
+        let mix_dry = 1.0 - self.mix;
+        let lfo_phase_increment = self.rate / sample_rate;
+        let two_pi = 2.0 * std::f32::consts::PI;
+        let depth = self.depth;
+        let feedback = self.feedback;
+        let sample_rate_ms = sample_rate / 1000.0;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Calculate modulated delay time using sine LFO with FMA
+            let lfo = (self.lfo_phase * two_pi).sin();
+            let delay_ms = depth.mul_add(0.5 + 0.5 * lfo, 0.0);
+            let delay_samples = ((delay_ms * sample_rate_ms) as usize) & self.buffer_mask;
+
+            // Read from delayed position using bitwise AND (no branches!)
+            let read_pos = (self.write_pos + self.buffer.len() - delay_samples) & self.buffer_mask;
+            let delayed = self.buffer[read_pos];
+
+            // Write to buffer with feedback using FMA
+            self.buffer[self.write_pos] = delayed.mul_add(feedback, input);
+
+            // Advance LFO phase
+            self.lfo_phase += lfo_phase_increment;
+            if self.lfo_phase >= 1.0 {
+                self.lfo_phase -= 1.0;
+            }
+
+            // Advance write position using bitwise AND (~10x faster!)
+            self.write_pos = (self.write_pos + 1) & self.buffer_mask;
+
+            // Mix dry and wet using FMA
+            *sample = input.mul_add(mix_dry, delayed * mix_wet);
         }
     }
 

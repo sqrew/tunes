@@ -112,20 +112,53 @@ impl Delay {
         input.mul_add(1.0 - self.mix, delayed * self.mix)
     }
 
-    /// Process a block of samples
+    /// Process a block of samples with optimized buffer processing
     ///
     /// # Arguments
     /// * `buffer` - Buffer of samples to process in-place
     /// * `time` - Starting time in seconds (for automation)
     /// * `sample_count` - Starting sample counter (for quantized automation lookups)
-    /// * `sample_rate` - Sample rate in Hz (for time advancement)
+    /// * `sample_rate` - Sample rate in Hz (unused but kept for API consistency)
     #[inline]
-    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, sample_rate: f32) {
-        let time_delta = 1.0 / sample_rate;
-        for (i, sample) in buffer.iter_mut().enumerate() {
-            let current_time = time + (i as f32 * time_delta);
-            let current_sample_count = sample_count + i as u64;
-            *sample = self.process(*sample, current_time, current_sample_count);
+    pub fn process_block(&mut self, buffer: &mut [f32], time: f32, sample_count: u64, _sample_rate: f32) {
+        // Update automation parameters once at buffer start (quantized to 64-sample blocks)
+        if sample_count & 63 == 0 {
+            if let Some(auto) = &self.mix_automation {
+                self.mix = auto.value_at(time).clamp(0.0, 1.0);
+            }
+            if let Some(auto) = &self.feedback_automation {
+                self.feedback = auto.value_at(time).clamp(0.0, 0.99);
+            }
+            if let Some(auto) = &self.delay_time_automation {
+                self.delay_time = auto.value_at(time).clamp(0.001, 10.0);
+            }
+        }
+
+        // Early exit if effect is bypassed
+        if self.mix < 0.0001 {
+            return;
+        }
+
+        // Pre-calculate constants once for entire buffer
+        let feedback = self.feedback;
+        let mix_wet = self.mix;
+        let mix_dry = 1.0 - self.mix;
+
+        // Process entire buffer
+        for sample in buffer.iter_mut() {
+            let input = *sample;
+
+            // Read from delay buffer
+            let delayed = self.buffer[self.write_pos];
+
+            // Write input + feedback to buffer using FMA
+            self.buffer[self.write_pos] = delayed.mul_add(feedback, input);
+
+            // Advance write position using bitwise AND (~10x faster than modulo!)
+            self.write_pos = (self.write_pos + 1) & self.buffer_mask;
+
+            // Mix dry and wet signals using FMA
+            *sample = input.mul_add(mix_dry, delayed * mix_wet);
         }
     }
 
