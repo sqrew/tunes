@@ -27,7 +27,8 @@ opt-level = 3
 opt-level = 3           # Maximum optimization
 lto = "fat"            # Link Time Optimization across all crates (big perf win)
 codegen-units = 1      # Better optimization at the cost of compile time
-strip = true           # Remove debug symbols for smaller binary
+strip = false           # Remove debug symbols for smaller binary
+debug = true  # Include debug symbols in release builds (doesn't affect optimization!)
 
 # Alternative: Custom "dev-fast" profile with full optimizations + debug symbols
 # Usage: cargo run --profile dev-fast --example synthesis_demo
