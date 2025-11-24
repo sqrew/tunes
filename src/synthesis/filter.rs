@@ -49,6 +49,14 @@ pub struct Filter {
     moog_stage_tanh: [f32; 4],
     moog_delay: [f32; 4],
 
+    // Cached coefficients for performance (avoid recalculating sin/cos every sample!)
+    cached_f: f32,        // SVF frequency coefficient
+    cached_q: f32,        // SVF resonance coefficient
+    cached_moog_f: f32,   // Moog frequency coefficient
+    cached_moog_k: f32,   // Moog resonance coefficient
+    last_smooth_cutoff: f32,
+    last_smooth_resonance: f32,
+
     // Function pointer for branchless dispatch (set at construction)
     process_fn: fn(&mut Filter, f32, f32) -> f32,
 }
@@ -100,6 +108,12 @@ impl Filter {
             moog_stage: [0.0; 4],
             moog_stage_tanh: [0.0; 4],
             moog_delay: [0.0; 4],
+            cached_f: 0.0,
+            cached_q: 0.0,
+            cached_moog_f: 0.0,
+            cached_moog_k: 0.0,
+            last_smooth_cutoff: -1.0,  // Force initial calculation
+            last_smooth_resonance: -1.0,
             process_fn,
         }
     }
@@ -331,14 +345,19 @@ impl Filter {
         self.moog_stage = [0.0; 4];
         self.moog_stage_tanh = [0.0; 4];
         self.moog_delay = [0.0; 4];
+        self.last_smooth_cutoff = -1.0;  // Force recalculation
+        self.last_smooth_resonance = -1.0;
     }
 
     /// Optimized buffer processing for state-variable filters
     #[inline]
     fn process_buffer_svf(&mut self, buffer: &mut [f32], sample_rate: f32) {
+        use crate::synthesis::simd::SimdLanes;
+
         // Precompute smoothing constants (outside the loop!)
         const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+        const COEFF_UPDATE_THRESHOLD: f32 = 0.0001;  // 0.01% change threshold
 
         // Process buffer
         for sample in buffer.iter_mut() {
@@ -348,9 +367,24 @@ impl Filter {
             self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
             self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
 
-            // Calculate filter coefficients
-            let f = 2.0 * (PI * self.smooth_cutoff / sample_rate).sin();
-            let q = 1.0 - self.smooth_resonance;
+            // Update cached coefficients only if parameters changed significantly
+            // This avoids expensive sin() calls when parameters are stable
+            let cutoff_changed = (self.smooth_cutoff - self.last_smooth_cutoff).abs()
+                > self.last_smooth_cutoff.abs() * COEFF_UPDATE_THRESHOLD;
+            let resonance_changed = (self.smooth_resonance - self.last_smooth_resonance).abs()
+                > COEFF_UPDATE_THRESHOLD;
+
+            if cutoff_changed || resonance_changed {
+                // OPTIMIZATION: Use fast_sin instead of stdlib sin!
+                self.cached_f = 2.0 * f32::fast_sin(PI * self.smooth_cutoff / sample_rate);
+                self.cached_q = 1.0 - self.smooth_resonance;
+                self.last_smooth_cutoff = self.smooth_cutoff;
+                self.last_smooth_resonance = self.smooth_resonance;
+            }
+
+            // Use cached coefficients
+            let f = self.cached_f;
+            let q = self.cached_q;
 
             // First stage: State-variable filter
             self.low = self.low.mul_add(1.0, f * self.band);
@@ -417,6 +451,7 @@ impl Filter {
 
         const SMOOTHING: f32 = 0.95;
         const INV_SMOOTHING: f32 = 1.0 - SMOOTHING;
+        const COEFF_UPDATE_THRESHOLD: f32 = 0.0001;
 
         for sample in buffer.iter_mut() {
             let input = *sample;
@@ -425,10 +460,23 @@ impl Filter {
             self.smooth_cutoff = self.smooth_cutoff.mul_add(SMOOTHING, self.cutoff * INV_SMOOTHING);
             self.smooth_resonance = self.smooth_resonance.mul_add(SMOOTHING, self.resonance * INV_SMOOTHING);
 
-            // Calculate coefficients
-            let fc = self.smooth_cutoff / sample_rate;
-            let f = fc.mul_add(1.16, 0.0);
-            let k = self.smooth_resonance.mul_add(3.96, 0.0);
+            // Update cached coefficients only if needed
+            let cutoff_changed = (self.smooth_cutoff - self.last_smooth_cutoff).abs()
+                > self.last_smooth_cutoff.abs() * COEFF_UPDATE_THRESHOLD;
+            let resonance_changed = (self.smooth_resonance - self.last_smooth_resonance).abs()
+                > COEFF_UPDATE_THRESHOLD;
+
+            if cutoff_changed || resonance_changed {
+                let fc = self.smooth_cutoff / sample_rate;
+                self.cached_moog_f = fc.mul_add(1.16, 0.0);
+                self.cached_moog_k = self.smooth_resonance.mul_add(3.96, 0.0);
+                self.last_smooth_cutoff = self.smooth_cutoff;
+                self.last_smooth_resonance = self.smooth_resonance;
+            }
+
+            // Use cached coefficients
+            let f = self.cached_moog_f;
+            let k = self.cached_moog_k;
 
             // Input with feedback
             let input_compensated = input - k * self.moog_delay[3];
