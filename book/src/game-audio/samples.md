@@ -97,7 +97,7 @@ engine.clear_sample_cache()?;
 
 ## When to Use What
 
-**Use `engine.play_sample("file.wav")?` when:**
+**Use `engine.play_sample("file.wav")` when:**
 - ✅ Game sound effects (footsteps, explosions, UI clicks, impacts)
 - ✅ Any repeated sounds (automatic caching makes this fast!)
 - ✅ Prototyping / game jams / rapid development
@@ -619,41 +619,6 @@ fn main() -> anyhow::Result<()> {
 ```
 
 For more slicing techniques, see [Advanced: Sample Slicing](../advanced/samples.md).
-
-### Detecting Transients (Onset Detection)
-
-Automatically find hit points in drum loops or percussive samples:
-
-```rust
-use tunes::synthesis::Sample;
-
-fn main() -> anyhow::Result<()> {
-    let drum_loop = Sample::from_file("assets/drumloop.wav")?;
-
-    // Detect transients (hits)
-    // threshold: 0.3 (sensitivity), min_gap: 50ms (avoid double-triggers)
-    let slices = drum_loop.slice_by_transients(0.3, 50.0)?;
-
-    println!("Detected {} hits in drum loop", slices.len());
-
-    // Play each detected hit
-    let mut comp = Composition::new(Tempo::new(120.0));
-    let mut track = comp.track("drums");
-
-    for (i, slice) in slices.iter().enumerate() {
-        track = track.play_slice(slice, 1.0)?;
-        if i < slices.len() - 1 {
-            track = track.wait(0.25);
-        }
-    }
-
-    Ok(())
-}
-```
-
-**Parameters:**
-- `threshold` (0.0-1.0): Sensitivity (lower = more hits detected)
-- `min_gap_ms`: Minimum time between hits in milliseconds
 
 ### Basic Sample Processing
 

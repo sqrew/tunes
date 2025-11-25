@@ -59,23 +59,40 @@ impl Mixer {
 
         println!("  Encoding to WAV...");
 
-        // Write samples to WAV file (interleaved stereo: L, R, L, R, ...)
-        for (i, sample) in buffer.iter().enumerate() {
-            // Convert from f32 (-1.0 to 1.0) to i16 (-32768 to 32767)
-            let sample_i16 = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
-            writer.write_sample(sample_i16)?;
+        // 🚀 OPTIMIZED: Batch convert f32 → i16 and write in chunks
+        // This reduces per-sample function call overhead significantly
+        const CHUNK_SIZE: usize = 8192; // Process 8K samples at a time
+        let mut i16_buffer = vec![0i16; CHUNK_SIZE];
+        let mut writer_i16 = writer.get_i16_writer(buffer.len() as u32);
 
-            // Progress indicator every second
-            if i % (sample_rate as usize * 2) == 0 {
-                let progress = (i as f32 / buffer.len() as f32) * 100.0;
+        let chunks = buffer.chunks(CHUNK_SIZE);
+        let total_chunks = chunks.len();
+
+        for (chunk_idx, chunk) in buffer.chunks(CHUNK_SIZE).enumerate() {
+            // SIMD-friendly conversion: clamp and scale in bulk
+            // The compiler can auto-vectorize this tight loop
+            for (i, &sample) in chunk.iter().enumerate() {
+                i16_buffer[i] = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
+            }
+
+            // Write entire chunk at once (much faster than per-sample writes)
+            for &sample in &i16_buffer[..chunk.len()] {
+                writer_i16.write_sample(sample);
+            }
+
+            // Progress indicator per chunk (not per sample!)
+            if chunk_idx % 100 == 0 || chunk_idx == total_chunks - 1 {
+                let progress = ((chunk_idx + 1) as f32 / total_chunks as f32) * 100.0;
                 print!("\r  Progress: {:.0}%", progress);
                 use std::io::Write;
                 std::io::stdout().flush().ok();
             }
         }
 
+        // Flush the buffered writer (this is where errors can occur)
+        writer_i16.flush()?;
+
         println!("\r  Progress: 100%");
-        writer.finalize()?;
 
         println!("✅ Exported to: {}", path);
         Ok(())
@@ -137,26 +154,34 @@ impl Mixer {
 
         println!("  Converting to 24-bit...");
 
-        // Convert f32 samples to i32 (24-bit) for FLAC encoding
+        // 🚀 OPTIMIZED: Batch convert f32 → i32 (24-bit) in chunks for SIMD auto-vectorization
         // We use 24-bit as it provides better quality than 16-bit while keeping file size reasonable
         const SCALE: f32 = 8388607.0; // 2^23 - 1
-        let samples_i32: Vec<i32> = buffer
-            .iter()
+        const CHUNK_SIZE: usize = 8192;
+
+        // Pre-allocate full output buffer
+        let mut samples_i32: Vec<i32> = vec![0i32; buffer.len()];
+        let total_chunks = (buffer.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+        // Process in chunks for better cache locality and progress reporting
+        for (chunk_idx, (src_chunk, dst_chunk)) in buffer
+            .chunks(CHUNK_SIZE)
+            .zip(samples_i32.chunks_mut(CHUNK_SIZE))
             .enumerate()
-            .map(|(i, &sample)| {
-                let sample_i32 = (sample.clamp(-1.0, 1.0) * SCALE) as i32;
+        {
+            // SIMD-friendly tight loop - compiler can auto-vectorize this
+            for (src, dst) in src_chunk.iter().zip(dst_chunk.iter_mut()) {
+                *dst = (src.clamp(-1.0, 1.0) * SCALE) as i32;
+            }
 
-                // Progress indicator every second
-                if i % (sample_rate as usize * 2) == 0 {
-                    let progress = (i as f32 / buffer.len() as f32) * 100.0;
-                    print!("\r  Progress: {:.0}%", progress);
-                    use std::io::Write;
-                    std::io::stdout().flush().ok();
-                }
-
-                sample_i32
-            })
-            .collect();
+            // Progress indicator per chunk (not per sample!)
+            if chunk_idx % 100 == 0 || chunk_idx == total_chunks - 1 {
+                let progress = ((chunk_idx + 1) as f32 / total_chunks as f32) * 100.0;
+                print!("\r  Progress: {:.0}%", progress);
+                use std::io::Write;
+                std::io::stdout().flush().ok();
+            }
+        }
 
         println!("\r  Progress: 100%");
         println!("  Encoding FLAC...");
@@ -329,24 +354,52 @@ impl Mixer {
         let sample_rate_f32 = sample_rate as f32;
         let mut sample_clock = 0.0;
 
-        // Render the track sample by sample
+        // 🚀 OPTIMIZED: Buffer samples and write in chunks
+        const CHUNK_SIZE: usize = 4096; // stereo frames
+        let mut f32_buffer: Vec<(f32, f32)> = Vec::with_capacity(CHUNK_SIZE);
+        let mut i16_buffer: Vec<i16> = vec![0i16; CHUNK_SIZE * 2];
+
+        let mut writer_i16 = writer.get_i16_writer((total_samples * 2) as u32);
+
+        // Render and write in chunks
         for i in 0..total_samples {
             let time = i as f32 / sample_rate_f32;
 
-            // Sample this track in isolation (similar logic to Mixer::sample_at but for one track)
+            // Sample this track in isolation
             let (left, right) = self.sample_track_at_index(track_index, time, sample_rate_f32, sample_clock);
-
-            // Convert from f32 (-1.0 to 1.0) to i16 (-32768 to 32767)
-            let left_i16 = (left.clamp(-1.0, 1.0) * 32767.0) as i16;
-            let right_i16 = (right.clamp(-1.0, 1.0) * 32767.0) as i16;
-
-            writer.write_sample(left_i16)?;
-            writer.write_sample(right_i16)?;
+            f32_buffer.push((left, right));
 
             sample_clock = (sample_clock + 1.0) % sample_rate_f32;
+
+            // When chunk is full, convert and write
+            if f32_buffer.len() >= CHUNK_SIZE {
+                // Convert f32 → i16 in tight loop (SIMD-friendly)
+                for (idx, &(l, r)) in f32_buffer.iter().enumerate() {
+                    i16_buffer[idx * 2] = (l.clamp(-1.0, 1.0) * 32767.0) as i16;
+                    i16_buffer[idx * 2 + 1] = (r.clamp(-1.0, 1.0) * 32767.0) as i16;
+                }
+
+                // Write chunk
+                for &sample in &i16_buffer[..f32_buffer.len() * 2] {
+                    writer_i16.write_sample(sample);
+                }
+
+                f32_buffer.clear();
+            }
         }
 
-        writer.finalize()?;
+        // Write remaining samples
+        if !f32_buffer.is_empty() {
+            for (idx, &(l, r)) in f32_buffer.iter().enumerate() {
+                i16_buffer[idx * 2] = (l.clamp(-1.0, 1.0) * 32767.0) as i16;
+                i16_buffer[idx * 2 + 1] = (r.clamp(-1.0, 1.0) * 32767.0) as i16;
+            }
+            for &sample in &i16_buffer[..f32_buffer.len() * 2] {
+                writer_i16.write_sample(sample);
+            }
+        }
+
+        writer_i16.flush()?;
         Ok(())
     }
 

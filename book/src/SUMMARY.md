@@ -16,10 +16,7 @@
 
 # Core Concepts
 
-- [Architecture Overview](./concepts/architecture.md)
-- [AudioEngine Layer](./concepts/engine.md)
-- [Mixer Layer](./concepts/mixer.md)
-- [Composition Layer](./concepts/composition.md)
+- [Architecture](./architecture.md)
 
 ---
 
