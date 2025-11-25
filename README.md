@@ -81,9 +81,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     music theory integration
     batteries included approach
     composition and code first environment (rust's ide integration and your choice of ide is everything here)
-    high CPU performance (100x realtime synthesis uncached, 18.6x cached on complex compositions)
-    automatic SIMD acceleration for concurrent sample playback (11-17x realtime, 550-1,100+ concurrent samples)
-    automatic SIMD acceleration for effects (98.8x realtime with all effects stacked)
+    high CPU performance and automatic simd (100x realtime synthesis uncached, 18.6x cached on complex compositions)
     multi-core parallelism (automatic via Rayon)
     optional GPU compute shader acceleration with transparent API
 

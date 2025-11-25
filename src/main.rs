@@ -27,6 +27,7 @@ use consts::*;
 use engine::AudioEngine;
 use instruments::Instrument;
 use synthesis::{BitCrusher, Chorus, Compressor, Distortion};
+use tunes::play_sample;
 
 fn main() -> Result<(), anyhow::Error> {
     let mut comp = Composition::new(Tempo::new(120.0));
