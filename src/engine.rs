@@ -2844,6 +2844,198 @@ impl<'a> SamplePlaybackBuilder<'a> {
         self
     }
 
+    // ========== Spectral Effects ==========
+
+    /// Add phase vocoder effect for time-stretching and pitch-shifting
+    pub fn phase_vocoder(
+        mut self,
+        phase_vocoder: crate::synthesis::effects::PhaseVocoder,
+    ) -> Self {
+        self.effects.phase_vocoder = Some(phase_vocoder);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral freeze effect
+    pub fn spectral_freeze(
+        mut self,
+        spectral_freeze: crate::synthesis::effects::SpectralFreeze,
+    ) -> Self {
+        self.effects.spectral_freeze = Some(spectral_freeze);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral gate effect for frequency-selective noise gating
+    pub fn spectral_gate(
+        mut self,
+        spectral_gate: crate::synthesis::effects::SpectralGate,
+    ) -> Self {
+        self.effects.spectral_gate = Some(spectral_gate);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral compressor effect for frequency-selective compression
+    pub fn spectral_compressor(
+        mut self,
+        spectral_compressor: crate::synthesis::effects::SpectralCompressor,
+    ) -> Self {
+        self.effects.spectral_compressor = Some(spectral_compressor);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral robotize effect for robotic voice transformation
+    pub fn spectral_robotize(
+        mut self,
+        spectral_robotize: crate::synthesis::effects::SpectralRobotize,
+    ) -> Self {
+        self.effects.spectral_robotize = Some(spectral_robotize);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral delay effect for frequency-dependent delay
+    pub fn spectral_delay(
+        mut self,
+        spectral_delay: crate::synthesis::effects::SpectralDelay,
+    ) -> Self {
+        self.effects.spectral_delay = Some(spectral_delay);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral filter effect for frequency-domain filtering
+    pub fn spectral_filter(
+        mut self,
+        spectral_filter: crate::synthesis::effects::SpectralFilter,
+    ) -> Self {
+        self.effects.spectral_filter = Some(spectral_filter);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral blur effect for frequency smearing
+    pub fn spectral_blur(
+        mut self,
+        spectral_blur: crate::synthesis::effects::SpectralBlur,
+    ) -> Self {
+        self.effects.spectral_blur = Some(spectral_blur);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral shift effect for frequency shifting
+    pub fn spectral_shift(
+        mut self,
+        spectral_shift: crate::synthesis::effects::SpectralShift,
+    ) -> Self {
+        self.effects.spectral_shift = Some(spectral_shift);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral exciter effect for harmonic enhancement
+    pub fn spectral_exciter(
+        mut self,
+        spectral_exciter: crate::synthesis::effects::SpectralExciter,
+    ) -> Self {
+        self.effects.spectral_exciter = Some(spectral_exciter);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral invert effect for frequency spectrum reversal
+    pub fn spectral_invert(
+        mut self,
+        spectral_invert: crate::synthesis::effects::SpectralInvert,
+    ) -> Self {
+        self.effects.spectral_invert = Some(spectral_invert);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral widen effect for stereo widening
+    pub fn spectral_widen(
+        mut self,
+        spectral_widen: crate::synthesis::effects::SpectralWiden,
+    ) -> Self {
+        self.effects.spectral_widen = Some(spectral_widen);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral morph effect for morphing spectrum toward target shapes
+    pub fn spectral_morph(
+        mut self,
+        spectral_morph: crate::synthesis::effects::SpectralMorph,
+    ) -> Self {
+        self.effects.spectral_morph = Some(spectral_morph);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral dynamics effect for frequency-dependent compression/expansion
+    pub fn spectral_dynamics(
+        mut self,
+        spectral_dynamics: crate::synthesis::effects::SpectralDynamics,
+    ) -> Self {
+        self.effects.spectral_dynamics = Some(spectral_dynamics);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral scramble effect for glitchy frequency bin randomization
+    pub fn spectral_scramble(
+        mut self,
+        spectral_scramble: crate::synthesis::effects::SpectralScramble,
+    ) -> Self {
+        self.effects.spectral_scramble = Some(spectral_scramble);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add formant shifter effect for vocal character transformation
+    pub fn formant_shifter(
+        mut self,
+        formant_shifter: crate::synthesis::effects::FormantShifter,
+    ) -> Self {
+        self.effects.formant_shifter = Some(formant_shifter);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral harmonizer effect for pitch-shifted harmonies
+    pub fn spectral_harmonizer(
+        mut self,
+        spectral_harmonizer: crate::synthesis::effects::SpectralHarmonizer,
+    ) -> Self {
+        self.effects.spectral_harmonizer = Some(spectral_harmonizer);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral resonator effect for resonant frequency peaks
+    pub fn spectral_resonator(
+        mut self,
+        spectral_resonator: crate::synthesis::effects::SpectralResonator,
+    ) -> Self {
+        self.effects.spectral_resonator = Some(spectral_resonator);
+        self.effects.compute_effect_order();
+        self
+    }
+
+    /// Add spectral panner effect for frequency-based spatial positioning
+    pub fn spectral_panner(
+        mut self,
+        spectral_panner: crate::synthesis::effects::SpectralPanner,
+    ) -> Self {
+        self.effects.spectral_panner = Some(spectral_panner);
+        self.effects.compute_effect_order();
+        self
+    }
+
     // ========== Sample Transformation Methods ==========
 
     /// Normalize the sample to peak amplitude
@@ -3075,6 +3267,65 @@ impl<'a> SamplePlaybackBuilder<'a> {
         }
         if self.effects.gate.is_some() {
             track = track.gate(self.effects.gate.clone().unwrap());
+        }
+
+        // Apply spectral effects
+        if self.effects.phase_vocoder.is_some() {
+            track = track.phase_vocoder(self.effects.phase_vocoder.clone().unwrap());
+        }
+        if self.effects.spectral_freeze.is_some() {
+            track = track.spectral_freeze(self.effects.spectral_freeze.clone().unwrap());
+        }
+        if self.effects.spectral_gate.is_some() {
+            track = track.spectral_gate(self.effects.spectral_gate.clone().unwrap());
+        }
+        if self.effects.spectral_compressor.is_some() {
+            track = track.spectral_compressor(self.effects.spectral_compressor.clone().unwrap());
+        }
+        if self.effects.spectral_robotize.is_some() {
+            track = track.spectral_robotize(self.effects.spectral_robotize.clone().unwrap());
+        }
+        if self.effects.spectral_delay.is_some() {
+            track = track.spectral_delay(self.effects.spectral_delay.clone().unwrap());
+        }
+        if self.effects.spectral_filter.is_some() {
+            track = track.spectral_filter(self.effects.spectral_filter.clone().unwrap());
+        }
+        if self.effects.spectral_blur.is_some() {
+            track = track.spectral_blur(self.effects.spectral_blur.clone().unwrap());
+        }
+        if self.effects.spectral_shift.is_some() {
+            track = track.spectral_shift(self.effects.spectral_shift.clone().unwrap());
+        }
+        if self.effects.spectral_exciter.is_some() {
+            track = track.spectral_exciter(self.effects.spectral_exciter.clone().unwrap());
+        }
+        if self.effects.spectral_invert.is_some() {
+            track = track.spectral_invert(self.effects.spectral_invert.clone().unwrap());
+        }
+        if self.effects.spectral_widen.is_some() {
+            track = track.spectral_widen(self.effects.spectral_widen.clone().unwrap());
+        }
+        if self.effects.spectral_morph.is_some() {
+            track = track.spectral_morph(self.effects.spectral_morph.clone().unwrap());
+        }
+        if self.effects.spectral_dynamics.is_some() {
+            track = track.spectral_dynamics(self.effects.spectral_dynamics.clone().unwrap());
+        }
+        if self.effects.spectral_scramble.is_some() {
+            track = track.spectral_scramble(self.effects.spectral_scramble.clone().unwrap());
+        }
+        if self.effects.formant_shifter.is_some() {
+            track = track.formant_shifter(self.effects.formant_shifter.clone().unwrap());
+        }
+        if self.effects.spectral_harmonizer.is_some() {
+            track = track.spectral_harmonizer(self.effects.spectral_harmonizer.clone().unwrap());
+        }
+        if self.effects.spectral_resonator.is_some() {
+            track = track.spectral_resonator(self.effects.spectral_resonator.clone().unwrap());
+        }
+        if self.effects.spectral_panner.is_some() {
+            track = track.spectral_panner(self.effects.spectral_panner.clone().unwrap());
         }
 
         // Play the sample
