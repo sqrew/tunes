@@ -4,7 +4,37 @@ A standalone Rust library for music composition, synthesis, and audio generation
 Build complex musical pieces with an intuitive, expressive API — no runtime dependencies required.
 Perfect for algorithmic music, game audio, generative art, and interactive installations.
 
-> **Performance:** CPU synthesis measured at 100x realtime (uncached) and 2.0x realtime (cached complex compositions) on decade old hardware. SIMD sample playback: 1000+ with true concurrent playback (all samples playing simultaneously)** - can handle 500-1500+ concurrent samples in real-world scenarios.  Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.0x on i5 6500) but scales with discrete GPU hardware.
+> **Performance:** CPU synthesis measured at 100x realtime (uncached) and 20.0x realtime (cached complex compositions) on decade old hardware. SIMD sample playback: 1000+ with true concurrent playback (all samples playing simultaneously)** - can handle 500-1500+ concurrent samples in real-world scenarios.  Optional GPU acceleration available via `gpu` feature - provides minimal benefit on integrated GPUs (~1.0x on i5 6500) but scales with discrete GPU hardware.
+
+## Table of Contents
+
+- [Features](#features)
+- [Who this is and isn't for](#who-this-is-and-isnt-for)
+- [PROS](#pros) / [CONS](#cons)
+- [Installation](#installation)
+  - [Platform Requirements](#platform-requirements)
+- [Quick Start](#quick-start-super-simple)
+  - [Real-time Playback](#real-time-playback)
+  - [Sample Playback (Game Audio)](#sample-playback-game-audio---simple)
+  - [Export to WAV or FLAC](#export-to-wav-or-flac)
+  - [MIDI Import/Export](#midi-importexport)
+  - [Live Coding (Hot Reload)](#live-coding-hot-reload)
+- [Comparison with Other Libraries](#comparison-with-other-music-programming-libraries)
+  - [When to use tunes](#when-to-use-tunes)
+  - [tunes' unique position](#tunes-unique-position)
+- [Documentation](#documentation)
+- [Testing](#testing)
+- [Examples](#examples)
+- [Documentation Book](#documentation-book)
+- [Performance & Benchmarks](#performance--benchmarks)
+  - [Measured Performance](#measured-performance-i5-6500--32ghz-intel-hd-530)
+  - [Automatic Optimizations](#automatic-optimizations)
+  - [Optional GPU Acceleration](#optional-gpu-acceleration)
+  - [Run Benchmarks Yourself](#run-benchmarks-yourself)
+- [License](#license)
+- [Contributing](#contributing)
+
+---
 
 ## Features
 
@@ -56,6 +86,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     automatic SIMD acceleration for effects (98.8x realtime with all effects stacked)
     multi-core parallelism (automatic via Rayon)
     optional GPU compute shader acceleration with transparent API
+
 ## CONS
     no gui or graphical elements
     no "instant feedback" outside of hot-reloading segments
