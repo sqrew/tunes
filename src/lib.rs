@@ -39,8 +39,100 @@ pub mod templates;
 pub mod theory;
 pub mod track;
 
+// Re-export inventory for macro use
+#[doc(hidden)]
+pub use inventory;
+
+/// Registered sample for startup validation
+#[derive(Debug)]
+pub struct RegisteredSample {
+    pub path: &'static str,
+}
+
+inventory::collect!(RegisteredSample);
+
+/// Validate all registered samples exist at startup
+///
+/// This function checks that all samples registered via `play_sample!()` macro
+/// exist on disk. It collects all missing samples and reports them together,
+/// making it easy to catch typos and missing files during development.
+///
+/// # Examples
+///
+/// ```no_run
+/// use tunes::prelude::*;
+///
+/// fn main() -> anyhow::Result<()> {
+///     // Validate all samples at startup
+///     validate_all_samples()?;
+///
+///     let engine = AudioEngine::new()?;
+///     play_sample!(engine, "assets/explosion.wav");
+///     Ok(())
+/// }
+/// ```
+pub fn validate_all_samples() -> error::Result<()> {
+    let mut missing = Vec::new();
+
+    for sample in inventory::iter::<RegisteredSample> {
+        if !std::path::Path::new(sample.path).exists() {
+            missing.push(sample.path);
+        }
+    }
+
+    if !missing.is_empty() {
+        eprintln!("ERROR: Missing {} sample(s) at startup:", missing.len());
+        for path in &missing {
+            eprintln!("  - {}", path);
+        }
+        return Err(error::TunesError::SampleNotFound(format!(
+            "{} sample file(s) not found",
+            missing.len()
+        )));
+    }
+
+    let total = inventory::iter::<RegisteredSample>().count();
+    if total > 0 {
+        eprintln!("✓ All {} sample(s) validated successfully", total);
+    }
+    Ok(())
+}
+
+/// Play a sample with consistent path resolution
+///
+/// This macro provides an ergonomic way to play audio samples with automatic
+/// path resolution relative to the project root. It also registers the sample
+/// for startup validation via `validate_all_samples()`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use tunes::prelude::*;
+///
+/// let engine = AudioEngine::new()?;
+/// play_sample!(engine, "assets/explosion.wav");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+#[macro_export]
+macro_rules! play_sample {
+    ($engine:expr, $path:literal) => {{
+        const SAMPLE_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", $path);
+
+        // Auto-register for startup validation
+        $crate::inventory::submit! {
+            $crate::RegisteredSample { path: SAMPLE_PATH }
+        }
+
+        $engine.play_sample(SAMPLE_PATH)
+    }};
+}
+
 /// Prelude module for convenient imports
 pub mod prelude {
+    // Macros and validation
+    pub use crate::play_sample;
+    pub use crate::validate_all_samples;
+
     // Core composition
     pub use crate::composition::{Composition, DrumGrid, DrumType, Tempo};
     pub use crate::engine::{AudioEngine, SamplePlaybackBuilder, SoundId};

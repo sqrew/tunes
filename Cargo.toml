@@ -9,7 +9,11 @@ homepage = "https://github.com/sqrew/tunes"
 repository = "https://github.com/sqrew/tunes"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
+<<<<<<< HEAD
 keywords = ["music", "audio", "synthesis", "composition", "midi"]
+=======
+keywords = ["music", "audio", "synthesis", "composition", "game"]
+>>>>>>> working
 categories = ["multimedia::audio", "multimedia", "algorithms"]
 exclude = [
     ".github/*",
@@ -62,6 +66,7 @@ rand = "0.9.2"
 lazy_static = "1.4"
 midly = "0.5"
 notify = "6.1"
+inventory = "0.3"   # Distributed plugin registration for sample validation
 crossbeam = "0.8"   # Lock-free structures (epoch-based reclamation for audio callback)
 ringbuf = "0.4"     # Lock-free ring buffer for streaming audio
 dashmap = "6.1"     # Lock-free concurrent HashMap for sample cache
