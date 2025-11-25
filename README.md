@@ -163,10 +163,10 @@ fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
 
     // That's it! Play samples with automatic caching and SIMD acceleration
-    engine.play_sample("explosion.wav")?;  // Loads once, caches, plays with SIMD
-    engine.play_sample("footstep.wav")?;   // Loads once, caches
-    engine.play_sample("footstep.wav")?;   // Instant! Uses cache, SIMD playback
-    engine.play_sample("jump.wav")?;
+    engine.play_sample("explosion.wav");  // Loads once, caches, plays with SIMD
+    engine.play_sample("footstep.wav");   // Loads once, caches
+    engine.play_sample("footstep.wav");   // Instant! Uses cache, SIMD playback
+    engine.play_sample("jump.wav");
 
     // All samples play concurrently with automatic mixing
     Ok(())
@@ -190,7 +190,7 @@ fn main() -> Result<(), anyhow::Error> {
     engine.export_wav(&mut comp.into_mixer(), "output.wav")?;
 
     // Playback uses GPU acceleration
-    engine.play_sample("output.wav")?;
+    engine.play_sample("output.wav");
 
     Ok(())
 }
@@ -390,7 +390,7 @@ fn main() -> anyhow::Result<()> {
 Run `cargo doc --open` to view the full API documentation with detailed examples for each module.
 
 ## Testing
-
+### Over ~2200 tests to ensure stability and prevent regressions!
 ```bash
 cargo test
 ```
