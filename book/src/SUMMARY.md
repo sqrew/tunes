@@ -20,7 +20,6 @@
 - [AudioEngine Layer](./concepts/engine.md)
 - [Mixer Layer](./concepts/mixer.md)
 - [Composition Layer](./concepts/composition.md)
-- [Tempo and Rhythm](./concepts/tempo-rhythm.md)
 
 ---
 
@@ -57,6 +56,7 @@
 - [Performance Optimization](./advanced/performance.md)
 - [GPU Acceleration](./advanced/gpu.md)
 - [WebAssembly Support](./advanced/wasm.md)
+- [Tempo and Rhythm](./advanced/tempo-rhythm.md)
 
 ---
 
