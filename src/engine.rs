@@ -464,6 +464,8 @@ pub struct AudioEngine {
     // GPU acceleration flag for play_sample()
     #[allow(dead_code)]
     enable_gpu_for_samples: bool,
+    // Monitor callback for real-time audio visualization and analysis
+    monitor_callback: Arc<Mutex<Option<Box<dyn Fn(&[f32]) + Send + 'static>>>>,
 }
 
 impl AudioEngine {
@@ -552,6 +554,11 @@ impl AudioEngine {
         let spatial_params = Arc::new(Atomic::new(SpatialParams::default()));
         let spatial_params_for_stream = Arc::clone(&spatial_params);
 
+        // Monitor callback for audio visualization/analysis
+        let monitor_callback: Arc<Mutex<Option<Box<dyn Fn(&[f32]) + Send + 'static>>>> =
+            Arc::new(Mutex::new(None));
+        let monitor_callback_for_stream = Arc::clone(&monitor_callback);
+
         // Build stream configuration
         let mut stream_config: cpal::StreamConfig = config.clone().into();
         stream_config.buffer_size = cpal::BufferSize::Fixed(buffer_size);
@@ -638,6 +645,13 @@ impl AudioEngine {
                     #[cfg(not(target_arch = "wasm32"))]
                     Self::mix_streaming_sounds(data, streaming_sounds, finished_streams, channels);
 
+                    // Call monitor callback if set (for visualization/analysis)
+                    if let Ok(callback_guard) = monitor_callback_for_stream.lock() {
+                        if let Some(ref callback) = *callback_guard {
+                            callback(data);
+                        }
+                    }
+
                     // Guard dropped here - safe to reclaim old epochs
                 },
                 err_fn,
@@ -665,6 +679,7 @@ impl AudioEngine {
             buffer_size,
             channels,
             enable_gpu_for_samples: enable_gpu,
+            monitor_callback,
         })
     }
 
@@ -1857,6 +1872,49 @@ impl AudioEngine {
         Ok(())
     }
 
+    /// Set a callback function to monitor the audio output stream
+    ///
+    /// The callback receives the final mixed audio buffer that will be sent to the speakers.
+    /// This is useful for real-time visualization (oscilloscopes, waveforms, spectrum analyzers),
+    /// audio recording, or analysis. The callback is called from the audio thread, so it should
+    /// be fast and non-blocking.
+    ///
+    /// **Performance note:** The callback is called once per audio buffer (typically every 10-20ms).
+    /// Keep processing minimal to avoid audio dropouts. For heavy processing, copy the data
+    /// and process it in a separate thread.
+    ///
+    /// # Arguments
+    /// * `callback` - Function that receives audio samples. Set to `None` to disable monitoring.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use tunes::prelude::*;
+    /// # use std::sync::{Arc, Mutex};
+    /// # fn main() -> anyhow::Result<()> {
+    /// let engine = AudioEngine::new()?;
+    /// let sample_buffer = Arc::new(Mutex::new(Vec::new()));
+    /// let buffer_clone = sample_buffer.clone();
+    ///
+    /// // Set up monitoring for oscilloscope visualization
+    /// engine.set_monitor_callback(Some(Box::new(move |samples: &[f32]| {
+    ///     let mut buffer = buffer_clone.lock().unwrap();
+    ///     buffer.clear();
+    ///     buffer.extend_from_slice(samples);
+    /// })));
+    ///
+    /// // Now play audio and visualize it
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth").note(&[440.0], 1.0);
+    /// engine.play_mixer(&comp.into_mixer())?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_monitor_callback(&self, callback: Option<Box<dyn Fn(&[f32]) + Send + 'static>>) {
+        if let Ok(mut guard) = self.monitor_callback.lock() {
+            *guard = callback;
+        }
+    }
+
     /// Fade out a playing sound to silence
     ///
     /// Gradually reduces the volume to 0 over the specified duration, creating a
@@ -3041,8 +3099,10 @@ impl<'a> SamplePlaybackBuilder<'a> {
 
 impl<'a> Drop for SamplePlaybackBuilder<'a> {
     fn drop(&mut self) {
-        // Fire and forget - play on drop, ignore errors
-        let _ = self.execute_play();
+        // Fire and forget - play on drop, but report errors
+        if let Err(e) = self.execute_play() {
+            eprintln!("Failed to play sample '{}': {}", self.path, e);
+        }
     }
 }
 
