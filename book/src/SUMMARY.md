@@ -34,7 +34,9 @@
 
 - [Synthesis Basics](./synthesis/basics.md)
 - [FM Synthesis](./synthesis/fm.md)
+- [Additive Synthesis](./synthesis/additive.md)
 - [Granular Synthesis](./synthesis/granular.md)
+- [Karplus-Strong Synthesis](./synthesis/karplus_strong.md)
 - [Effects Chain](./synthesis/effects.md)
 - [Spectral Effects](./synthesis/spectral.md)
 

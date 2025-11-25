@@ -2,6 +2,43 @@
 
 Understanding how Tunes is structured will help you make better decisions about when to use each component. The library has three core layers:
 
+## Table of Contents
+
+- [Mental Model](#mental-model)
+- [Data Flow: From Music to Sound](#data-flow-from-music-to-sound)
+- [Composition Layer](#composition-layer)
+  - [Basic Usage](#basic-usage)
+  - [Tempo and Time](#tempo-and-time)
+  - [Tracks vs Instruments](#tracks-vs-instruments)
+  - [Notes and Chords](#notes-and-chords)
+  - [Drums](#drums)
+  - [Musical Patterns (Scales, Arpeggios)](#musical-patterns)
+  - [Synthesis](#synthesis)
+  - [Effects](#effects)
+  - [Expression](#expression)
+  - [Timing](#timing)
+  - [Sections and Arrangement](#sections-and-arrangement)
+  - [Templates](#templates)
+- [Mixer Layer](#mixer-layer)
+  - [Creating a Mixer](#creating-a-mixer)
+  - [Query Methods](#query-methods)
+  - [Export Formats](#export-formats)
+  - [MIDI Import](#midi-import)
+  - [Manipulation](#manipulation)
+  - [Signal Flow](#signal-flow)
+  - [Bus System](#bus-system)
+  - [Master Effects](#master-effects)
+- [AudioEngine Layer](#audioengine-layer)
+  - [Creating an Engine](#creating-an-engine)
+  - [Playback (Blocking, Non-blocking, Looping)](#playback)
+  - [Real-Time Control](#real-time-control)
+  - [Export](#export)
+- [Key Design Decisions](#key-design-decisions)
+  - [Blocking vs Non-Blocking Playback](#blocking-vs-non-blocking-playback)
+  - [Sample Rate Considerations](#sample-rate-considerations)
+  - [Track vs Instrument](#track-vs-instrument)
+- [Complete Example](#complete-example)
+
 ```
 Composition  →  Mixer  →  AudioEngine
   (Musical)    (Audio)    (Playback)
@@ -27,7 +64,7 @@ Think of Tunes like a professional recording studio:
 
 - **Composition** = The sheet music and musical ideas
 - **Track** = Individual instrument recordings
-- **Bus** = Channel strips grouping related instruments (drum bus, vocal bus, etc.)
+- **Bus** = Channels grouping related instruments (drum bus, vocal bus, etc.)
 - **Master** = The master fader with final processing (EQ, compression, limiting)
 - **Mixer** = The entire mixing console with its bus architecture
 - **AudioEngine** = The speakers and monitoring system

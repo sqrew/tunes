@@ -2,6 +2,47 @@
 
 Pattern transformations are powerful tools for manipulating musical patterns in creative and expressive ways. Tunes provides two syntaxes for applying transformations: direct method calls and a cleaner namespaced API using `.transform()`.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Two Ways to Apply Transformations](#two-ways-to-apply-transformations)
+  - [Direct Method Calls (Classic)](#direct-method-calls-classic-syntax)
+  - [Transform Namespace (New)](#transform-namespace-new-syntax)
+- [Common Transformations](#common-transformations)
+  - [Shift - Transpose Patterns](#shift---transpose-patterns)
+  - [Humanize - Add Organic Feel](#humanize---add-organic-feel)
+  - [Range Dilation](#range-dilation---expand-or-compress-pitch-range)
+  - [Shape Contour](#shape-contour---smooth-or-exaggerate-melodic-intervals)
+  - [Echo - Delay Trail Effect](#echo---delay-trail-effect)
+- [Advanced Transformations](#advanced-transformations)
+  - [Rotate - Cycle Pitch Positions](#rotate---cycle-pitch-positions)
+  - [Retrograde - Reverse Pitch Sequence](#retrograde---reverse-pitch-sequence)
+  - [Shuffle - Random Reordering](#shuffle---random-reordering)
+  - [Thin - Probabilistic Note Removal](#thin---probabilistic-note-removal)
+  - [Stack - Harmonic Layering](#stack---harmonic-layering)
+  - [Mutate - Evolutionary Pitch Variation](#mutate---evolutionary-pitch-variation)
+- [Timing Transformations](#timing-transformations)
+  - [Stretch - Time Dilation](#stretch---time-dilation)
+  - [Compress - Target Duration](#compress---target-duration)
+  - [Quantize - Snap to Grid](#quantize---snap-to-grid)
+  - [Palindrome - Mirror Pattern](#palindrome---mirror-pattern)
+- [Glitch and Texture Effects](#glitch-and-texture-effects)
+  - [Stutter - Random Glitchy Repeats](#stutter---random-glitchy-repeats)
+  - [Stutter Every - Deterministic Rolls](#stutter-every---deterministic-rolls)
+  - [Granularize - Micro-Fragments](#granularize---micro-fragments)
+- [Advanced Pitch Manipulation](#advanced-pitch-manipulation)
+  - [Magnetize - Snap to Scale](#magnetize---snap-to-scale)
+  - [Gravity - Pull Toward Center Pitch](#gravity---pull-toward-center-pitch)
+  - [Ripple - Cascading Micro-Delays](#ripple---cascading-micro-delays)
+- [Chaining Multiple Transformations](#chaining-multiple-transformations)
+  - [Combining Transforms in One Block](#combining-transforms-in-one-block)
+  - [Multiple Transform Blocks](#multiple-transform-blocks)
+  - [Generative Example](#generative-example)
+- [Full Transformation Reference](#full-transformation-reference)
+- [Tips and Best Practices](#tips-and-best-practices)
+
+---
+
 ## Overview
 
 Pattern transformations let you:

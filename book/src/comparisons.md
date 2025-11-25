@@ -2,6 +2,46 @@
 
 This page provides honest, technical comparisons between Tunes and other audio libraries. No fluff, just facts.
 
+## Table of Contents
+
+- [Rust Audio Libraries](#rust-audio-libraries)
+  - [vs. Kira](#vs-kira)
+  - [vs. Rodio](#vs-rodio)
+  - [vs. SoLoud (soloud-rs)](#vs-soloud-soloud-rs)
+  - [vs. Oddio](#vs-oddio)
+  - [vs. bevy_kira_audio](#vs-bevy_kira_audio)
+- [Other Programming Languages](#other-programming-languages)
+  - [vs. Unity Audio](#vs-unity-audio)
+  - [vs. pygame.mixer (Python)](#vs-pygamemixer-python)
+  - [vs. Web Audio API (JavaScript)](#vs-web-audio-api-javascript)
+  - [vs. LÖVE Audio (Lua)](#vs-löve-audio-lua)
+  - [vs. Godot Audio (GDScript/C#)](#vs-godot-audio-gdscriptc)
+  - [vs. SuperCollider](#vs-supercollider)
+- [Music Live Coding Languages](#music-live-coding-languages)
+  - [vs. TidalCycles](#vs-tidalcycles)
+  - [vs. Sonic Pi](#vs-sonic-pi)
+  - [vs. Strudel](#vs-strudel)
+  - [vs. FoxDot](#vs-foxdot)
+  - [vs. Overtone (Clojure)](#vs-overtone-clojure)
+  - [vs. ChucK](#vs-chuck)
+  - [Live Coding vs Game Audio](#live-coding-vs-game-audio)
+  - [vs. Tone.js (JavaScript)](#vs-tonejs-javascript)
+- [GPU Acceleration](#gpu-acceleration)
+  - [Performance Benchmarks](#performance-measured-on-i5-6500--32ghz)
+  - [Comparison with Other Libraries](#comparison-with-other-libraries)
+- [Performance Characteristics](#performance-characteristics)
+  - [Memory Usage](#memory-usage)
+  - [Latency](#latency)
+  - [CPU Usage](#cpu-usage)
+  - [Build Times](#build-times)
+- [Feature Matrix](#feature-matrix)
+- [Honest Recommendations](#honest-recommendations)
+- [Migration Paths](#migration-paths)
+  - [From Kira to Tunes](#from-kira-to-tunes)
+  - [From Rodio to Tunes](#from-rodio-to-tunes)
+  - [From SoLoud to Tunes](#from-soloud-to-tunes)
+- [Conclusion](#conclusion)
+
 ---
 
 ## Rust Audio Libraries

@@ -1,6 +1,48 @@
 # Working with Samples
 
-**Want to just play a sound effect? Skip everything and jump to [Quick Start: Fire-and-Forget](#quick-start-fire-and-forget-sound-effects) below.**
+## Table of Contents
+
+- [The Absolute Easiest Way to Play Audio](#the-absolute-easiest-way-to-play-audio)
+- [The `play_sample!()` Macro vs `engine.play_sample()`](#the-play_sample-macro-vs-engineplay_sample)
+  - [`play_sample!()` Macro (Recommended)](#1-play_sample-macro-recommended-for-production)
+  - [`engine.play_sample()` Method](#2-engineplay_sample-method-quick-and-flexible)
+- [Startup Validation with `validate_all_samples()`](#startup-validation-with-validate_all_samples)
+- [Automatic Caching](#automatic-caching-no-performance-worries)
+- [When to Use What](#when-to-use-what)
+- [Loading Your First Sample](#loading-your-first-sample)
+- [Quick Reference: Sample Playback API](#quick-reference-sample-playback-api)
+- [Builder API: Volume, Pan, Speed, and Effects](#builder-api-volume-pan-speed-and-effects)
+  - [Basic Controls](#basic-controls)
+  - [Spatial Audio (3D Positioning)](#spatial-audio-3d-positioning)
+  - [Sample Transformations](#sample-transformations)
+  - [Effects](#effects)
+- [Advanced: Playing Samples in Compositions](#advanced-playing-samples-in-compositions)
+  - [Cached Samples](#method-1-cached-samples-for-repeated-use)
+  - [Direct Sample Playback](#method-2-direct-sample-playback)
+- [Sample Playback Control](#sample-playback-control)
+- [Streaming Audio for Long Files](#streaming-audio-for-long-files)
+  - [When to Use Streaming vs. Loading](#when-to-use-streaming-vs-loading)
+  - [Basic Streaming](#basic-streaming)
+  - [Looping Background Music](#looping-background-music)
+  - [Controlling Streaming Playback](#controlling-streaming-playback)
+  - [Multiple Concurrent Streams](#multiple-concurrent-streams)
+  - [Dynamic Music System Example](#practical-game-audio-example-dynamic-music-system)
+  - [Streaming API Reference](#streaming-api-reference)
+- [Sample Manipulation](#sample-manipulation)
+  - [Time Stretching](#time-stretching-change-duration-keep-pitch)
+  - [Pitch Shifting](#pitch-shifting-change-pitch-keep-duration)
+  - [Creating Variations](#creating-variations-for-games)
+  - [Slicing Samples](#slicing-samples)
+  - [Basic Processing (Normalize, Gain, Reverse, Fades)](#basic-sample-processing)
+- [Practical Game Audio Examples](#practical-game-audio-examples)
+- [Sample Memory Management](#sample-memory-management)
+- [Creating Samples from Code](#creating-samples-from-code)
+- [Next Steps](#next-steps)
+- [Quick Reference (Full)](#quick-reference)
+
+---
+
+**Want to just play a sound effect? Jump to [The Absolute Easiest Way to Play Audio](#the-absolute-easiest-way-to-play-audio) below.**
 
 ---
 
@@ -15,9 +57,9 @@ fn main() -> anyhow::Result<()> {
     let engine = AudioEngine::new()?;
 
     // That's it. You're done. Play sounds anywhere:
-    engine.play_sample("explosion.wav")?;
-    engine.play_sample("footstep.ogg")?;
-    engine.play_sample("coin.mp3")?;
+    engine.play_sample("assets/explosion.wav");
+    engine.play_sample("assets/footstep.ogg");
+    engine.play_sample("assets/coin.mp3");
 
     // They all play immediately, non-blocking, concurrent
     // Your game loop keeps running. No configuration needed.
@@ -28,64 +70,156 @@ fn main() -> anyhow::Result<()> {
 
 **Why this matters:**
 
-- 🎮 **Perfect for game jams** - Get audio working in 30 seconds
-- 🚀 **Zero learning curve** - If you can call a function, you can play audio
-- 🎯 **Indie dev friendly** - Prototype fast, optimize later
-- 🎵 **Simpler than Kira, Rodio, odd-io** - Compare for yourself
-- ⚡ **Non-blocking by default** - Won't freeze your game loop
-- 🔊 **Concurrent playback built-in** - Play dozens of sounds at once, it just works
-- ✨ **Automatic caching** - Repeated sounds are instant (no manual pre-loading needed!)
+- **Perfect for game jams** - Get audio working in 30 seconds
+- **Zero learning curve** - If you can call a function, you can play audio
+- **Indie dev friendly** - Prototype fast, optimize later
+- **Simpler than Kira, Rodio, odd-io** - Compare for yourself
+- **Non-blocking by default** - Won't freeze your game loop
+- **Concurrent playback built-in** - Play dozens of sounds at once, it just works
+- **Automatic caching** - Repeated sounds are instant (no manual pre-loading needed!)
 
 **The simplest audio API in Rust, with smart performance built-in.**
 
 When you need more power (effects, timing, synthesis), the full Composition system is there. But for "I just want to play a sound," you're already done reading.
 
-### ✨ Automatic Caching (No Performance Worries!)
+---
 
-**Good news:** `play_sample()` automatically caches samples by path. The first call loads from disk, all subsequent calls use the cached version (instant Arc clone).
+## The `play_sample!()` Macro vs `engine.play_sample()`
+
+Tunes provides two simple ways to play samples:
+
+### 1. `play_sample!()` Macro (Recommended for Production)
+
+The macro provides **compile-time path resolution** and **startup validation**:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    // Validate all registered samples exist at startup
+    validate_all_samples()?;
+
+    let engine = AudioEngine::new()?;
+
+    // Paths are resolved relative to your Cargo.toml (CARGO_MANIFEST_DIR)
+    play_sample!(engine, "assets/explosion.wav");
+    play_sample!(engine, "assets/footstep.ogg");
+
+    Ok(())
+}
+```
+
+**Benefits:**
+- Paths are automatically resolved relative to your project root
+- All samples are registered for startup validation
+- Catches missing files during development, not at runtime
+- Works correctly regardless of where your binary runs from
+
+### 2. `engine.play_sample()` Method (Quick and Flexible)
+
+Direct method call with runtime path resolution:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Paths are relative to current working directory
+    engine.play_sample("assets/explosion.wav");
+    engine.play_sample("assets/footstep.ogg");
+
+    Ok(())
+}
+```
+
+**Use this when:**
+- Prototyping quickly
+- Paths are dynamically constructed
+- Running from the project root directory
+
+---
+
+## Startup Validation with `validate_all_samples()`
+
+The `validate_all_samples()` function checks that all samples registered via `play_sample!()` exist on disk:
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    // Call early - validates ALL samples used anywhere in your code
+    validate_all_samples()?;
+
+    let engine = AudioEngine::new()?;
+
+    // These paths are validated at startup
+    play_sample!(engine, "assets/explosion.wav");
+    play_sample!(engine, "assets/jump.wav");
+    play_sample!(engine, "assets/coin.wav");
+
+    Ok(())
+}
+```
+
+**If any samples are missing, you get a clear error at startup:**
+
+```
+ERROR: Missing 2 sample(s) at startup:
+  - /home/user/project/assets/explosion.wav
+  - /home/user/project/assets/jump.wav
+```
+
+This catches typos and missing files during development instead of during gameplay.
+
+---
+
+## Automatic Caching (No Performance Worries!)
+
+**Good news:** Both `play_sample!()` and `engine.play_sample()` automatically cache samples by path. The first call loads from disk, all subsequent calls use the cached version (instant Arc clone).
 
 ```rust
 let engine = AudioEngine::new()?;
 
 // First call: loads from disk (~1-10ms)
-engine.play_sample("footstep.wav")?;
+engine.play_sample("assets/footstep.wav");
 
 // Subsequent calls: instant! (uses cache)
-engine.play_sample("footstep.wav")?;  // ⚡ instant
-engine.play_sample("footstep.wav")?;  // ⚡ instant
-engine.play_sample("footstep.wav")?;  // ⚡ instant
+engine.play_sample("assets/footstep.wav");  // instant
+engine.play_sample("assets/footstep.wav");  // instant
+engine.play_sample("assets/footstep.wav");  // instant
 
 // You can spam this in your game loop - it's fast!
 for _ in 0..100 {
-    engine.play_sample("footstep.wav")?;  // All instant after first load
+    engine.play_sample("assets/footstep.wav");  // All instant after first load
 }
 ```
 
 **This means:**
-- ✅ Spam footsteps? Fast!
-- ✅ Machine gun fire? Fast!
-- ✅ Rain drops? Fast!
-- ✅ Repeated UI sounds? Fast!
-- ✅ Zero manual cache management needed!
-- ✅ SIMD-accelerated playback (4-8 samples processed simultaneously)
+- Spam footsteps? Fast!
+- Machine gun fire? Fast!
+- Rain drops? Fast!
+- Repeated UI sounds? Fast!
+- Zero manual cache management needed!
+- SIMD-accelerated playback (4-8 samples processed simultaneously)
 
 **Optional: Pre-load during initialization to eliminate first-load delay:**
 
 ```rust
 // During game initialization
-engine.preload_sample("footstep.wav")?;
-engine.preload_sample("jump.wav")?;
-engine.preload_sample("explosion.wav")?;
+engine.preload_sample("assets/footstep.wav")?;
+engine.preload_sample("assets/jump.wav")?;
+engine.preload_sample("assets/explosion.wav")?;
 
 // Now ALL calls are instant (even first one)
-engine.play_sample("footstep.wav")?;  // ⚡ instant
+engine.play_sample("assets/footstep.wav");  // instant
 ```
 
 **Optional: Cache management for memory control:**
 
 ```rust
 // Clear specific sample when done with it
-engine.remove_cached_sample("level1_boss.wav")?;
+engine.remove_cached_sample("assets/level1_boss.wav")?;
 
 // Clear all cached samples between levels
 engine.clear_sample_cache()?;
@@ -97,12 +231,12 @@ engine.clear_sample_cache()?;
 
 ## When to Use What
 
-**Use `engine.play_sample("file.wav")` when:**
-- ✅ Game sound effects (footsteps, explosions, UI clicks, impacts)
-- ✅ Any repeated sounds (automatic caching makes this fast!)
-- ✅ Prototyping / game jams / rapid development
-- ✅ You just want a sound to play RIGHT NOW
-- ✅ Simplicity is priority #1
+**Use `engine.play_sample()` or `play_sample!()` when:**
+- Game sound effects (footsteps, explosions, UI clicks, impacts)
+- Any repeated sounds (automatic caching makes this fast!)
+- Prototyping / game jams / rapid development
+- You just want a sound to play RIGHT NOW
+- Simplicity is priority #1
 
 **Use the full Composition API when:**
 - Complex timing and rhythms
@@ -121,7 +255,6 @@ Tunes supports multiple audio formats with automatic format detection:
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
     // Load any supported audio file - format is automatically detected
@@ -148,36 +281,153 @@ fn main() -> anyhow::Result<()> {
 - **Bit depths:** 8/16/24/32-bit (int), 32/64-bit (float) - automatically converted to f32
 - **Channels:** Mono or stereo
 
-## Quick Reference: play_sample() API
+---
 
-**Playing samples:**
+## Quick Reference: Sample Playback API
+
+**Playing samples (fire-and-forget):**
 ```rust
-engine.play_sample("sound.wav")?;  // Auto-caches, returns SoundId
+// Using the macro (recommended - validates at startup)
+play_sample!(engine, "assets/sound.wav");
+
+// Using the method directly
+engine.play_sample("assets/sound.wav");
+```
+
+**With builder options:**
+```rust
+engine.play_sample("assets/sound.wav")
+    .volume(0.5)       // 0.0 to 2.0
+    .pan(-0.3)         // -1.0 (left) to 1.0 (right)
+    .speed(1.5);       // playback speed (affects pitch)
 ```
 
 **Pre-loading (optional):**
 ```rust
-engine.preload_sample("sound.wav")?;  // Warm cache during init
+engine.preload_sample("assets/sound.wav")?;  // Warm cache during init
 ```
 
 **Cache management (optional):**
 ```rust
-engine.clear_sample_cache()?;              // Clear all
-engine.remove_cached_sample("sound.wav")?; // Clear specific
+engine.clear_sample_cache()?;                      // Clear all
+engine.remove_cached_sample("assets/sound.wav")?;  // Clear specific
 ```
 
-**With control:**
+**Runtime control (for playing sounds):**
 ```rust
-let id = engine.play_sample("sound.wav")?;
+let id = engine.play_mixer_realtime(&comp.into_mixer())?;
 engine.set_volume(id, 0.5)?;
 engine.set_pan(id, -0.3)?;
+engine.set_playback_rate(id, 1.5)?;
+engine.pause(id)?;
+engine.resume(id)?;
+engine.stop(id)?;
 ```
 
 See `examples/sample_playback_demo.rs` for a complete demonstration.
 
+---
+
+## Builder API: Volume, Pan, Speed, and Effects
+
+The `play_sample()` method returns a builder that lets you customize playback:
+
+### Basic Controls
+
+```rust
+use tunes::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
+
+    // Volume control (0.0 to 2.0, default: 1.0)
+    engine.play_sample("assets/explosion.wav")
+        .volume(0.5);  // Play at half volume
+
+    // Pan control (-1.0 = left, 0.0 = center, 1.0 = right)
+    engine.play_sample("assets/enemy.wav")
+        .pan(-0.8);  // Play mostly from left speaker
+
+    // Speed/pitch control (1.0 = normal, 2.0 = double speed/octave up)
+    engine.play_sample("assets/voice.wav")
+        .speed(0.5);  // Half speed, octave down
+
+    // Combine them!
+    engine.play_sample("assets/footstep.wav")
+        .volume(0.7)
+        .pan(0.3)
+        .speed(1.1);
+
+    Ok(())
+}
+```
+
+### Spatial Audio (3D Positioning)
+
+```rust
+engine.play_sample("assets/footstep.wav")
+    .spatial(5.0, 0.0, 3.0);  // x=5 (right), y=0, z=3 (forward) (depends on your coordinate system)
+```
+
+### Sample Transformations
+
+Transform the sample data before playback:
+
+```rust
+// Normalize to peak amplitude
+engine.play_sample("assets/quiet.wav")
+    .normalize();
+
+// Apply gain (different from volume - affects sample data before effects)
+engine.play_sample("assets/quiet.wav")
+    .gain(2.0);
+
+// Reverse playback
+engine.play_sample("assets/cymbal.wav")
+    .reverse();
+
+// Fade in/out
+engine.play_sample("assets/pad.wav")
+    .fade_in(0.5)   // 0.5 second fade in
+    .fade_out(1.0); // 1.0 second fade out
+
+// Time stretch (change duration, keep pitch)
+engine.play_sample("assets/impact.wav")
+    .time_stretch(2.0);  // 2x longer, same pitch
+
+// Pitch shift (change pitch, keep duration)
+engine.play_sample("assets/voice.wav")
+    .pitch_shift(5.0);  // +5 semitones
+```
+
+### Effects
+
+Apply real-time effects:
+
+```rust
+use tunes::prelude::*;
+
+engine.play_sample("assets/guitar.wav")
+    .reverb(Reverb::hall())
+    .delay(Delay::new(0.3, 0.4))
+    .volume(0.8);
+
+engine.play_sample("assets/drums.wav")
+    .distortion(Distortion::new(0.3))
+    .compressor(Compressor::default());
+
+engine.play_sample("assets/synth.wav")
+    .chorus(Chorus::default())
+    .phaser(Phaser::default());
+```
+
+**Available effects:** `reverb`, `delay`, `distortion`, `chorus`, `phaser`, `flanger`, `tremolo`, `bitcrusher`, `saturation`, `compressor`, `limiter`, `convolution_reverb`, `eq`, `ring_mod`, `autopan`, `gate`
+
+---
+
 ## Advanced: Playing Samples in Compositions
 
-**Note:** For most game audio, use `engine.play_sample()` shown above. Use the composition API below when you need precise timing, synchronization with synthesized music, or complex arrangements.
+**Note:** For most game audio, use `engine.play_sample()` or `play_sample!()` shown above. Use the composition API below when you need precise timing, synchronization with synthesized music, or complex arrangements.
 
 There are two main approaches:
 
@@ -221,7 +471,6 @@ Play `Sample` objects directly without caching:
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
@@ -232,9 +481,9 @@ fn main() -> anyhow::Result<()> {
 
     // Play them directly
     comp.track("sfx")
-        .play_sample(&explosion, 1.0)? // 1.0 = normal speed
+        .play_sample(&explosion, 1.0)  // 1.0 = normal speed
         .at(2.0)
-        .play_sample(&impact, 1.0)?;
+        .play_sample(&impact, 1.0);
 
     Ok(())
 }
@@ -245,6 +494,8 @@ fn main() -> anyhow::Result<()> {
 - When you're manipulating samples on-the-fly
 - For procedural/generative audio
 
+---
+
 ## Sample Playback Control
 
 ### Playback Rate (Pitch & Speed)
@@ -253,7 +504,6 @@ The playback rate controls both pitch and speed together:
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 
 fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(120.0));
@@ -261,13 +511,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("examples")
         // Normal playback
-        .play_sample(&voice, 1.0)?
+        .play_sample(&voice, 1.0)
 
         // Double speed (2x faster, higher pitch)
-        .at(2.0).play_sample(&voice, 2.0)?
+        .at(2.0).play_sample(&voice, 2.0)
 
         // Half speed (0.5x slower, lower pitch)
-        .at(4.0).play_sample(&voice, 0.5)?;
+        .at(4.0).play_sample(&voice, 0.5);
 
     Ok(())
 }
@@ -276,6 +526,8 @@ fn main() -> anyhow::Result<()> {
 ### Sample Rate Conversion
 
 Samples are automatically converted to match your output sample rate during playback. Load any sample rate, and Tunes handles the conversion.
+
+---
 
 ## Streaming Audio for Long Files
 
@@ -488,6 +740,8 @@ engine.set_stream_pan(id, -0.5)?;                   // -1.0 (left) to 1.0 (right
 
 **Performance:** Background decoding thread, lock-free ring buffer, zero allocations in audio callback
 
+---
+
 ## Sample Manipulation
 
 Tunes provides powerful tools for transforming samples. All methods return new `Sample` objects, leaving the original unchanged.
@@ -497,7 +751,7 @@ Tunes provides powerful tools for transforming samples. All methods return new `
 Stretch or compress duration without affecting pitch:
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let impact = Sample::from_file("assets/impact.wav")?;
@@ -529,7 +783,7 @@ fn main() -> anyhow::Result<()> {
 Shift pitch without changing duration:
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let footstep = Sample::from_file("assets/footstep.wav")?;
@@ -566,7 +820,7 @@ fn main() -> anyhow::Result<()> {
 Reduce repetitive audio by creating pitch variations:
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 fn create_footstep_variations() -> anyhow::Result<Vec<Sample>> {
     let base = Sample::from_file("assets/footstep.wav")?;
@@ -595,7 +849,7 @@ fn play_random_footstep(variations: &[Sample]) -> &Sample {
 Split samples into smaller pieces for creative manipulation:
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let drum_loop = Sample::from_file("assets/drumloop.wav")?;
@@ -606,13 +860,13 @@ fn main() -> anyhow::Result<()> {
     // Play slices in different order
     let mut comp = Composition::new(Tempo::new(120.0));
     comp.track("drums")
-        .play_slice(&slices[0], 1.0)? // Kick
+        .play_slice(&slices[0], 1.0)  // Kick
         .wait(0.5)
-        .play_slice(&slices[4], 1.0)? // Snare
+        .play_slice(&slices[4], 1.0)  // Snare
         .wait(0.5)
-        .play_slice(&slices[2], 1.0)? // Hat
+        .play_slice(&slices[2], 1.0)  // Hat
         .wait(0.25)
-        .play_slice(&slices[2], 1.0)?; // Hat again
+        .play_slice(&slices[2], 1.0); // Hat again
 
     Ok(())
 }
@@ -627,7 +881,7 @@ For more slicing techniques, see [Advanced: Sample Slicing](../advanced/samples.
 Scale sample to maximum volume without clipping:
 
 ```rust
-let sample = Sample::from_file("quiet.wav")?;
+let sample = Sample::from_file("assets/quiet.wav")?;
 let normalized = sample.normalize();
 ```
 
@@ -636,7 +890,7 @@ let normalized = sample.normalize();
 Adjust volume by a multiplier:
 
 ```rust
-let sample = Sample::from_file("loud.wav")?;
+let sample = Sample::from_file("assets/loud.wav")?;
 
 let quieter = sample.with_gain(0.5);   // Half volume
 let louder = sample.with_gain(2.0);    // Double volume (may clip)
@@ -647,7 +901,7 @@ let louder = sample.with_gain(2.0);    // Double volume (may clip)
 Play sample backwards:
 
 ```rust
-let sample = Sample::from_file("speech.wav")?;
+let sample = Sample::from_file("assets/speech.wav")?;
 let reversed = sample.reverse();
 ```
 
@@ -656,7 +910,7 @@ let reversed = sample.reverse();
 Apply fade in/out envelopes:
 
 ```rust
-let sample = Sample::from_file("pad.wav")?;
+let sample = Sample::from_file("assets/pad.wav")?;
 
 let with_fadein = sample.with_fade_in(0.5);   // 0.5 second fade in
 let with_fadeout = sample.with_fade_out(1.0); // 1.0 second fade out
@@ -667,20 +921,23 @@ let smooth = sample
     .with_fade_out(0.5);
 ```
 
+---
+
 ## Practical Game Audio Examples
 
 ### Example 1: Enemy Footsteps with Variation
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 
 struct FootstepSystem {
+    engine: AudioEngine,
     variations: Vec<Sample>,
 }
 
 impl FootstepSystem {
     fn new() -> anyhow::Result<Self> {
+        let engine = AudioEngine::new()?;
         let base = Sample::from_file("assets/footstep.wav")?;
 
         // Create pitch variations for less repetition
@@ -692,17 +949,21 @@ impl FootstepSystem {
             base.pitch_shift(2.0),
         ];
 
-        Ok(Self { variations })
+        Ok(Self { engine, variations })
     }
 
-    fn play_footstep(&self, comp: &mut Composition, time: f32) {
+    fn play_footstep(&self, pan: f32) {
         // Pick random variation
         let idx = rand::random::<usize>() % self.variations.len();
         let sample = &self.variations[idx];
 
+        // Create a composition to play it
+        let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("footsteps")
-            .at(time)
+            .pan(pan)
             .play_sample(sample, 1.0);
+
+        let _ = self.engine.play_mixer_realtime(&comp.into_mixer());
     }
 }
 ```
@@ -710,7 +971,7 @@ impl FootstepSystem {
 ### Example 2: Impact Sound with Size Variation
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 enum EnemySize {
     Small,
@@ -718,43 +979,28 @@ enum EnemySize {
     Large,
 }
 
-fn play_impact_for_enemy(
-    comp: &mut Composition,
-    size: EnemySize,
-    time: f32
-) -> anyhow::Result<()> {
-    let impact = Sample::from_file("assets/impact.wav")?;
-
-    // Adjust pitch based on size
-    let adjusted = match size {
-        EnemySize::Small => impact.pitch_shift(5.0),   // Higher pitch
-        EnemySize::Medium => impact,                   // Normal
-        EnemySize::Large => impact.pitch_shift(-7.0),  // Lower pitch
+fn play_impact_for_enemy(engine: &AudioEngine, size: EnemySize) {
+    let semitones = match size {
+        EnemySize::Small => 5.0,    // Higher pitch
+        EnemySize::Medium => 0.0,   // Normal
+        EnemySize::Large => -7.0,   // Lower pitch
     };
 
-    comp.track("impacts")
-        .at(time)
-        .play_sample(&adjusted, 1.0);
-
-    Ok(())
+    engine.play_sample("assets/impact.wav")
+        .pitch_shift(semitones);
 }
 ```
 
 ### Example 3: Slow Motion Effect
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
-fn create_slow_motion_sfx() -> anyhow::Result<Sample> {
-    let explosion = Sample::from_file("assets/explosion.wav")?;
-
-    // 2x slower for dramatic slow-mo
-    let slow_mo = explosion.time_stretch(2.0);
-
-    // Optionally pitch down slightly for extra drama
-    let dramatic = slow_mo.pitch_shift(-5.0);
-
-    Ok(dramatic)
+fn play_slow_motion_explosion(engine: &AudioEngine) {
+    engine.play_sample("assets/explosion.wav")
+        .time_stretch(2.0)      // 2x slower
+        .pitch_shift(-5.0)      // Lower pitch for drama
+        .reverb(Reverb::hall());
 }
 ```
 
@@ -762,9 +1008,9 @@ fn create_slow_motion_sfx() -> anyhow::Result<Sample> {
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 
 fn create_glitch_drums() -> anyhow::Result<()> {
+    let engine = AudioEngine::new()?;
     let mut comp = Composition::new(Tempo::new(140.0));
 
     // Load and slice drum loop
@@ -777,10 +1023,11 @@ fn create_glitch_drums() -> anyhow::Result<()> {
     let mut track = comp.track("glitch");
     for &slice_idx in &pattern {
         track = track
-            .play_slice(&slices[slice_idx], 1.0)?
+            .play_slice(&slices[slice_idx], 1.0)
             .wait(0.125); // 16th notes
     }
 
+    engine.play_mixer_realtime(&comp.into_mixer())?;
     Ok(())
 }
 ```
@@ -789,7 +1036,6 @@ fn create_glitch_drums() -> anyhow::Result<()> {
 
 ```rust
 use tunes::prelude::*;
-use tunes::synthesis::Sample;
 use std::collections::HashMap;
 
 struct SampleBank {
@@ -817,23 +1063,23 @@ impl SampleBank {
         Ok(())
     }
 
-    fn play_random(&self, comp: &mut Composition, name: &str, time: f32) {
-        if let Some(variations) = self.samples.get(name) {
+    fn get_random(&self, name: &str) -> Option<&Sample> {
+        self.samples.get(name).map(|variations| {
             let idx = rand::random::<usize>() % variations.len();
-            comp.track("sfx")
-                .at(time)
-                .play_sample(&variations[idx], 1.0);
-        }
+            &variations[idx]
+        })
     }
 }
 ```
+
+---
 
 ## Sample Memory Management
 
 Samples use `Arc<Vec<f32>>` internally, so cloning is cheap - it only increments a reference count rather than copying audio data.
 
 ```rust
-let sample1 = Sample::from_file("big_file.wav")?;
+let sample1 = Sample::from_file("assets/big_file.wav")?;
 let sample2 = sample1.clone(); // Cheap! No audio data copied
 
 // Both share the same audio data in memory
@@ -846,12 +1092,14 @@ let sample2 = sample1.clone(); // Cheap! No audio data copied
 - Use `play_sample()` for dynamic samples
 - Use `load_sample()` + `sample()` for repeated samples
 
+---
+
 ## Creating Samples from Code
 
 You can also create samples programmatically:
 
 ```rust
-use tunes::synthesis::Sample;
+use tunes::prelude::*;
 
 fn create_sine_wave(frequency: f32, duration: f32) -> Sample {
     let sample_rate = 44100;
@@ -877,6 +1125,8 @@ This is useful for:
 - Algorithmic sound design
 - Audio unit tests
 
+---
+
 ## Next Steps
 
 - **[Spatial Audio](./spatial-audio.md)** - Position samples in 3D space
@@ -889,30 +1139,55 @@ This is useful for:
 ## Quick Reference
 
 ```rust
-// Loading (supports MP3, OGG, FLAC, WAV, AAC)
-Sample::from_file("kick.mp3")?
-Sample::from_file("snare.ogg")?
-Sample::from_file("loop.flac")?
-Sample::from_mono(vec![0.0, 0.5, 1.0], 44100)  // Programmatic creation
+// ===== MACRO (Recommended for Production) =====
+// Validates at startup, resolves paths from project root
+validate_all_samples()?;
+play_sample!(engine, "assets/boom.wav");
 
-// Quick fire-and-forget (NEW in v0.14)
-engine.play_sample("boom.wav")?  // Non-blocking, concurrent, simple!
+// ===== METHOD (Quick Prototyping) =====
+engine.play_sample("assets/boom.wav");
 
-// Playing in compositions
-comp.load_sample("name", "sample.mp3")?
-comp.track("t").sample("name")?
-comp.track("t").play_sample(&sample, 1.0)
+// ===== BUILDER OPTIONS =====
+engine.play_sample("assets/sound.wav")
+    .volume(0.8)           // 0.0 to 2.0
+    .pan(-0.5)             // -1.0 (left) to 1.0 (right)
+    .speed(1.2)            // playback rate (affects pitch)
+    .spatial(5.0, 0.0, 3.0) // 3D position
+    .normalize()           // scale to peak amplitude
+    .gain(1.5)             // multiply sample data
+    .reverse()             // play backwards
+    .fade_in(0.5)          // fade in seconds
+    .fade_out(1.0)         // fade out seconds
+    .time_stretch(1.5)     // change duration, keep pitch
+    .pitch_shift(5.0)      // change pitch (semitones), keep duration
+    .reverb(Reverb::hall())
+    .delay(Delay::new(0.3, 0.4))
+    .distortion(Distortion::new(0.3));
 
-// Streaming (for long files - background music, ambience)
-let id = engine.stream_file("music.mp3")?         // Stream once
-let id = engine.stream_file_looping("music.mp3")? // Loop forever
-engine.set_stream_volume(id, 0.5)?                // Control volume
-engine.set_stream_pan(id, -0.5)?                  // Control pan
-engine.pause_stream(id)?                          // Pause
-engine.resume_stream(id)?                         // Resume
-engine.stop_stream(id)?                           // Stop & cleanup
+// ===== LOADING (supports MP3, OGG, FLAC, WAV, AAC) =====
+Sample::from_file("assets/kick.mp3")?;
+Sample::from_mono(vec![0.0, 0.5, 1.0], 44100);  // Programmatic creation
 
-// Manipulation
+// ===== CACHE MANAGEMENT =====
+engine.preload_sample("assets/sound.wav")?;        // Warm cache
+engine.remove_cached_sample("assets/sound.wav")?;  // Remove one
+engine.clear_sample_cache()?;                      // Remove all
+
+// ===== COMPOSITIONS =====
+comp.load_sample("name", "assets/sample.mp3")?;
+comp.track("t").sample("name")?;
+comp.track("t").play_sample(&sample, 1.0);
+
+// ===== STREAMING (for long files) =====
+let id = engine.stream_file("assets/music.mp3")?;          // Stream once
+let id = engine.stream_file_looping("assets/music.mp3")?;  // Loop forever
+engine.set_stream_volume(id, 0.5)?;
+engine.set_stream_pan(id, -0.5)?;
+engine.pause_stream(id)?;
+engine.resume_stream(id)?;
+engine.stop_stream(id)?;
+
+// ===== SAMPLE MANIPULATION =====
 sample.time_stretch(1.5)        // 1.5x duration, same pitch
 sample.pitch_shift(7.0)         // +7 semitones, same duration
 sample.normalize()              // Scale to max volume
@@ -921,12 +1196,12 @@ sample.reverse()                // Play backwards
 sample.with_fade_in(0.5)        // Fade in over 0.5s
 sample.with_fade_out(1.0)       // Fade out over 1.0s
 
-// Slicing
+// ===== SLICING =====
 sample.slice_equal(8)?          // Split into 8 parts
 sample.slice_by_transients(0.3, 50.0)?  // Auto-detect hits
 sample.slice_at_times(&[0.5, 1.0, 1.5])?  // At specific times
 
-// Info
+// ===== SAMPLE INFO =====
 sample.duration                 // Duration in seconds
 sample.sample_rate              // Sample rate in Hz
 sample.channels                 // 1 (mono) or 2 (stereo)

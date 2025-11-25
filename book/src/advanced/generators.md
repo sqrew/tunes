@@ -2,6 +2,55 @@
 
 Note generators are powerful musical pattern creation tools that produce chords, scales, arpeggios, classical patterns, ornaments, and algorithmic sequences. Tunes provides two syntaxes: direct method calls and a cleaner namespaced API using `.generator()`.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Two Ways to Generate Notes](#two-ways-to-generate-notes)
+  - [Direct Method Calls (Classic)](#direct-method-calls-classic-syntax)
+  - [Generator Namespace (New)](#generator-namespace-new-syntax)
+- [Chords](#chords)
+  - [Basic Chords](#basic-chords)
+  - [Chord Inversions](#chord-inversions)
+  - [Chord Over Bass](#chord-over-bass)
+  - [Chord Progressions](#chord-progressions)
+- [Scales](#scales)
+- [Arpeggios](#arpeggios)
+- [Classical Patterns](#classical-patterns)
+  - [Alberti Bass](#alberti-bass)
+  - [Waltz Bass](#waltz-bass)
+  - [Walking Bass](#walking-bass)
+  - [Broken Chord](#broken-chord)
+  - [Ostinato](#ostinato)
+  - [Tremolo Strings](#tremolo-strings)
+- [Ornaments](#ornaments)
+  - [Trill](#trill)
+  - [Mordent](#mordent)
+  - [Turn](#turn)
+  - [Cascade](#cascade)
+  - [Strum](#strum)
+  - [Tremolo Note](#tremolo-note)
+- [Tuplets](#tuplets)
+- [Time-Based Generators](#time-based-generators)
+- [Musical Patterns](#musical-patterns)
+  - [Octaves](#octaves)
+  - [Pedal Tone](#pedal-tone)
+  - [Sequence From Indices](#sequence-from-indices)
+- [Portamento](#portamento)
+- [Algorithmic Generators](#algorithmic-generators)
+  - [Orbit](#orbit)
+  - [Bounce](#bounce)
+  - [Scatter](#scatter)
+  - [Stream](#stream)
+  - [Random Notes](#random-notes)
+  - [Sprinkle](#sprinkle)
+- [Combining Generators and Transformations](#combining-generators-and-transformations)
+- [Multiple Generator Blocks](#multiple-generator-blocks)
+- [Complete Example](#complete-example)
+- [Generator Reference](#generator-reference)
+- [Tips and Best Practices](#tips-and-best-practices)
+
+---
+
 ## Overview
 
 Note generators let you:

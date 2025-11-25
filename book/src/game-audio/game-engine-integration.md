@@ -2,7 +2,27 @@
 
 Tunes is **framework-agnostic** and integrates trivially with any Rust game engine. No wrapper crate needed - just store `AudioEngine` in your game state and call `play_sample()`.
 
-> **🎮 Universal Pattern:** All Rust game engines follow the same pattern: create `AudioEngine`, store it, call methods. That's it.
+> **Universal Pattern:** All Rust game engines follow the same pattern: create `AudioEngine`, store it, call methods. That's it.
+
+## Table of Contents
+
+- [Integration Pattern](#integration-pattern)
+- [Bevy](#bevy)
+  - [Complete Example](#complete-example)
+  - [Tips](#tips)
+    - [Pre-loading Sounds](#pre-loading-sounds)
+    - [Volume Control](#volume-control)
+    - [Stopping Sounds](#stopping-sounds)
+  - [Performance](#performance)
+  - [GPU Acceleration for Games](#gpu-acceleration-for-games)
+  - [Advanced: Using Composition System](#advanced-using-composition-system)
+- [ggez](#ggez)
+- [macroquad](#macroquad)
+- [bracket-lib](#bracket-lib)
+- [Custom Engine](#custom-engine)
+- [Performance Across All Engines](#performance-across-all-engines)
+
+---
 
 ## Integration Pattern
 
@@ -12,13 +32,6 @@ The integration pattern is identical across all engines:
 2. **Create engine:** `AudioEngine::new()` or `AudioEngine::new_with_gpu()`
 3. **Store in game state:** Engine resource, struct field, or global
 4. **Call from game logic:** `engine.play_sample("sound.wav")`
-
-Choose your engine below for specific examples:
-- [Bevy](#bevy)
-- [ggez](#ggez)
-- [macroquad](#macroquad)
-- [bracket-lib](#bracket-lib)
-- [Custom Engine](#custom-engine)
 
 ---
 

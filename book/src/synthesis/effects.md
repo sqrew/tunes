@@ -2,6 +2,48 @@
 
 Tunes provides a professional-grade effects system with 17 built-in effects that can be applied at track, bus, and master levels.
 
+## Table of Contents
+
+- [EffectChain System](#effectchain-system)
+  - [Priority-Based Effect Ordering](#priority-based-effect-ordering)
+  - [Dual-Mode Processing](#dual-mode-processing)
+- [Three Levels of Effects](#three-levels-of-effects)
+  - [Track-Level Effects](#track-level-effects)
+  - [Bus-Level Effects](#bus-level-effects)
+  - [Master-Level Effects](#master-level-effects)
+- [Two Ways to Apply Effects](#two-ways-to-apply-effects)
+  - [Direct Method Calls (Classic)](#direct-method-calls-classic-syntax)
+  - [Effects Namespace (New)](#effects-namespace-new-syntax)
+- [The 16 Effects](#the-16-effects)
+  - [1. EQ (3-Band Equalizer)](#1-eq-3-band-equalizer)
+  - [2. Parametric EQ](#2-parametric-eq)
+  - [3. Compressor](#3-compressor) (includes Sidechaining, Stereo-Linked, Multiband)
+  - [4. Gate](#4-gate)
+  - [5. Limiter](#5-limiter)
+  - [6. Saturation](#6-saturation)
+  - [7. Distortion](#7-distortion)
+  - [8. Bitcrusher](#8-bitcrusher)
+  - [9. Reverb](#9-reverb)
+  - [10. Convolution Reverb](#10-convolution-reverb) (includes GPU Acceleration)
+  - [11. Delay](#11-delay)
+  - [12. Chorus](#12-chorus)
+  - [13. Phaser](#13-phaser)
+  - [14. Flanger](#14-flanger)
+  - [15. Ring Modulator](#15-ring-modulator)
+  - [16. Tremolo](#16-tremolo)
+  - [17. AutoPan](#17-autopan)
+- [Common Effect Chains](#common-effect-chains)
+  - [Vocal Chain](#vocal-chain)
+  - [Bass Chain](#bass-chain)
+  - [Mastering Chain](#mastering-chain)
+  - [Drum Bus](#drum-bus)
+  - [Lo-Fi Effect](#lo-fi-effect)
+- [Effect Automation](#effect-automation)
+- [Best Practices](#best-practices)
+- [Effect Reference Table](#effect-reference-table)
+
+---
+
 ## EffectChain System
 
 Every track, bus, and master fader has an `EffectChain` - a unified container for all 17 effects with automatic priority-based ordering.

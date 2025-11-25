@@ -2,6 +2,39 @@
 
 Tunes provides 12 advanced spectral effects that operate in the frequency domain using FFT (Fast Fourier Transform). These effects manipulate individual frequency bins, enabling creative sound design impossible with traditional time-domain effects.
 
+## Table of Contents
+
+- [What Are Spectral Effects?](#what-are-spectral-effects)
+- [Available Spectral Effects](#available-spectral-effects)
+- [Spectral Texture Effects](#spectral-texture-effects)
+  - [SpectralFreeze](#spectralfreeze)
+  - [SpectralBlur](#spectralblur)
+  - [SpectralMorph](#spectralmorph)
+- [Spectral Transform Effects](#spectral-transform-effects)
+  - [SpectralInvert](#spectralinvert)
+  - [SpectralShift](#spectralshift)
+- [Spectral Stereo Effects](#spectral-stereo-effects)
+  - [SpectralWiden](#spectralwiden)
+- [Spectral Enhancement Effects](#spectral-enhancement-effects)
+  - [SpectralExciter](#spectralexciter)
+- [Spectral Dynamics Effects](#spectral-dynamics-effects)
+  - [SpectralGate](#spectralgate)
+  - [SpectralCompressor](#spectralcompressor)
+  - [SpectralDynamics](#spectraldynamics)
+  - [SpectralFilter](#spectralfilter)
+- [Spectral Creative Effects](#spectral-creative-effects)
+  - [SpectralScramble](#spectralscramble)
+- [Performance Considerations](#performance-considerations)
+  - [CPU Usage](#cpu-usage)
+  - [Optimization Tips](#optimization-tips)
+  - [Latency](#latency)
+- [Combining Spectral Effects](#combining-spectral-effects)
+- [Example: Complete Spectral Processing Chain](#example-complete-spectral-processing-chain)
+- [Spectral Effects vs Traditional Effects](#spectral-effects-vs-traditional-effects)
+- [Further Reading](#further-reading)
+
+---
+
 ## What Are Spectral Effects?
 
 **Traditional effects** work on the raw audio signal (time domain):

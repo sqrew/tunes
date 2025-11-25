@@ -2,6 +2,38 @@
 
 A concise guide to common Tunes operations. For detailed explanations, see the full documentation.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Basic Setup](#basic-setup)
+- [Playing Notes & Chords](#playing-notes--chords)
+- [Instruments & Synthesis](#instruments--synthesis)
+- [Drums & Rhythm](#drums--rhythm)
+- [Effects](#effects)
+- [Scales & Music Theory](#scales--music-theory)
+- [Sample Playback (Game Audio)](#sample-playback-game-audio)
+- [Streaming (Long Audio Files)](#streaming-long-audio-files)
+- [Spatial Audio (3D Sound)](#spatial-audio-3d-sound)
+- [Export Audio](#export-audio)
+- [Import MIDI](#import-midi)
+- [Real-time Control](#real-time-control)
+- [Algorithmic Patterns](#algorithmic-patterns)
+- [Sections & Arrangements](#sections--arrangements)
+- [Live Coding (Hot Reload)](#live-coding-hot-reload)
+- [Game Engine Integration](#game-engine-integration)
+  - [Bevy](#bevy)
+  - [ggez](#ggez)
+  - [macroquad](#macroquad)
+- [GPU Acceleration](#gpu-acceleration)
+- [WebAssembly](#webassembly)
+- [Common Patterns](#common-patterns)
+  - [Dynamic Music System](#dynamic-music-system)
+  - [Procedural Sound Effects](#procedural-sound-effects)
+- [Performance Tips](#performance-tips)
+- [Full Documentation](#full-documentation)
+
+---
+
 ## Installation
 
 ```toml
