@@ -18,6 +18,13 @@ exclude = [
     "*.flac",
 ]
 
+# Disable wasm-opt (can fail on some systems)
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = false
+
 # Optimize dependencies even in debug mode to prevent audio underruns
 # This keeps YOUR code debuggable while making dependencies fast
 [profile.dev.package."*"]

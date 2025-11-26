@@ -450,17 +450,28 @@ await init({
 
 ## Examples
 
-The repository includes a complete working example:
+The repository includes working web examples:
 
+### Basic Demo
 - `examples/web_demo.rs` - Basic synthesis and playback
-- `examples/web_demo.html` - HTML interface
+- `examples/web_demo.html` - Simple HTML interface
 
-To run it:
+### Interactive Piano
+- `examples/web_piano.rs` - Full interactive piano synthesizer
+- `examples/web_piano.html` - Polished piano interface with:
+  - 2-octave visual keyboard
+  - Computer keyboard input (A-L for white keys, W-E-T-Y-U for black keys)
+  - Mouse/touch support
+  - 8 keyboard instruments (acoustic piano, electric piano, Rhodes, etc.)
+  - Octave shifting (Z/X keys)
+
+To run them:
 
 ```bash
 wasm-pack build --target web --features web
 python3 -m http.server 8000
-# Open http://localhost:8000/examples/web_demo.html
+# Basic: http://localhost:8000/examples/web_demo.html
+# Piano: http://localhost:8000/examples/web_piano.html
 ```
 
 ## API Compatibility

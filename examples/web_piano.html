@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunes Web Piano</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 2.2em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1em;
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        select {
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 0.95em;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.2s;
+        }
+
+        select:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .octave-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .octave-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .octave-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        .octave-btn:active {
+            transform: scale(0.95);
+        }
+
+        .octave-display {
+            font-size: 1.1em;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .piano-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .piano {
+            display: flex;
+            position: relative;
+            height: 180px;
+        }
+
+        .white-key {
+            width: 50px;
+            height: 180px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+            border: 1px solid #ccc;
+            border-radius: 0 0 6px 6px;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: all 0.08s;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 10px;
+        }
+
+        .white-key:hover {
+            background: linear-gradient(180deg, #fff 0%, #f0f0f0 100%);
+        }
+
+        .white-key.active {
+            background: linear-gradient(180deg, #a8d8ff 0%, #7ec8ff 100%);
+            transform: translateY(2px);
+            box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .white-key .key-label {
+            color: #666;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        .white-key .key-hint {
+            color: #999;
+            font-size: 0.65em;
+            margin-top: 2px;
+        }
+
+        .black-key {
+            width: 32px;
+            height: 110px;
+            background: linear-gradient(180deg, #333 0%, #111 100%);
+            border-radius: 0 0 4px 4px;
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+            transition: all 0.08s;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+        }
+
+        .black-key:hover {
+            background: linear-gradient(180deg, #444 0%, #222 100%);
+        }
+
+        .black-key.active {
+            background: linear-gradient(180deg, #6a9dff 0%, #4a7ddf 100%);
+            height: 108px;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .keyboard-hints {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+
+        .keyboard-hints kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 2px;
+            font-family: monospace;
+        }
+
+        .status {
+            text-align: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .status.loading {
+            color: #ffd700;
+        }
+
+        .status.ready {
+            color: #51cf66;
+        }
+
+        .status.error {
+            color: #ff6b6b;
+        }
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8em;
+        }
+
+        footer a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .white-key {
+                width: 40px;
+                height: 150px;
+            }
+
+            .black-key {
+                width: 26px;
+                height: 90px;
+            }
+
+            .white-key .key-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tunes Web Piano</h1>
+            <p class="subtitle">Interactive synthesizer powered by WebAssembly</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="instrument">Instrument:</label>
+                <select id="instrument">
+                    <option value="0">Acoustic Piano</option>
+                    <option value="1">Electric Piano</option>
+                    <option value="2">Stage 73 Rhodes</option>
+                    <option value="3">Wurlitzer</option>
+                    <option value="4">Hammond Organ</option>
+                    <option value="5">Church Organ</option>
+                    <option value="6">Clavinet</option>
+                    <option value="7">Harpsichord</option>
+                </select>
+            </div>
+
+            <div class="control-group octave-controls">
+                <label>Octave:</label>
+                <button class="octave-btn" id="octaveDown" title="Octave Down (Z)">-</button>
+                <span class="octave-display" id="octaveDisplay">C4</span>
+                <button class="octave-btn" id="octaveUp" title="Octave Up (X)">+</button>
+            </div>
+        </div>
+
+        <div class="piano-container">
+            <div class="piano" id="piano">
+                <!-- First octave -->
+                <div class="white-key" data-note="0" data-octave="0">
+                    <span class="key-label">C</span>
+                    <span class="key-hint">A</span>
+                </div>
+                <div class="white-key" data-note="2" data-octave="0">
+                    <span class="key-label">D</span>
+                    <span class="key-hint">S</span>
+                </div>
+                <div class="white-key" data-note="4" data-octave="0">
+                    <span class="key-label">E</span>
+                    <span class="key-hint">D</span>
+                </div>
+                <div class="white-key" data-note="5" data-octave="0">
+                    <span class="key-label">F</span>
+                    <span class="key-hint">F</span>
+                </div>
+                <div class="white-key" data-note="7" data-octave="0">
+                    <span class="key-label">G</span>
+                    <span class="key-hint">G</span>
+                </div>
+                <div class="white-key" data-note="9" data-octave="0">
+                    <span class="key-label">A</span>
+                    <span class="key-hint">H</span>
+                </div>
+                <div class="white-key" data-note="11" data-octave="0">
+                    <span class="key-label">B</span>
+                    <span class="key-hint">J</span>
+                </div>
+                <!-- Second octave -->
+                <div class="white-key" data-note="0" data-octave="1">
+                    <span class="key-label">C</span>
+                    <span class="key-hint">K</span>
+                </div>
+                <div class="white-key" data-note="2" data-octave="1">
+                    <span class="key-label">D</span>
+                    <span class="key-hint">L</span>
+                </div>
+                <div class="white-key" data-note="4" data-octave="1">
+                    <span class="key-label">E</span>
+                    <span class="key-hint">;</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="keyboard-hints">
+            White keys: <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>;</kbd>
+            &nbsp;|&nbsp;
+            Black keys: <kbd>W</kbd> <kbd>E</kbd> &nbsp; <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> &nbsp; <kbd>O</kbd> <kbd>P</kbd>
+            &nbsp;|&nbsp;
+            Octave: <kbd>Z</kbd> / <kbd>X</kbd>
+        </div>
+
+        <div class="status loading" id="status">Loading WebAssembly module...</div>
+    </div>
+
+    <footer>
+        Powered by <a href="https://github.com/nicksrandall/tunes" target="_blank">Tunes</a> - A Rust audio synthesis library
+    </footer>
+
+    <script type="module">
+        import init, { WebPiano } from '../pkg/tunes.js';
+
+        let piano = null;
+        let currentOctave = 4;
+        const pressedKeys = new Set();
+
+        // Keyboard mapping: key -> [semitone, octaveOffset]
+        const keyMap = {
+            // First octave - white keys
+            'a': [0, 0],   // C
+            's': [2, 0],   // D
+            'd': [4, 0],   // E
+            'f': [5, 0],   // F
+            'g': [7, 0],   // G
+            'h': [9, 0],   // A
+            'j': [11, 0],  // B
+            // Second octave - white keys
+            'k': [0, 1],   // C
+            'l': [2, 1],   // D
+            ';': [4, 1],   // E
+            // First octave - black keys
+            'w': [1, 0],   // C#
+            'e': [3, 0],   // D#
+            't': [6, 0],   // F#
+            'y': [8, 0],   // G#
+            'u': [10, 0],  // A#
+            // Second octave - black keys
+            'o': [1, 1],   // C#
+            'p': [3, 1],   // D#
+        };
+
+        const statusEl = document.getElementById('status');
+        const octaveDisplay = document.getElementById('octaveDisplay');
+        const instrumentSelect = document.getElementById('instrument');
+        const pianoEl = document.getElementById('piano');
+
+        function updateOctaveDisplay() {
+            octaveDisplay.textContent = `C${currentOctave}`;
+        }
+
+        function playNote(semitone, octaveOffset = 0) {
+            if (!piano) return;
+            try {
+                const octave = currentOctave + octaveOffset;
+                piano.play_note_in_octave(semitone, octave);
+            } catch (e) {
+                console.error('Failed to play note:', e);
+            }
+        }
+
+        function setActiveKey(semitone, octaveOffset, active) {
+            const selector = `.white-key[data-note="${semitone}"][data-octave="${octaveOffset}"], .black-key[data-note="${semitone}"][data-octave="${octaveOffset}"]`;
+            const key = pianoEl.querySelector(selector);
+            if (key) {
+                if (active) {
+                    key.classList.add('active');
+                } else {
+                    key.classList.remove('active');
+                }
+            }
+        }
+
+        // Add black keys dynamically (positioned absolutely)
+        function createBlackKeys() {
+            const blackKeyPositions = [
+                { note: 1, octave: 0, left: 35 },    // C#
+                { note: 3, octave: 0, left: 85 },    // D#
+                { note: 6, octave: 0, left: 185 },   // F#
+                { note: 8, octave: 0, left: 235 },   // G#
+                { note: 10, octave: 0, left: 285 },  // A#
+                { note: 1, octave: 1, left: 385 },   // C#
+                { note: 3, octave: 1, left: 435 },   // D#
+            ];
+
+            blackKeyPositions.forEach(pos => {
+                const key = document.createElement('div');
+                key.className = 'black-key';
+                key.dataset.note = pos.note;
+                key.dataset.octave = pos.octave;
+                key.style.left = `${pos.left}px`;
+                pianoEl.appendChild(key);
+            });
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Keyboard events
+            document.addEventListener('keydown', (e) => {
+                if (e.repeat) return;
+                const key = e.key.toLowerCase();
+
+                // Octave controls
+                if (key === 'z') {
+                    if (currentOctave > 2) {
+                        currentOctave--;
+                        piano?.set_octave(currentOctave);
+                        updateOctaveDisplay();
+                    }
+                    return;
+                }
+                if (key === 'x') {
+                    if (currentOctave < 6) {
+                        currentOctave++;
+                        piano?.set_octave(currentOctave);
+                        updateOctaveDisplay();
+                    }
+                    return;
+                }
+
+                // Note keys
+                if (keyMap[key] && !pressedKeys.has(key)) {
+                    pressedKeys.add(key);
+                    const [semitone, octaveOffset] = keyMap[key];
+                    playNote(semitone, octaveOffset);
+                    setActiveKey(semitone, octaveOffset, true);
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (keyMap[key]) {
+                    pressedKeys.delete(key);
+                    const [semitone, octaveOffset] = keyMap[key];
+                    setActiveKey(semitone, octaveOffset, false);
+                }
+            });
+
+            // Mouse/touch events on piano keys
+            pianoEl.addEventListener('mousedown', (e) => {
+                const key = e.target.closest('.white-key, .black-key');
+                if (key) {
+                    const semitone = parseInt(key.dataset.note);
+                    const octaveOffset = parseInt(key.dataset.octave);
+                    playNote(semitone, octaveOffset);
+                    key.classList.add('active');
+                }
+            });
+
+            pianoEl.addEventListener('mouseup', (e) => {
+                const key = e.target.closest('.white-key, .black-key');
+                if (key) {
+                    key.classList.remove('active');
+                }
+            });
+
+            pianoEl.addEventListener('mouseleave', (e) => {
+                // Remove active state when mouse leaves piano
+                pianoEl.querySelectorAll('.active').forEach(k => k.classList.remove('active'));
+            });
+
+            // Touch events for mobile
+            pianoEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                for (const touch of e.changedTouches) {
+                    const key = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.white-key, .black-key');
+                    if (key) {
+                        const semitone = parseInt(key.dataset.note);
+                        const octaveOffset = parseInt(key.dataset.octave);
+                        playNote(semitone, octaveOffset);
+                        key.classList.add('active');
+                    }
+                }
+            }, { passive: false });
+
+            pianoEl.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                pianoEl.querySelectorAll('.active').forEach(k => k.classList.remove('active'));
+            }, { passive: false });
+
+            // Octave buttons
+            document.getElementById('octaveDown').addEventListener('click', () => {
+                if (currentOctave > 2) {
+                    currentOctave--;
+                    piano?.set_octave(currentOctave);
+                    updateOctaveDisplay();
+                }
+            });
+
+            document.getElementById('octaveUp').addEventListener('click', () => {
+                if (currentOctave < 6) {
+                    currentOctave++;
+                    piano?.set_octave(currentOctave);
+                    updateOctaveDisplay();
+                }
+            });
+
+            // Instrument selector
+            instrumentSelect.addEventListener('change', (e) => {
+                const index = parseInt(e.target.value);
+                piano?.set_instrument(index);
+            });
+        }
+
+        // Initialize
+        async function initialize() {
+            try {
+                // Create black keys
+                createBlackKeys();
+
+                // Initialize WASM
+                await init();
+                statusEl.textContent = 'Creating synthesizer...';
+
+                // Create piano
+                piano = new WebPiano();
+                currentOctave = piano.get_octave();
+                updateOctaveDisplay();
+
+                // Setup controls
+                setupEventListeners();
+
+                statusEl.textContent = 'Ready! Click keys or use your keyboard to play.';
+                statusEl.className = 'status ready';
+
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                statusEl.textContent = `Error: ${error.message || error}`;
+                statusEl.className = 'status error';
+            }
+        }
+
+        initialize();
+    </script>
+</body>
+</html>

@@ -252,3 +252,130 @@ pub fn run_web_demo() -> std::result::Result<(), JsValue> {
 
     Ok(())
 }
+
+/// Interactive web piano synthesizer
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub struct WebPiano {
+    engine: std::cell::RefCell<Option<&'static engine::AudioEngine>>,
+    current_octave: i32,
+    current_instrument: u8,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+impl WebPiano {
+    /// Create a new WebPiano instance
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> std::result::Result<WebPiano, JsValue> {
+        console_error_panic_hook::set_once();
+        web_sys::console::log_1(&"WebPiano ready! Click a key to start.".into());
+
+        Ok(WebPiano {
+            engine: std::cell::RefCell::new(None),
+            current_octave: 4,
+            current_instrument: 0,
+        })
+    }
+
+    /// Initialize the audio engine (called on first user interaction)
+    fn get_or_init_engine(&self) -> std::result::Result<&'static engine::AudioEngine, JsValue> {
+        let mut engine_ref = self.engine.borrow_mut();
+        if engine_ref.is_none() {
+            web_sys::console::log_1(&"Initializing audio engine...".into());
+            let engine = Box::leak(Box::new(
+                engine::AudioEngine::new()
+                    .map_err(|e| JsValue::from_str(&format!("Failed to create audio engine: {}", e)))?,
+            ));
+            web_sys::console::log_1(&"Audio engine ready!".into());
+            *engine_ref = Some(engine);
+        }
+        Ok(engine_ref.unwrap())
+    }
+
+    /// Play a note by semitone (0-11) in current octave
+    pub fn play_note(&self, semitone: u8) -> std::result::Result<(), JsValue> {
+        self.play_note_in_octave(semitone, self.current_octave)
+    }
+
+    /// Play a note by semitone (0-11) in a specific octave
+    pub fn play_note_in_octave(&self, semitone: u8, octave: i32) -> std::result::Result<(), JsValue> {
+        use crate::consts::*;
+
+        let engine = self.get_or_init_engine()?;
+
+        // Map semitone + octave to note constant
+        let notes_oct2: [f32; 12] = [C2, CS2, D2, DS2, E2, F2, FS2, G2, GS2, A2, AS2, B2];
+        let notes_oct3: [f32; 12] = [C3, CS3, D3, DS3, E3, F3, FS3, G3, GS3, A3, AS3, B3];
+        let notes_oct4: [f32; 12] = [C4, CS4, D4, DS4, E4, F4, FS4, G4, GS4, A4, AS4, B4];
+        let notes_oct5: [f32; 12] = [C5, CS5, D5, DS5, E5, F5, FS5, G5, GS5, A5, AS5, B5];
+        let notes_oct6: [f32; 12] = [C6, CS6, D6, DS6, E6, F6, FS6, G6, GS6, A6, AS6, B6];
+
+        let frequency = match octave {
+            2 => notes_oct2[semitone as usize % 12],
+            3 => notes_oct3[semitone as usize % 12],
+            4 => notes_oct4[semitone as usize % 12],
+            5 => notes_oct5[semitone as usize % 12],
+            6 => notes_oct6[semitone as usize % 12],
+            _ => notes_oct4[semitone as usize % 12],
+        };
+
+        let instrument = self.get_instrument();
+
+        let mut comp = composition::Composition::new(composition::Tempo::new(120.0));
+        comp.instrument("piano", &instrument)
+            .notes(&[frequency], 0.5);
+
+        let mixer = comp.into_mixer();
+
+        engine
+            .play_mixer_realtime(&mixer)
+            .map_err(|e| JsValue::from_str(&format!("Failed to play note: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Set the current octave (2-6)
+    pub fn set_octave(&mut self, octave: i32) {
+        self.current_octave = octave.clamp(2, 6);
+    }
+
+    /// Get the current octave
+    pub fn get_octave(&self) -> i32 {
+        self.current_octave
+    }
+
+    /// Set the current instrument (0-7)
+    pub fn set_instrument(&mut self, index: u8) {
+        self.current_instrument = index.min(7);
+    }
+
+    /// Get instrument name by index
+    pub fn get_instrument_name(&self, index: u8) -> String {
+        match index {
+            0 => "Acoustic Piano".to_string(),
+            1 => "Electric Piano".to_string(),
+            2 => "Stage 73 Rhodes".to_string(),
+            3 => "Wurlitzer".to_string(),
+            4 => "Hammond Organ".to_string(),
+            5 => "Church Organ".to_string(),
+            6 => "Clavinet".to_string(),
+            7 => "Harpsichord".to_string(),
+            _ => "Unknown".to_string(),
+        }
+    }
+
+    fn get_instrument(&self) -> instruments::Instrument {
+        match self.current_instrument {
+            0 => instruments::Instrument::acoustic_piano(),
+            1 => instruments::Instrument::electric_piano(),
+            2 => instruments::Instrument::stage_73(),
+            3 => instruments::Instrument::wurlitzer(),
+            4 => instruments::Instrument::hammond_organ(),
+            5 => instruments::Instrument::church_organ(),
+            6 => instruments::Instrument::clavinet(),
+            7 => instruments::Instrument::harpsichord(),
+            _ => instruments::Instrument::acoustic_piano(),
+        }
+    }
+}
