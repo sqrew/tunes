@@ -6,7 +6,7 @@
 
 We implemented a complete GPU-accelerated FFT using compute shaders and thoroughly benchmarked it against CPU FFT. **Results show CPU FFT is 400-10,000x faster than GPU for typical audio FFT sizes** due to data transfer overhead.
 
-**Bottom line:** Stick with CPU FFT for audio processing. GPU acceleration is not viable for real-time audio spectral effects.
+**Conclusion:** CPU FFT is recommended for audio processing. GPU acceleration is not viable for real-time audio spectral effects.
 
 ---
 
@@ -14,13 +14,13 @@ We implemented a complete GPU-accelerated FFT using compute shaders and thorough
 
 A production-quality GPU FFT implementation featuring:
 
-- ✅ **Cooley-Tukey radix-2 DIT algorithm** in WGSL compute shaders
-- ✅ **GPU-accelerated bit-reversal** kernel
-- ✅ **Correct implementation** with zero error vs reference (rustfft)
-- ✅ **Comprehensive validation** suite across multiple FFT sizes
-- ✅ **Full forward/inverse FFT** support
+- **Cooley-Tukey radix-2 DIT algorithm** in WGSL compute shaders
+- **GPU-accelerated bit-reversal** kernel
+- **Correct implementation** with zero error vs reference (rustfft)
+- **Comprehensive validation** suite across multiple FFT sizes
+- **Full forward/inverse FFT** support
 
-The implementation is mathematically correct and well-tested. It just isn't faster for this use-case.
+The implementation is mathematically correct and well-tested. However, it does not provide performance benefits for this use case.
 
 ---
 
@@ -101,24 +101,24 @@ Audio processing operates on tiny buffers:
 
 ## When Might GPU FFT Help?
 
-GPU FFT *could* theoretically provide benefits for:
+GPU FFT could theoretically provide benefits for:
 
-### ✅ Offline Batch Processing
+### Offline Batch Processing
 - Processing entire albums at once
 - Amortize transfer overhead across thousands of FFTs
 - Not constrained by real-time latency
 
-### ✅ Discrete GPUs
+### Discrete GPUs
 - Dedicated GPUs have faster PCIe transfers
 - Better compute performance than integrated GPUs
 - Still unlikely to beat CPU due to transfer overhead
 
-### ✅ Very Large FFTs
+### Very Large FFTs
 - FFT sizes > 16,384 samples
 - Rarely needed for audio (introduces 370ms+ latency)
 - More parallelism to justify overhead
 
-### ✅ Complex Multi-Stage Pipelines
+### Complex Multi-Stage Pipelines
 If data stays on GPU for multiple operations:
 ```
 Upload → FFT → Effect → Effect → Effect → IFFT → Download
@@ -150,11 +150,11 @@ Our implementation uses the classic Decimation-In-Time approach:
 All validation tests pass with floating-point precision errors < 1e-5:
 
 ```
-✅ Impulse response: 0.0 error
-✅ Sine wave: 2.6e-5 max error
-✅ Complex signal: 1.4e-5 max error
-✅ Round-trip: 2.4e-7 max error
-✅ Random noise: 7.6e-6 max error
+Impulse response: 0.0 error
+Sine wave: 2.6e-5 max error
+Complex signal: 1.4e-5 max error
+Round-trip: 2.4e-7 max error
+Random noise: 7.6e-6 max error
 ```
 
 ---
@@ -204,11 +204,11 @@ The GPU FFT implementation can be found at:
 
 We set out to accelerate spectral effects with GPU compute shaders. Through systematic implementation, debugging, and benchmarking, we discovered that **CPU processing is definitively superior for real-time audio FFT**.
 
-This wasn't a failure - it was a successful investigation that:
-- ✅ Validated CPU SIMD as the correct optimization approach
-- ✅ Demonstrated thorough performance analysis
-- ✅ Created a working reference implementation
-- ✅ Documented why GPU doesn't help for audio
+This was a successful investigation that:
+- Validated CPU SIMD as the correct optimization approach
+- Demonstrated thorough performance analysis
+- Created a working reference implementation
+- Documented why GPU does not help for audio
 
 Sometimes the most valuable discovery is learning what *not* to do. We now know with certainty that CPU FFT is the right choice for audio processing.
 

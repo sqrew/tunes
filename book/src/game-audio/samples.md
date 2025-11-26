@@ -2,12 +2,12 @@
 
 ## Table of Contents
 
-- [The Absolute Easiest Way to Play Audio](#the-absolute-easiest-way-to-play-audio)
+- [Basic Sample Playback](#basic-sample-playback)
 - [The `play_sample!()` Macro vs `engine.play_sample()`](#the-play_sample-macro-vs-engineplay_sample)
   - [`play_sample!()` Macro (Recommended)](#1-play_sample-macro-recommended-for-production)
   - [`engine.play_sample()` Method](#2-engineplay_sample-method-quick-and-flexible)
 - [Startup Validation with `validate_all_samples()`](#startup-validation-with-validate_all_samples)
-- [Automatic Caching](#automatic-caching-no-performance-worries)
+- [Automatic Caching](#automatic-caching)
 - [When to Use What](#when-to-use-what)
 - [Loading Your First Sample](#loading-your-first-sample)
 - [Quick Reference: Sample Playback API](#quick-reference-sample-playback-api)
@@ -42,13 +42,13 @@
 
 ---
 
-**Want to just play a sound effect? Jump to [The Absolute Easiest Way to Play Audio](#the-absolute-easiest-way-to-play-audio) below.**
+**For basic sample playback, see [Basic Sample Playback](#basic-sample-playback) below.**
 
 ---
 
-## The Absolute Easiest Way to Play Audio
+## Basic Sample Playback
 
-Seriously. One line of setup, one line per sound. That's it.
+One line of setup, one line per sound.
 
 ```rust
 use tunes::prelude::*;
@@ -56,7 +56,7 @@ use tunes::prelude::*;
 fn main() -> anyhow::Result<()> {
     let engine = AudioEngine::new()?;
 
-    // That's it. You're done. Play sounds anywhere:
+    // Play sounds from anywhere in your code:
     engine.play_sample("assets/explosion.wav");
     engine.play_sample("assets/footstep.ogg");
     engine.play_sample("assets/coin.mp3");
@@ -68,19 +68,15 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-**Why this matters:**
+**Characteristics:**
 
-- **Perfect for game jams** - Get audio working in 30 seconds
-- **Zero learning curve** - If you can call a function, you can play audio
-- **Indie dev friendly** - Prototype fast, optimize later
-- **Simpler than Kira, Rodio, odd-io** - Compare for yourself
-- **Non-blocking by default** - Won't freeze your game loop
-- **Concurrent playback built-in** - Play dozens of sounds at once, it just works
-- **Automatic caching** - Repeated sounds are instant (no manual pre-loading needed!)
+- Suitable for game jams and rapid prototyping
+- Minimal API surface
+- Non-blocking by default
+- Concurrent playback built-in
+- Automatic caching (repeated sounds use cached data)
 
-**The simplest audio API in Rust, with smart performance built-in.**
-
-When you need more power (effects, timing, synthesis), the full Composition system is there. But for "I just want to play a sound," you're already done reading.
+When additional capabilities are needed (effects, timing, synthesis), the Composition system is available.
 
 ---
 
@@ -174,9 +170,9 @@ This catches typos and missing files during development instead of during gamepl
 
 ---
 
-## Automatic Caching (No Performance Worries!)
+## Automatic Caching
 
-**Good news:** Both `play_sample!()` and `engine.play_sample()` automatically cache samples by path. The first call loads from disk, all subsequent calls use the cached version (instant Arc clone).
+Both `play_sample!()` and `engine.play_sample()` automatically cache samples by path. The first call loads from disk, all subsequent calls use the cached version (Arc clone).
 
 ```rust
 let engine = AudioEngine::new()?;
@@ -184,23 +180,23 @@ let engine = AudioEngine::new()?;
 // First call: loads from disk (~1-10ms)
 engine.play_sample("assets/footstep.wav");
 
-// Subsequent calls: instant! (uses cache)
-engine.play_sample("assets/footstep.wav");  // instant
-engine.play_sample("assets/footstep.wav");  // instant
-engine.play_sample("assets/footstep.wav");  // instant
+// Subsequent calls use cache
+engine.play_sample("assets/footstep.wav");  // cached
+engine.play_sample("assets/footstep.wav");  // cached
+engine.play_sample("assets/footstep.wav");  // cached
 
-// You can spam this in your game loop - it's fast!
+// Multiple calls in game loops are handled efficiently
 for _ in 0..100 {
     engine.play_sample("assets/footstep.wav");  // All instant after first load
 }
 ```
 
 **This means:**
-- Spam footsteps? Fast!
-- Machine gun fire? Fast!
-- Rain drops? Fast!
-- Repeated UI sounds? Fast!
-- Zero manual cache management needed!
+- Rapid footstep playback: supported
+- Machine gun fire: supported
+- Rain drops: supported
+- Repeated UI sounds: supported
+- No manual cache management required
 - SIMD-accelerated playback (4-8 samples processed simultaneously)
 
 **Optional: Pre-load during initialization to eliminate first-load delay:**
@@ -225,7 +221,7 @@ engine.remove_cached_sample("assets/level1_boss.wav")?;
 engine.clear_sample_cache()?;
 ```
 
-**You don't need to worry about caching - it just works!**
+Caching is handled automatically.
 
 ---
 
@@ -235,7 +231,7 @@ engine.clear_sample_cache()?;
 - Game sound effects (footsteps, explosions, UI clicks, impacts)
 - Any repeated sounds (automatic caching makes this fast!)
 - Prototyping / game jams / rapid development
-- You just want a sound to play RIGHT NOW
+- Immediate audio playback is required
 - Simplicity is priority #1
 
 **Use the full Composition API when:**

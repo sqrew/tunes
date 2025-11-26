@@ -459,4 +459,4 @@ Now that you understand synthesis basics, explore:
 
 ---
 
-**Experiment!** Synthesis is learned by doing. Try different waveforms, envelopes, and filters. Listen to how each parameter changes the sound. There's no "wrong" sound in synthesis—only discovery.
+Synthesis is learned through experimentation. Adjust waveforms, envelopes, and filters to observe how each parameter affects the output.

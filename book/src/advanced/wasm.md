@@ -500,4 +500,4 @@ Use `Sample::from_bytes()` for all audio loading on web.
 - **Live coding:** Port the live coding experience to the browser
 - **Generative music:** Create algorithmic music players
 
-WebAssembly support makes Tunes accessible to a whole new audience. Share your creations online without requiring users to install anything!
+WebAssembly support enables browser-based audio synthesis. Users can access applications without installing native software.

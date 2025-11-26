@@ -1,6 +1,6 @@
-# Level 2: Playing Samples (Game Audio Made Easy)
+# Level 2: Playing Samples
 
-Before we dive into composition, let's see the simplest possible use case: playing audio files. Perfect for game audio, UI sounds, or any situation where you just need to play a sound.
+Before diving into composition, this section covers basic sample playback. This approach is suitable for game audio, UI sounds, or any situation requiring audio file playback.
 
 ```rust
 use tunes::prelude::*;
@@ -8,7 +8,7 @@ use tunes::prelude::*;
 fn main() -> Result<(), anyhow::Error> {
     let engine = AudioEngine::new()?;
 
-    // That's it! Play any audio file
+    // Play any audio file
     engine.play_sample("explosion.wav")?;
     engine.play_sample("jump.wav")?;
     engine.play_sample("coin.wav")?;
@@ -18,7 +18,7 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-**Two lines.** That's all you need for game audio.
+This requires two lines of code for basic game audio playback.
 
 ## What's Happening
 
@@ -36,9 +36,9 @@ Play any of these formats:
 - **FLAC** (`.flac`)
 - **AAC / M4A** (`.aac`, `.m4a`)
 
-No manual format handling - just pass the path.
+No manual format handling required.
 
-## Why This Is Powerful
+## Performance Characteristics
 
 ```rust
 use tunes::prelude::*;
@@ -49,38 +49,38 @@ fn main() -> Result<(), anyhow::Error> {
     // First call: loads from disk (~1-10ms)
     engine.play_sample("footstep.wav")?;
 
-    // All subsequent calls: instant! (uses cache)
-    engine.play_sample("footstep.wav")?;  // ⚡ instant
-    engine.play_sample("footstep.wav")?;  // ⚡ instant
-    engine.play_sample("footstep.wav")?;  // ⚡ instant
+    // All subsequent calls use cache
+    engine.play_sample("footstep.wav")?;  // cached
+    engine.play_sample("footstep.wav")?;  // cached
+    engine.play_sample("footstep.wav")?;  // cached
 
-    // You can spam sounds in game loops - no performance issues
+    // Multiple concurrent sounds supported without performance degradation
     for _ in 0..50 {
-        engine.play_sample("footstep.wav")?;  // All instant, SIMD-accelerated
+        engine.play_sample("footstep.wav")?;  // SIMD-accelerated playback
     }
 
     Ok(())
 }
 ```
 
-**Behind the scenes:**
-- ✅ Automatic caching by file path
-- ✅ SIMD-accelerated playback (4-8 samples processed simultaneously)
-- ✅ Concurrent mixing with no manual management
-- ✅ Zero allocations in audio callback
+**Implementation details:**
+- Automatic caching by file path
+- SIMD-accelerated playback (4-8 samples processed simultaneously)
+- Concurrent mixing with no manual management
+- Zero allocations in audio callback
 
-## For Game Developers
+## Use Cases
 
-This is perfect for:
+Suitable for:
 - Sound effects (explosions, footsteps, UI clicks)
 - Bullet hell games with hundreds of concurrent sounds
 - Rapid prototyping without complex setup
-- Any situation where you just need to play a sound
+- General audio file playback
 
 See the [Game Engine Integration](../game-audio/game-engine-integration.md) chapter for how to use this in any Rust game engine (Bevy, ggez, macroquad, bracket-lib, etc).
 
 ---
 
-**This is the simplest audio API in Rust.** But when you need more power (synthesis, composition, effects), it's all there waiting for you.
+This covers basic sample playback. Additional capabilities (synthesis, composition, effects) are available when needed.
 
 **Next:** [Level 3: Making Music](./making-music.md) →

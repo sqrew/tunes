@@ -31,12 +31,12 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-## The Magic
+## How It Works
 
 - **`sequences::collatz(27, 20)`** – Generates 20 numbers from the Collatz sequence starting at 27
 - **`sequences::map_to_scale()`** – Maps those numbers to musical notes in C minor pentatonic across 2 octaves
 - **`.notes(&melody, 0.25)`** – Plays each note for 0.25 seconds
-- **The result?** A hauntingly beautiful melody that sounds composed, but emerged from mathematics
+- **The result** – A melodic sequence derived from mathematical operations
 
 ## The Collatz Sequence
 
@@ -53,7 +53,7 @@ This seemingly simple rule creates rhythmic patterns and melodic contours that a
 
 ## Next Steps
 
-Now that you've heard the power of algorithmic composition, you're ready to:
+With algorithmic composition covered, the following topics are available:
 
 - Explore other sequence generators (Fibonacci, primes, chaos attractors)
 - Combine multiple instruments and effects

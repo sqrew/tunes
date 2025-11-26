@@ -168,7 +168,7 @@ engine.play_sample("laser.wav")?;
 **When CPU is Better:**
 - Simple synthesis (CPU is faster)
 - Small workloads (GPU overhead not worth it)
-- Integrated graphics (CPU optimizations beat GPU)
+- Integrated graphics (CPU optimizations outperform GPU)
 
 **Overhead Costs:**
 - GPU initialization time
@@ -232,12 +232,12 @@ Reason: No GPU available
 
 | Use Case | Integrated GPU | Discrete GPU | CPU Only |
 |----------|----------------|--------------|----------|
-| Game audio (simple) | ❌ Slower | ✅ Experiment | ✅ Recommended |
-| Game audio (complex) | ⚠️ Marginal | ✅ Test it | ✅ Good |
-| Music production | ❌ Skip | ⚠️ Maybe | ✅ Recommended |
-| Batch export | ⚠️ Marginal (1.1x) | ✅ Worth trying | ✅ Good |
-| Live coding | ❌ Skip | ❌ Skip | ✅ Recommended |
-| Web/mobile | ❌ N/A | ❌ N/A | ✅ Only option |
+| Game audio (simple) | Not recommended | Experimental | Recommended |
+| Game audio (complex) | Marginal benefit | Test both | Recommended |
+| Music production | Not recommended | Limited benefit | Recommended |
+| Batch export | Marginal (1.1x) | Worth testing | Recommended |
+| Live coding | Not recommended | Not recommended | Recommended |
+| Web/mobile | N/A | N/A | Only option |
 
 ---
 

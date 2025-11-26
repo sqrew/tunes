@@ -29,7 +29,7 @@ Run it with `cargo run`. You should hear a pure tone for one second.
 - **`.note()`** – Plays a frequency (440Hz) for a duration (1 second)
 - **`.play_mixer()`** – Renders and plays the audio
 
-Simple, but you've just synthesized sound from scratch in Rust!
+This demonstrates basic audio synthesis in Rust.
 
 ---
 

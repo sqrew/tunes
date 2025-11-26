@@ -1,12 +1,12 @@
 # Performance Optimizations
 
-Tunes achieves exceptional real-time audio performance through CPU SIMD, multi-core parallelism, and optional experimental GPU compute shaders.
+Tunes provides real-time audio performance through CPU SIMD, multi-core parallelism, and optional experimental GPU compute shaders.
 
 **Performance at a Glance (Measured on i5-6500, Intel HD 530):**
 - **CPU Synthesis (uncached):** 90.0x realtime (FM synthesis, 192 notes)
 - **CPU Synthesis (cached):** 18.6x realtime (complex compositions)
 - **SIMD Concurrent Sample Playback:** 11-17x realtime (true concurrent: 25-100 samples playing simultaneously)
-- **Concurrent Capacity:** 550-1,100+ samples in real-world scenarios (10-20x more than other libraries!)
+- **Concurrent Capacity:** 550-1,100+ samples in real-world scenarios
 - **SIMD Effects (stacked):** 98.8x realtime (all effects combined)
 - **WAV Export:** 12.2x realtime (124-second multi-track)
 - **GPU (Intel HD 530 integrated):** ~1.1x speedup vs CPU (marginal)
@@ -728,7 +728,7 @@ let mut mixer = comp.into_mixer();
 mixer.enable_cache();  // Beneficial for large workloads
 
 // GPU is experimental and requires "gpu" feature flag
-// Most users should stick with CPU (81x is already very fast!)
+// CPU performance (81x realtime) is sufficient for most applications
 // mixer.enable_gpu();  // Only if you have discrete GPU and want to experiment
 ```
 
@@ -822,7 +822,7 @@ Tunes provides **multiple layers of optimization** that work together:
 
 **Default CPU Performance:** 90x realtime uncached, 18.6x cached (measured on i5-6500)
 **SIMD Concurrent Sample Playback:** 11-17x realtime with true concurrent playback (25-100 samples simultaneously)
-**Concurrent Sample Capacity:** 550-1,100+ samples in real-world scenarios (10-20x more than other libraries!)
+**Concurrent Sample Capacity:** 550-1,100+ samples in real-world scenarios
 **SIMD Effects:** 98.8x realtime with all effects stacked
 **GPU Performance:** 1.1x speedup on integrated GPUs, scales with discrete hardware
 

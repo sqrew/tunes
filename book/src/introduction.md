@@ -18,10 +18,10 @@ Unlike traditional audio libraries that focus solely on sample playback, Tunes p
 
 ## Who is it for?
 
-**Tunes is designed for developers who want to create sound, not just play it back.**
+**Tunes is designed for developers who want to create sound, not merely play it back.**
 
 ### Game Developers
-Build dynamic soundscapes that respond to gameplay. Generate procedural sound effects. Create adaptive music systems. Perfect for:
+Build dynamic soundscapes that respond to gameplay. Generate procedural sound effects. Create adaptive music systems. Suitable for:
 - Roguelikes with generative soundtracks
 - Rhythm games that compose on-the-fly
 - Ambient games with evolving audio
@@ -41,13 +41,13 @@ Create command-line music generators, audio processors, or batch rendering tools
 ## Why Tunes?
 
 **If you need:**
-- ✅ Synthesis and composition in Rust
-- ✅ Real-time concurrent playback
-- ✅ Export to WAV/FLAC/MIDI/STEM
-- ✅ Algorithmic/generative music
-- ✅ No runtime dependencies
+- Synthesis and composition in Rust
+- Real-time concurrent playback
+- Export to WAV/FLAC/MIDI/STEM
+- Algorithmic/generative music
+- No runtime dependencies
 
-**Then Tunes is for you.**
+**Tunes addresses these requirements.**
 
 **If you need:**
 - Visual live coding interface → Consider [Sonic Pi](https://sonic-pi.net/)
@@ -59,4 +59,4 @@ Create command-line music generators, audio processors, or batch rendering tools
 
 ---
 
-**Ready to get started?** → [Installation & First Sound](./getting-started/installation.md)
+**Next:** [Installation & First Sound](./getting-started/installation.md)

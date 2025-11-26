@@ -1,6 +1,6 @@
 # Effects
 
-Tunes provides a professional-grade effects system with 17 built-in effects that can be applied at track, bus, and master levels.
+Tunes provides an effects system with 17 built-in effects that can be applied at track, bus, and master levels.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Tunes provides a professional-grade effects system with 17 built-in effects that
 - [Two Ways to Apply Effects](#two-ways-to-apply-effects)
   - [Direct Method Calls (Classic)](#direct-method-calls-classic-syntax)
   - [Effects Namespace (New)](#effects-namespace-new-syntax)
-- [The 16 Effects](#the-16-effects)
+- [The 17 Effects](#the-17-effects)
   - [1. EQ (3-Band Equalizer)](#1-eq-3-band-equalizer)
   - [2. Parametric EQ](#2-parametric-eq)
   - [3. Compressor](#3-compressor) (includes Sidechaining, Stereo-Linked, Multiband)
@@ -61,7 +61,7 @@ Priority 200-249: Time/Space (Delay, Reverb)
 Priority 250+: Final (Reserved)
 ```
 
-**Why this matters:** Effect order dramatically impacts sound. EQ before compression gives different results than compression before EQ. The priority system ensures professional signal flow automatically.
+**Why this matters:** Effect order impacts the output. EQ before compression produces different results than compression before EQ. The priority system maintains a consistent signal flow.
 
 ### Dual-Mode Processing
 
@@ -264,7 +264,7 @@ comp.track("layered")
 
 ---
 
-## The 16 Effects
+## The 17 Effects
 
 ### 1. EQ (3-Band Equalizer)
 
@@ -340,7 +340,7 @@ comp.track("bass")
 
 #### Sidechaining / Ducking
 
-The compressor supports **sidechaining** - using one signal to control compression of another. This is essential for EDM "pumping" effects and professional mixing.
+The compressor supports **sidechaining** - using one signal to control compression of another. This is commonly used for EDM "pumping" effects and mixing applications.
 
 ```rust
 let mut comp = Composition::new(Tempo::new(128.0));
@@ -393,7 +393,7 @@ See the `examples/sidechaining.rs` for complete examples of different sidechaini
 
 #### Stereo-Linked Compression
 
-When processing stereo signals (buses and master), the compressor uses **stereo-linked** detection to prevent stereo image shifts. This is a professional technique used in all high-quality mixing software.
+When processing stereo signals (buses and master), the compressor uses **stereo-linked** detection to prevent stereo image shifts.
 
 **How it works:**
 ```
@@ -419,14 +419,14 @@ mixer.bus("drums")
 ```
 
 **Technical details:**
-The implementation uses `process_stereo_linked()` internally for all bus and master compressors, ensuring professional-grade stereo image preservation. This is especially important for:
+The implementation uses `process_stereo_linked()` internally for all bus and master compressors to maintain stereo image integrity. This is relevant for:
 - Master bus compression (mix glue)
 - Drum bus compression (maintains stereo width of overheads/rooms)
 - Sidechained compression (EDM pump stays centered)
 
 #### Multiband Compression
 
-**New feature!** Tunes now supports multiband compression - splitting the signal into frequency bands and applying different compression to each band independently. This is a professional mastering tool unavailable in most Rust audio libraries.
+Tunes supports multiband compression - splitting the signal into frequency bands and applying different compression to each band independently.
 
 **Why multiband compression?**
 
@@ -697,7 +697,7 @@ comp.track("synth").convolution_reverb(reverb);
 
 #### GPU Acceleration (Optional)
 
-**New feature!** Convolution reverb supports GPU acceleration for massive performance improvements on long impulse responses.
+Convolution reverb supports GPU acceleration for improved performance on long impulse responses.
 
 **Enable GPU acceleration:**
 ```rust

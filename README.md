@@ -350,8 +350,7 @@ fn main() -> anyhow::Result<()> {
 | **SIMD acceleration**    | Some          | No              | Via Overtone    | No                | **Yes (11-17x)**   | No      |
 | **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
 | **FLAC export**          | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
-| **MIDI import**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
-| **MIDI export**          | Yes           | No              | No              | No                | **Yes**            | Yes     |
+| **MIDI import/export**   | Yes           | No              | No              | No                | **Yes**            | Yes     |
 | **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
 | **Music theory**         | Manual        | Manual          | Yes             | Some              | **Yes (built-in)** | Yes     |
 | **Standalone binary**    | No            | No              | No              | No                | **Yes**            | No      |

@@ -2,7 +2,7 @@
 
 Tunes is **framework-agnostic** and integrates trivially with any Rust game engine. No wrapper crate needed - just store `AudioEngine` in your game state and call `play_sample()`.
 
-> **Universal Pattern:** All Rust game engines follow the same pattern: create `AudioEngine`, store it, call methods. That's it.
+> **Universal Pattern:** All Rust game engines follow the same pattern: create `AudioEngine`, store it, call methods.
 
 ## Table of Contents
 
@@ -93,7 +93,7 @@ fn main() {
 }
 ```
 
-> **💡 GPU Tip:** GPU acceleration provides marginal benefit for typical game audio workloads. Integrated GPUs (Intel HD, AMD Vega) show ~1.0x performance vs CPU. Discrete GPUs (RTX, RX series) may show 2-5x improvement for synthesis-heavy workloads. For most games, CPU performance (50-70x realtime) is already excellent.
+> **Note:** GPU acceleration provides marginal benefit for typical game audio workloads. Integrated GPUs (Intel HD, AMD Vega) show ~1.0x performance vs CPU. Discrete GPUs (RTX, RX series) may show 2-5x improvement for synthesis-heavy workloads. CPU performance (50-70x realtime) is sufficient for most games.
 
 **3. Play audio from any system:**
 
@@ -115,13 +115,13 @@ fn game_audio_system(
 }
 ```
 
-That's it! The AudioEngine automatically handles:
-- ✅ Caching (repeated sounds are instant, Arc-based sharing)
-- ✅ Concurrent playback (100+ sounds simultaneously)
-- ✅ SIMD acceleration (47x realtime measured)
-- ✅ Multi-core parallelism (Rayon, 54x realtime measured)
-- ✅ Automatic mixing (zero-copy where possible)
-- ✅ Optional GPU acceleration (marginal benefit on most hardware)
+The AudioEngine handles:
+- Caching (repeated sounds use Arc-based sharing)
+- Concurrent playback (100+ sounds simultaneously)
+- SIMD acceleration (47x realtime measured)
+- Multi-core parallelism (Rayon, 54x realtime measured)
+- Automatic mixing (zero-copy where possible)
+- Optional GPU acceleration
 
 ## Complete Example
 
@@ -266,7 +266,7 @@ fn stop_specific_sound(
 
 ## Performance
 
-Tunes is designed for exceptional real-time game audio performance:
+Tunes provides real-time game audio performance:
 
 **Measured on i5-6500 @ 3.2GHz:**
 - **47x realtime** with 50 concurrent samples (SIMD acceleration)
@@ -589,6 +589,6 @@ fn main() {
 ## Performance Across All Engines
 **Your choice of engine doesn't affect Tunes performance.** The audio runs on a dedicated thread with lock-free communication regardless of which engine you use.
 
-**That's it!** Tunes integrates with any Rust game engine in just a few lines. No complex setup, no audio thread management, no wrapper crates - just call `play_sample()` and go.
+Tunes integrates with any Rust game engine. No wrapper crates required.
 
-**Need synthesis or composition?** See the [Composition chapter](../concepts/composition.md) for dynamic music and procedural audio.
+For synthesis and composition, see the [Composition chapter](../concepts/composition.md).
