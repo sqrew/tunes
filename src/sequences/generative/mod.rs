@@ -36,3 +36,9 @@ pub use perlin_noise::perlin_noise_bipolar;
 pub use rossler_attractor::rossler_spiral;
 pub use clifford_attractor::{clifford_x, clifford_y, clifford_flow};
 pub use ikeda_map::{ikeda_x, ikeda_y, ikeda_spiral};
+
+// Presets for easy use:
+pub use sine_map::{sine_chaotic, sine_gentle, sine_smooth};
+pub use tent_map::{tent_chaotic, tent_mild, tent_moderate};
+pub use henon_map::{henon_classic, henon_classic_x, henon_classic_y, henon_intense, henon_mild};
+pub use cantor_set::{cantor_rhythm_16, cantor_rhythm_27, cantor_rhythm_81, cantor_rhythm_9};

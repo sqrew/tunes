@@ -178,6 +178,113 @@ pub fn henon_y(a: f32, b: f32, x0: f32, y0: f32, n: usize) -> Vec<f32> {
     generate(a, b, x0, y0, n).1
 }
 
+// ============================================================================
+// PRESETS - Ready-to-use Hénon map configurations
+// ============================================================================
+
+/// Classic Hénon attractor (a=1.4, b=0.3)
+///
+/// The famous Hénon attractor parameters discovered by Michel Hénon.
+/// Produces the classic chaotic butterfly-like pattern.
+///
+/// # Arguments
+/// * `n` - Number of points to generate
+///
+/// # Returns
+/// Tuple of (x_values, y_values)
+///
+/// # Example
+/// ```
+/// use tunes::sequences::henon_classic;
+///
+/// let (x, y) = henon_classic(64);
+/// assert_eq!(x.len(), 64);
+/// assert_eq!(y.len(), 64);
+/// ```
+pub fn henon_classic(n: usize) -> (Vec<f32>, Vec<f32>) {
+    generate(1.4, 0.3, 0.1, 0.1, n)
+}
+
+/// Classic Hénon attractor - x values only
+///
+/// Convenience function returning only the x-coordinate from the classic attractor.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::henon_classic_x;
+///
+/// let melody = henon_classic_x(32);
+/// assert_eq!(melody.len(), 32);
+/// ```
+pub fn henon_classic_x(n: usize) -> Vec<f32> {
+    henon_classic(n).0
+}
+
+/// Classic Hénon attractor - y values only
+///
+/// Convenience function returning only the y-coordinate from the classic attractor.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::henon_classic_y;
+///
+/// let rhythm = henon_classic_y(32);
+/// assert_eq!(rhythm.len(), 32);
+/// ```
+pub fn henon_classic_y(n: usize) -> Vec<f32> {
+    henon_classic(n).1
+}
+
+/// Mild Hénon map with less chaotic behavior
+///
+/// Uses a=1.2, b=0.25 for gentler, more periodic patterns.
+/// Good for subtle melodic movement with some structure.
+///
+/// # Arguments
+/// * `n` - Number of points to generate
+///
+/// # Returns
+/// Tuple of (x_values, y_values)
+///
+/// # Example
+/// ```
+/// use tunes::sequences::henon_mild;
+///
+/// let (x, y) = henon_mild(32);
+/// assert_eq!(x.len(), 32);
+/// ```
+pub fn henon_mild(n: usize) -> (Vec<f32>, Vec<f32>) {
+    generate(1.2, 0.25, 0.1, 0.1, n)
+}
+
+/// Intense Hénon map with stronger chaos
+///
+/// Uses a=1.35, b=0.35 for more intense chaotic behavior.
+/// Creates more dramatic, unpredictable patterns.
+///
+/// # Arguments
+/// * `n` - Number of points to generate
+///
+/// # Returns
+/// Tuple of (x_values, y_values)
+///
+/// # Example
+/// ```
+/// use tunes::sequences::henon_intense;
+///
+/// let (x, y) = henon_intense(64);
+/// assert_eq!(x.len(), 64);
+/// ```
+pub fn henon_intense(n: usize) -> (Vec<f32>, Vec<f32>) {
+    generate(1.35, 0.35, 0.1, 0.1, n)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

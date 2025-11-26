@@ -121,6 +121,67 @@ pub fn generate(r: f32, x0: f32, n: usize) -> Vec<f32> {
     result
 }
 
+// ============================================================================
+// PRESETS - Ready-to-use sine map configurations
+// ============================================================================
+
+/// Smooth chaotic sine map - musical sweet spot
+///
+/// Uses r=2.7 which produces smooth, flowing chaos ideal for melodic contours.
+/// Less jagged than tent or logistic maps.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::sine_smooth;
+///
+/// let melody = sine_smooth(32);
+/// assert_eq!(melody.len(), 32);
+/// ```
+pub fn sine_smooth(n: usize) -> Vec<f32> {
+    generate(2.7, 0.4, n)
+}
+
+/// Fully chaotic sine map at onset of chaos
+///
+/// Uses r=π (3.14159...) for maximum chaos while staying bounded.
+/// Creates more erratic patterns than sine_smooth.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::sine_chaotic;
+///
+/// let chaos = sine_chaotic(64);
+/// assert_eq!(chaos.len(), 64);
+/// ```
+pub fn sine_chaotic(n: usize) -> Vec<f32> {
+    generate(PI, 0.5, n)
+}
+
+/// Gentle sine map with moderate variation
+///
+/// Uses r=2.5 for smoother, more predictable patterns.
+/// Good for subtle melodic movement.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::sine_gentle;
+///
+/// let gentle = sine_gentle(32);
+/// assert_eq!(gentle.len(), 32);
+/// ```
+pub fn sine_gentle(n: usize) -> Vec<f32> {
+    generate(2.5, 0.3, n)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

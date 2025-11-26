@@ -80,6 +80,107 @@ pub fn generate(iterations: usize, resolution: usize) -> Vec<u32> {
     set
 }
 
+// ============================================================================
+// PRESETS - Ready-to-use Cantor set configurations
+// ============================================================================
+
+/// 16-step Cantor rhythm pattern (2 iterations)
+///
+/// Creates a fractal rhythm pattern over 16 steps, perfect for
+/// standard 4/4 time signatures. Returns hit positions as indices.
+///
+/// # Returns
+/// Vec of step indices where hits occur
+///
+/// # Example
+/// ```
+/// use tunes::sequences::cantor_rhythm_16;
+///
+/// let hits = cantor_rhythm_16();
+/// // Use in drum grid:
+/// // comp.track("drums").drum_grid(16, 0.125).kick(&hits);
+/// ```
+pub fn cantor_rhythm_16() -> Vec<usize> {
+    generate(2, 16)
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// 27-step Cantor rhythm pattern (3 iterations)
+///
+/// Creates a more detailed fractal rhythm over 27 steps (3^3).
+/// Perfect for clean Cantor set divisions. Returns hit positions.
+///
+/// # Returns
+/// Vec of step indices where hits occur
+///
+/// # Example
+/// ```
+/// use tunes::sequences::cantor_rhythm_27;
+///
+/// let hits = cantor_rhythm_27();
+/// assert_eq!(hits.len(), 8); // 2^3 = 8 hits remain after 3 iterations
+/// ```
+pub fn cantor_rhythm_27() -> Vec<usize> {
+    generate(3, 27)
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// 9-step Cantor rhythm pattern (1 iteration)
+///
+/// Simple Cantor pattern with just one iteration over 9 steps.
+/// Creates a basic "3-gap-3" pattern. Good for triplet-based rhythms.
+///
+/// # Returns
+/// Vec of step indices where hits occur
+///
+/// # Example
+/// ```
+/// use tunes::sequences::cantor_rhythm_9;
+///
+/// let hits = cantor_rhythm_9();
+/// assert_eq!(hits, vec![0, 1, 2, 6, 7, 8]); // First and last thirds
+/// ```
+pub fn cantor_rhythm_9() -> Vec<usize> {
+    generate(1, 9)
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// 81-step Cantor rhythm pattern (4 iterations)
+///
+/// Highly detailed fractal rhythm over 81 steps (3^4).
+/// Creates complex, self-similar rhythmic structures.
+///
+/// # Returns
+/// Vec of step indices where hits occur
+///
+/// # Example
+/// ```
+/// use tunes::sequences::cantor_rhythm_81;
+///
+/// let hits = cantor_rhythm_81();
+/// assert_eq!(hits.len(), 16); // 2^4 = 16 hits remain after 4 iterations
+/// ```
+pub fn cantor_rhythm_81() -> Vec<usize> {
+    generate(4, 81)
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

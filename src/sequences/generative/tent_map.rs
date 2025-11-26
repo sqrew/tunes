@@ -113,6 +113,67 @@ pub fn generate(mu: f32, x0: f32, n: usize) -> Vec<f32> {
     result
 }
 
+// ============================================================================
+// PRESETS - Ready-to-use tent map configurations
+// ============================================================================
+
+/// Fully chaotic tent map (μ = 2.0)
+///
+/// The classic chaotic tent map with μ=2.0, which is ergodic and fills
+/// the interval [0, 1] uniformly over time. Best for maximum variation.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::tent_chaotic;
+///
+/// let chaos = tent_chaotic(64);
+/// assert_eq!(chaos.len(), 64);
+/// ```
+pub fn tent_chaotic(n: usize) -> Vec<f32> {
+    generate(2.0, 0.3, n)
+}
+
+/// Moderate tent map with mixed periodic/chaotic behavior
+///
+/// Uses μ=1.8 for a mix of periodic and chaotic behavior.
+/// Less erratic than full chaos, with more discernible patterns.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::tent_moderate;
+///
+/// let seq = tent_moderate(32);
+/// assert_eq!(seq.len(), 32);
+/// ```
+pub fn tent_moderate(n: usize) -> Vec<f32> {
+    generate(1.8, 0.4, n)
+}
+
+/// Mild tent map with more periodic behavior
+///
+/// Uses μ=1.5 for gentler variation with more periodic structure.
+/// Good for subtle, semi-predictable patterns.
+///
+/// # Arguments
+/// * `n` - Number of values to generate
+///
+/// # Example
+/// ```
+/// use tunes::sequences::tent_mild;
+///
+/// let seq = tent_mild(32);
+/// assert_eq!(seq.len(), 32);
+/// ```
+pub fn tent_mild(n: usize) -> Vec<f32> {
+    generate(1.5, 0.5, n)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
