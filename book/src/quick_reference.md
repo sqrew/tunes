@@ -163,12 +163,12 @@ comp.track("chords")
 
 ```rust
 // Fire-and-forget (simple)
-engine.play_sample("explosion.wav")?;
-engine.play_sample("footstep.wav")?;
+engine.play_sample("explosion.wav");   // plays sample, caches
+play_sample!(engine, "explosion.wav"); // does the same but also has runtime startup file validation and compile time path resolution
 
 // Pre-load for instant playback
 engine.preload_sample("jump.wav")?;
-engine.play_sample("jump.wav")?;              // Instant! Already cached
+engine.play_sample("jump.wav");              // Instant! Already cached
 
 // Sample playback in compositions (precise timing)
 comp.load_sample("kick", "samples/kick.wav")?;
@@ -504,12 +504,11 @@ engine.play_mixer(&laser_sound(880.0).into_mixer())?;
 
 ## Performance Tips
 
-- ✅ Pre-load frequently used samples with `preload_sample()`
-- ✅ Use `play_sample()` for fire-and-forget game audio
-- ✅ Use `stream_file()` for long audio files (music, ambience)
-- ✅ SIMD and multi-core parallelism are automatic
-- ✅ GPU acceleration helps with heavy synthesis workloads
-- ✅ Cache enables 18.6x realtime for repeated compositions
+- Pre-load frequently used samples with `preload_sample() to avoid first-time lookup (caches sample)`
+- Use `play_sample!()` for fire-and-forget game audio, compile time path resolution and startup file validation
+- Use `stream_file()` for long audio files (music, ambience)
+- SIMD and multi-core parallelism are automatic
+- GPU acceleration helps with heavy synthesis workloads (if you have a discrete GPU) or wav exporting
 
 ## Full Documentation
 

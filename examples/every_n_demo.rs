@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("basic_accent")
         .pattern_start()
-        .rhythm("x-x-", DrumType::Kick, 0.125)
+        .drum(DrumType::Kick).drum(DrumType::Kick)
         .repeat(7) // 16 kicks total
         .every_n(4, DrumType::Crash);
 
@@ -26,7 +26,8 @@ fn main() -> anyhow::Result<()> {
     comp.track("multi_variation")
         .at(2.0)
         .pattern_start()
-        .rhythm("x-x-x-x-", DrumType::HiHatClosed, 0.0625)
+        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
         .repeat(7) // 32 hihats
         .every_n(4, DrumType::Crash) // Crash every 4th
         .every_n(8, DrumType::Ride); // Ride every 8th
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("drum_variation")
         .at(9.0)
         .pattern_start()
-        .rhythm("x---x---", DrumType::Kick, 0.125)
+        .drum(DrumType::Kick).drum(DrumType::Kick)
         .repeat(7) // 16 kicks
         .every_n(8, DrumType::Snare); // Fill on 8th, 16th
 
@@ -60,7 +61,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("polyrhythm")
         .at(11.0)
         .pattern_start()
-        .rhythm("x-", DrumType::HiHatClosed, 0.0625)
+        .drum(DrumType::HiHatClosed)
         .repeat(29) // 30 hits
         .every_n(3, DrumType::Clap) // Every 3rd
         .every_n(5, DrumType::Rimshot); // Every 5th
@@ -72,8 +73,9 @@ fn main() -> anyhow::Result<()> {
     comp.track("hihat_groove")
         .at(13.0)
         .pattern_start()
-        .rhythm("xxxx xxxx", DrumType::HiHatClosed, 0.0625)
-        .repeat(3) // 32 closed hihats
+        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
+        .repeat(7) // 32 closed hihats
         .every_n(6, DrumType::HiHatOpen); // Open every 6th
 
     // ===== PART 7: PROGRESSIVE DENSITY =====
@@ -84,13 +86,13 @@ fn main() -> anyhow::Result<()> {
     comp.track("progressive")
         .at(15.0)
         .pattern_start()
-        .rhythm("x---", DrumType::Kick808, 0.125);
+        .drum(DrumType::Kick808);
 
     // Layer 1: Every 2nd
     comp.track("progressive")
         .at(15.0)
         .pattern_start()
-        .rhythm("x---", DrumType::Kick808, 0.125)
+        .drum(DrumType::Kick808)
         .repeat(3)
         .every_n(2, DrumType::Snare);
 
@@ -98,7 +100,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("progressive2")
         .at(17.0)
         .pattern_start()
-        .rhythm("x---", DrumType::Kick808, 0.125)
+        .drum(DrumType::Kick808)
         .repeat(7)
         .every_n(2, DrumType::Snare)
         .every_n(4, DrumType::Crash);
@@ -128,7 +130,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("call_response")
         .at(21.0)
         .pattern_start()
-        .rhythm("x-x-", DrumType::Tom, 0.125)
+        .drum(DrumType::Tom).drum(DrumType::Tom)
         .repeat(7) // 16 toms
         .every_n(4, DrumType::TomLow) // Response on 4s
         .every_n(8, DrumType::Crash); // Accent on 8s
@@ -150,7 +152,7 @@ fn main() -> anyhow::Result<()> {
     println!("   • Use .every_n(4, DrumType::Crash) for downbeat crashes\n");
     println!("   • Chain multiple .every_n() calls for layered variation\n");
     println!("   • Works with .repeat() for longer patterns\n");
-    println!("   • Combines with .rhythm() for complex grooves\n");
+    println!("   • Combines with .drum_grid() for complex grooves\n");
     println!("   • Try prime numbers (3, 5, 7) for polyrhythms\n\n");
     println!("📚 Common Patterns:\n");
     println!("   .every_n(4, DrumType::Crash)    // Downbeats\n");

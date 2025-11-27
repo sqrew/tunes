@@ -1,6 +1,55 @@
 use crate::instruments::drums::DrumType;
 use crate::track::Track;
 
+/// A trait for types that can be converted into drum step positions.
+///
+/// This allows `DrumGrid` methods to accept either:
+/// - Index arrays: `&[0, 4, 8, 12]`
+/// - String patterns: `"x--- x--- x--- x---"`
+///
+/// # String Pattern Syntax
+/// - Hit characters: `x`, `X`, `1`, `*`
+/// - Rest characters: `-`, `_`, `.`, `~`, `0`, space (and any other character)
+pub trait DrumPattern {
+    /// Convert to a list of step indices where hits occur
+    fn into_steps(&self) -> Vec<usize>;
+}
+
+impl DrumPattern for [usize] {
+    fn into_steps(&self) -> Vec<usize> {
+        self.to_vec()
+    }
+}
+
+// Implement for fixed-size arrays using const generics
+impl<const N: usize> DrumPattern for [usize; N] {
+    fn into_steps(&self) -> Vec<usize> {
+        self.to_vec()
+    }
+}
+
+// Implement for Vec<usize>
+impl DrumPattern for Vec<usize> {
+    fn into_steps(&self) -> Vec<usize> {
+        self.clone()
+    }
+}
+
+impl DrumPattern for str {
+    fn into_steps(&self) -> Vec<usize> {
+        self.chars()
+            .enumerate()
+            .filter_map(|(i, c)| {
+                if matches!(c, 'x' | 'X' | '1' | '*') {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
 /// A step sequencer-style drum grid for easy drum pattern programming
 pub struct DrumGrid<'a> {
     track: &'a mut Track,
@@ -28,6 +77,10 @@ impl<'a> DrumGrid<'a> {
 
     /// Add a drum hit at specific step positions
     ///
+    /// Accepts either an array of step indices or a string pattern:
+    /// - Array: `&[0, 4, 8, 12]` - explicit step positions
+    /// - String: `"x--- x--- x--- x---"` - pattern notation where `x`/`X`/`1`/`*` are hits
+    ///
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
@@ -36,10 +89,11 @@ impl<'a> DrumGrid<'a> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
     ///     .drum_grid(16, 0.125)
-    ///     .hit(DrumType::Kick, &[0, 4, 8, 12]); // Kick on beats 1, 2, 3, 4
+    ///     .hit(DrumType::Kick, &[0, 4, 8, 12])  // Array syntax
+    ///     .hit(DrumType::Snare, "---- x--- ---- x---"); // String syntax
     /// ```
-    pub fn hit(self, drum_type: DrumType, steps: &[usize]) -> Self {
-        for &step in steps {
+    pub fn hit<P: DrumPattern + ?Sized>(self, drum_type: DrumType, pattern: &P) -> Self {
+        for step in pattern.into_steps() {
             if step < self.steps {
                 let time = self.start_time + (step as f32 * self.step_duration);
                 self.track.add_drum(drum_type, time, None);
@@ -48,104 +102,104 @@ impl<'a> DrumGrid<'a> {
         self
     }
 
-    /// Add kick drum hits at specific steps
-    pub fn kick(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Kick, steps)
+    /// Add kick drum hits at specific steps (array or string pattern)
+    pub fn kick<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Kick, pattern)
     }
 
-    /// Add snare drum hits at specific steps
-    pub fn snare(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Snare, steps)
+    /// Add snare drum hits at specific steps (array or string pattern)
+    pub fn snare<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Snare, pattern)
     }
 
-    /// Add closed hi-hat hits at specific steps
-    pub fn hihat(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::HiHatClosed, steps)
+    /// Add closed hi-hat hits at specific steps (array or string pattern)
+    pub fn hihat<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::HiHatClosed, pattern)
     }
 
-    /// Add open hi-hat hits at specific steps
-    pub fn hihat_open(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::HiHatOpen, steps)
+    /// Add open hi-hat hits at specific steps (array or string pattern)
+    pub fn hihat_open<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::HiHatOpen, pattern)
     }
 
-    /// Add clap hits at specific steps
-    pub fn clap(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Clap, steps)
+    /// Add clap hits at specific steps (array or string pattern)
+    pub fn clap<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Clap, pattern)
     }
 
-    /// Add tom hits at specific steps
-    pub fn tom(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Tom, steps)
+    /// Add tom hits at specific steps (array or string pattern)
+    pub fn tom<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Tom, pattern)
     }
 
-    /// Add rimshot hits at specific steps
-    pub fn rimshot(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Rimshot, steps)
+    /// Add rimshot hits at specific steps (array or string pattern)
+    pub fn rimshot<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Rimshot, pattern)
     }
 
-    /// Add cowbell hits at specific steps
-    pub fn cowbell(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Cowbell, steps)
+    /// Add cowbell hits at specific steps (array or string pattern)
+    pub fn cowbell<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Cowbell, pattern)
     }
 
-    /// Add crash cymbal hits at specific steps
-    pub fn crash(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Crash, steps)
+    /// Add crash cymbal hits at specific steps (array or string pattern)
+    pub fn crash<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Crash, pattern)
     }
 
-    /// Add ride cymbal hits at specific steps
-    pub fn ride(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Ride, steps)
+    /// Add ride cymbal hits at specific steps (array or string pattern)
+    pub fn ride<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Ride, pattern)
     }
 
-    /// Add high tom hits at specific steps
-    pub fn tom_high(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::TomHigh, steps)
+    /// Add high tom hits at specific steps (array or string pattern)
+    pub fn tom_high<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::TomHigh, pattern)
     }
 
-    /// Add low tom hits at specific steps
-    pub fn tom_low(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::TomLow, steps)
+    /// Add low tom hits at specific steps (array or string pattern)
+    pub fn tom_low<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::TomLow, pattern)
     }
 
-    /// Add china cymbal hits at specific steps
-    pub fn china(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::China, steps)
+    /// Add china cymbal hits at specific steps (array or string pattern)
+    pub fn china<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::China, pattern)
     }
 
-    /// Add splash cymbal hits at specific steps
-    pub fn splash(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Splash, steps)
+    /// Add splash cymbal hits at specific steps (array or string pattern)
+    pub fn splash<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Splash, pattern)
     }
 
-    /// Add tambourine hits at specific steps
-    pub fn tambourine(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Tambourine, steps)
+    /// Add tambourine hits at specific steps (array or string pattern)
+    pub fn tambourine<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Tambourine, pattern)
     }
 
-    /// Add shaker hits at specific steps
-    pub fn shaker(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Shaker, steps)
+    /// Add shaker hits at specific steps (array or string pattern)
+    pub fn shaker<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Shaker, pattern)
     }
 
-    /// Add 808 kick hits at specific steps
-    pub fn kick_808(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Kick808, steps)
+    /// Add 808 kick hits at specific steps (array or string pattern)
+    pub fn kick_808<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Kick808, pattern)
     }
 
-    /// Add sub kick hits at specific steps
-    pub fn sub_kick(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::SubKick, steps)
+    /// Add sub kick hits at specific steps (array or string pattern)
+    pub fn sub_kick<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::SubKick, pattern)
     }
 
-    /// Add bass drop hits at specific steps
-    pub fn bass_drop(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::BassDrop, steps)
+    /// Add bass drop hits at specific steps (array or string pattern)
+    pub fn bass_drop<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::BassDrop, pattern)
     }
 
-    /// Add boom hits at specific steps
-    pub fn boom(self, steps: &[usize]) -> Self {
-        self.hit(DrumType::Boom, steps)
+    /// Add boom hits at specific steps (array or string pattern)
+    pub fn boom<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.hit(DrumType::Boom, pattern)
     }
 
     /// Get the total duration of the grid
@@ -452,5 +506,174 @@ mod tests {
                 assert_eq!(drum2.start_time - drum1.start_time, 0.0625);
             }
         }
+    }
+
+    // ===== String Pattern Tests =====
+
+    #[test]
+    fn test_string_pattern_basic() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick("x---x---x---x---");
+
+        assert_eq!(track.events.len(), 4);
+
+        // Verify timing: hits at positions 0, 4, 8, 12
+        if let AudioEvent::Drum(drum) = &track.events[0] {
+            assert_eq!(drum.start_time, 0.0);
+        }
+        if let AudioEvent::Drum(drum) = &track.events[1] {
+            assert_eq!(drum.start_time, 0.5); // 4 * 0.125
+        }
+        if let AudioEvent::Drum(drum) = &track.events[2] {
+            assert_eq!(drum.start_time, 1.0); // 8 * 0.125
+        }
+        if let AudioEvent::Drum(drum) = &track.events[3] {
+            assert_eq!(drum.start_time, 1.5); // 12 * 0.125
+        }
+    }
+
+    #[test]
+    fn test_string_pattern_with_spaces() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick("x--- x--- x--- x---");
+
+        // Spaces count as steps (rests), so pattern is 19 chars
+        // Hits at positions 0, 5, 10, 15
+        assert_eq!(track.events.len(), 4);
+    }
+
+    #[test]
+    fn test_string_pattern_different_hit_chars() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125).snare("xX1*----");
+
+        // All four hit markers should work
+        assert_eq!(track.events.len(), 4);
+    }
+
+    #[test]
+    fn test_string_pattern_different_rest_chars() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).hihat("x-x_x.x~x0x x");
+
+        // Hits at positions: 0, 2, 4, 6, 8, 10, 12 = 7 hits
+        assert_eq!(track.events.len(), 7);
+    }
+
+    #[test]
+    fn test_string_pattern_all_hits() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125).hihat("xxxxxxxx");
+
+        assert_eq!(track.events.len(), 8);
+    }
+
+    #[test]
+    fn test_string_pattern_all_rests() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125).kick("--------");
+
+        assert_eq!(track.events.len(), 0);
+    }
+
+    #[test]
+    fn test_string_pattern_empty() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125).kick("");
+
+        assert_eq!(track.events.len(), 0);
+    }
+
+    #[test]
+    fn test_string_pattern_mixed_with_array() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
+            .kick(&[0, 4, 8, 12]) // Array syntax
+            .snare("----x-------x---") // String syntax
+            .hihat("x-x-x-x-x-x-x-x-"); // String syntax
+
+        // 4 kicks + 2 snares + 8 hihats = 14
+        assert_eq!(track.events.len(), 14);
+
+        // Count each type
+        let mut kicks = 0;
+        let mut snares = 0;
+        let mut hihats = 0;
+        for event in &track.events {
+            if let AudioEvent::Drum(drum) = event {
+                match drum.drum_type {
+                    DrumType::Kick => kicks += 1,
+                    DrumType::Snare => snares += 1,
+                    DrumType::HiHatClosed => hihats += 1,
+                    _ => {}
+                }
+            }
+        }
+        assert_eq!(kicks, 4);
+        assert_eq!(snares, 2);
+        assert_eq!(hihats, 8);
+    }
+
+    #[test]
+    fn test_string_pattern_out_of_bounds() {
+        let mut track = Track::new();
+        // Grid is only 8 steps, but pattern is 16 chars
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125).kick("x---x---x---x---");
+
+        // Only first 2 hits should be added (positions 0 and 4)
+        // Positions 8 and 12 are out of bounds
+        assert_eq!(track.events.len(), 2);
+    }
+
+    #[test]
+    fn test_string_pattern_repeat() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.25)
+            .kick("x---x---")
+            .snare("--x---x-")
+            .repeat(1);
+
+        // 2 kicks + 2 snares = 4, repeated once = 8
+        assert_eq!(track.events.len(), 8);
+    }
+
+    #[test]
+    fn test_string_pattern_classic_rock_beat() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 16, 0.125)
+            .kick("x---x---x---x---") // Four on the floor
+            .snare("----x-------x---") // Backbeat
+            .hihat("x-x-x-x-x-x-x-x-"); // Eighth notes
+
+        // 4 kicks + 2 snares + 8 hihats = 14
+        assert_eq!(track.events.len(), 14);
+    }
+
+    #[test]
+    fn test_string_pattern_numeric_notation() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125).cowbell("10011001");
+
+        // Hits at 0, 3, 4, 7 = 4 hits
+        assert_eq!(track.events.len(), 4);
+    }
+
+    #[test]
+    fn test_drum_pattern_trait_into_steps() {
+        // Test the trait directly
+        let array: &[usize] = &[0, 4, 8, 12];
+        assert_eq!(array.into_steps(), vec![0, 4, 8, 12]);
+
+        let pattern = "x---x---";
+        assert_eq!(pattern.into_steps(), vec![0, 4]);
+
+        let pattern2 = "xXx1*";
+        assert_eq!(pattern2.into_steps(), vec![0, 1, 2, 3, 4]);
+
+        let empty = "";
+        assert_eq!(empty.into_steps(), Vec::<usize>::new());
+
+        let all_rests = "----";
+        assert_eq!(all_rests.into_steps(), Vec::<usize>::new());
     }
 }

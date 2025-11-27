@@ -28,23 +28,27 @@ fn main() -> anyhow::Result<()> {
     // Intro - just hi-hats
     comp.track("hats")
         .at_marker("intro")
-        .rhythm("x-x-x-x-x-x-x-x-", DrumType::HiHatClosed, 0.125);
+        .drum_grid(16, 0.125)
+        .hihat("x-x-x-x-x-x-x-x-");
 
     // Buildup - add kick
     comp.track("kick_buildup")
         .at_marker("buildup")
-        .rhythm("x---x---x---x---", DrumType::Kick, 0.125);
+        .drum_grid(16, 0.125)
+        .kick("x---x---x---x---");
 
     // Verse - full drums
     comp.track("verse_drums")
         .at_marker("verse")
-        .rhythm("x-x-x-x-x-x-x-x-", DrumType::Kick808, 0.125)
-        .rhythm("----x-------x---", DrumType::Snare, 0.125);
+        .drum_grid(16, 0.125)
+        .kick_808("x-x-x-x-x-x-x-x-")
+        .snare("----x-------x---");
 
     // Drop - everything hits together!
     comp.track("drop_kick")
         .at_marker("drop")  // All start at exactly 16.0
-        .rhythm("x-x-x-x-x-x-x-x-", DrumType::Kick808, 0.125);
+        .drum_grid(16, 0.125)
+        .kick_808("x-x-x-x-x-x-x-x-");
 
     comp.track("drop_bass")
         .at_marker("drop")  // Synced to drop

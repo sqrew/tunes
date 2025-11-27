@@ -34,7 +34,7 @@ mod tuplets;
 
 // Re-export main types for public API
 pub use crate::instruments::drums::DrumType;
-pub use drum_grid::DrumGrid;
+pub use drum_grid::{DrumGrid, DrumPattern};
 pub use sections::{Section, SectionBuilder};
 pub use timing::Tempo;
 

@@ -7,7 +7,7 @@
 Unlike traditional audio libraries that focus solely on sample playback, Tunes provides:
 
 - **Music composition** - Scales, chords, progressions, arrangements
-- **Synthesis** - FM, granular, wavetable, 100+ instruments
+- **Synthesis** - FM, granular, wavetable, 150+ instruments
 - **Real-time playback** - Concurrent mixing with dynamic control
 - **Export** - WAV, FLAC, MIDI output
 - **Algorithmic generation** - Sequences from chaos theory, primes, cellular automata
@@ -18,7 +18,7 @@ Unlike traditional audio libraries that focus solely on sample playback, Tunes p
 
 ## Who is it for?
 
-**Tunes is designed for developers who want to create sound, not merely play it back.**
+**Tunes is designed for developers who want to create sound or play it back.**
 
 ### Game Developers
 Build dynamic soundscapes that respond to gameplay. Generate procedural sound effects. Create adaptive music systems. Suitable for:
@@ -41,8 +41,8 @@ Create command-line music generators, audio processors, or batch rendering tools
 ## Why Tunes?
 
 **If you need:**
-- Synthesis and composition in Rust
-- Real-time concurrent playback
+- Synthesis and composition in Rust (100x realtime synthesis)
+- Real-time concurrent playback (hundreds of samples concurrently)
 - Export to WAV/FLAC/MIDI/STEM
 - Algorithmic/generative music
 - No runtime dependencies
