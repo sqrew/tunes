@@ -194,37 +194,6 @@ fn main() -> Result<(), anyhow::Error> {
 }
 ```
 
-**Advanced: Sample Playback in Compositions**
-
-For precise timing and mixing with synthesis:
-
-```rust
-use tunes::prelude::*;
-
-fn main() -> Result<(), anyhow::Error> {
-    let mut comp = Composition::new(Tempo::new(120.0));
-
-    // Load samples into composition
-    comp.load_sample("kick", "samples/kick.wav")?;
-    comp.load_sample("snare", "samples/snare.wav")?;
-
-    // Use samples with precise timing
-    comp.track("drums")
-        .sample("kick")                    // Play at normal speed
-        .sample("snare")
-        .sample_with_rate("kick", 1.5);    // 1.5x speed (pitch up)
-
-    // Mix samples with synthesis
-    comp.instrument("bass", &Instrument::sub_bass())
-        .notes(&[C2, C2, G2, G2], 0.5);
-
-    let mixer = comp.into_mixer();
-    let engine = AudioEngine::new()?;
-    engine.play_mixer(&mixer)?;
-    Ok(())
-}
-```
-
 ### Export to WAV or FLAC
 
 ```rust
