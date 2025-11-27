@@ -374,10 +374,22 @@ impl Track {
     /// * `start_time` - When to trigger the drum (in seconds from track start)
     /// * `spatial_position` - Optional 3D spatial position
     pub fn add_drum(&mut self, drum_type: DrumType, start_time: f32, spatial_position: Option<crate::synthesis::spatial::SpatialPosition>) {
+        self.add_drum_with_velocity(drum_type, start_time, 1.0, spatial_position);
+    }
+
+    /// Add a drum hit event with specific velocity
+    ///
+    /// # Arguments
+    /// * `drum_type` - Type of drum (Kick, Snare, HiHat, etc.)
+    /// * `start_time` - When to trigger the drum (in seconds from track start)
+    /// * `velocity` - Hit velocity (0.0 to 1.0)
+    /// * `spatial_position` - Optional 3D spatial position
+    pub fn add_drum_with_velocity(&mut self, drum_type: DrumType, start_time: f32, velocity: f32, spatial_position: Option<crate::synthesis::spatial::SpatialPosition>) {
         self.events.push(AudioEvent::Drum(DrumEvent {
             drum_type,
             start_time,
             pitch_offset: 0.0,
+            velocity: velocity.clamp(0.0, 1.0),
             spatial_position,
         }));
         self.invalidate_time_cache();

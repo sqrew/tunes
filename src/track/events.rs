@@ -87,6 +87,7 @@ pub struct DrumEvent {
     pub drum_type: DrumType,
     pub start_time: f32,
     pub pitch_offset: f32, // Pitch offset in semitones (0.0 = default pitch)
+    pub velocity: f32,     // Hit velocity (0.0 to 1.0), affects volume
     pub spatial_position: Option<SpatialPosition>, // 3D spatial position for spatial audio
 }
 

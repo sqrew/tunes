@@ -64,11 +64,15 @@ impl<'a> TrackBuilder<'a> {
                         note.velocity = (note.velocity + velocity_offset).clamp(0.0, 1.0);
                     }
                     AudioEvent::Drum(drum) => {
-                        // Randomize drum timing only
+                        // Randomize drum timing and velocity
                         use rand::Rng;
                         let mut rng = rand::rng();
                         let timing_offset = rng.random_range(-timing_variance..=timing_variance);
                         drum.start_time = (drum.start_time + timing_offset).max(0.0);
+
+                        let velocity_offset =
+                            rng.random_range(-velocity_variance..=velocity_variance);
+                        drum.velocity = (drum.velocity + velocity_offset).clamp(0.0, 1.0);
                     }
                     _ => {}
                 }
@@ -346,6 +350,7 @@ impl<'a> TrackBuilder<'a> {
                         drum_type: drum.drum_type,
                         start_time: drum.start_time,
                         pitch_offset: drum.pitch_offset + shift as f32,
+                        velocity: drum.velocity,
                         spatial_position: drum.spatial_position,
                     }));
             }
@@ -1425,6 +1430,7 @@ impl<'a> TrackBuilder<'a> {
                                 drum_type: drum.drum_type,
                                 start_time: drum.start_time,
                                 pitch_offset: drum.pitch_offset + semitones as f32,
+                                velocity: drum.velocity,
                                 spatial_position: drum.spatial_position,
                             }))
                         }
@@ -1539,6 +1545,7 @@ impl<'a> TrackBuilder<'a> {
                                 drum_type: drum.drum_type,
                                 start_time: drum.start_time,
                                 pitch_offset: -drum.pitch_offset,
+                                velocity: drum.velocity,
                                 spatial_position: drum.spatial_position,
                             }))
                         }
@@ -1655,6 +1662,7 @@ impl<'a> TrackBuilder<'a> {
                                 drum_type: drum.drum_type,
                                 start_time: drum.start_time,
                                 pitch_offset: -drum.pitch_offset,
+                                velocity: drum.velocity,
                                 spatial_position: drum.spatial_position,
                             }))
                         }

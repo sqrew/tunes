@@ -1739,7 +1739,7 @@ impl Mixer {
                         {
                             let time_in_drum = time - drum_event.start_time;
                             let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
-                            track_value += drum_event.drum_type.sample(sample_index, sample_rate);
+                            track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
                         }
                     }
                     AudioEvent::Sample(_) => {
@@ -1855,7 +1855,7 @@ impl Mixer {
                         has_active_event = true;
                         let time_in_drum = time - drum_event.start_time;
                         let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
-                        track_value += drum_event.drum_type.sample(sample_index, sample_rate);
+                        track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
                     }
                 }
                 AudioEvent::Sample(sample_event) => {

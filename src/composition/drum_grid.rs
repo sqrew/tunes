@@ -110,6 +110,257 @@ impl<'a> DrumGrid<'a> {
         self.steps as f32 * self.step_duration
     }
 
+    /// Apply an accent pattern to all drums in the grid
+    ///
+    /// Accented steps get high velocity (1.0), unaccented steps get lower velocity (0.5).
+    /// Use `accent_with_levels` for custom velocity levels.
+    ///
+    /// # Pattern Syntax
+    /// - Accent characters: `x`, `X`, `1`, `*` (velocity 1.0)
+    /// - Unaccented: `-`, `_`, `.`, `~`, `0`, space (velocity 0.5)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-")
+    ///         .accent("x---x---x---x---")); // Accent every 4th hi-hat
+    /// ```
+    pub fn accent<P: DrumPattern + ?Sized>(self, pattern: &P) -> Self {
+        self.accent_with_levels(pattern, 1.0, 0.5)
+    }
+
+    /// Apply an accent pattern with custom high/low velocity levels
+    ///
+    /// # Arguments
+    /// * `pattern` - Pattern where hits are accented, rests are unaccented
+    /// * `high_velocity` - Velocity for accented steps (0.0-1.0)
+    /// * `low_velocity` - Velocity for unaccented steps (0.0-1.0)
+    pub fn accent_with_levels<P: DrumPattern + ?Sized>(
+        self,
+        pattern: &P,
+        high_velocity: f32,
+        low_velocity: f32,
+    ) -> Self {
+        let accent_steps: std::collections::HashSet<usize> =
+            pattern.into_steps().into_iter().collect();
+        let grid_end_time = self.start_time + self.duration();
+
+        for event in &mut self.track.events {
+            if let crate::track::AudioEvent::Drum(drum) = event {
+                if drum.start_time >= self.start_time && drum.start_time < grid_end_time {
+                    // Calculate which step this drum lands on
+                    let relative_time = drum.start_time - self.start_time;
+                    let step = (relative_time / self.step_duration).round() as usize;
+
+                    if accent_steps.contains(&step) {
+                        drum.velocity = high_velocity.clamp(0.0, 1.0);
+                    } else {
+                        drum.velocity = low_velocity.clamp(0.0, 1.0);
+                    }
+                }
+            }
+        }
+        self
+    }
+
+    /// Apply explicit per-step velocity values to all drums
+    ///
+    /// Each velocity value corresponds to a step. Drums landing on that step
+    /// get the specified velocity. Steps beyond the velocity slice use 1.0.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(8, 0.125, |g| g
+    ///         .sound(DrumType::HiHatClosed, "xxxxxxxx")
+    ///         .velocity(&[1.0, 0.5, 0.7, 0.5, 1.0, 0.5, 0.7, 0.5])); // Swung velocity
+    /// ```
+    pub fn velocity(self, velocities: &[f32]) -> Self {
+        let grid_end_time = self.start_time + self.duration();
+
+        for event in &mut self.track.events {
+            if let crate::track::AudioEvent::Drum(drum) = event {
+                if drum.start_time >= self.start_time && drum.start_time < grid_end_time {
+                    let relative_time = drum.start_time - self.start_time;
+                    let step = (relative_time / self.step_duration).round() as usize;
+
+                    if step < velocities.len() {
+                        drum.velocity = velocities[step].clamp(0.0, 1.0);
+                    }
+                }
+            }
+        }
+        self
+    }
+
+    /// Add probabilistic drum hits - each hit has a chance to be played
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound to add
+    /// * `pattern` - Step pattern (same as `sound`)
+    /// * `probability` - Chance of each hit occurring (0.0 = never, 1.0 = always)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .sound(DrumType::Kick, "x---x---x---x---")
+    ///         .maybe(DrumType::HiHatOpen, "x-x-x-x-x-x-x-x-", 0.3)); // 30% chance per step
+    /// ```
+    pub fn maybe<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        probability: f32,
+    ) -> Self {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let prob = probability.clamp(0.0, 1.0);
+
+        for step in pattern.into_steps() {
+            if step < self.steps && rng.random::<f32>() < prob {
+                let time = self.start_time + (step as f32 * self.step_duration);
+                self.track.add_drum(drum_type, time, None);
+            }
+        }
+        self
+    }
+
+    /// Add ghost notes - quieter hits that add groove
+    ///
+    /// Ghost notes are typically played at lower velocity to add subtle texture.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound for ghost notes
+    /// * `pattern` - Step pattern for ghost note positions
+    /// * `velocity` - Ghost note velocity (typically 0.2-0.4)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .sound(DrumType::Snare, "----x-------x---")
+    ///         .ghost(DrumType::Snare, "-x----x--x----x-", 0.3)); // Ghost notes between hits
+    /// ```
+    pub fn ghost<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        velocity: f32,
+    ) -> Self {
+        let vel = velocity.clamp(0.0, 1.0);
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let time = self.start_time + (step as f32 * self.step_duration);
+                self.track.add_drum_with_velocity(drum_type, time, vel, None);
+            }
+        }
+        self
+    }
+
+    /// Add a flam - two quick hits, the first quieter (grace note)
+    ///
+    /// A flam is a rudiment where a grace note precedes the main hit.
+    /// The grace note is typically 20-40ms before the main hit.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for flam positions
+    /// * `grace_offset` - Time before main hit for grace note (in seconds, e.g., 0.03)
+    /// * `grace_velocity` - Velocity of the grace note (typically 0.3-0.5)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .flam(DrumType::Snare, "----x-------x---", 0.03, 0.4));
+    /// ```
+    pub fn flam<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        grace_offset: f32,
+        grace_velocity: f32,
+    ) -> Self {
+        let grace_vel = grace_velocity.clamp(0.0, 1.0);
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let main_time = self.start_time + (step as f32 * self.step_duration);
+                let grace_time = (main_time - grace_offset).max(0.0);
+
+                // Add grace note (quieter, slightly before)
+                self.track.add_drum_with_velocity(drum_type, grace_time, grace_vel, None);
+                // Add main hit
+                self.track.add_drum(drum_type, main_time, None);
+            }
+        }
+        self
+    }
+
+    /// Add a drum roll - rapid repeated hits
+    ///
+    /// Creates multiple hits spread evenly across the step duration.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for roll positions
+    /// * `subdivisions` - Number of hits per step (e.g., 4 for a quick roll)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .roll(DrumType::Snare, "---------------x", 8)); // Roll on last step
+    /// ```
+    pub fn roll<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        subdivisions: usize,
+    ) -> Self {
+        if subdivisions == 0 {
+            return self;
+        }
+
+        let sub_duration = self.step_duration / subdivisions as f32;
+
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let step_start = self.start_time + (step as f32 * self.step_duration);
+                for i in 0..subdivisions {
+                    let time = step_start + (i as f32 * sub_duration);
+                    self.track.add_drum(drum_type, time, None);
+                }
+            }
+        }
+        self
+    }
+
     /// Repeat the drum grid pattern N times
     ///
     /// This will duplicate all drum events that were added to the grid,
@@ -533,5 +784,199 @@ mod tests {
 
         let all_rests = "----";
         assert_eq!(all_rests.into_steps(), Vec::<usize>::new());
+    }
+
+    // ===== Accent and Velocity Tests =====
+
+    #[test]
+    fn test_accent_basic() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125)
+            .sound(DrumType::HiHatClosed, "xxxxxxxx")
+            .accent("x---x---"); // Accent steps 0 and 4
+
+        assert_eq!(track.events.len(), 8);
+
+        // Check velocities
+        for (i, event) in track.events.iter().enumerate() {
+            if let AudioEvent::Drum(drum) = event {
+                if i == 0 || i == 4 {
+                    assert_eq!(drum.velocity, 1.0, "Step {} should be accented", i);
+                } else {
+                    assert_eq!(drum.velocity, 0.5, "Step {} should be unaccented", i);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_accent_with_levels() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.125)
+            .sound(DrumType::HiHatClosed, "xxxx")
+            .accent_with_levels("x-x-", 0.9, 0.3);
+
+        // Check custom velocity levels
+        if let AudioEvent::Drum(drum) = &track.events[0] {
+            assert_eq!(drum.velocity, 0.9); // Accented
+        }
+        if let AudioEvent::Drum(drum) = &track.events[1] {
+            assert_eq!(drum.velocity, 0.3); // Unaccented
+        }
+    }
+
+    #[test]
+    fn test_velocity_explicit() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.125)
+            .sound(DrumType::HiHatClosed, "xxxx")
+            .velocity(&[1.0, 0.5, 0.7, 0.3]);
+
+        let velocities: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some(d.velocity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(velocities, vec![1.0, 0.5, 0.7, 0.3]);
+    }
+
+    #[test]
+    fn test_ghost_notes() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, 0.125)
+            .sound(DrumType::Snare, "----x---") // Main hit at step 4
+            .ghost(DrumType::Snare, "-x-x----", 0.3); // Ghost notes at steps 1 and 3
+
+        assert_eq!(track.events.len(), 3);
+
+        // Count velocities
+        let mut full_hits = 0;
+        let mut ghost_hits = 0;
+        for event in &track.events {
+            if let AudioEvent::Drum(drum) = event {
+                if drum.velocity == 1.0 {
+                    full_hits += 1;
+                } else if (drum.velocity - 0.3).abs() < 0.01 {
+                    ghost_hits += 1;
+                }
+            }
+        }
+        assert_eq!(full_hits, 1, "Should have 1 main hit");
+        assert_eq!(ghost_hits, 2, "Should have 2 ghost notes");
+    }
+
+    #[test]
+    fn test_flam() {
+        let mut track = Track::new();
+        // Use step 2 so there's room for the grace note before the main hit
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .flam(DrumType::Snare, "--x-", 0.03, 0.4);
+
+        assert_eq!(track.events.len(), 2); // Grace note + main hit
+
+        // Sort events by time to check order
+        let mut times: Vec<(f32, f32)> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some((d.start_time, d.velocity))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        times.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Main hit should be at step 2 = 1.0s
+        // Grace note should be at 1.0 - 0.03 = 0.97s
+        assert!(times[0].0 < times[1].0, "Grace note should be before main hit");
+        assert!((times[0].0 - 0.97).abs() < 0.01, "Grace note at 0.97s");
+        assert_eq!(times[0].1, 0.4, "Grace note velocity");
+        assert_eq!(times[1].0, 1.0, "Main hit at 1.0s");
+        assert_eq!(times[1].1, 1.0, "Main hit velocity");
+    }
+
+    #[test]
+    fn test_roll() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .roll(DrumType::Snare, "x---", 4); // 4 subdivisions
+
+        assert_eq!(track.events.len(), 4); // 4 hits in the roll
+
+        // Check timing spacing
+        let times: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some(d.start_time)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // All should be within step 0 (0.0 to 0.5)
+        assert_eq!(times[0], 0.0);
+        assert_eq!(times[1], 0.125); // 0.5 / 4
+        assert_eq!(times[2], 0.25);
+        assert_eq!(times[3], 0.375);
+    }
+
+    #[test]
+    fn test_roll_zero_subdivisions() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .roll(DrumType::Snare, "x---", 0);
+
+        assert_eq!(track.events.len(), 0, "Zero subdivisions should add nothing");
+    }
+
+    #[test]
+    fn test_maybe_always() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.125)
+            .maybe(DrumType::Kick, "xxxx", 1.0); // 100% probability
+
+        assert_eq!(track.events.len(), 4, "All hits should be added with probability 1.0");
+    }
+
+    #[test]
+    fn test_maybe_never() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.125)
+            .maybe(DrumType::Kick, "xxxx", 0.0); // 0% probability
+
+        assert_eq!(track.events.len(), 0, "No hits should be added with probability 0.0");
+    }
+
+    #[test]
+    fn test_accent_multiple_drums_same_step() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.125)
+            .sound(DrumType::Kick, "x---")
+            .sound(DrumType::HiHatClosed, "x-x-")
+            .accent("x---"); // Only step 0 is accented
+
+        // All drums at step 0 should be accented
+        for event in &track.events {
+            if let AudioEvent::Drum(drum) = event {
+                let step = (drum.start_time / 0.125).round() as usize;
+                if step == 0 {
+                    assert_eq!(drum.velocity, 1.0, "Step 0 drums should be accented");
+                } else {
+                    assert_eq!(drum.velocity, 0.5, "Other steps should be unaccented");
+                }
+            }
+        }
     }
 }
