@@ -18,9 +18,10 @@
 use crate::synthesis::simd::{SIMD, SimdLanes, SimdWidth};
 use rustfft::num_complex::Complex;
 use rustfft::{Fft, FftPlanner};
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::f32::consts::PI;
-use std::sync::{Arc, Mutex};
+use dashmap::DashMap;
+use std::sync::Arc;
 use wide::{f32x4, f32x8};
 use lazy_static::lazy_static;
 
@@ -66,14 +67,14 @@ pub use spectral_panner::{PanPoint, SpectralPanner};
 pub use spectral_resonator::{Resonance, SpectralResonator};
 pub use widen::SpectralWiden;
 
-// Type alias for the window cache to reduce complexity
-type WindowCache = Mutex<HashMap<(WindowType, usize), Arc<Vec<f32>>>>;
+// Type alias for the window cache (lock-free with DashMap)
+type WindowCache = DashMap<(WindowType, usize), Arc<Vec<f32>>>;
 
 // Global cache for pre-computed window functions
 // Common sizes: 256, 512, 1024, 2048, 4096, 8192
 lazy_static! {
     static ref WINDOW_CACHE: WindowCache = {
-        let mut cache = HashMap::new();
+        let cache = DashMap::new();
 
         // Pre-compute common window sizes for each type
         let common_sizes = [256, 512, 1024, 2048, 4096, 8192];
@@ -92,7 +93,7 @@ lazy_static! {
             }
         }
 
-        Mutex::new(cache)
+        cache
     };
 }
 
@@ -128,8 +129,8 @@ pub struct Window {
     /// Window size (number of samples)
     pub size: usize,
 
-    /// Pre-computed window coefficients
-    coefficients: Vec<f32>,
+    /// Pre-computed window coefficients (Arc-shared to avoid cloning from cache)
+    coefficients: Arc<Vec<f32>>,
 }
 
 impl Window {
@@ -149,26 +150,19 @@ impl Window {
     /// let blackman = Window::new(WindowType::Blackman, 4096);  // From cache (fast!)
     /// ```
     pub fn new(window_type: WindowType, size: usize) -> Self {
-        // Try to get from cache first
-        let coefficients = {
-            let cache = WINDOW_CACHE.lock().unwrap();
-            cache.get(&(window_type, size)).cloned()
-        };
+        // Try to get from cache first (lock-free with DashMap)
+        let coefficients = if let Some(cached) = WINDOW_CACHE.get(&(window_type, size)) {
+            Arc::clone(&cached) // Cache hit! Clone Arc (cheap ref count)
+        } else {
+            // Cache miss - compute and wrap in Arc
+            let coeff = Arc::new(Self::generate_coefficients(window_type, size));
 
-        let coefficients = match coefficients {
-            Some(cached) => (*cached).clone(),  // Cache hit! Clone Arc's inner Vec
-            None => {
-                // Cache miss - compute and optionally cache for future use
-                let coeff = Self::generate_coefficients(window_type, size);
-
-                // Cache if it's a reasonable size (< 16K samples)
-                if size <= 16384 {
-                    let mut cache = WINDOW_CACHE.lock().unwrap();
-                    cache.insert((window_type, size), Arc::new(coeff.clone()));
-                }
-
-                coeff
+            // Cache if it's a reasonable size (< 16K samples)
+            if size <= 16384 {
+                WINDOW_CACHE.insert((window_type, size), Arc::clone(&coeff));
             }
+
+            coeff
         };
 
         Self {
@@ -870,7 +864,7 @@ mod tests {
         let rect = Window::new(WindowType::Rectangular, 512);
 
         // All coefficients should be 1.0
-        for &coef in &rect.coefficients {
+        for &coef in &*rect.coefficients {
             assert_eq!(coef, 1.0);
         }
     }
@@ -901,7 +895,7 @@ mod tests {
             assert_eq!(window.coefficients.len(), 2048);
 
             // All coefficients should be finite and in reasonable range
-            for &coef in &window.coefficients {
+            for &coef in &*window.coefficients {
                 assert!(coef.is_finite());
                 // Some windows can have small negative values near edges
                 assert!(coef >= -0.1 && coef <= 1.1);

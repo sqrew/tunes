@@ -817,6 +817,8 @@ impl Mixer {
 
             for track in &mut bus.tracks {
                 let original_events: Vec<_> = track.events.clone();
+                // Pre-allocate space for all repetitions to avoid reallocations
+                track.events.reserve(original_events.len() * times);
 
                 for i in 0..times {
                     let offset = total_duration * (i + 1) as f32;
