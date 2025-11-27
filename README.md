@@ -443,7 +443,7 @@ Tunes is designed for exceptional performance with automatic optimizations:
 ### Automatic Optimizations
 
 Tunes automatically applies:
-- ✅ **SIMD vectorization** (AVX2/SSE/NEON) - 15x realtime concurrent sample playback, 98.8x effects
+- ✅ **SIMD vectorization** (AVX2/SSE/NEON) - 15x realtime concurrent sample playback, 100x effects
 - ✅ **Multi-core parallelism** (Rayon) - automatic scaling across CPU cores
 - ✅ **Block processing** (512-sample chunks) - reduces overhead
 - ✅ **Integer-based routing** (Vec-indexed, not HashMap)

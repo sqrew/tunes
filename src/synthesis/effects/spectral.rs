@@ -47,6 +47,9 @@ pub struct PhaseVocoder {
 
     /// Enabled flag
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl PhaseVocoder {
@@ -97,6 +100,7 @@ impl PhaseVocoder {
             priority: 50, // Process before reverb/delay
             sample_rate,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -204,9 +208,10 @@ impl PhaseVocoder {
             // For now, we just track it
         }
 
-        // Process using core phase vocoder
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Process using core phase vocoder - reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 }
 
@@ -249,6 +254,9 @@ pub struct SpectralFreeze {
 
     /// Enabled flag
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralFreeze {
@@ -302,6 +310,7 @@ impl SpectralFreeze {
             core,
             priority: 50, // Process before reverb/delay, same as phase vocoder
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -402,9 +411,10 @@ impl SpectralFreeze {
             return;
         }
 
-        // Process using core spectral freeze
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Process using core spectral freeze - reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 }
 
@@ -444,6 +454,9 @@ pub struct SpectralGate {
 
     /// Enabled flag
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralGate {
@@ -503,6 +516,7 @@ impl SpectralGate {
             core,
             priority: 50, // Process before reverb/delay, same as other spectral effects
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -637,9 +651,10 @@ impl SpectralGate {
             return;
         }
 
-        // Process using core spectral gate
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Process using core spectral gate - reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 }
 
@@ -665,6 +680,8 @@ pub struct SpectralCompressor {
     core: CoreSpectralCompressor,
     pub priority: u8,
     pub enabled: bool,
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralCompressor {
@@ -736,6 +753,7 @@ impl SpectralCompressor {
             core,
             priority: 50, // Before reverb/delay
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -828,8 +846,10 @@ impl SpectralCompressor {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -861,6 +881,8 @@ pub struct SpectralRobotize {
     core: CoreSpectralRobotize,
     pub priority: u8,
     pub enabled: bool,
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralRobotize {
@@ -901,6 +923,7 @@ impl SpectralRobotize {
             core,
             priority: 50, // Before reverb/delay
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -958,8 +981,10 @@ impl SpectralRobotize {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -984,6 +1009,8 @@ pub struct SpectralDelay {
     core: crate::synthesis::spectral::SpectralDelay,
     pub priority: u8,
     pub enabled: bool,
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralDelay {
@@ -1044,6 +1071,7 @@ impl SpectralDelay {
             ),
             priority: 100,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -1123,8 +1151,10 @@ impl SpectralDelay {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the effect
@@ -1139,6 +1169,7 @@ impl Clone for SpectralDelay {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -1181,6 +1212,9 @@ pub struct SpectralFilter {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralFilter {
@@ -1245,6 +1279,7 @@ impl SpectralFilter {
             core,
             priority: 50,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -1320,8 +1355,10 @@ impl SpectralFilter {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the filter state
@@ -1360,6 +1397,7 @@ impl SpectralFilter {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -1397,6 +1435,9 @@ pub struct SpectralBlur {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralBlur {
@@ -1451,6 +1492,7 @@ impl SpectralBlur {
             core,
             priority: 50,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -1556,8 +1598,10 @@ impl SpectralBlur {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the blur state (clears previous spectrum)
@@ -1596,6 +1640,7 @@ impl SpectralBlur {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -1639,6 +1684,9 @@ pub struct SpectralShift {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralShift {
@@ -1689,6 +1737,7 @@ impl SpectralShift {
             core,
             priority: 145,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -1774,8 +1823,10 @@ impl SpectralShift {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the shift state
@@ -1814,6 +1865,7 @@ impl SpectralShift {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -1855,6 +1907,9 @@ pub struct SpectralExciter {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralExciter {
@@ -1913,6 +1968,7 @@ impl SpectralExciter {
             core,
             priority: 150,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -2038,8 +2094,10 @@ impl SpectralExciter {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the exciter state
@@ -2078,6 +2136,7 @@ impl SpectralExciter {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -2121,6 +2180,9 @@ pub struct SpectralInvert {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralInvert {
@@ -2162,6 +2224,7 @@ impl SpectralInvert {
             core,
             priority: 160,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -2217,8 +2280,10 @@ impl SpectralInvert {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the invert state
@@ -2257,6 +2322,7 @@ impl SpectralInvert {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -2297,6 +2363,9 @@ pub struct SpectralWiden {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralWiden {
@@ -2351,6 +2420,7 @@ impl SpectralWiden {
             core,
             priority: 165,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -2451,8 +2521,10 @@ impl SpectralWiden {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the widen state
@@ -2491,6 +2563,7 @@ impl SpectralWiden {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -2537,6 +2610,9 @@ pub struct SpectralMorph {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralMorph {
@@ -2596,6 +2672,7 @@ impl SpectralMorph {
             core,
             priority: 170,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -2696,8 +2773,10 @@ impl SpectralMorph {
         if !self.enabled {
             return;
         }
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset the morph state
@@ -2736,6 +2815,7 @@ impl SpectralMorph {
             core: self.core.clone(),
             priority: self.priority,
             enabled: self.enabled,
+            input_buffer: Vec::new(),
         }
     }
 }
@@ -3195,6 +3275,8 @@ pub struct SpectralDynamics {
     core: CoreSpectralDynamics,
     pub priority: u8,
     pub enabled: bool,
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralDynamics {
@@ -3265,6 +3347,7 @@ impl SpectralDynamics {
             core,
             priority: 155, // After spectral effects, before spatial
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3275,6 +3358,7 @@ impl SpectralDynamics {
             core,
             priority: 155,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3285,6 +3369,7 @@ impl SpectralDynamics {
             core,
             priority: 155,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3295,6 +3380,7 @@ impl SpectralDynamics {
             core,
             priority: 155,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3305,6 +3391,7 @@ impl SpectralDynamics {
             core,
             priority: 155,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3315,6 +3402,7 @@ impl SpectralDynamics {
             core,
             priority: 155,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3390,8 +3478,10 @@ impl SpectralDynamics {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -3424,6 +3514,8 @@ pub struct SpectralScramble {
     core: CoreSpectralScramble,
     pub priority: u8,
     pub enabled: bool,
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralScramble {
@@ -3487,6 +3579,7 @@ impl SpectralScramble {
             core,
             priority: 175, // After other spectral effects
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3497,6 +3590,7 @@ impl SpectralScramble {
             core,
             priority: 175,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3507,6 +3601,7 @@ impl SpectralScramble {
             core,
             priority: 175,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3517,6 +3612,7 @@ impl SpectralScramble {
             core,
             priority: 175,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3527,6 +3623,7 @@ impl SpectralScramble {
             core,
             priority: 175,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3537,6 +3634,7 @@ impl SpectralScramble {
             core,
             priority: 175,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3592,8 +3690,10 @@ impl SpectralScramble {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -3639,6 +3739,9 @@ pub struct FormantShifter {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl FormantShifter {
@@ -3689,6 +3792,7 @@ impl FormantShifter {
             core,
             priority: 146, // After spectral shift
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3699,6 +3803,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3709,6 +3814,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3719,6 +3825,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3729,6 +3836,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3739,6 +3847,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3749,6 +3858,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3759,6 +3869,7 @@ impl FormantShifter {
             core,
             priority: 146,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3794,8 +3905,10 @@ impl FormantShifter {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -3839,6 +3952,9 @@ pub struct SpectralHarmonizer {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralHarmonizer {
@@ -3898,6 +4014,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147, // After formant shifter
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3908,6 +4025,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3918,6 +4036,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3928,6 +4047,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3938,6 +4058,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3948,6 +4069,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3958,6 +4080,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3968,6 +4091,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3978,6 +4102,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -3988,6 +4113,7 @@ impl SpectralHarmonizer {
             core,
             priority: 147,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4033,8 +4159,10 @@ impl SpectralHarmonizer {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -4078,6 +4206,9 @@ pub struct SpectralResonator {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralResonator {
@@ -4137,6 +4268,7 @@ impl SpectralResonator {
             core,
             priority: 148, // After spectral harmonizer
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4147,6 +4279,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4157,6 +4290,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4167,6 +4301,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4177,6 +4312,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4187,6 +4323,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4197,6 +4334,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4207,6 +4345,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4217,6 +4356,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4227,6 +4367,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4237,6 +4378,7 @@ impl SpectralResonator {
             core,
             priority: 148,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4287,8 +4429,10 @@ impl SpectralResonator {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
@@ -4332,6 +4476,9 @@ pub struct SpectralPanner {
 
     /// Whether this effect is enabled
     pub enabled: bool,
+
+    /// Reusable input buffer to avoid allocation per frame
+    input_buffer: Vec<f32>,
 }
 
 impl SpectralPanner {
@@ -4380,6 +4527,7 @@ impl SpectralPanner {
             core,
             priority: 149, // After spectral resonator
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4390,6 +4538,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4400,6 +4549,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4410,6 +4560,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4420,6 +4571,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4430,6 +4582,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4440,6 +4593,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4450,6 +4604,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4460,6 +4615,7 @@ impl SpectralPanner {
             core,
             priority: 149,
             enabled: true,
+            input_buffer: Vec::new(),
         }
     }
 
@@ -4505,8 +4661,10 @@ impl SpectralPanner {
             return;
         }
 
-        let input = buffer.to_vec();
-        self.core.process(buffer, &input);
+        // Reuse buffer to avoid allocation
+        self.input_buffer.clear();
+        self.input_buffer.extend_from_slice(buffer);
+        self.core.process(buffer, &self.input_buffer);
     }
 
     /// Reset internal state
