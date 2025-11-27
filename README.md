@@ -81,7 +81,7 @@ Perfect for algorithmic music, game audio, generative art, and interactive insta
     music theory integration
     batteries included approach
     composition and code first environment (rust's ide integration and your choice of ide is everything here)
-    high CPU performance and automatic simd (100x realtime synthesis uncached, 18.6x cached on complex compositions)
+    high CPU performance and automatic simd (100x realtime synthesis uncached, 20.0x cached on complex compositions)
     multi-core parallelism (automatic via Rayon)
     optional GPU compute shader acceleration with transparent API
 
@@ -430,8 +430,8 @@ Tunes is designed for exceptional performance with automatic optimizations:
 - Cached complex composition: 20.0-x realtime
 - SIMD concurrent sample playback: 15x realtime (25-100 samples playing simultaneously)
 - Conservative concurrent capacity: **1000+ samples** in real-world scenarios
-- SIMD effects (all stacked): 98.8x realtime
-- WAV export: 12.2x realtime (124-second multi-track composition)
+- SIMD effects (all stacked): 100x realtime
+- WAV export: 12x realtime (124-second multi-track composition)
 
 **For game audio with true concurrent samples:**
 - SIMD handles 50-100 samples playing **simultaneously** at **15x realtime**
@@ -443,7 +443,7 @@ Tunes is designed for exceptional performance with automatic optimizations:
 ### Automatic Optimizations
 
 Tunes automatically applies:
-- ✅ **SIMD vectorization** (AVX2/SSE/NEON) - 11-17x realtime concurrent sample playback, 98.8x effects
+- ✅ **SIMD vectorization** (AVX2/SSE/NEON) - 15x realtime concurrent sample playback, 98.8x effects
 - ✅ **Multi-core parallelism** (Rayon) - automatic scaling across CPU cores
 - ✅ **Block processing** (512-sample chunks) - reduces overhead
 - ✅ **Integer-based routing** (Vec-indexed, not HashMap)
@@ -484,7 +484,7 @@ engine.export_wav(&mut mixer, "output2.wav")?;  // Uses CPU
 - Transparent: No API changes required beyond engine initialization
 - Cross-platform: wgpu supports Vulkan, Metal, DX12, WebGPU
 
-**GPU Performance (Intel HD 530 integrated):**
+**GPU Performance (Intel HD 530 integrated (decade old integrated gpu)):**
 - Speedup: ~1.1x vs CPU (marginal improvement on integrated graphics)
 - Note: Integrated GPUs show minimal benefit
 - Discrete GPUs: Performance scales with compute capacity and memory bandwidth
