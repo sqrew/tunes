@@ -164,32 +164,11 @@ fn main() -> Result<(), anyhow::Error> {
     engine.play_sample("explosion.wav");  // Loads once, caches, plays with SIMD
     engine.play_sample("footstep.wav");   // Loads once, caches
     engine.play_sample("footstep.wav");   // Instant! Uses cache, SIMD playback
-    engine.play_sample("jump.wav");
+    
+    play_sample!(engine, "sample.wav"); // Works the same but has compile time path resolution and runtime startup file validation
+    
 
     // All samples play concurrently with automatic mixing
-    Ok(())
-}
-```
-
-**With GPU Acceleration (requires `gpu` feature):**
-
-```rust
-use tunes::prelude::*;
-
-fn main() -> Result<(), anyhow::Error> {
-    // Transparent GPU acceleration - enable at engine creation
-    let engine = AudioEngine::new_with_gpu()?;
-
-    // All operations automatically GPU-accelerated when possible
-    let mut comp = Composition::new(Tempo::new(120.0));
-    comp.track("synth").sine(440.0, 1.0);
-
-    // Export uses GPU acceleration
-    engine.export_wav(&mut comp.into_mixer(), "output.wav")?;
-
-    // Playback uses GPU acceleration
-    engine.play_sample("output.wav");
-
     Ok(())
 }
 ```
@@ -309,21 +288,21 @@ fn main() -> anyhow::Result<()> {
 
 `tunes` occupies a unique position in the music programming landscape:
 
-| Feature                  | SuperCollider | Sonic Pi        | Leipzig         | Strudel           | **tunes**          | Music21 |
-|--------------------------|---------------|-----------------|-----------------|-------------------|--------------------|---------|
-| **Type safety**          | No            | No              | No (Clojure)    | Partial (TS)      | **Yes (Rust)**     | No      |
-| **Real-time audio**      | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
-| **Sample playback**      | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
-| **WebAssembly support**  | No            | No              | No              | Yes (JS native)   | **Yes (Rust)**     | No      |
-| **GPU acceleration**     | No            | No              | No              | No                | **Yes (wgpu)**     | No      |
-| **SIMD acceleration**    | Some          | No              | Via Overtone    | No                | **Yes (11-17x)**   | No      |
-| **WAV export**           | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
-| **FLAC export**          | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
-| **MIDI import/export**   | Yes           | No              | No              | No                | **Yes**            | Yes     |
-| **No dependencies**      | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
-| **Music theory**         | Manual        | Manual          | Yes             | Some              | **Yes (built-in)** | Yes     |
-| **Standalone binary**    | No            | No              | No              | No                | **Yes**            | No      |
-| **Embeddable**           | No            | No              | No              | No                | **Yes**            | No      |
+| Feature                 | SuperCollider | Sonic Pi        | Leipzig         | Strudel           | **tunes**          | Music21 |
+|-------------------------|---------------|-----------------|-----------------|-------------------|--------------------|---------|
+| **Type safety**         | No            | No              | No (Clojure)    | Partial (TS)      | **Yes (Rust)**     | No      |
+| **Real-time audio**     | Yes           | Yes             | Yes (Overtone)  | Yes (Web Audio)   | **Yes**            | No      |
+| **Sample playback**     | Yes           | Yes             | Yes (Overtone)  | Yes               | **Yes**            | No      |
+| **WebAssembly support** | No            | No              | No              | Yes (JS native)   | **Yes (Rust)**     | No      |
+| **GPU acceleration**    | No            | No              | No              | No                | **Yes (wgpu)**     | No      |
+| **SIMD acceleration**   | Some          | No              | Via Overtone    | No                | **Yes**            | No      |
+| **WAV export**          | Yes (manual)  | No              | Via Overtone    | No (browser)      | **Yes (easy)**     | Yes     |
+| **FLAC export**         | Yes (manual)  | No              | No              | No                | **Yes (easy)**     | No      |
+| **MIDI import/export**  | Yes           | No              | No              | No                | **Yes**            | Yes     |
+| **No dependencies**     | No (needs SC) | No (needs Ruby) | No (Clojure+SC) | No (browser/Node) | **Yes**            | No      |
+| **Music theory**        | Manual        | Manual          | Yes             | Some              | **Yes (built-in)** | Yes     |
+| **Standalone binary**   | No            | No              | No              | No                | **Yes**            | No      |
+| **Embeddable**          | No            | No              | No              | No                | **Yes**            | No      |
 
 ### When to use `tunes`
 
@@ -431,7 +410,7 @@ Tunes is designed for exceptional performance with automatic optimizations:
 - SIMD concurrent sample playback: 15x realtime (25-100 samples playing simultaneously)
 - Conservative concurrent capacity: **1000+ samples** in real-world scenarios
 - SIMD effects (all stacked): 100x realtime
-- WAV export: 12x realtime (124-second multi-track composition)
+- WAV export: 15x realtime (124-second multi-track composition)
 
 **For game audio with true concurrent samples:**
 - SIMD handles 50-100 samples playing **simultaneously** at **15x realtime**
