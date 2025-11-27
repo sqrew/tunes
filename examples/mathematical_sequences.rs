@@ -119,8 +119,8 @@ fn main() -> anyhow::Result<()> {
 
         comp.instrument(&format!("combined_{}", i), &Instrument::pluck())
             .at(23.0 + i as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .hihat(&steps);
+            .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::HiHatClosed, &steps));
     }
 
     // Arithmetic melody over the top

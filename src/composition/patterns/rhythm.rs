@@ -911,8 +911,8 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
             .pattern_start()
-            .drum(DrumType::Kick)
-            .drum(DrumType::Snare)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Snare, 0.25)
             .repeat(1);
 
         let track = &comp.into_mixer().tracks()[0];
@@ -1080,7 +1080,7 @@ mod tests {
         comp.track("mixed")
             .pattern_start()
             .note(&[440.0], 0.25)
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.25)
             .repeat(1);
 
         let track = &comp.into_mixer().tracks()[0];
@@ -1363,9 +1363,9 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
             .pattern_start()
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.0)
             .at(0.5)
-            .drum(DrumType::Snare)
+            .drum(DrumType::Snare, 0.0)
             .at(1.0)
             .speed(2.0);
 
@@ -1385,10 +1385,10 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
             .pattern_start()
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.0)
             .probability(1.0); // All should stay
 
         let track = &comp.into_mixer().tracks()[0];
@@ -1470,10 +1470,10 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
             .pattern_start()
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25) // Need non-zero duration so cursor advances past this event
             .every_n(2, DrumType::Snare);
 
         let track = &comp.into_mixer().tracks()[0];
@@ -1574,8 +1574,8 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
             .pattern_start()
-            .drum(DrumType::Kick)
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Kick, 0.25)
             .repeat(3) // 2 * 4 = 8 kicks total
             .every_n(4, DrumType::Crash);
 

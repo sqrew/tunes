@@ -124,10 +124,10 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("drums", &Instrument::sub_bass())
         .at_bar(19)
-        .drum_grid(16, 0.125) // Still using seconds for drum grid (tempo-aware grid would be next step)
-        .kick(&[0, 8])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
+        .drum_grid(16, 0.125, |g| g // Still using seconds for drum grid (tempo-aware grid would be next step)
+        .sound(DrumType::Kick, &[0, 8])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]))
         .repeat(3);
 
     // ===== 9. TEMPO HELPERS WITH ORNAMENTS =====

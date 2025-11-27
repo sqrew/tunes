@@ -339,6 +339,7 @@ mod tests {
         let drum = DrumEvent {
             drum_type: DrumType::Snare,
             start_time: 0.5,
+            pitch_offset: 0.0,
             spatial_position: None,
         };
 
@@ -359,6 +360,7 @@ mod tests {
         let drum_event = AudioEvent::Drum(DrumEvent {
             drum_type: DrumType::Kick,
             start_time: 0.0,
+            pitch_offset: 0.0,
             spatial_position: None,
         });
 

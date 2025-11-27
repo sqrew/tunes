@@ -29,10 +29,10 @@ fn main() -> anyhow::Result<()> {
     // Drums enter at verse 1
     comp.track("drums")
         .at_mark("verse1")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]))
         .repeat(3); // Plays through verse1, chorus, and part of verse2
 
     // Bass starts at chorus
@@ -108,15 +108,15 @@ fn main() -> anyhow::Result<()> {
     comp3
         .track("kick")
         .at_mark("drop")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12]))
         .repeat(7);
 
     comp3
         .track("snare")
         .at_mark("drop")
-        .drum_grid(16, 0.125)
-        .snare(&[4, 12])
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Snare, &[4, 12]))
         .repeat(7);
 
     comp3

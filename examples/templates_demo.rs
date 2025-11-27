@@ -195,17 +195,17 @@ fn main() -> anyhow::Result<()> {
         .compressor(Compressor::new(-18.0, 3.0, 3.0, 100.0, 1.0))
         .save_template("drum_sound")
         .at(22.0)
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));
 
     comp.from_template("drum_sound", "drums_variation")
         .at(24.0)
-        .drum_grid(16, 0.125)
-        .kick(&[0, 6, 10])
-        .snare(&[4, 12])
-        .hihat(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 6, 10])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
     // ===== PART 9: TEMPLATE LIBRARY PATTERN =====
     println!("Part 9: Building a Template Library\n");

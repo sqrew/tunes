@@ -106,7 +106,7 @@ fn build_drums(comp: &mut Composition) {
     comp.track("kick")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(1.0)
         .repeat(63);
 
@@ -115,7 +115,7 @@ fn build_drums(comp: &mut Composition) {
         .bus("drums")
         .volume(0.7)
         .pattern_start()
-        .drum(DrumType::Kick808)
+        .drum(DrumType::Kick808, 0.0)
         .wait(1.0)
         .repeat(63);
 
@@ -124,7 +124,7 @@ fn build_drums(comp: &mut Composition) {
         .bus("drums")
         .at(2.0)
         .pattern_start()
-        .drum(DrumType::Clap)
+        .drum(DrumType::Clap, 0.0)
         .wait(2.0)
         .repeat(31);
 
@@ -132,7 +132,7 @@ fn build_drums(comp: &mut Composition) {
     comp.track("hihat")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .wait(0.5)
         .probability(0.9) // 10% chance to skip for groove
         .repeat(127);
@@ -151,11 +151,11 @@ fn build_drums(comp: &mut Composition) {
     comp.track("crash")
         .bus("drums")
         .at(16.0)
-        .drum(DrumType::Crash);
+        .drum(DrumType::Crash, 0.0);
 
-    comp.track("crash").at(32.0).drum(DrumType::Crash);
+    comp.track("crash").at(32.0).drum(DrumType::Crash, 0.0);
 
-    comp.track("crash").at(48.0).drum(DrumType::Crash);
+    comp.track("crash").at(48.0).drum(DrumType::Crash, 0.0);
 
     // Ride cymbal for section 3
     comp.track("ride")
@@ -163,7 +163,7 @@ fn build_drums(comp: &mut Composition) {
         .volume(0.5)
         .at(32.0)
         .pattern_start()
-        .drum(DrumType::Ride)
+        .drum(DrumType::Ride, 0.0)
         .wait(1.0)
         .repeat(15);
 }

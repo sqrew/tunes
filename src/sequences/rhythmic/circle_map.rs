@@ -56,8 +56,8 @@
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(140.0));
 /// comp.track("circle_rhythm")
-///     .drum_grid(16, 0.25)
-///     .kick(&hits);
+///     .drum_grid(16, 0.25, |g| g
+///         .sound(DrumType::Kick, &hits));
 /// ```
 ///
 /// # Musical Applications
@@ -176,9 +176,9 @@ pub fn circle_map_to_hits(
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(130.0));
 /// comp.track("hocket")
-///     .drum_grid(16, 0.25)
-///     .kick(&kick_hits)
-///     .snare(&snare_hits);
+///     .drum_grid(16, 0.25, |g| g
+///         .sound(DrumType::Kick, &kick_hits)
+///         .sound(DrumType::Snare, &snare_hits));
 /// ```
 pub fn circle_map_hocket(
     omega: f32,

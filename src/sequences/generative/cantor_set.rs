@@ -98,7 +98,7 @@ pub fn generate(iterations: usize, resolution: usize) -> Vec<u32> {
 ///
 /// let hits = cantor_rhythm_16();
 /// // Use in drum grid:
-/// // comp.track("drums").drum_grid(16, 0.125).kick(&hits);
+/// // comp.track("drums").drum_grid(16, 0.125).sound(DrumType::Kick, &hits);
 /// ```
 pub fn cantor_rhythm_16() -> Vec<usize> {
     generate(2, 16)

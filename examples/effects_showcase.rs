@@ -38,10 +38,10 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("compressor_demo", &Instrument::synth_lead())
         .compressor(Compressor::new(0.3, 4.0, 0.01, 0.1, 1.5)) // threshold, ratio, attack, release, makeup
         .at(8.5)
-        .drum_grid(8, 0.2)
-        .kick(&[0, 4])
-        .snare(&[2, 6])
-        .hihat(&[0, 1, 2, 3, 4, 5, 6, 7]);
+        .drum_grid(8, 0.2, |g| g
+        .sound(DrumType::Kick, &[0, 4])
+        .sound(DrumType::Snare, &[2, 6])
+        .sound(DrumType::HiHatClosed, &[0, 1, 2, 3, 4, 5, 6, 7]));
 
     // Saturation - Analog warmth
     comp.instrument("saturation_demo", &Instrument::synth_lead())
@@ -287,10 +287,10 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("ringmod_drums", &Instrument::sub_bass())
         .ring_mod(RingModulator::new(300.0, 0.6))
         .at(83.0)
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));
 
     // Final chord with all modulation effects
     comp.instrument("finale", &Instrument::warm_pad())

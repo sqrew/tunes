@@ -275,10 +275,10 @@ mod tests {
 
         comp.section("beat")
             .track("drums")
-            .drum(DrumType::Kick)
-            .drum(DrumType::Snare)
-            .drum(DrumType::Kick)
-            .drum(DrumType::Snare);
+            .drum(DrumType::Kick, 0.5)
+            .drum(DrumType::Snare, 0.5)
+            .drum(DrumType::Kick, 0.5)
+            .drum(DrumType::Snare, 0.0);
 
         let section = comp.sections.get("beat").unwrap();
         let drums = section.tracks.get("drums").unwrap();

@@ -36,6 +36,14 @@ fn main() -> Result<(), anyhow::Error> {
     comp.instrument("a", &Instrument::analog_brass())
         .notes(&[C4, C3, C2, C1], 1.0);
 
+    comp.track("track")
+        .drum_grid(
+            16,
+            1.5,
+            (|f| f.sound(DrumType::Castanet, "xx--xx--xx--xx--")),
+        )
+        .transform(|t| t.mutate(2));
+
     let engine = AudioEngine::new()?;
     engine.play_mixer(&comp.into_mixer())?;
 

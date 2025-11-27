@@ -27,13 +27,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("kicks")
         .at(0.0)
-        .drum(DrumType::KickTight)
+        .drum(DrumType::KickTight, 0.0)
         .wait(quarter)
-        .drum(DrumType::KickDeep)
+        .drum(DrumType::KickDeep, 0.0)
         .wait(quarter)
-        .drum(DrumType::KickAcoustic)
+        .drum(DrumType::KickAcoustic, 0.0)
         .wait(quarter)
-        .drum(DrumType::KickClick);
+        .drum(DrumType::KickClick, 0.0);
 
     // Section 2: Snare Variations
     println!("\n2. SNARE VARIATIONS (4)");
@@ -44,13 +44,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("snares")
         .at(2.5)
-        .drum(DrumType::SnareRim)
+        .drum(DrumType::SnareRim, 0.0)
         .wait(quarter)
-        .drum(DrumType::SnareTight)
+        .drum(DrumType::SnareTight, 0.0)
         .wait(quarter)
-        .drum(DrumType::SnareLoose)
+        .drum(DrumType::SnareLoose, 0.0)
         .wait(quarter)
-        .drum(DrumType::SnarePiccolo);
+        .drum(DrumType::SnarePiccolo, 0.0);
 
     // Section 3: Hi-Hat Variations
     println!("\n3. HI-HAT VARIATIONS (2)");
@@ -59,13 +59,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("hihats")
         .at(5.0)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatSizzle)
+        .drum(DrumType::HiHatSizzle, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatSizzle);
+        .drum(DrumType::HiHatSizzle, 0.0);
 
     // Section 4: Clap Variations
     println!("\n4. CLAP VARIATIONS (4)");
@@ -76,13 +76,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("claps")
         .at(6.5)
-        .drum(DrumType::ClapDry)
+        .drum(DrumType::ClapDry, 0.0)
         .wait(quarter)
-        .drum(DrumType::ClapRoom)
+        .drum(DrumType::ClapRoom, 0.0)
         .wait(quarter)
-        .drum(DrumType::ClapGroup)
+        .drum(DrumType::ClapGroup, 0.0)
         .wait(quarter)
-        .drum(DrumType::ClapSnare);
+        .drum(DrumType::ClapSnare, 0.0);
 
     // Section 5: Cymbal Variations
     println!("\n5. CYMBAL VARIATIONS (2)");
@@ -91,9 +91,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("cymbals")
         .at(9.0)
-        .drum(DrumType::CrashShort)
+        .drum(DrumType::CrashShort, 0.0)
         .wait(1.0)
-        .drum(DrumType::RideTip);
+        .drum(DrumType::RideTip, 0.0);
 
     // Section 6: Shaker Variations
     println!("\n6. SHAKER VARIATIONS (2)");
@@ -102,13 +102,13 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("shakers")
         .at(11.0)
-        .drum(DrumType::EggShaker)
+        .drum(DrumType::EggShaker, 0.0)
         .wait(0.3)
-        .drum(DrumType::EggShaker)
+        .drum(DrumType::EggShaker, 0.0)
         .wait(0.3)
-        .drum(DrumType::TubeShaker)
+        .drum(DrumType::TubeShaker, 0.0)
         .wait(0.3)
-        .drum(DrumType::TubeShaker);
+        .drum(DrumType::TubeShaker, 0.0);
 
     // Section 7: Full Groove Using Variations
     println!("\n7. FULL GROOVE (using all variations)");
@@ -116,56 +116,56 @@ fn main() -> anyhow::Result<()> {
     comp.track("groove")
         .at(13.0)
         // Bar 1
-        .drum(DrumType::KickTight)
+        .drum(DrumType::KickTight, 0.0)
         .wait(0.0)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatSizzle)
+        .drum(DrumType::HiHatSizzle, 0.0)
         .wait(eighth)
-        .drum(DrumType::SnareTight)
+        .drum(DrumType::SnareTight, 0.0)
         .wait(0.0)
-        .drum(DrumType::EggShaker)
+        .drum(DrumType::EggShaker, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
         // Bar 2
-        .drum(DrumType::KickDeep)
+        .drum(DrumType::KickDeep, 0.0)
         .wait(0.0)
-        .drum(DrumType::HiHatSizzle)
+        .drum(DrumType::HiHatSizzle, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::ClapDry)
+        .drum(DrumType::ClapDry, 0.0)
         .wait(0.0)
-        .drum(DrumType::SnareRim)
+        .drum(DrumType::SnareRim, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatSizzle)
+        .drum(DrumType::HiHatSizzle, 0.0)
         .wait(eighth)
         // Bar 3
-        .drum(DrumType::KickAcoustic)
+        .drum(DrumType::KickAcoustic, 0.0)
         .wait(0.0)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::TubeShaker)
+        .drum(DrumType::TubeShaker, 0.0)
         .wait(eighth)
-        .drum(DrumType::SnareLoose)
+        .drum(DrumType::SnareLoose, 0.0)
         .wait(0.0)
-        .drum(DrumType::ClapRoom)
+        .drum(DrumType::ClapRoom, 0.0)
         .wait(eighth)
-        .drum(DrumType::HiHatSizzle)
+        .drum(DrumType::HiHatSizzle, 0.0)
         .wait(eighth)
         // Bar 4
-        .drum(DrumType::KickClick)
+        .drum(DrumType::KickClick, 0.0)
         .wait(0.0)
-        .drum(DrumType::HiHatHalfOpen)
+        .drum(DrumType::HiHatHalfOpen, 0.0)
         .wait(eighth)
-        .drum(DrumType::EggShaker)
+        .drum(DrumType::EggShaker, 0.0)
         .wait(eighth)
-        .drum(DrumType::SnarePiccolo)
+        .drum(DrumType::SnarePiccolo, 0.0)
         .wait(0.0)
-        .drum(DrumType::ClapGroup)
+        .drum(DrumType::ClapGroup, 0.0)
         .wait(quarter)
-        .drum(DrumType::CrashShort);
+        .drum(DrumType::CrashShort, 0.0);
 
     println!("\n=== LIBRARY SUMMARY ===");
     println!("Kicks: 8 total (4 base + 4 variations)");

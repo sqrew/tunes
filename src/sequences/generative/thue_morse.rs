@@ -44,9 +44,9 @@
 ///     .collect();
 ///
 /// comp.track("tm_drums")
-///     .drum_grid(32, 0.125)
-///     .kick(&hits)
-///     .hihat(&sequences::euclidean::generate(16, 32));  // Layer with Euclidean
+///     .drum_grid(32, 0.125, |g| g
+///         .sound(DrumType::Kick, &hits)
+///         .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(16, 32)));  // Layer with Euclidean
 /// ```
 ///
 /// # Examples
@@ -67,8 +67,8 @@
 ///     .collect();
 ///
 /// comp.track("thue_drums")
-///     .drum_grid(32, 0.125)
-///     .kick(&pattern);
+///     .drum_grid(32, 0.125, |g| g
+///         .sound(DrumType::Kick, &pattern));
 ///
 /// // Use for parameter switching
 /// let tm_seq = sequences::thue_morse::generate(8);

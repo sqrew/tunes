@@ -377,6 +377,7 @@ impl Track {
         self.events.push(AudioEvent::Drum(DrumEvent {
             drum_type,
             start_time,
+            pitch_offset: 0.0,
             spatial_position,
         }));
         self.invalidate_time_cache();

@@ -21,9 +21,9 @@ fn main() -> anyhow::Result<()> {
     comp.track("drums")
         .at(0.0)
         .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
     println!("✓ Created composition with 3 tracks\n");
 

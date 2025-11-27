@@ -111,9 +111,9 @@ impl LayeredMusic {
     fn create_combat() -> Mixer {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
-            .drum_grid(16, 0.125)
-            .kick(&[0, 4, 8, 12])
-            .snare(&[4, 12]);
+            .drum_grid(16, 0.125, |g| g
+                .sound(DrumType::Kick, &[0, 4, 8, 12])
+                .sound(DrumType::Snare, &[4, 12]));
         comp.into_mixer()
     }
 }
@@ -195,10 +195,11 @@ fn create_adaptive_music() -> anyhow::Result<Mixer> {
 
     comp.section("combat")
         .track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .and()
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 4, 8, 12])
+            .sound(DrumType::Snare, &[4, 12]));
+
+    comp.section("combat")
         .instrument("bass", &Instrument::sub_bass())
         .notes(&[C2, C2, G2, G2], 0.5);
 
@@ -245,9 +246,9 @@ fn create_procedural_music(danger_level: f32, player_health: f32) -> Mixer {
     // Add drums when danger is high
     if danger_level > 0.5 {
         comp.track("drums")
-            .drum_grid(16, 0.125)
-            .kick(&[0, 8])
-            .snare(&[4, 12]);
+            .drum_grid(16, 0.125, |g| g
+                .sound(DrumType::Kick, &[0, 8])
+                .sound(DrumType::Snare, &[4, 12]));
     }
 
     comp.into_mixer()
@@ -367,18 +368,18 @@ impl MusicManager {
     fn create_combat_music() -> Mixer {
         let mut comp = Composition::new(Tempo::new(140.0));
         comp.track("drums")
-            .drum_grid(16, 0.125)
-            .kick(&[0, 4, 8, 12])
-            .snare(&[4, 12]);
+            .drum_grid(16, 0.125, |g| g
+                .sound(DrumType::Kick, &[0, 4, 8, 12])
+                .sound(DrumType::Snare, &[4, 12]));
         comp.into_mixer()
     }
 
     fn create_boss_music() -> Mixer {
         let mut comp = Composition::new(Tempo::new(160.0));
         comp.track("drums")
-            .drum_grid(16, 0.125)
-            .kick(&[0, 2, 4, 6, 8, 10, 12, 14])
-            .snare(&[4, 12]);
+            .drum_grid(16, 0.125, |g| g
+                .sound(DrumType::Kick, &[0, 2, 4, 6, 8, 10, 12, 14])
+                .sound(DrumType::Snare, &[4, 12]));
         comp.instrument("bass", &Instrument::sub_bass())
             .notes(&[C1, C1, C1, D1], 0.25)
             .distortion(Distortion::new(0.6));

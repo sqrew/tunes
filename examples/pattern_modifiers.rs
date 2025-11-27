@@ -48,8 +48,8 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("drums")
         .at(8.0)
-        .drum_grid(16, sixteenth)
-        .kick(&pattern)
+        .drum_grid(16, sixteenth, |g| g
+        .sound(DrumType::Kick, &pattern))
         .repeat(4);
 
     println!("\n▶ Playing composition with pattern modifiers...\n");

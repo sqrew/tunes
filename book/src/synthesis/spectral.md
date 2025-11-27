@@ -392,7 +392,7 @@ SpectralDynamics::gate_like()  // Gate-like expansion
 ```rust
 comp.instrument("drums", &Instrument::drum_kit())
     .spectral_dynamics(SpectralDynamics::aggressive())
-    .drum(DrumType::Kick808);
+    .drum(DrumType::Kick808, 0.0);
 ```
 
 **Use cases:**

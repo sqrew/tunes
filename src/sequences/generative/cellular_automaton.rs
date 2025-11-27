@@ -42,8 +42,8 @@
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(140.0));
 /// comp.track("ca_drums")
-///     .drum_grid(32, 0.125)
-///     .kick(&rhythm);
+///     .drum_grid(32, 0.125, |g| g
+///         .sound(DrumType::Kick, &rhythm));
 ///
 /// // Rule 90 - Sierpinski fractal
 /// let rule90 = sequences::cellular_automaton::generate(90, 16, 32, None);

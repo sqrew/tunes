@@ -125,10 +125,10 @@ let snare = sequences::euclidean::generate(3, 16);    // [0, 5, 11] - Syncopated
 let hihat = sequences::euclidean::generate(7, 16);    // Complex pattern
 
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&kick)
-    .snare(&snare)
-    .hihat(&hihat);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &kick)
+        .sound(DrumType::Snare, &snare)
+        .sound(DrumType::HiHatClosed, &hihat));
 ```
 
 **Common patterns:**
@@ -148,8 +148,8 @@ let phi_rhythm = sequences::golden_ratio_rhythm::generate(32);
 // Returns indices following golden ratio spacing
 
 comp.track("phi_drums")
-    .drum_grid(32, 0.125)
-    .kick(&phi_rhythm);
+    .drum_grid(32, 0.125, |g| g
+        .sound(DrumType::Kick, &phi_rhythm));
 ```
 
 **Musical use:** Never quite repeats, sounds organic and natural.
@@ -163,8 +163,8 @@ let shepard = sequences::shepard_tone::generate(16, 4);
 // Returns rhythm pattern with perceived ascending/descending quality
 
 comp.track("shepard_drums")
-    .drum_grid(16, 0.125)
-    .kick(&shepard);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &shepard));
 ```
 
 **Musical use:** Hypnotic, gradually intensifying rhythmic patterns.
@@ -184,8 +184,8 @@ let hits = sequences::circle_map_to_hits(&circle, 16);
 let (rhythm_a, rhythm_b) = sequences::circle_map_hocket(&circle, 16);
 
 comp.track("circle_drums")
-    .drum_grid(16, 0.125)
-    .kick(&hits);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &hits));
 ```
 
 **Musical use:** Complex rhythmic patterns that hover between periodic and chaotic.
@@ -205,8 +205,8 @@ let kalamatianos = sequences::kalamatianos();    // 3+2+2 (7/8)
 let aksak = sequences::aksak_9_8();              // 2+2+2+3 (9/8)
 
 comp.track("folk_drums")
-    .drum_grid(7, 0.125)
-    .kick(&rachenitsa);
+    .drum_grid(7, 0.125, |g| g
+        .sound(DrumType::Kick, &rachenitsa));
 ```
 
 **Musical use:** Folk rhythms from Balkans, Turkey, and other traditions.
@@ -292,8 +292,8 @@ for (gen_idx, generation) in rule30.iter().take(4).enumerate() {
         .collect();
 
     comp.track(&format!("ca_{}", gen_idx))
-        .drum_grid(16, 0.125)
-        .kick(&rhythm);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &rhythm));
 }
 ```
 
@@ -515,10 +515,10 @@ fn main() -> anyhow::Result<()> {
         .collect();
 
     comp.track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::generate(4, 16))  // Four-on-floor
-        .snare(&tm_hits)                     // Non-repetitive
-        .hihat(&sequences::euclidean::generate(7, 16));// Complex pattern
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))  // Four-on-floor
+            .sound(DrumType::Snare, &tm_hits)                     // Non-repetitive
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16)));// Complex pattern
 
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())
@@ -559,10 +559,10 @@ Euclidean rhythms are perfect for drum patterns because they're mathematically o
 
 ```rust
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&sequences::euclidean::generate(4, 16))    // Even kick
-    .snare(&sequences::euclidean::generate(3, 16))   // Syncopated snare
-    .hihat(&sequences::euclidean::generate(7, 16));  // Complex hi-hat
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))    // Even kick
+        .sound(DrumType::Snare, &sequences::euclidean::generate(3, 16))   // Syncopated snare
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16)));  // Complex hi-hat
 ```
 
 ### 3. Combine Sequences for Complexity

@@ -37,9 +37,9 @@ fn main() -> anyhow::Result<()> {
     comp.track("drums")
         .at(0.0)
         .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14])
         .repeat(60);
 
     comp.instrument("fx", &Instrument::pluck())
@@ -101,9 +101,9 @@ fn main() -> anyhow::Result<()> {
         comp_gpu.track("drums")
             .at(0.0)
             .drum_grid(16, 0.125)
-            .kick(&[0, 4, 8, 12])
-            .snare(&[4, 12])
-            .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
+            .sound(DrumType::Kick, &[0, 4, 8, 12])
+            .sound(DrumType::Snare, &[4, 12])
+            .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14])
             .repeat(60);
         comp_gpu.instrument("fx", &Instrument::pluck())
             .at(0.0)

@@ -19,39 +19,34 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("demo")
         .at(0.0)
-        .drum(DrumType::Kick808)
-        .wait(0.6)
-        .drum(DrumType::Snare808)
-        .wait(0.3)
-        .drum(DrumType::HiHat808Closed)
-        .wait(0.1)
-        .drum(DrumType::HiHat808Open)
-        .wait(0.3)
-        .drum(DrumType::Clap808)
-        .wait(0.3);
+        .drum(DrumType::Kick808, 0.6)
+        .drum(DrumType::Snare808, 0.3)
+        .drum(DrumType::HiHat808Closed, 0.1)
+        .drum(DrumType::HiHat808Open, 0.3)
+        .drum(DrumType::Clap808, 0.3);
 
     // Example 2: Classic 808 beat pattern
     println!("Part 2: Classic 808 Beat Pattern");
     comp.track("808_beat")
         .at(3.0)
-        .drum_grid(16, 0.15)
-        .kick(&[0, 6, 10])
-        .snare(&[4, 12])
-        .hit(DrumType::Snare808, &[4, 12])
-        .hit(DrumType::HiHat808Closed, &[0, 2, 4, 6, 8, 10, 12, 14])
-        .hit(DrumType::HiHat808Open, &[3, 11])
-        .hit(DrumType::Clap808, &[4, 12]);
+        .drum_grid(16, 0.15, |g| g
+        .sound(DrumType::Kick, &[0, 6, 10])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::Snare808, &[4, 12])
+        .sound(DrumType::HiHat808Closed, &[0, 2, 4, 6, 8, 10, 12, 14])
+        .sound(DrumType::HiHat808Open, &[3, 11])
+        .sound(DrumType::Clap808, &[4, 12]));
 
     // Example 3: 808-style hip-hop beat
     println!("Part 3: 808 Hip-Hop Pattern\n");
     comp.track("hiphop")
         .at(5.5)
-        .drum_grid(16, 0.15)
-        .hit(DrumType::Kick808, &[0, 3, 6, 10])
-        .hit(DrumType::Snare808, &[4, 12])
-        .hit(DrumType::HiHat808Closed, &[1, 2, 5, 7, 9, 11, 13, 14])
-        .hit(DrumType::HiHat808Open, &[15])
-        .hit(DrumType::Clap808, &[8]);
+        .drum_grid(16, 0.15, |g| g
+        .sound(DrumType::Kick808, &[0, 3, 6, 10])
+        .sound(DrumType::Snare808, &[4, 12])
+        .sound(DrumType::HiHat808Closed, &[1, 2, 5, 7, 9, 11, 13, 14])
+        .sound(DrumType::HiHat808Open, &[15])
+        .sound(DrumType::Clap808, &[8]));
 
     println!("=== Playback ===");
     let mixer = comp.into_mixer();

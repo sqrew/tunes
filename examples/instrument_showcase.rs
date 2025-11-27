@@ -100,28 +100,28 @@ fn main() -> anyhow::Result<()> {
     println!("  • Tom fills");
     comp.instrument("tom_fill", &Instrument::sub_bass())
         .at(29.5)
-        .drum_grid(16, 0.125)
-        .tom_high(&[0, 1])
-        .tom(&[2, 3])
-        .tom_low(&[4, 5, 6, 7]);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::TomHigh, &[0, 1])
+        .sound(DrumType::Tom, &[2, 3])
+        .sound(DrumType::TomLow, &[4, 5, 6, 7]));
 
     // 15. Cymbal variety
     println!("  • Cymbal variety");
     comp.instrument("cymbals", &Instrument::sub_bass())
         .at(31.5)
-        .drum_grid(16, 0.25)
-        .crash(&[0])
-        .ride(&[2, 4, 6])
-        .china(&[8])
-        .splash(&[10, 11]);
+        .drum_grid(16, 0.25, |g| g
+        .sound(DrumType::Crash, &[0])
+        .sound(DrumType::Ride, &[2, 4, 6])
+        .sound(DrumType::China, &[8])
+        .sound(DrumType::Splash, &[10, 11]));
 
     // 16. Shaker and Tambourine
     println!("  • Shaker and Tambourine");
     comp.instrument("perc", &Instrument::sub_bass())
         .at(35.5)
-        .drum_grid(16, 0.125)
-        .shaker(&[0, 2, 4, 6, 8, 10, 12, 14])
-        .tambourine(&[4, 12])
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Shaker, &[0, 2, 4, 6, 8, 10, 12, 14])
+        .sound(DrumType::Tambourine, &[4, 12]))
         .repeat(1);
 
     // ===== MUSICAL EXAMPLE: COMBINING NEW INSTRUMENTS =====
@@ -165,13 +165,13 @@ fn main() -> anyhow::Result<()> {
     // Orchestral percussion
     comp.instrument("orch_perc", &Instrument::sub_bass())
         .at(47.0)
-        .drum_grid(32, 0.25)
-        .kick(&[0, 8, 16, 24])
-        .snare(&[8, 24])
-        .crash(&[0, 16])
-        .tambourine(&[4, 12, 20, 28])
-        .tom_high(&[14, 15])
-        .tom_low(&[30, 31]);
+        .drum_grid(32, 0.25, |g| g
+        .sound(DrumType::Kick, &[0, 8, 16, 24])
+        .sound(DrumType::Snare, &[8, 24])
+        .sound(DrumType::Crash, &[0, 16])
+        .sound(DrumType::Tambourine, &[4, 12, 20, 28])
+        .sound(DrumType::TomHigh, &[14, 15])
+        .sound(DrumType::TomLow, &[30, 31]));
 
     // FM Bells outro
     comp.instrument("bells_outro", &Instrument::fm_bells())

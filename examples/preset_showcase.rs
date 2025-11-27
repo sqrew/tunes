@@ -45,10 +45,10 @@ fn main() {
 
     comp.track("drums")
         .at(4.0)
-        .drum_grid(16, 0.125)
-        .kick(&kick)
-        .snare(&snare)
-        .hihat(&hihat);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &kick)
+        .sound(DrumType::Snare, &snare)
+        .sound(DrumType::HiHatClosed, &hihat));
 
     // Golden ratio rhythm
     let golden = sequences::golden_ratio_rhythm::classic();
@@ -146,8 +146,8 @@ fn main() {
         .collect();
     comp.track("thue_drums")
         .at(20.0)
-        .drum_grid(32, 0.125)
-        .kick(&thue_hits);
+        .drum_grid(32, 0.125, |g| g
+        .sound(DrumType::Kick, &thue_hits));
 
     // Recamán sequence
     let recaman = sequences::recaman::classic();

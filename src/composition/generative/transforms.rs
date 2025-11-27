@@ -117,31 +117,52 @@ impl<'a> TrackBuilder<'a> {
 
         // Collect note events in the pattern
         let mut note_events: Vec<(usize, [f32; 8], usize)> = Vec::new();
+        // Collect drum events in the pattern
+        let mut drum_events: Vec<(usize, f32)> = Vec::new();
+
         for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    note_events.push((idx, note.frequencies, note.num_freqs));
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        note_events.push((idx, note.frequencies, note.num_freqs));
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        drum_events.push((idx, drum.pitch_offset));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Rotate note frequencies
+        if !note_events.is_empty() {
+            let freqs: Vec<([f32; 8], usize)> =
+                note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
+            let len = freqs.len() as i32;
+            let normalized_rotation = ((positions % len) + len) % len;
+
+            for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
+                let rotated_idx = ((i as i32 + normalized_rotation) % len) as usize;
+                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
+                    note.frequencies = freqs[rotated_idx].0;
+                    note.num_freqs = freqs[rotated_idx].1;
                 }
             }
         }
 
-        if note_events.is_empty() {
-            return self;
-        }
+        // Rotate drum pitch offsets
+        if !drum_events.is_empty() {
+            let pitch_offsets: Vec<f32> = drum_events.iter().map(|(_, p)| *p).collect();
+            let len = pitch_offsets.len() as i32;
+            let normalized_rotation = ((positions % len) + len) % len;
 
-        // Extract frequencies in order
-        let freqs: Vec<([f32; 8], usize)> = note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
-
-        // Rotate the frequencies
-        let len = freqs.len() as i32;
-        let normalized_rotation = ((positions % len) + len) % len; // Handle negative rotations
-
-        // Apply rotated frequencies back to the notes
-        for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
-            let rotated_idx = ((i as i32 + normalized_rotation) % len) as usize;
-            if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
-                note.frequencies = freqs[rotated_idx].0;
-                note.num_freqs = freqs[rotated_idx].1;
+            for (i, (event_idx, _)) in drum_events.iter().enumerate() {
+                let rotated_idx = ((i as i32 + normalized_rotation) % len) as usize;
+                if let AudioEvent::Drum(drum) = &mut self.get_track_mut().events[*event_idx] {
+                    drum.pitch_offset = pitch_offsets[rotated_idx];
+                }
             }
         }
 
@@ -191,20 +212,30 @@ impl<'a> TrackBuilder<'a> {
         use rand::Rng;
         let mut rng = rand::rng();
 
-        // Mutate notes in the pattern
+        // Mutate notes and drums in the pattern
         for event in &mut self.get_track_mut().events {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    // Apply random mutation to each frequency in the note/chord
-                    for i in 0..note.num_freqs {
-                        // Random offset: -max_semitones to +max_semitones
-                        let offset = rng.random_range(-max_semitones..=max_semitones);
-                        if offset != 0 {
-                            let shift_ratio = 2.0_f32.powf(offset as f32 / 12.0);
-                            note.frequencies[i] *= shift_ratio;
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        // Apply random mutation to each frequency in the note/chord
+                        for i in 0..note.num_freqs {
+                            // Random offset: -max_semitones to +max_semitones
+                            let offset = rng.random_range(-max_semitones..=max_semitones);
+                            if offset != 0 {
+                                let shift_ratio = 2.0_f32.powf(offset as f32 / 12.0);
+                                note.frequencies[i] *= shift_ratio;
+                            }
                         }
                     }
                 }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Apply random mutation to drum pitch
+                        let offset = rng.random_range(-max_semitones..=max_semitones);
+                        drum.pitch_offset += offset as f32;
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -263,7 +294,22 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Duplicate notes in the pattern
+        // Collect drums in pattern to create stacked copies
+        let drums_to_stack: Vec<_> = self
+            .get_track_mut()
+            .events
+            .iter()
+            .filter_map(|event| {
+                if let AudioEvent::Drum(drum) = event {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        return Some(*drum);
+                    }
+                }
+                None
+            })
+            .collect();
+
+        // Stack notes in place (notes can hold multiple frequencies)
         for event in &mut self.get_track_mut().events {
             if let AudioEvent::Note(note) = event {
                 if note.start_time >= pattern_start && note.start_time < cursor {
@@ -287,6 +333,21 @@ impl<'a> TrackBuilder<'a> {
                         }
                     }
                 }
+            }
+        }
+
+        // Create stacked drum copies with shifted pitch
+        for drum in drums_to_stack {
+            for layer in 1..=count {
+                let shift = semitones * layer as i32;
+                self.get_track_mut()
+                    .events
+                    .push(AudioEvent::Drum(crate::track::DrumEvent {
+                        drum_type: drum.drum_type,
+                        start_time: drum.start_time,
+                        pitch_offset: drum.pitch_offset + shift as f32,
+                        spatial_position: drum.spatial_position,
+                    }));
             }
         }
 
@@ -911,23 +972,32 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Apply gravitational force to each note
+        // Apply gravitational force to each note and drum
         for event in &mut self.get_track_mut().events {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    for i in 0..note.num_freqs {
-                        let original_freq = note.frequencies[i];
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        for i in 0..note.num_freqs {
+                            let original_freq = note.frequencies[i];
 
-                        // Calculate distance in semitones
-                        let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
+                            // Calculate distance in semitones
+                            let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
 
-                        // Apply gravity - move by (strength * distance) toward center
-                        let pull_semitones = -semitone_distance * strength;
-                        let shift_ratio = 2.0_f32.powf(pull_semitones / 12.0);
+                            // Apply gravity - move by (strength * distance) toward center
+                            let pull_semitones = -semitone_distance * strength;
+                            let shift_ratio = 2.0_f32.powf(pull_semitones / 12.0);
 
-                        note.frequencies[i] = original_freq * shift_ratio;
+                            note.frequencies[i] = original_freq * shift_ratio;
+                        }
                     }
                 }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Pull drum pitch_offset toward 0 (default pitch)
+                        drum.pitch_offset -= drum.pitch_offset * strength;
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -963,40 +1033,70 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Collect notes in time order
-        let mut note_data: Vec<(usize, f32, [f32; 8], usize)> = Vec::new();
+        // Collect all events (notes and drums) in time order
+        #[derive(Clone)]
+        enum EventType {
+            Note { num_freqs: usize },
+            Drum,
+        }
+        let mut event_data: Vec<(usize, f32, EventType)> = Vec::new();
+
         for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    note_data.push((idx, note.start_time, note.frequencies, note.num_freqs));
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        event_data.push((idx, note.start_time, EventType::Note { num_freqs: note.num_freqs }));
+                    }
                 }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        event_data.push((idx, drum.start_time, EventType::Drum));
+                    }
+                }
+                _ => {}
             }
         }
 
         // Sort by time
-        note_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        event_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Apply cascading ripple effects
         let mut accumulated_time_shift = 0.0;
         let mut accumulated_pitch_shift = 0.0;
         let decay = 0.7; // Each ripple decays to 70% of previous
 
-        for (i, (idx, _original_time, _original_freqs, num_freqs)) in note_data.iter().enumerate() {
+        for (i, (idx, _original_time, event_type)) in event_data.iter().enumerate() {
             if i > 0 {
-                // Apply accumulated effects from previous notes
-                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*idx] {
-                    // Apply timing shift
-                    note.start_time += accumulated_time_shift;
+                // Apply accumulated effects from previous events
+                match &self.get_track_mut().events[*idx] {
+                    AudioEvent::Note(_) => {
+                        if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*idx] {
+                            // Apply timing shift
+                            note.start_time += accumulated_time_shift;
 
-                    // Apply pitch shift
-                    let pitch_shift_ratio = 2.0_f32.powf(accumulated_pitch_shift / 12.0);
-                    for j in 0..*num_freqs {
-                        note.frequencies[j] *= pitch_shift_ratio;
+                            // Apply pitch shift
+                            let pitch_shift_ratio = 2.0_f32.powf(accumulated_pitch_shift / 12.0);
+                            if let EventType::Note { num_freqs } = event_type {
+                                for j in 0..*num_freqs {
+                                    note.frequencies[j] *= pitch_shift_ratio;
+                                }
+                            }
+                        }
                     }
+                    AudioEvent::Drum(_) => {
+                        if let AudioEvent::Drum(drum) = &mut self.get_track_mut().events[*idx] {
+                            // Apply timing shift
+                            drum.start_time += accumulated_time_shift;
+
+                            // Apply pitch shift to pitch_offset
+                            drum.pitch_offset += accumulated_pitch_shift;
+                        }
+                    }
+                    _ => {}
                 }
             }
 
-            // Add this note's contribution to the ripple (decayed)
+            // Add this event's contribution to the ripple (decayed)
             accumulated_time_shift = (accumulated_time_shift + intensity) * decay;
             accumulated_pitch_shift = (accumulated_pitch_shift + intensity * 2.0) * decay;
         }
@@ -1035,35 +1135,63 @@ impl<'a> TrackBuilder<'a> {
 
         // Collect note events in the pattern
         let mut note_events: Vec<(usize, [f32; 8], usize)> = Vec::new();
+        // Collect drum events in the pattern
+        let mut drum_events: Vec<(usize, f32)> = Vec::new();
+
         for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    note_events.push((idx, note.frequencies, note.num_freqs));
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        note_events.push((idx, note.frequencies, note.num_freqs));
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        drum_events.push((idx, drum.pitch_offset));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        use rand::Rng;
+        let mut rng = rand::rng();
+
+        // Shuffle note frequencies
+        if !note_events.is_empty() {
+            let mut freqs: Vec<([f32; 8], usize)> =
+                note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
+
+            // Shuffle using Fisher-Yates
+            for i in (1..freqs.len()).rev() {
+                let j = rng.random_range(0..=i);
+                freqs.swap(i, j);
+            }
+
+            // Apply shuffled frequencies back to the notes
+            for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
+                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
+                    note.frequencies = freqs[i].0;
+                    note.num_freqs = freqs[i].1;
                 }
             }
         }
 
-        if note_events.is_empty() {
-            return self;
-        }
+        // Shuffle drum pitch offsets
+        if !drum_events.is_empty() {
+            let mut pitch_offsets: Vec<f32> = drum_events.iter().map(|(_, p)| *p).collect();
 
-        // Extract and shuffle frequencies
-        let mut freqs: Vec<([f32; 8], usize)> =
-            note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
+            // Shuffle using Fisher-Yates
+            for i in (1..pitch_offsets.len()).rev() {
+                let j = rng.random_range(0..=i);
+                pitch_offsets.swap(i, j);
+            }
 
-        // Shuffle using Fisher-Yates
-        use rand::Rng;
-        let mut rng = rand::rng();
-        for i in (1..freqs.len()).rev() {
-            let j = rng.random_range(0..=i);
-            freqs.swap(i, j);
-        }
-
-        // Apply shuffled frequencies back to the notes
-        for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
-            if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
-                note.frequencies = freqs[i].0;
-                note.num_freqs = freqs[i].1;
+            // Apply shuffled pitch offsets back to drums
+            for (i, (event_idx, _)) in drum_events.iter().enumerate() {
+                if let AudioEvent::Drum(drum) = &mut self.get_track_mut().events[*event_idx] {
+                    drum.pitch_offset = pitch_offsets[i];
+                }
             }
         }
 
@@ -1127,7 +1255,15 @@ impl<'a> TrackBuilder<'a> {
                         true // Keep notes outside pattern
                     }
                 }
-                _ => true, // Keep non-note events
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Randomly decide to keep or remove
+                        rng.random_range(0.0..1.0) < keep_probability
+                    } else {
+                        true // Keep drums outside pattern
+                    }
+                }
+                _ => true, // Keep other events (samples, tempo changes, etc.)
             }
         });
 
@@ -1165,29 +1301,48 @@ impl<'a> TrackBuilder<'a> {
 
         // Collect note events in the pattern
         let mut note_events: Vec<(usize, [f32; 8], usize)> = Vec::new();
+        // Collect drum events in the pattern
+        let mut drum_events: Vec<(usize, f32)> = Vec::new();
+
         for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    note_events.push((idx, note.frequencies, note.num_freqs));
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        note_events.push((idx, note.frequencies, note.num_freqs));
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        drum_events.push((idx, drum.pitch_offset));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Retrograde note frequencies
+        if !note_events.is_empty() {
+            let freqs: Vec<([f32; 8], usize)> =
+                note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
+            let reversed_freqs: Vec<([f32; 8], usize)> = freqs.into_iter().rev().collect();
+
+            for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
+                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
+                    note.frequencies = reversed_freqs[i].0;
+                    note.num_freqs = reversed_freqs[i].1;
                 }
             }
         }
 
-        if note_events.is_empty() {
-            return self;
-        }
+        // Retrograde drum pitch offsets
+        if !drum_events.is_empty() {
+            let pitch_offsets: Vec<f32> = drum_events.iter().map(|(_, p)| *p).collect();
+            let reversed_offsets: Vec<f32> = pitch_offsets.into_iter().rev().collect();
 
-        // Extract frequencies in order
-        let freqs: Vec<([f32; 8], usize)> = note_events.iter().map(|(_, f, n)| (*f, *n)).collect();
-
-        // Reverse the frequencies
-        let reversed_freqs: Vec<([f32; 8], usize)> = freqs.into_iter().rev().collect();
-
-        // Apply reversed frequencies back to the notes (keeping original timing)
-        for (i, (event_idx, _, _)) in note_events.iter().enumerate() {
-            if let AudioEvent::Note(note) = &mut self.get_track_mut().events[*event_idx] {
-                note.frequencies = reversed_freqs[i].0;
-                note.num_freqs = reversed_freqs[i].1;
+            for (i, (event_idx, _)) in drum_events.iter().enumerate() {
+                if let AudioEvent::Drum(drum) = &mut self.get_track_mut().events[*event_idx] {
+                    drum.pitch_offset = reversed_offsets[i];
+                }
             }
         }
 
@@ -1264,12 +1419,20 @@ impl<'a> TrackBuilder<'a> {
                                 spatial_position: note.spatial_position,
                             }))
                         }
-                        AudioEvent::Drum(_)
-                        | AudioEvent::Sample(_)
+                        AudioEvent::Drum(drum) => {
+                            // Shift drum pitch by adding to pitch_offset
+                            Some(AudioEvent::Drum(crate::track::DrumEvent {
+                                drum_type: drum.drum_type,
+                                start_time: drum.start_time,
+                                pitch_offset: drum.pitch_offset + semitones as f32,
+                                spatial_position: drum.spatial_position,
+                            }))
+                        }
+                        AudioEvent::Sample(_)
                         | AudioEvent::TempoChange(_)
                         | AudioEvent::TimeSignature(_)
                         | AudioEvent::KeySignature(_) => {
-                            // Pass through drums, samples, tempo changes, and time signatures unchanged
+                            // Pass through samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
                     }
@@ -1370,12 +1533,20 @@ impl<'a> TrackBuilder<'a> {
                                 spatial_position: note.spatial_position,
                             }))
                         }
-                        AudioEvent::Drum(_)
-                        | AudioEvent::Sample(_)
+                        AudioEvent::Drum(drum) => {
+                            // Invert drum pitch_offset around 0 (default pitch)
+                            Some(AudioEvent::Drum(crate::track::DrumEvent {
+                                drum_type: drum.drum_type,
+                                start_time: drum.start_time,
+                                pitch_offset: -drum.pitch_offset,
+                                spatial_position: drum.spatial_position,
+                            }))
+                        }
+                        AudioEvent::Sample(_)
                         | AudioEvent::TempoChange(_)
                         | AudioEvent::TimeSignature(_)
                         | AudioEvent::KeySignature(_) => {
-                            // Pass through drums, samples, tempo changes, and time signatures unchanged
+                            // Pass through samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
                     }
@@ -1478,12 +1649,20 @@ impl<'a> TrackBuilder<'a> {
                                 spatial_position: note.spatial_position,
                             }))
                         }
-                        AudioEvent::Drum(_)
-                        | AudioEvent::Sample(_)
+                        AudioEvent::Drum(drum) => {
+                            // Invert drum pitch_offset around 0 (constraints don't apply to drums)
+                            Some(AudioEvent::Drum(crate::track::DrumEvent {
+                                drum_type: drum.drum_type,
+                                start_time: drum.start_time,
+                                pitch_offset: -drum.pitch_offset,
+                                spatial_position: drum.spatial_position,
+                            }))
+                        }
+                        AudioEvent::Sample(_)
                         | AudioEvent::TempoChange(_)
                         | AudioEvent::TimeSignature(_)
                         | AudioEvent::KeySignature(_) => {
-                            // Pass through drums, samples, tempo changes, and time signatures unchanged
+                            // Pass through samples, tempo changes, and time signatures unchanged
                             Some(event.clone())
                         }
                     }
@@ -1808,44 +1987,74 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Find center pitch (geometric mean)
+        // Find center pitch (geometric mean for notes, arithmetic mean for drum offsets)
         let mut sum_log_freq = 0.0;
-        let mut count = 0;
+        let mut note_count = 0;
+        let mut sum_drum_offset = 0.0;
+        let mut drum_count = 0;
 
         for event in &self.get_track_mut().events {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    for i in 0..note.num_freqs {
-                        sum_log_freq += note.frequencies[i].ln();
-                        count += 1;
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        for i in 0..note.num_freqs {
+                            sum_log_freq += note.frequencies[i].ln();
+                            note_count += 1;
+                        }
                     }
                 }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        sum_drum_offset += drum.pitch_offset;
+                        drum_count += 1;
+                    }
+                }
+                _ => {}
             }
         }
 
-        if count == 0 {
+        if note_count == 0 && drum_count == 0 {
             return self;
         }
 
-        let center_pitch = (sum_log_freq / count as f32).exp();
+        let center_pitch = if note_count > 0 {
+            (sum_log_freq / note_count as f32).exp()
+        } else {
+            440.0 // Default if no notes
+        };
+        let center_drum_offset = if drum_count > 0 {
+            sum_drum_offset / drum_count as f32
+        } else {
+            0.0
+        };
 
         // Apply dilation
         for event in &mut self.get_track_mut().events {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    for i in 0..note.num_freqs {
-                        let original_freq = note.frequencies[i];
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        for i in 0..note.num_freqs {
+                            let original_freq = note.frequencies[i];
 
-                        // Calculate distance from center in semitones
-                        let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
+                            // Calculate distance from center in semitones
+                            let semitone_distance = 12.0 * (original_freq / center_pitch).log2();
 
-                        // Scale distance by factor
-                        let new_distance = semitone_distance * factor;
-                        let shift_ratio = 2.0_f32.powf(new_distance / 12.0);
+                            // Scale distance by factor
+                            let new_distance = semitone_distance * factor;
+                            let shift_ratio = 2.0_f32.powf(new_distance / 12.0);
 
-                        note.frequencies[i] = center_pitch * shift_ratio;
+                            note.frequencies[i] = center_pitch * shift_ratio;
+                        }
                     }
                 }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        // Scale drum pitch_offset distance from center by factor
+                        let distance = drum.pitch_offset - center_drum_offset;
+                        drum.pitch_offset = center_drum_offset + distance * factor;
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -1889,46 +2098,73 @@ impl<'a> TrackBuilder<'a> {
         let pattern_start = self.pattern_start;
         let cursor = self.cursor;
 
-        // Collect note events in time order
+        // Collect note and drum events in time order
         let mut note_refs: Vec<(f32, usize)> = Vec::new();
-        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
-            if let AudioEvent::Note(note) = event {
-                if note.start_time >= pattern_start && note.start_time < cursor {
-                    note_refs.push((note.start_time, idx));
-                }
-            }
-        }
+        let mut drum_refs: Vec<(f32, usize)> = Vec::new();
 
-        if note_refs.len() < 2 {
-            return self;
+        for (idx, event) in self.get_track_mut().events.iter().enumerate() {
+            match event {
+                AudioEvent::Note(note) => {
+                    if note.start_time >= pattern_start && note.start_time < cursor {
+                        note_refs.push((note.start_time, idx));
+                    }
+                }
+                AudioEvent::Drum(drum) => {
+                    if drum.start_time >= pattern_start && drum.start_time < cursor {
+                        drum_refs.push((drum.start_time, idx));
+                    }
+                }
+                _ => {}
+            }
         }
 
         // Sort by time
         note_refs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        drum_refs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
-        // Get first note's primary frequency as anchor
-        let first_idx = note_refs[0].1;
-        let anchor_freq = if let AudioEvent::Note(note) = &self.get_track_mut().events[first_idx] {
-            note.frequencies[0]
-        } else {
-            return self;
-        };
+        // Shape note intervals relative to first note
+        if note_refs.len() >= 2 {
+            let first_idx = note_refs[0].1;
+            let anchor_freq = if let AudioEvent::Note(note) = &self.get_track_mut().events[first_idx] {
+                note.frequencies[0]
+            } else {
+                440.0
+            };
 
-        // Shape intervals relative to first note
-        for &(_, note_idx) in note_refs.iter().skip(1) {
+            for &(_, note_idx) in note_refs.iter().skip(1) {
+                if let AudioEvent::Note(note) = &mut self.get_track_mut().events[note_idx] {
+                    for j in 0..note.num_freqs {
+                        let original_freq = note.frequencies[j];
 
-            if let AudioEvent::Note(note) = &mut self.get_track_mut().events[note_idx] {
-                for j in 0..note.num_freqs {
-                    let original_freq = note.frequencies[j];
+                        // Calculate interval from anchor in semitones
+                        let semitone_interval = 12.0 * (original_freq / anchor_freq).log2();
 
-                    // Calculate interval from anchor in semitones
-                    let semitone_interval = 12.0 * (original_freq / anchor_freq).log2();
+                        // Scale interval by factor
+                        let new_interval = semitone_interval * factor;
+                        let shift_ratio = 2.0_f32.powf(new_interval / 12.0);
+
+                        note.frequencies[j] = anchor_freq * shift_ratio;
+                    }
+                }
+            }
+        }
+
+        // Shape drum pitch_offset intervals relative to first drum
+        if drum_refs.len() >= 2 {
+            let first_idx = drum_refs[0].1;
+            let anchor_offset = if let AudioEvent::Drum(drum) = &self.get_track_mut().events[first_idx] {
+                drum.pitch_offset
+            } else {
+                0.0
+            };
+
+            for &(_, drum_idx) in drum_refs.iter().skip(1) {
+                if let AudioEvent::Drum(drum) = &mut self.get_track_mut().events[drum_idx] {
+                    // Calculate interval from anchor
+                    let interval = drum.pitch_offset - anchor_offset;
 
                     // Scale interval by factor
-                    let new_interval = semitone_interval * factor;
-                    let shift_ratio = 2.0_f32.powf(new_interval / 12.0);
-
-                    note.frequencies[j] = anchor_freq * shift_ratio;
+                    drum.pitch_offset = anchor_offset + interval * factor;
                 }
             }
         }

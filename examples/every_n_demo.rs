@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("basic_accent")
         .pattern_start()
-        .drum(DrumType::Kick).drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.25)
         .repeat(7) // 16 kicks total
         .every_n(4, DrumType::Crash);
 
@@ -26,8 +26,8 @@ fn main() -> anyhow::Result<()> {
     comp.track("multi_variation")
         .at(2.0)
         .pattern_start()
-        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.25)
+        .drum(DrumType::HiHatClosed, 0.25)
         .repeat(7) // 32 hihats
         .every_n(4, DrumType::Crash) // Crash every 4th
         .every_n(8, DrumType::Ride); // Ride every 8th
@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("drum_variation")
         .at(9.0)
         .pattern_start()
-        .drum(DrumType::Kick).drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.25)
         .repeat(7) // 16 kicks
         .every_n(8, DrumType::Snare); // Fill on 8th, 16th
 
@@ -61,7 +61,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("polyrhythm")
         .at(11.0)
         .pattern_start()
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .repeat(29) // 30 hits
         .every_n(3, DrumType::Clap) // Every 3rd
         .every_n(5, DrumType::Rimshot); // Every 5th
@@ -73,8 +73,8 @@ fn main() -> anyhow::Result<()> {
     comp.track("hihat_groove")
         .at(13.0)
         .pattern_start()
-        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed).drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.25)
+        .drum(DrumType::HiHatClosed, 0.25)
         .repeat(7) // 32 closed hihats
         .every_n(6, DrumType::HiHatOpen); // Open every 6th
 
@@ -86,13 +86,13 @@ fn main() -> anyhow::Result<()> {
     comp.track("progressive")
         .at(15.0)
         .pattern_start()
-        .drum(DrumType::Kick808);
+        .drum(DrumType::Kick808, 0.0);
 
     // Layer 1: Every 2nd
     comp.track("progressive")
         .at(15.0)
         .pattern_start()
-        .drum(DrumType::Kick808)
+        .drum(DrumType::Kick808, 0.0)
         .repeat(3)
         .every_n(2, DrumType::Snare);
 
@@ -100,7 +100,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("progressive2")
         .at(17.0)
         .pattern_start()
-        .drum(DrumType::Kick808)
+        .drum(DrumType::Kick808, 0.0)
         .repeat(7)
         .every_n(2, DrumType::Snare)
         .every_n(4, DrumType::Crash);
@@ -113,14 +113,14 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("euclidean_accent")
         .at(19.0)
-        .drum_grid(16, 0.125)
-        .hit(DrumType::Kick, &euclidean);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &euclidean));
 
     // Add crashes every 4 steps in grid
     for i in (3..16).step_by(4) {
         comp.track("euclidean_accent")
             .at(19.0 + i as f32 * 0.125)
-            .drum(DrumType::Crash);
+            .drum(DrumType::Crash, 0.0);
     }
 
     // ===== PART 9: CALL AND RESPONSE =====
@@ -130,7 +130,7 @@ fn main() -> anyhow::Result<()> {
     comp.track("call_response")
         .at(21.0)
         .pattern_start()
-        .drum(DrumType::Tom).drum(DrumType::Tom)
+        .drum(DrumType::Tom, 0.25)
         .repeat(7) // 16 toms
         .every_n(4, DrumType::TomLow) // Response on 4s
         .every_n(8, DrumType::Crash); // Accent on 8s

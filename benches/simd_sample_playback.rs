@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
 
     // Short sample: Kick drum (~0.5s)
     let mut comp_kick = Composition::new(Tempo::new(120.0));
-    comp_kick.track("kick").at(0.0).drum(DrumType::Kick808);
+    comp_kick.track("kick").at(0.0).drum(DrumType::Kick808, 0.0);
     let mut mixer_kick = comp_kick.into_mixer();
     mixer_kick.export_wav("bench_kick.wav", 44100)?;
     let kick_sample = Sample::from_file("bench_kick.wav")?;
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
     let mut comp_snare = Composition::new(Tempo::new(120.0));
     comp_snare.track("snare")
         .at(0.0)
-        .drum(DrumType::Snare808)
+        .drum(DrumType::Snare808, 0.0)
         .reverb(Reverb::new(0.7, 0.5, 0.6));
     let mut mixer_snare = comp_snare.into_mixer();
     mixer_snare.export_wav("bench_snare.wav", 44100)?;

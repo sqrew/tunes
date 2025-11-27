@@ -62,10 +62,10 @@ fn main() -> anyhow::Result<()> {
         comp.track("drums")
             .at(bar_start)
             .drum_grid(8, 0.0625)
-            .kick(&[0, 4])
-            .snare(&[2, 6])
-            .hihat(&[0, 1, 2, 3, 4, 5, 6, 7])
-            .clap(&[2]);
+            .sound(DrumType::Kick, &[0, 4])
+            .sound(DrumType::Snare, &[2, 6])
+            .sound(DrumType::HiHatClosed, &[0, 1, 2, 3, 4, 5, 6, 7])
+            .sound(DrumType::Clap, &[2]);
     }
 
     let mut mixer = comp.into_mixer();
@@ -126,10 +126,10 @@ fn main() -> anyhow::Result<()> {
             comp_gpu.track("drums")
                 .at(bar_start)
                 .drum_grid(8, 0.0625)
-                .kick(&[0, 4])
-                .snare(&[2, 6])
-                .hihat(&[0, 1, 2, 3, 4, 5, 6, 7])
-                .clap(&[2]);
+                .sound(DrumType::Kick, &[0, 4])
+                .sound(DrumType::Snare, &[2, 6])
+                .sound(DrumType::HiHatClosed, &[0, 1, 2, 3, 4, 5, 6, 7])
+                .sound(DrumType::Clap, &[2]);
         }
 
         let start = Instant::now();

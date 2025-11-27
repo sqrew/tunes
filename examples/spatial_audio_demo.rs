@@ -35,13 +35,13 @@ fn main() -> anyhow::Result<()> {
     // Drums at listener position (0, 0, 0)
     comp.track("drums")
         .spatial_position(0.0, 0.0, 0.0)
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.5)
-        .drum(DrumType::Snare)
+        .drum(DrumType::Snare, 0.0)
         .wait(0.5)
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.5)
-        .drum(DrumType::Snare);
+        .drum(DrumType::Snare, 0.0);
 
     println!("  Playing composition (guitar on right, bass center, drums at listener)...");
     engine.play_mixer(&comp.into_mixer())?;
@@ -195,17 +195,17 @@ fn main() -> anyhow::Result<()> {
     // At listener: Drums
     scene.track("drums-center")
         .spatial_position(0.0, 0.0, 0.0)
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.5)
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .wait(0.5)
-        .drum(DrumType::Snare)
+        .drum(DrumType::Snare, 0.0)
         .wait(0.5)
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .wait(0.5)
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.5)
-        .drum(DrumType::HiHatClosed);
+        .drum(DrumType::HiHatClosed, 0.0);
 
     println!("  Piano (left), Synth (right), Lead (center-front), Ambient (behind)");
     println!("  Playing spatial scene...");

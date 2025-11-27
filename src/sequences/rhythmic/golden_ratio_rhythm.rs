@@ -30,8 +30,8 @@
 /// # let mut comp = Composition::new(Tempo::new(120.0));
 /// let phi_rhythm = sequences::golden_ratio_rhythm::generate(32);
 /// comp.track("phi_drums")
-///     .drum_grid(32, 0.125)
-///     .kick(&phi_rhythm);
+///     .drum_grid(32, 0.125, |g| g
+///         .sound(DrumType::Kick, &phi_rhythm));
 /// ```
 ///
 /// # Properties

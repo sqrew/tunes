@@ -11,42 +11,42 @@ fn main() -> anyhow::Result<()> {
     comp.track("hihat_straight")
         .pan(-0.5)
         .at(0.0)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed);
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0);
 
     // Swung hi-hats (triplet feel - 0.67)
     comp.track("hihat_swing")
         .pan(0.5)
         .swing(0.67) // Triplet swing!
         .at(2.0)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed);
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0);
 
     // Heavy swing (0.75)
     comp.track("hihat_heavy")
         .pan(0.0)
         .swing(0.75) // Heavy swing
         .at(4.0)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed);
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0);
 
     println!("✓ Swing values:");
     println!("  - 0.5 (straight timing - no swing)");

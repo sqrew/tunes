@@ -356,9 +356,9 @@ fn play_dynamic_music(
         .notes(&[C4, E4, G4, C5], 0.5);
 
     comp.track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12]);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 4, 8, 12])
+            .sound(DrumType::Snare, &[4, 12]));
 
     let mixer = comp.into_mixer();
     engine.play_mixer(&mixer).ok();

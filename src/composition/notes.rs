@@ -34,12 +34,26 @@ impl<'a> TrackBuilder<'a> {
     }
 
     /// Add a drum hit at the current cursor position
-    pub fn drum(mut self, drum_type: DrumType) -> Self {
+    ///
+    /// # Arguments
+    /// * `drum_type` - The type of drum sound to play
+    /// * `duration` - How long to wait before the next event (cursor advance)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum(DrumType::Kick, 0.5)
+    ///     .drum(DrumType::Snare, 0.5)
+    ///     .drum(DrumType::Kick, 0.25)
+    ///     .drum(DrumType::Kick, 0.25);
+    /// ```
+    pub fn drum(mut self, drum_type: DrumType, duration: f32) -> Self {
         let cursor = self.cursor;
         let spatial_position = self.spatial_position;
         self.get_track_mut().add_drum(drum_type, cursor, spatial_position);
-        let base_duration = drum_type.duration();
-        let swung_duration = self.apply_swing(base_duration);
+        let swung_duration = self.apply_swing(duration);
         self.cursor += swung_duration;
         self.update_section_duration();
         self
@@ -384,7 +398,7 @@ mod tests {
     #[test]
     fn test_drum_adds_drum_hit() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        comp.track("drums").drum(DrumType::Kick);
+        comp.track("drums").drum(DrumType::Kick, 0.0);
 
         let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 1);
@@ -398,21 +412,21 @@ mod tests {
     }
 
     #[test]
-    fn test_drum_advances_cursor_by_drum_duration() {
+    fn test_drum_advances_cursor_by_duration() {
         let mut comp = Composition::new(Tempo::new(120.0));
-        let builder = comp.track("drums").drum(DrumType::Kick);
+        let builder = comp.track("drums").drum(DrumType::Kick, 0.5);
 
-        // Cursor should advance by kick duration (0.15s)
-        assert_eq!(builder.cursor, 0.15);
+        // Cursor should advance by specified duration (0.5s)
+        assert_eq!(builder.cursor, 0.5);
     }
 
     #[test]
     fn test_drum_chaining() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("drums")
-            .drum(DrumType::Kick)
-            .drum(DrumType::Snare)
-            .drum(DrumType::HiHatClosed);
+            .drum(DrumType::Kick, 0.25)
+            .drum(DrumType::Snare, 0.25)
+            .drum(DrumType::HiHatClosed, 0.0);
 
         let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 3);
@@ -527,9 +541,9 @@ mod tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.track("mixed")
             .note(&[440.0], 0.5)
-            .drum(DrumType::Kick)
+            .drum(DrumType::Kick, 0.25)
             .note(&[550.0], 0.5)
-            .drum(DrumType::Snare);
+            .drum(DrumType::Snare, 0.0);
 
         let track = &comp.into_mixer().tracks()[0];
         assert_eq!(track.events.len(), 4);

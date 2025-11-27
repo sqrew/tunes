@@ -159,7 +159,7 @@ fn main() -> anyhow::Result<()> {
         let time = musical_start + 17.0 + i as f32 * 0.25 + timing_offset * 0.03;
         comp.track("humanized")
             .at(time)
-            .drum(DrumType::HiHatClosed);
+            .drum(DrumType::HiHatClosed, 0.0);
     }
 
     // D. Dynamic harmony (chord voicing evolution)

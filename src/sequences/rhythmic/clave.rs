@@ -53,8 +53,8 @@
 //! # use tunes::prelude::*;
 //! # let mut comp = Composition::new(Tempo::new(120.0));
 //! comp.track("clave")
-//!     .drum_grid(16, 0.125)
-//!     .rimshot(&sequences::son_clave_3_2());
+//!     .drum_grid(16, 0.125, |g| g
+//!         .sound(DrumType::Rimshot, &sequences::son_clave_3_2()));
 //! ```
 //!
 //! # References

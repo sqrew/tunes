@@ -86,9 +86,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("phi_drums")
         .at(13.5)
-        .drum_grid(32, 0.125)
-        .kick(&phi_rhythm)
-        .hihat(&sequences::euclidean::generate(16, 32)); // Compare with Euclidean
+        .drum_grid(32, 0.125, |g| g
+        .sound(DrumType::Kick, &phi_rhythm)
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(16, 32))); // Compare with Euclidean
 
     // ===== PART 7: EUCLIDEAN RHYTHMS =====
     println!("Part 7: Euclidean Rhythms\n");
@@ -102,10 +102,10 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("euclidean")
         .at(17.5)
-        .drum_grid(16, 0.125)
-        .kick(&tresillo)
-        .snare(&cinquillo)
-        .hihat(&bossa);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &tresillo)
+        .sound(DrumType::Snare, &cinquillo)
+        .sound(DrumType::HiHatClosed, &bossa));
 
     // ===== PART 8: TRIANGULAR NUMBERS =====
     println!("Part 8: Triangular Numbers\n");
@@ -182,8 +182,8 @@ fn main() -> anyhow::Result<()> {
     comp.instrument("combined", &Instrument::pluck())
         .reverb(Reverb::new(0.6, 0.5, 0.4))
         .at(31.0)
-        .drum_grid(16, 0.125)
-        .hit(DrumType::Kick, &fib_steps);
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &fib_steps));
 
     comp.instrument("combined_melody", &Instrument::synth_lead())
         .delay(Delay::new(0.375, 0.3, 0.6))
@@ -202,8 +202,8 @@ fn main() -> anyhow::Result<()> {
             .collect();
         comp.instrument(&format!("density_{}", i), &Instrument::pluck())
             .at(33.0 + i as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .hihat(&steps);
+            .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::HiHatClosed, &steps));
     }
 
     // ===== PART 15: SPECTRAL MUSIC WITH HARMONICS =====
@@ -296,9 +296,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("thue_morse_drums")
         .at(68.5)
-        .drum_grid(32, 0.125)
-        .kick(&tm_hits)
-        .snare(&sequences::euclidean::generate(5, 32)); // Compare with Euclidean
+        .drum_grid(32, 0.125, |g| g
+        .sound(DrumType::Kick, &tm_hits)
+        .sound(DrumType::Snare, &sequences::euclidean::generate(5, 32))); // Compare with Euclidean
 
     // Use Thue-Morse for timbral alternation
     let tm_melody = sequences::thue_morse::generate(16);
@@ -353,8 +353,8 @@ fn main() -> anyhow::Result<()> {
 
         comp.instrument(&format!("ca30_{}", gen_idx), &Instrument::pluck())
             .at(90.5 + gen_idx as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .kick(&rhythm);
+            .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &rhythm));
     }
 
     // Rule 90 - Sierpinski fractal
@@ -368,9 +368,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("ca90_fractal")
         .at(98.5)
-        .drum_grid(16, 0.125)
-        .snare(&sierpinski_rhythm)
-        .hihat(&sequences::euclidean::generate(13, 16));
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Snare, &sierpinski_rhythm)
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(13, 16)));
 
     // ===== PART 22: GENERATIVE COMPOSITION =====
     println!("\nPart 22: Full Generative Piece\n");
@@ -413,10 +413,10 @@ fn main() -> anyhow::Result<()> {
 
     comp.instrument("gen_drums", &Instrument::pluck())
         .at(102.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::generate(4, 16))
-        .snare(&tm_rhythm_hits)
-        .hihat(&sequences::euclidean::generate(13, 16));
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))
+        .sound(DrumType::Snare, &tm_rhythm_hits)
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(13, 16)));
 
     println!("\n▶️  Playing sequences showcase...\n");
     println!("    Duration: ~110 seconds\n");

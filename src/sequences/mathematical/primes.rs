@@ -37,8 +37,8 @@
 /// let rhythm: Vec<usize> = primes.iter().map(|&p| (p % 16) as usize).collect();
 ///
 /// comp.track("prime_perc")
-///     .drum_grid(16, 0.125)
-///     .kick(&rhythm);
+///     .drum_grid(16, 0.125, |g| g
+///         .sound(DrumType::Kick, &rhythm));
 /// ```
 ///
 /// # Examples

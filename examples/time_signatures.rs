@@ -121,19 +121,19 @@ fn main() -> anyhow::Result<()> {
         .track("drums")
         .at(0.0)
         .time_signature(4, 4)
-        .drum(DrumType::Kick)
-        .drum(DrumType::Snare)
-        .drum(DrumType::Kick)
-        .drum(DrumType::Snare)
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.5)
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.5)
         .time_signature(3, 4)
-        .drum(DrumType::Kick)
-        .drum(DrumType::Snare)
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.5)
+        .drum(DrumType::Kick, 0.5)
         .time_signature(4, 4)
-        .drum(DrumType::Kick)
-        .drum(DrumType::Snare)
-        .drum(DrumType::Kick)
-        .drum(DrumType::Snare);
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.5)
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.0);
 
     let mixer6 = comp6.into_mixer();
     mixer6.export_midi("time_sig_multitrack.mid")?;

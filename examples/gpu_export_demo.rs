@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let mut mixer = comp.into_mixer();
+    let mixer = comp.into_mixer();
     let duration = mixer.total_duration();
 
     println!("Composition: 8 bars, {:.1}s duration\n", duration);

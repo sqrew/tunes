@@ -42,9 +42,9 @@ fn main() -> anyhow::Result<()> {
     // Track 6: Drums (will be assigned to channel 10/9)
     comp.track("Drums")
         .drum_grid(16, 0.25)
-        .kick(&[0, 8])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14])
+        .sound(DrumType::Kick, &[0, 8])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14])
         .repeat(2);
 
     // Track 7: Another melodic instrument (will be assigned to channel 6/5)

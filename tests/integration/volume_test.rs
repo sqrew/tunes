@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
 
         comp.track(&track_name)
             .at(start_time)
-            .drum(DrumType::Kick);
+            .drum(DrumType::Kick, 0.0);
     }
 
     println!("Playing 20 sequential kick drums (one per track)...\n");

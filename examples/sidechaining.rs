@@ -44,8 +44,7 @@ fn classic_edm_pump() -> anyhow::Result<()> {
     comp.track("kick")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
-        .wait(1.0)
+        .drum(DrumType::Kick, 1.0)
         .repeat(15);
 
     // Create a sustained bass line
@@ -85,16 +84,14 @@ fn subtle_groove() -> anyhow::Result<()> {
     comp.track("kick")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
-        .wait(1.0)
+        .drum(DrumType::Kick, 1.0)
         .repeat(15);
 
     // Add hi-hats for rhythm
     comp.track("hihat")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::HiHatClosed)
-        .wait(0.5)
+        .drum(DrumType::HiHatClosed, 0.5)
         .repeat(31);
 
     // Bass line with some movement
@@ -133,16 +130,14 @@ fn bus_level_ducking() -> anyhow::Result<()> {
     comp.track("kick")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
-        .wait(1.0)
+        .drum(DrumType::Kick, 1.0)
         .repeat(15);
 
     comp.track("snare")
         .bus("drums")
         .at(2.0)
         .pattern_start()
-        .drum(DrumType::Snare)
-        .wait(2.0)
+        .drum(DrumType::Snare, 2.0)
         .repeat(7);
 
     // Multiple synth tracks on the same bus
@@ -184,8 +179,7 @@ fn aggressive_pump() -> anyhow::Result<()> {
     comp.track("kick")
         .bus("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
-        .wait(0.5)
+        .drum(DrumType::Kick, 0.5)
         .repeat(31);
 
     // Sustained pad that will pump heavily

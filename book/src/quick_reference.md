@@ -93,18 +93,18 @@ comp.track("synth")
 ## Drums & Rhythm
 
 ```rust
-// Drum grid
+// Drum grid (closure-based API)
 comp.track("drums")
-    .drum_grid(16, 0.125)       // 16 steps, 1/16th notes
-    .kick(&[0, 4, 8, 12])       // Kick on steps 0, 4, 8, 12
-    .snare(&[4, 12])            // Snare on steps 4, 12
-    .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);  // Hi-hats on every other step
+    .drum_grid(16, 0.125, |g| g  // 16 steps, 1/16th notes
+        .sound(DrumType::Kick, &[0, 4, 8, 12])       // Kick on steps 0, 4, 8, 12
+        .sound(DrumType::Snare, &[4, 12])            // Snare on steps 4, 12
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));  // Hi-hats
 
 // Euclidean rhythms (using sequences)
 let pattern = sequences::euclidean::generate(5, 8);  // 5 hits over 8 steps
 comp.track("perc")
-    .drum_grid(8, 0.125)
-    .rimshot(&pattern);
+    .drum_grid(8, 0.125, |g| g
+        .sound(DrumType::Rimshot, &pattern));
 ```
 
 ## Effects
@@ -281,8 +281,8 @@ comp.track("collatz").notes(&melody, 0.15);
 // Euclidean rhythm (for drums)
 let kick = sequences::euclidean::generate(4, 16);     // [0, 4, 8, 12]
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&kick);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &kick));
 
 // Random walk
 let walk = sequences::random_walk::generate(440.0, 20.0, 20);
@@ -330,8 +330,8 @@ fn main() -> anyhow::Result<()> {
     let mut comp = Composition::new(Tempo::new(140.0));
 
     comp.track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12]);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 4, 8, 12]));
 
     let mixer = comp.into_mixer();
     let engine = AudioEngine::with_buffer_size(4096)?;

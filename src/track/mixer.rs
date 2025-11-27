@@ -411,7 +411,7 @@ impl Mixer {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("kick")
     ///     .bus("drums")
-    ///     .drum(DrumType::Kick);
+    ///     .drum(DrumType::Kick, 0.0);
     ///
     /// let mut mixer = comp.into_mixer();
     ///
@@ -1731,12 +1731,14 @@ impl Mixer {
                         }
                     }
                     AudioEvent::Drum(drum_event) => {
-                        let drum_duration = drum_event.drum_type.duration();
+                        // Apply pitch offset: higher pitch = faster playback
+                        let pitch_ratio = 2.0_f32.powf(drum_event.pitch_offset / 12.0);
+                        let drum_duration = drum_event.drum_type.duration() / pitch_ratio;
                         if time >= drum_event.start_time
                             && time < drum_event.start_time + drum_duration
                         {
                             let time_in_drum = time - drum_event.start_time;
-                            let sample_index = (time_in_drum * sample_rate) as usize;
+                            let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
                             track_value += drum_event.drum_type.sample(sample_index, sample_rate);
                         }
                     }
@@ -1845,12 +1847,14 @@ impl Mixer {
                     }
                 }
                 AudioEvent::Drum(drum_event) => {
-                    let drum_duration = drum_event.drum_type.duration();
+                    // Apply pitch offset: higher pitch = faster playback
+                    let pitch_ratio = 2.0_f32.powf(drum_event.pitch_offset / 12.0);
+                    let drum_duration = drum_event.drum_type.duration() / pitch_ratio;
                     if time >= drum_event.start_time && time < drum_event.start_time + drum_duration
                     {
                         has_active_event = true;
                         let time_in_drum = time - drum_event.start_time;
-                        let sample_index = (time_in_drum * sample_rate) as usize;
+                        let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
                         track_value += drum_event.drum_type.sample(sample_index, sample_rate);
                     }
                 }

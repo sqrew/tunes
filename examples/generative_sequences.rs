@@ -38,8 +38,8 @@ fn main() -> anyhow::Result<()> {
 
         comp.instrument(&format!("ca30_gen{}", gen_idx), &Instrument::pluck())
             .at(gen_idx as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .kick(&rhythm);
+            .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &rhythm));
     }
 
     // ===== CELLULAR AUTOMATON - RULE 90 =====
@@ -62,8 +62,8 @@ fn main() -> anyhow::Result<()> {
 
         comp.instrument(&format!("ca90_gen{}", gen_idx), &Instrument::synth_lead())
             .at(8.0 + gen_idx as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .snare(&rhythm);
+            .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Snare, &rhythm));
     }
 
     // ===== L-SYSTEM - ALGAE GROWTH =====
@@ -118,8 +118,8 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("lsystem_cantor")
         .at(19.0)
-        .drum_grid(cantor_notes.len(), 0.125)
-        .kick(&cantor_hits);
+        .drum_grid(cantor_notes.len(), 0.125, |g| g
+        .sound(DrumType::Kick, &cantor_hits));
 
     // ===== MARKOV CHAIN =====
     println!("\n5. Markov Chain: Probabilistic Sequence Generation\n");
@@ -217,10 +217,10 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("gen_rhythm")
         .at(42.0)
-        .drum_grid(16, 0.125)
-        .kick(&ca_rhythm)
-        .snare(&sequences::euclidean::generate(5, 16))
-        .hihat(&sequences::euclidean::generate(11, 16));
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &ca_rhythm)
+        .sound(DrumType::Snare, &sequences::euclidean::generate(5, 16))
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(11, 16)));
 
     // Texture: L-System
     let texture_lsys = sequences::lsystem::generate("A", &algae_rules, 4);

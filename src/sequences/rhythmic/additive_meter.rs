@@ -53,8 +53,8 @@
 //! # let mut comp = Composition::new(Tempo::new(120.0));
 //! // 7/8 Bulgarian pattern with kick on strong beats
 //! comp.track("bulgarian")
-//!     .drum_grid(7, 0.125)
-//!     .kick(&sequences::additive_meter::generate(&[2, 2, 3]));
+//!     .drum_grid(7, 0.125, |g| g
+//!         .sound(DrumType::Kick, &sequences::additive_meter::generate(&[2, 2, 3])));
 //! ```
 //!
 //! # References

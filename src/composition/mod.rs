@@ -595,8 +595,8 @@ impl Composition {
     ///     .notes(&[C2, C2, G2, C2], 0.5)
     ///     .and()
     ///     .track("drums")
-    ///     .drum(DrumType::Kick)
-    ///     .drum(DrumType::Snare);
+    ///     .drum(DrumType::Kick, 0.5)
+    ///     .drum(DrumType::Snare, 0.0);
     ///
     /// // Define a chorus section
     /// comp.section("chorus")
@@ -988,11 +988,11 @@ impl<'a> TrackBuilder<'a> {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("kick")
     ///     .bus("drums")
-    ///     .drum(DrumType::Kick);
+    ///     .drum(DrumType::Kick, 0.0);
     ///
     /// comp.track("snare")
     ///     .bus("drums")
-    ///     .drum(DrumType::Snare);
+    ///     .drum(DrumType::Snare, 0.0);
     ///
     /// // Both tracks will be on the "drums" bus
     /// let mut mixer = comp.into_mixer();
@@ -1142,41 +1142,63 @@ impl<'a> TrackBuilder<'a> {
         self
     }
 
-    /// Create a step sequencer-style drum grid
+    /// Create a step sequencer-style drum grid with scoped configuration
+    ///
+    /// The closure receives a `DrumGrid` builder for adding drum patterns.
+    /// After the closure completes, the cursor automatically advances by the grid duration.
+    ///
+    /// This method automatically sets `pattern_start` to the current cursor position,
+    /// so transforms can be chained directly to operate on the grid's events.
     ///
     /// # Arguments
     /// * `steps` - Number of steps in the grid (e.g., 16 for a bar of 16th notes)
     /// * `step_duration` - Duration of each step in seconds (e.g., 0.125 for 16th notes at 120bpm)
+    /// * `f` - Closure that configures the drum grid
     ///
     /// # Example
     /// ```
     /// # use tunes::composition::Composition;
-    /// # use tunes::instruments::Instrument;
     /// # use tunes::composition::timing::Tempo;
-    /// # use tunes::consts::notes::*;
+    /// # use tunes::instruments::drums::DrumType;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("drums")
-    ///     .drum_grid(16, 0.125)
-    ///     .kick(&[0, 4, 8, 12])
-    ///     .snare(&[4, 12])
-    ///     .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .sound(DrumType::Kick, &[0, 4, 8, 12])
+    ///         .sound(DrumType::Snare, &[4, 12])
+    ///         .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]))
+    ///     .transform(|t| t.humanize(0.01, 0.1));  // Transforms target the grid
     /// ```
-    pub fn drum_grid(self, steps: usize, step_duration: f32) -> DrumGrid<'a> {
+    pub fn drum_grid<F>(mut self, steps: usize, step_duration: f32, f: F) -> Self
+    where
+        F: FnOnce(DrumGrid<'_>) -> DrumGrid<'_>,
+    {
+        // Set pattern_start so transforms can target this grid's events
+        self.pattern_start = self.cursor;
         let start_time = self.cursor;
+        let grid_duration = steps as f32 * step_duration;
 
-        // Get the track reference directly from composition for lifetime 'a
-        let track = match &self.context {
-            BuilderContext::Direct => self
-                .composition
-                .tracks
-                .entry(self.track_name.clone())
-                .or_default(),
-            BuilderContext::Section(section_name) => self
-                .composition
-                .get_or_create_section_track(section_name, &self.track_name),
-        };
+        // Scope the mutable borrow of track
+        {
+            let track = match &self.context {
+                BuilderContext::Direct => self
+                    .composition
+                    .tracks
+                    .entry(self.track_name.clone())
+                    .or_default(),
+                BuilderContext::Section(section_name) => self
+                    .composition
+                    .get_or_create_section_track(section_name, &self.track_name),
+            };
 
-        DrumGrid::new(track, start_time, steps, step_duration)
+            let grid = DrumGrid::new(track, start_time, steps, step_duration);
+            let _ = f(grid); // Execute closure, grid dropped at end of scope
+        }
+
+        // Advance cursor by grid duration
+        self.cursor += grid_duration;
+        self.update_section_duration();
+
+        self
     }
 
     /// Continue building another track (useful for sections or multi-track compositions)

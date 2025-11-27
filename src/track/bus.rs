@@ -33,7 +33,7 @@
 //! // Create tracks on different buses
 //! comp.track("kick")
 //!     .bus("drums")
-//!     .drum(DrumType::Kick);
+//!     .drum(DrumType::Kick, 0.0);
 //!
 //! comp.track("lead")
 //!     .bus("melody")

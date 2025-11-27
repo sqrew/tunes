@@ -46,18 +46,18 @@ fn main() -> anyhow::Result<()> {
     // Custom euclidean
     comp.track("drums_custom")
         .at(16.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::generate(4, 16))
-        .snare(&sequences::euclidean::generate(3, 16))
-        .hihat(&sequences::euclidean::generate(7, 16));
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))
+        .sound(DrumType::Snare, &sequences::euclidean::generate(3, 16))
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16)));
 
     // Preset euclidean
     comp.track("drums_preset")
         .at(20.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::kick_four_floor())
-        .snare(&sequences::euclidean::snare_syncopated())
-        .hihat(&sequences::euclidean::hihat_complex());
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &sequences::euclidean::kick_four_floor())
+        .sound(DrumType::Snare, &sequences::euclidean::snare_syncopated())
+        .sound(DrumType::HiHatClosed, &sequences::euclidean::hihat_complex()));
 
     // ========== TRADITIONAL PATTERNS ==========
     println!("4. Traditional Rhythm Presets:");
@@ -67,9 +67,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("latin_drums")
         .at(24.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::tresillo())
-        .clap(&sequences::euclidean::cinquillo());
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &sequences::euclidean::tresillo())
+        .sound(DrumType::Clap, &sequences::euclidean::cinquillo()));
 
     println!("════════════════════════════════════════");
     println!("\n✨ Benefits of the Preset API:\n");

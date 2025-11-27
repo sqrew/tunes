@@ -33,17 +33,17 @@
 /// # use tunes::prelude::*;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
 /// comp.track("poly34")
-///     .drum_grid(12, 0.25)
-///     .kick(&patterns[0])   // 3 hits
-///     .snare(&patterns[1]); // 4 hits
+///     .drum_grid(12, 0.25, |g| g
+///         .sound(DrumType::Kick, &patterns[0])   // 3 hits
+///         .sound(DrumType::Snare, &patterns[1])); // 4 hits
 ///
 /// // Complex triple polyrhythm: 5:6:7 over 210 steps (LCM)
 /// let triple = sequences::polyrhythm::generate(&[5, 6, 7], 210);
 /// comp.track("poly567")
-///     .drum_grid(210, 0.125)
-///     .kick(&triple[0])
-///     .snare(&triple[1])
-///     .hihat(&triple[2]);
+///     .drum_grid(210, 0.125, |g| g
+///         .sound(DrumType::Kick, &triple[0])
+///         .sound(DrumType::Snare, &triple[1])
+///         .sound(DrumType::HiHatClosed, &triple[2]));
 ///
 /// // Hemiola pattern (3:2 over 6 steps)
 /// let hemiola = sequences::polyrhythm::generate(&[3, 2], 6);
@@ -164,9 +164,9 @@ fn gcd_two(mut a: usize, mut b: usize) -> usize {
 /// # let mut comp = Composition::new(Tempo::new(140.0));
 /// let (poly, len) = sequences::polyrhythm_cycle(&[5, 7]);
 /// comp.track("poly57")
-///     .drum_grid(len, 0.125)
-///     .kick(&poly[0])
-///     .snare(&poly[1]);
+///     .drum_grid(len, 0.125, |g| g
+///         .sound(DrumType::Kick, &poly[0])
+///         .sound(DrumType::Snare, &poly[1]));
 /// ```
 pub fn polyrhythm_cycle(ratios: &[usize]) -> (Vec<Vec<usize>>, usize) {
     let cycle_length = lcm(ratios);
@@ -199,7 +199,7 @@ pub fn polyrhythm_cycle(ratios: &[usize]) -> (Vec<Vec<usize>>, usize) {
 /// # let mut comp = Composition::new(Tempo::new(120.0));
 /// // Use with explicit timing
 /// for &t in &timings[0] {
-///     comp.track("voice1").at(t).drum(DrumType::Kick);
+///     comp.track("voice1").at(t).drum(DrumType::Kick, 0.0);
 /// }
 /// ```
 pub fn polyrhythm_timings(ratios: &[usize], cycle_duration: f32) -> Vec<Vec<f32>> {

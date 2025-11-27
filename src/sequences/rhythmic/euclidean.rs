@@ -32,21 +32,23 @@
 /// ```
 /// use tunes::prelude::*;
 /// use tunes::sequences;
+/// use tunes::instruments::drums::DrumType;
 ///
 /// let mut comp = Composition::new(Tempo::new(120.0));
 ///
 /// comp.track("euclidean_drums")
-///     .drum_grid(16, 0.125)
-///     .kick(&sequences::euclidean::generate(4, 16))     // Four-on-floor
-///     .snare(&sequences::euclidean::generate(3, 16))    // Syncopated
-///     .hihat(&sequences::euclidean::generate(7, 16))    // Complex
-///     .clap(&sequences::euclidean::generate(2, 16));    // Backbeat feel
+///     .drum_grid(16, 0.125, |g| g
+///         .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))     // Four-on-floor
+///         .sound(DrumType::Snare, &sequences::euclidean::generate(3, 16))    // Syncopated
+///         .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16))    // Complex
+///         .sound(DrumType::Clap, &sequences::euclidean::generate(2, 16)));    // Backbeat feel
 /// ```
 ///
 /// # Examples
 /// ```
 /// # use tunes::composition::Composition;
 /// # use tunes::composition::timing::Tempo;
+/// # use tunes::instruments::drums::DrumType;
 /// use tunes::sequences;
 ///
 /// // Classic Cuban tresillo pattern
@@ -59,10 +61,10 @@
 ///
 /// // Perfect for drum patterns:
 /// # let mut comp = Composition::new(Tempo::new(120.0));
-/// comp.track("drums").drum_grid(16, 0.125)
-///     .kick(&sequences::euclidean::generate(4, 16))    // Four-on-floor
-///     .snare(&sequences::euclidean::generate(3, 16))   // Syncopated snare
-///     .hihat(&sequences::euclidean::generate(7, 16));  // Complex hi-hat
+/// comp.track("drums").drum_grid(16, 0.125, |g| g
+///     .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16))    // Four-on-floor
+///     .sound(DrumType::Snare, &sequences::euclidean::generate(3, 16))   // Syncopated snare
+///     .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16)));  // Complex hi-hat
 /// ```
 ///
 /// # Usage

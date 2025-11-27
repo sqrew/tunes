@@ -348,7 +348,7 @@ let mut comp = Composition::new(Tempo::new(128.0));
 // Create kick drum
 comp.track("kick")
     .bus("drums")
-    .drum(DrumType::Kick);
+    .drum(DrumType::Kick, 0.0);
 
 // Create bass that will duck
 comp.track("bass")
@@ -780,7 +780,7 @@ comp.instrument("vocal", &Instrument::sine())
 // Drums in a small room
 comp.track("drums")
     .bus("drums")
-    .drum(DrumType::Kick);
+    .drum(DrumType::Kick, 0.0);
 
 let mut mixer = comp.into_mixer();
 mixer.bus("drums")

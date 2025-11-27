@@ -267,7 +267,7 @@ impl Compressor {
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("kick")
     ///     .bus("drums")
-    ///     .drum(DrumType::Kick);
+    ///     .drum(DrumType::Kick, 0.0);
     ///
     /// comp.track("bass")
     ///     .bus("bass")

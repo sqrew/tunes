@@ -85,9 +85,8 @@ fn main() -> anyhow::Result<()> {
     // Drums at listener position (origin)
     comp.track("drums")
         .spatial_position(0.0, 0.0, 0.0)
-        .drum(DrumType::Kick)
-        .wait(0.5)
-        .drum(DrumType::Snare);
+        .drum(DrumType::Kick, 0.5)
+        .drum(DrumType::Snare, 0.0);
 
     engine.play_mixer(&comp.into_mixer())?;
     Ok(())

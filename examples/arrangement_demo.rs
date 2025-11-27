@@ -16,9 +16,9 @@ fn main() -> anyhow::Result<()> {
         .notes(&[C3, E3, G3], 2.0)
         .and()
         .track("drums")
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.5)
-        .drum(DrumType::Snare)
+        .drum(DrumType::Snare, 0.0)
         .wait(0.5);
 
     // === VERSE SECTION ===
@@ -33,13 +33,13 @@ fn main() -> anyhow::Result<()> {
         .and()
         .track("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
+        .drum(DrumType::Kick, 0.0)
         .wait(0.25)
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .wait(0.25)
-        .drum(DrumType::Snare)
+        .drum(DrumType::Snare, 0.0)
         .wait(0.25)
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::HiHatClosed, 0.0)
         .wait(0.25)
         .repeat(3); // 4 bars total
 
@@ -56,14 +56,14 @@ fn main() -> anyhow::Result<()> {
         .and()
         .track("drums")
         .pattern_start()
-        .drum(DrumType::Kick)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::Snare)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
-        .drum(DrumType::HiHatClosed)
+        .drum(DrumType::Kick, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::Snare, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
+        .drum(DrumType::HiHatClosed, 0.0)
         .repeat(0); // 1 bar
 
     // === BRIDGE SECTION ===
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
         .notes(&[A3, C4, E4, A4, E4, C4], 0.5)
         .and()
         .track("drums")
-        .drum(DrumType::Snare)
+        .drum(DrumType::Snare, 0.0)
         .wait(1.5);
 
     // === OUTRO SECTION ===

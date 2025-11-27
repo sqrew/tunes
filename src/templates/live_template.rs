@@ -23,10 +23,10 @@ fn main() -> anyhow::Result<()> {
 
     // Add drums
     comp.track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 4, 8, 12])
+            .sound(DrumType::Snare, &[4, 12])
+            .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));
 
     // Add bass
     comp.instrument("bass", &Instrument::sub_bass())

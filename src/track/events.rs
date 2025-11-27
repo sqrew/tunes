@@ -50,7 +50,10 @@ impl AudioEvent {
                 let total_duration = note.envelope.total_duration(note.duration);
                 note.start_time + total_duration
             }
-            AudioEvent::Drum(drum) => drum.start_time + drum.drum_type.duration(),
+            AudioEvent::Drum(drum) => {
+                let pitch_ratio = 2.0_f32.powf(drum.pitch_offset / 12.0);
+                drum.start_time + drum.drum_type.duration() / pitch_ratio
+            }
             AudioEvent::Sample(sample) => {
                 sample.start_time + (sample.sample.duration / sample.playback_rate)
             }
@@ -83,6 +86,7 @@ pub struct NoteEvent {
 pub struct DrumEvent {
     pub drum_type: DrumType,
     pub start_time: f32,
+    pub pitch_offset: f32, // Pitch offset in semitones (0.0 = default pitch)
     pub spatial_position: Option<SpatialPosition>, // 3D spatial position for spatial audio
 }
 

@@ -143,9 +143,9 @@ Use for samples, drums, and direct synthesis:
 
 ```rust
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&[0, 4, 8, 12])
-    .snare(&[4, 12]);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12]));
 ```
 
 ### `.instrument()` – Synthesis Presets
@@ -175,16 +175,17 @@ comp.track("melody").notes(&[C4, D4, E4, F4, G4], 0.25);
 ## Drums
 
 ```rust
-// Drum grid pattern
+// Drum grid pattern (closure-based API)
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&[0, 4, 8, 12])
-    .snare(&[4, 12])
-    .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12])
+        .sound(DrumType::Snare, &[4, 12])
+        .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));
 
-// Rhythm strings
+// String patterns in drum_grid
 comp.track("drums")
-    .rhythm("x-x- x-x-", DrumType::Kick, 0.125);  // 'x' = hit, '-' = rest
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, "x-x- x-x-"));  // 'x' = hit, '-' = rest
 ```
 
 **Drum types:** `Kick`, `Snare`, `HiHat`, `ClosedHiHat`, `OpenHiHat`, `Tom`, `Clap`, `Rimshot`, `Cowbell`, `Crash`, `Ride`
@@ -295,11 +296,12 @@ comp.track("groovy")
 // Define sections
 comp.section("verse")
     .instrument("bass", &Instrument::sub_bass())
-    .notes(&[C2, C2, G2, F2], 0.5)
-    .and()  // Switch to another track
+    .notes(&[C2, C2, G2, F2], 0.5);
+
+comp.section("verse")
     .track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&[0, 4, 8, 12]);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12]));
 
 comp.section("chorus")
     .instrument("lead", &Instrument::synth_lead())
@@ -408,8 +410,8 @@ let mixer = comp.into_mixer().repeat(3);  // Plays 4 times total
 
 ```rust
 // Assign tracks to buses during composition
-comp.track("kick").bus("drums").drum(DrumType::Kick);
-comp.track("snare").bus("drums").drum(DrumType::Snare);
+comp.track("kick").bus("drums").drum(DrumType::Kick, 0.0);
+comp.track("snare").bus("drums").drum(DrumType::Snare, 0.0);
 comp.track("bass").bus("bass").notes(&[C2, G2], 0.5);
 
 // Apply bus-level effects
@@ -547,8 +549,8 @@ comp.instrument("piano", &Instrument::electric_piano())
 
 // track() - For samples, drums, and raw audio
 comp.track("drums")
-    .drum_grid(16, 0.125)
-    .kick(&[0, 4, 8, 12]);
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, &[0, 4, 8, 12]));
 ```
 
 Both end up in the same `Mixer`, but the API reflects their different purposes.
@@ -566,28 +568,31 @@ fn main() -> anyhow::Result<()> {
     // Define verse
     comp.section("verse")
         .instrument("bass", &Instrument::sub_bass())
-        .notes(&[C2, C2, G2, F2], 0.5)
-        .and()
+        .notes(&[C2, C2, G2, F2], 0.5);
+
+    comp.section("verse")
         .track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 4, 8, 12])
-        .snare(&[4, 12])
-        .hihat(&[0, 2, 4, 6, 8, 10, 12, 14]);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 4, 8, 12])
+            .sound(DrumType::Snare, &[4, 12])
+            .sound(DrumType::HiHatClosed, &[0, 2, 4, 6, 8, 10, 12, 14]));
 
     // Define chorus
     comp.section("chorus")
         .instrument("lead", &Instrument::synth_lead())
         .filter(Filter::low_pass(2000.0, 0.5))
         .reverb(Reverb::new(0.4, 0.5, 0.3))
-        .notes(&[C4, E4, G4, C5], 0.25)
-        .and()
+        .notes(&[C4, E4, G4, C5], 0.25);
+
+    comp.section("chorus")
         .instrument("bass", &Instrument::sub_bass())
-        .notes(&[C2, C2, G2, F2], 0.5)
-        .and()
+        .notes(&[C2, C2, G2, F2], 0.5);
+
+    comp.section("chorus")
         .track("drums")
-        .drum_grid(16, 0.125)
-        .kick(&[0, 2, 4, 6, 8, 10, 12, 14])
-        .snare(&[4, 12]);
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &[0, 2, 4, 6, 8, 10, 12, 14])
+            .sound(DrumType::Snare, &[4, 12]));
 
     // Arrange and play
     comp.arrange(&["verse", "verse", "chorus", "verse", "chorus", "chorus"]);

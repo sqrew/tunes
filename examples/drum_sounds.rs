@@ -9,25 +9,16 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("drums")
         .at(0.0)
-        .drum(DrumType::Kick)
-        .wait(0.2)
-        .drum(DrumType::Snare)
-        .wait(0.2)
-        .drum(DrumType::Tom)
-        .wait(0.2)
-        .drum(DrumType::HiHatClosed)
-        .wait(0.2)
-        .drum(DrumType::HiHatOpen)
-        .wait(0.2)
-        .drum(DrumType::Rimshot)
-        .wait(0.2)
-        .drum(DrumType::Cowbell)
-        .wait(0.2)
-        .drum(DrumType::Clap)
-        .wait(0.2)
-        .drum(DrumType::Crash)
-        .wait(0.5)
-        .drum(DrumType::Ride);
+        .drum(DrumType::Kick, 0.2)
+        .drum(DrumType::Snare, 0.2)
+        .drum(DrumType::Tom, 0.2)
+        .drum(DrumType::HiHatClosed, 0.2)
+        .drum(DrumType::HiHatOpen, 0.2)
+        .drum(DrumType::Rimshot, 0.2)
+        .drum(DrumType::Cowbell, 0.2)
+        .drum(DrumType::Clap, 0.2)
+        .drum(DrumType::Crash, 0.5)
+        .drum(DrumType::Ride, 0.0);
 
     println!("✓ 10 drum types available:");
     println!("  - Kick, Snare, Tom");

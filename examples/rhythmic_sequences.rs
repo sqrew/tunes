@@ -26,9 +26,9 @@ fn main() -> anyhow::Result<()> {
     let tresillo = sequences::euclidean::generate(3, 8);
 
     comp.track("tresillo")
-        .drum_grid(8, 0.25)
-        .kick(&tresillo)
-        .hihat(&sequences::euclidean::generate(8, 8)); // Every step
+        .drum_grid(8, 0.25, |g| g
+            .sound(DrumType::Kick, &tresillo)
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(8, 8)));
 
     // Cuban Cinquillo: 5 pulses in 8 steps
     println!("   • Cinquillo (5, 8): Cuban rumba [x.xx.xx.]");
@@ -36,8 +36,8 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("cinquillo")
         .at(2.0)
-        .drum_grid(8, 0.25)
-        .snare(&cinquillo);
+        .drum_grid(8, 0.25, |g| g
+            .sound(DrumType::Snare, &cinquillo));
 
     // Bossa Nova: 5 pulses in 16 steps
     println!("   • Bossa Nova (5, 16): Brazilian rhythm");
@@ -45,9 +45,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("bossa")
         .at(4.0)
-        .drum_grid(16, 0.125)
-        .kick(&bossa)
-        .hihat(&sequences::euclidean::generate(8, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &bossa)
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(8, 16)));
 
     // Soukous: 4 pulses in 16 steps
     println!("   • Soukous (4, 16): Central African dance");
@@ -55,19 +55,19 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("soukous")
         .at(6.0)
-        .drum_grid(16, 0.125)
-        .kick(&soukous)
-        .snare(&sequences::euclidean::generate(3, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &soukous)
+            .sound(DrumType::Snare, &sequences::euclidean::generate(3, 16)));
 
     // Complex polyrhythm: 5 against 7 against 11
     println!("   • Polyrhythm (5, 7, 11 over 16): Complex groove\n");
 
     comp.track("polyrhythm")
         .at(8.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::generate(5, 16))
-        .snare(&sequences::euclidean::generate(7, 16))
-        .hihat(&sequences::euclidean::generate(11, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &sequences::euclidean::generate(5, 16))
+            .sound(DrumType::Snare, &sequences::euclidean::generate(7, 16))
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(11, 16)));
 
     // ===== GOLDEN RATIO RHYTHM =====
     println!("2. Golden Ratio Rhythm (Beatty Sequence)\n");
@@ -79,9 +79,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("golden_rhythm")
         .at(10.0)
-        .drum_grid(32, 0.125)
-        .kick(&phi_rhythm)
-        .hihat(&sequences::euclidean::generate(16, 32)); // Compare with Euclidean
+        .drum_grid(32, 0.125, |g| g
+            .sound(DrumType::Kick, &phi_rhythm)
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(16, 32)));
 
     // ===== THUE-MORSE SEQUENCE =====
     println!("3. Thue-Morse Sequence (Fair Division)\n");
@@ -99,28 +99,31 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("thue_morse")
         .at(14.0)
-        .drum_grid(32, 0.125)
-        .kick(&tm_hits)
-        .snare(&sequences::euclidean::generate(5, 32)); // Contrast with Euclidean
+        .drum_grid(32, 0.125, |g| g
+            .sound(DrumType::Kick, &tm_hits)
+            .sound(DrumType::Snare, &sequences::euclidean::generate(5, 32)));
 
     // Use Thue-Morse for hi-hat open/closed pattern
     println!("   Using Thue-Morse for timbre alternation (open/closed hi-hat)\n");
 
+    let closed_hits: Vec<usize> = thue_morse
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 0)
+        .map(|(i, _)| i)
+        .collect();
+    let open_hits: Vec<usize> = thue_morse
+        .iter()
+        .enumerate()
+        .filter(|(_, &v)| v == 1)
+        .map(|(i, _)| i)
+        .collect();
+
     comp.track("tm_hihats")
         .at(18.0)
-        .drum_grid(32, 0.125)
-        .hit(DrumType::HiHatClosed, &thue_morse
-            .iter()
-            .enumerate()
-            .filter(|(_, &v)| v == 0)
-            .map(|(i, _)| i)
-            .collect::<Vec<_>>())
-        .hit(DrumType::HiHatOpen, &thue_morse
-            .iter()
-            .enumerate()
-            .filter(|(_, &v)| v == 1)
-            .map(|(i, _)| i)
-            .collect::<Vec<_>>());
+        .drum_grid(32, 0.125, |g| g
+            .sound(DrumType::HiHatClosed, &closed_hits)
+            .sound(DrumType::HiHatOpen, &open_hits));
 
     // ===== CANTOR SET - FRACTAL RHYTHMS =====
     println!("4. Cantor Set (Fractal Rhythm)\n");
@@ -140,9 +143,9 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("cantor_set")
         .at(22.0)
-        .drum_grid(64, 0.0625)
-        .kick(&cantor_hits)
-        .hihat(&sequences::euclidean::generate(32, 64));
+        .drum_grid(64, 0.0625, |g| g
+            .sound(DrumType::Kick, &cantor_hits)
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(32, 64)));
 
     // ===== SHEPARD TONE - CIRCULAR PITCH =====
     println!("5. Shepard Tone (Circular Pitch)\n");
@@ -171,8 +174,8 @@ fn main() -> anyhow::Result<()> {
 
         comp.track(&format!("density_{}", density))
             .at(30.0 + (density - 2) as f32 * 2.0)
-            .drum_grid(16, 0.125)
-            .kick(&rhythm);
+            .drum_grid(16, 0.125, |g| g
+                .sound(DrumType::Kick, &rhythm));
     }
 
     // ===== LAYERED POLYRHYTHMS =====
@@ -181,29 +184,29 @@ fn main() -> anyhow::Result<()> {
 
     comp.track("poly_layer1")
         .at(40.0)
-        .drum_grid(16, 0.125)
-        .kick(&sequences::euclidean::generate(4, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Kick, &sequences::euclidean::generate(4, 16)));
 
     comp.track("poly_layer2")
         .at(40.0)
-        .drum_grid(16, 0.125)
-        .snare(&sequences::euclidean::generate(5, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Snare, &sequences::euclidean::generate(5, 16)));
 
     comp.track("poly_layer3")
         .at(40.0)
-        .drum_grid(16, 0.125)
-        .hit(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(7, 16)));
 
     comp.track("poly_layer4")
         .at(40.0)
-        .drum_grid(16, 0.125)
-        .hit(DrumType::Tom, &sequences::euclidean::generate(3, 16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Tom, &sequences::euclidean::generate(3, 16)));
 
     // Golden ratio rhythm on top
     comp.track("poly_golden")
         .at(40.0)
-        .drum_grid(16, 0.125)
-        .hit(DrumType::Clap, &sequences::golden_ratio_rhythm::generate(16));
+        .drum_grid(16, 0.125, |g| g
+            .sound(DrumType::Clap, &sequences::golden_ratio_rhythm::generate(16)));
 
     // ===== RHYTHMIC TRANSFORMATION =====
     println!("8. Rhythmic Transformation\n");
@@ -214,9 +217,9 @@ fn main() -> anyhow::Result<()> {
         let evolving = sequences::euclidean::generate(i, 8);
         comp.track(&format!("evolve_{}", i))
             .at(44.0 + (i - 2) as f32 * 1.0)
-            .drum_grid(8, 0.25)
-            .kick(&evolving)
-            .hihat(&sequences::euclidean::generate(8, 8)); // Constant hi-hat
+            .drum_grid(8, 0.25, |g| g
+                .sound(DrumType::Kick, &evolving)
+                .sound(DrumType::HiHatClosed, &sequences::euclidean::generate(8, 8)));
     }
 
     println!("\n▶️  Playing rhythmic sequences...\n");

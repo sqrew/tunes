@@ -28,27 +28,27 @@ fn main() -> anyhow::Result<()> {
     // Intro - just hi-hats
     comp.track("hats")
         .at_marker("intro")
-        .drum_grid(16, 0.125)
-        .hihat("x-x-x-x-x-x-x-x-");
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-"));
 
     // Buildup - add kick
     comp.track("kick_buildup")
         .at_marker("buildup")
-        .drum_grid(16, 0.125)
-        .kick("x---x---x---x---");
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick, "x---x---x---x---"));
 
     // Verse - full drums
     comp.track("verse_drums")
         .at_marker("verse")
-        .drum_grid(16, 0.125)
-        .kick_808("x-x-x-x-x-x-x-x-")
-        .snare("----x-------x---");
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick808, "x-x-x-x-x-x-x-x-")
+        .sound(DrumType::Snare, "----x-------x---"));
 
     // Drop - everything hits together!
     comp.track("drop_kick")
         .at_marker("drop")  // All start at exactly 16.0
-        .drum_grid(16, 0.125)
-        .kick_808("x-x-x-x-x-x-x-x-");
+        .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Kick808, "x-x-x-x-x-x-x-x-"));
 
     comp.track("drop_bass")
         .at_marker("drop")  // Synced to drop
