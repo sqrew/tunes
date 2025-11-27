@@ -26,10 +26,16 @@ use std::sync::Arc;
 ///
 /// **Performance:** Uses Vec indexed by ID instead of HashMap with String keys.
 /// This eliminates string hashing and allocation, providing O(1) direct access.
+///
+/// **Lazy clearing:** Uses generation counters for O(1) clear instead of O(n) fill.
+/// Each slot tracks when it was last written; stale slots return 0.0.
 #[derive(Debug, Clone)]
 struct EnvelopeCache {
-    tracks: Vec<f32>, // Track ID -> RMS envelope (direct index)
-    buses: Vec<f32>,  // Bus ID -> RMS envelope (direct index)
+    tracks: Vec<f32>,         // Track ID -> RMS envelope (direct index)
+    buses: Vec<f32>,          // Bus ID -> RMS envelope (direct index)
+    track_gens: Vec<u64>,     // Track ID -> generation when last written
+    bus_gens: Vec<u64>,       // Bus ID -> generation when last written
+    generation: u64,          // Current generation (incremented on clear)
 }
 
 impl EnvelopeCache {
@@ -42,17 +48,24 @@ impl EnvelopeCache {
         Self {
             tracks: vec![0.0; max_tracks],
             buses: vec![0.0; max_buses],
+            track_gens: vec![0; max_tracks],
+            bus_gens: vec![0; max_buses],
+            generation: 1, // Start at 1 so generation 0 means "never written"
         }
     }
 
-    /// Clear all cached envelope values (resets to 0.0)
+    /// Clear all cached envelope values (O(1) lazy invalidation)
     ///
     /// Called at the start of each sample_at() to reset state.
+    /// Instead of zeroing all values, just increment generation counter.
+    /// Stale values (wrong generation) return 0.0 on read.
     #[inline(always)]
     fn clear(&mut self) {
-        // Fast memset-like operation
-        self.tracks.fill(0.0);
-        self.buses.fill(0.0);
+        self.generation = self.generation.wrapping_add(1);
+        // Skip generation 0 (reserved for "never written")
+        if self.generation == 0 {
+            self.generation = 1;
+        }
     }
 
     /// Store a track's envelope by ID
@@ -62,8 +75,10 @@ impl EnvelopeCache {
     /// * `envelope` - RMS envelope value
     #[inline(always)]
     fn cache_track(&mut self, track_id: TrackId, envelope: f32) {
-        if let Some(slot) = self.tracks.get_mut(track_id as usize) {
-            *slot = envelope;
+        let idx = track_id as usize;
+        if idx < self.tracks.len() {
+            self.tracks[idx] = envelope;
+            self.track_gens[idx] = self.generation;
         }
     }
 
@@ -74,21 +89,33 @@ impl EnvelopeCache {
     /// * `envelope` - RMS envelope value
     #[inline(always)]
     fn cache_bus(&mut self, bus_id: BusId, envelope: f32) {
-        if let Some(slot) = self.buses.get_mut(bus_id as usize) {
-            *slot = envelope;
+        let idx = bus_id as usize;
+        if idx < self.buses.len() {
+            self.buses[idx] = envelope;
+            self.bus_gens[idx] = self.generation;
         }
     }
 
-    /// Get a track's envelope by ID (returns 0.0 if not found)
+    /// Get a track's envelope by ID (returns 0.0 if not found or stale)
     #[inline(always)]
     fn get_track(&self, track_id: TrackId) -> f32 {
-        self.tracks.get(track_id as usize).copied().unwrap_or(0.0)
+        let idx = track_id as usize;
+        if idx < self.tracks.len() && self.track_gens[idx] == self.generation {
+            self.tracks[idx]
+        } else {
+            0.0
+        }
     }
 
-    /// Get a bus's envelope by ID (returns 0.0 if not found)
+    /// Get a bus's envelope by ID (returns 0.0 if not found or stale)
     #[inline(always)]
     fn get_bus(&self, bus_id: BusId) -> f32 {
-        self.buses.get(bus_id as usize).copied().unwrap_or(0.0)
+        let idx = bus_id as usize;
+        if idx < self.buses.len() && self.bus_gens[idx] == self.generation {
+            self.buses[idx]
+        } else {
+            0.0
+        }
     }
 }
 
@@ -123,7 +150,7 @@ struct BusOutput {
 ///
 /// **Performance optimizations:**
 /// - Buses stored in Vec<Bus> indexed by BusId (not HashMap<String, Bus>)
-/// - Pre-allocated buffers for track_outputs, bus_outputs, envelope_cache
+/// - Pre-allocated buffers for track_outputs_by_bus, bus_outputs, envelope_cache
 /// - Integer IDs instead of string comparisons in hot path
 #[derive(Debug, Clone)]
 pub struct Mixer {
@@ -135,7 +162,8 @@ pub struct Mixer {
     bus_name_to_id: HashMap<String, BusId>,
 
     // Pre-allocated buffers (reused every sample_at() call)
-    track_outputs: Vec<TrackOutput>,
+    // OPTIMIZED: track_outputs indexed by bus_id for O(1) lookup instead of O(n) linear search
+    track_outputs_by_bus: Vec<Vec<TrackOutput>>,
     bus_outputs: Vec<BusOutput>,
     envelope_cache: EnvelopeCache,
 
@@ -168,7 +196,9 @@ impl Mixer {
             buses: Vec::with_capacity(INITIAL_BUS_CAPACITY),
             bus_order: Vec::with_capacity(INITIAL_BUS_CAPACITY),
             bus_name_to_id: HashMap::new(),
-            track_outputs: Vec::with_capacity(INITIAL_TRACK_CAPACITY),
+            track_outputs_by_bus: (0..INITIAL_BUS_CAPACITY)
+                .map(|_| Vec::with_capacity(INITIAL_TRACK_CAPACITY / INITIAL_BUS_CAPACITY))
+                .collect(),
             bus_outputs: Vec::with_capacity(INITIAL_BUS_CAPACITY),
             envelope_cache: EnvelopeCache::new(INITIAL_TRACK_CAPACITY, INITIAL_BUS_CAPACITY),
             cache: None, // Cache disabled by default
@@ -206,6 +236,12 @@ impl Mixer {
         // Expand envelope cache if needed
         if bus_id as usize >= self.envelope_cache.buses.len() {
             self.envelope_cache.buses.resize(bus_id as usize + 1, 0.0);
+            self.envelope_cache.bus_gens.resize(bus_id as usize + 1, 0);
+        }
+
+        // Expand track_outputs_by_bus if needed
+        while self.track_outputs_by_bus.len() <= bus_id as usize {
+            self.track_outputs_by_bus.push(Vec::with_capacity(8));
         }
     }
 
@@ -869,6 +905,7 @@ impl Mixer {
     ///
     /// # Returns
     /// A tuple of (left_channel, right_channel) audio samples in range -1.0 to 1.0
+    #[inline(always)]
     pub fn sample_at(
         &mut self,
         time: f32,
@@ -881,7 +918,9 @@ impl Mixer {
         self.sample_count = self.sample_count.wrapping_add(1);
 
         // Clear pre-allocated buffers (NO ALLOCATION!)
-        self.track_outputs.clear();
+        for bus_outputs in &mut self.track_outputs_by_bus {
+            bus_outputs.clear();
+        }
         self.bus_outputs.clear();
         self.envelope_cache.clear();
 
@@ -916,8 +955,8 @@ impl Mixer {
                 // Cache track envelope using integer ID
                 self.envelope_cache.cache_track(track.id, envelope);
 
-                // Store output using integer bus ID (NO STRING CLONE!)
-                self.track_outputs.push(TrackOutput {
+                // Store output indexed by bus ID (O(1) lookup in Pass 2!)
+                self.track_outputs_by_bus[bus_id as usize].push(TrackOutput {
                     bus_id,
                     left: track_left,
                     right: track_right,
@@ -941,14 +980,12 @@ impl Mixer {
 
             let bus_id = bus.id;
 
-            // Sum tracks belonging to this bus (INTEGER COMPARISON!)
+            // Sum tracks belonging to this bus (O(1) lookup via indexed Vec!)
             let mut bus_left = 0.0;
             let mut bus_right = 0.0;
-            for track_output in &self.track_outputs {
-                if track_output.bus_id == bus_id {
-                    bus_left += track_output.left;
-                    bus_right += track_output.right;
-                }
+            for track_output in &self.track_outputs_by_bus[bus_id as usize] {
+                bus_left += track_output.left;
+                bus_right += track_output.right;
             }
 
             // Calculate bus envelope BEFORE effects
@@ -1113,7 +1150,7 @@ impl Mixer {
                     .collect();
 
                 // Mix track results into bus buffer
-                let mut track_envelopes = Vec::new();
+                let mut track_envelopes = Vec::with_capacity(track_results.len());
                 for (track_id, track_buffer, track_envelope, pan) in track_results {
                     track_envelopes.push((track_id, track_envelope));
 
@@ -1193,7 +1230,7 @@ impl Mixer {
                     .collect();
 
                 // Mix track results into bus buffer
-                let mut track_envelopes = Vec::new();
+                let mut track_envelopes = Vec::with_capacity(track_results.len());
                 for (track_id, track_buffer, track_envelope, pan) in track_results {
                     track_envelopes.push((track_id, track_envelope));
 

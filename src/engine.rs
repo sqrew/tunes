@@ -11,7 +11,7 @@ use ringbuf::{
     HeapRb,
     traits::{Consumer, Observer, Producer, Split},
 };
-use std::collections::HashMap;
+use dashmap::DashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -455,7 +455,7 @@ pub struct AudioEngine {
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
     spatial_params: Arc<Atomic<SpatialParams>>,    // Lock-free reads via epoch-based reclamation
     sample_rate: f32,
-    sample_cache: Arc<Mutex<HashMap<String, crate::synthesis::Sample>>>, // Automatic sample caching
+    sample_cache: Arc<DashMap<String, crate::synthesis::Sample>>, // Lock-free sample caching
     _stream: cpal::Stream, // Persistent stream, kept alive
     // Info for optional printing
     device_name: String,
@@ -673,7 +673,7 @@ impl AudioEngine {
             listener_config,
             spatial_params,
             sample_rate,
-            sample_cache: Arc::new(Mutex::new(HashMap::new())),
+            sample_cache: Arc::new(DashMap::new()),
             _stream: stream,
             device_name,
             buffer_size,
@@ -1660,13 +1660,12 @@ impl AudioEngine {
     pub fn preload_sample(&self, path: &str) -> Result<()> {
         use crate::synthesis::Sample;
 
-        let mut cache = self.sample_cache.lock().unwrap();
-
-        if !cache.contains_key(path) {
+        if !self.sample_cache.contains_key(path) {
             let sample = Sample::from_file(path).map_err(|e| {
                 TunesError::AudioEngineError(format!("Failed to preload sample '{}': {}", path, e))
             })?;
-            cache.insert(path.to_string(), sample);
+            // Use entry API to avoid race condition
+            self.sample_cache.entry(path.to_string()).or_insert(sample);
         }
 
         Ok(())
@@ -1691,8 +1690,7 @@ impl AudioEngine {
     /// # }
     /// ```
     pub fn remove_cached_sample(&self, path: &str) -> Result<()> {
-        let mut cache = self.sample_cache.lock().unwrap();
-        cache.remove(path);
+        self.sample_cache.remove(path);
         Ok(())
     }
 
@@ -1716,8 +1714,7 @@ impl AudioEngine {
     /// # }
     /// ```
     pub fn clear_sample_cache(&self) -> Result<()> {
-        let mut cache = self.sample_cache.lock().unwrap();
-        cache.clear();
+        self.sample_cache.clear();
         Ok(())
     }
 
@@ -3173,22 +3170,21 @@ impl<'a> SamplePlaybackBuilder<'a> {
     fn execute_play(&self) -> Result<SoundId> {
         use crate::synthesis::Sample;
 
-        // Check cache first, load if not present
-        let mut sample = {
-            let mut cache = self.engine.sample_cache.lock().unwrap();
-
-            if let Some(cached) = cache.get(&self.path) {
-                cached.clone()
-            } else {
-                let loaded = Sample::from_file(&self.path).map_err(|e| {
-                    TunesError::AudioEngineError(format!(
-                        "Failed to load sample '{}': {}",
-                        self.path, e
-                    ))
-                })?;
-                cache.insert(self.path.clone(), loaded.clone());
-                loaded
-            }
+        // Check cache first, load if not present (lock-free with DashMap)
+        let mut sample = if let Some(cached) = self.engine.sample_cache.get(&self.path) {
+            cached.clone()
+        } else {
+            let loaded = Sample::from_file(&self.path).map_err(|e| {
+                TunesError::AudioEngineError(format!(
+                    "Failed to load sample '{}': {}",
+                    self.path, e
+                ))
+            })?;
+            self.engine
+                .sample_cache
+                .entry(self.path.clone())
+                .or_insert(loaded)
+                .clone()
         };
 
         // Apply sample transformations in order

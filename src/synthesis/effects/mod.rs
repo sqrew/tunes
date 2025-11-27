@@ -262,8 +262,9 @@ impl EffectChain {
         // Sort by priority (lower = earlier in chain)
         effects.sort_by_key(|&(priority, _)| priority);
 
-        // Extract just the effect IDs
-        self.effect_order = effects.into_iter().map(|(_, id)| id).collect();
+        // Extract just the effect IDs (reuse existing capacity)
+        self.effect_order.clear();
+        self.effect_order.extend(effects.into_iter().map(|(_, id)| id));
     }
 
     /// Process a mono audio sample through the effect chain

@@ -414,10 +414,9 @@ impl Filter {
             self.band = self.band.mul_add(1.0, f * self.high);
             self.notch = self.high + self.low;
 
-            // Flush denormals (branchless with min trick)
-            const DENORMAL_THRESHOLD: f32 = 1e-15;
-            self.low *= (self.low.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
-            self.band *= (self.band.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+            // Flush denormals to zero (compilers optimize to branchless cmov)
+            self.low = if self.low.abs() < 1e-15 { 0.0 } else { self.low };
+            self.band = if self.band.abs() < 1e-15 { 0.0 } else { self.band };
 
             // Clamp state for stability (branchless)
             self.low = self.low.clamp(-100.0, 100.0);
@@ -441,9 +440,9 @@ impl Filter {
                 self.band2 = self.band2.mul_add(1.0, f * self.high2);
                 self.notch2 = self.high2 + self.low2;
 
-                // Flush denormals
-                self.low2 *= (self.low2.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
-                self.band2 *= (self.band2.abs() >= DENORMAL_THRESHOLD) as i32 as f32;
+                // Flush denormals to zero (compilers optimize to branchless cmov)
+                self.low2 = if self.low2.abs() < 1e-15 { 0.0 } else { self.low2 };
+                self.band2 = if self.band2.abs() < 1e-15 { 0.0 } else { self.band2 };
 
                 // Clamp for stability
                 self.low2 = self.low2.clamp(-100.0, 100.0);
