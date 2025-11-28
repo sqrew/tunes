@@ -20,7 +20,9 @@
 
 # Core Concepts
 
-- [Architecture](./architecture.md)
+- [Architecture](./concepts/architecture.md)
+- [Audio Events](./concepts/events.md)
+- [Tempo and Rhythm](./concepts/tempo-rhythm.md)
 
 ---
 
@@ -59,7 +61,6 @@
 - [Performance Optimization](./advanced/performance.md)
 - [GPU Acceleration](./advanced/gpu.md)
 - [WebAssembly Support](./advanced/wasm.md)
-- [Tempo and Rhythm](./advanced/tempo-rhythm.md)
 
 ---
 

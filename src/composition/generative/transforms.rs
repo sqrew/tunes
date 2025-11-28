@@ -2364,4 +2364,344 @@ impl<'a> TrackBuilder<'a> {
         self.update_section_duration();
         self
     }
+
+    /// Apply a velocity ramp (crescendo) across the pattern
+    ///
+    /// Linearly interpolates velocity from `start_velocity` to `end_velocity`
+    /// based on each event's position in the pattern. Works on both notes and drums.
+    ///
+    /// # Arguments
+    /// * `start_velocity` - Velocity at the beginning of the pattern (0.0-1.0)
+    /// * `end_velocity` - Velocity at the end of the pattern (0.0-1.0)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Crescendo on a melodic phrase
+    /// comp.track("strings")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    ///     .crescendo(0.3, 1.0);  // Build from soft to loud
+    /// ```
+    pub fn crescendo(self, start_velocity: f32, end_velocity: f32) -> Self {
+        self.velocity_ramp(start_velocity, end_velocity)
+    }
+
+    /// Apply a velocity ramp (decrescendo) across the pattern
+    ///
+    /// Convenience method that's the same as `crescendo` but named for clarity
+    /// when going from loud to soft.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Decrescendo - fade out
+    /// comp.track("piano")
+    ///     .pattern_start()
+    ///     .notes(&[C5, B4, A4, G4, F4, E4, D4, C4], 0.25)
+    ///     .decrescendo(1.0, 0.2);  // Fade from loud to soft
+    /// ```
+    pub fn decrescendo(self, start_velocity: f32, end_velocity: f32) -> Self {
+        self.velocity_ramp(start_velocity, end_velocity)
+    }
+
+    /// Apply a velocity ramp across the pattern
+    ///
+    /// Core implementation for crescendo/decrescendo. Linearly interpolates
+    /// velocity based on each event's temporal position in the pattern.
+    ///
+    /// # Arguments
+    /// * `start_velocity` - Velocity at pattern start (0.0-1.0)
+    /// * `end_velocity` - Velocity at pattern end (0.0-1.0)
+    pub fn velocity_ramp(mut self, start_velocity: f32, end_velocity: f32) -> Self {
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+        let pattern_duration = cursor - pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        let start_vel = start_velocity.clamp(0.0, 1.0);
+        let end_vel = end_velocity.clamp(0.0, 1.0);
+
+        for event in &mut self.get_track_mut().events {
+            let (start_time, velocity_ref) = match event {
+                AudioEvent::Note(note) => (note.start_time, &mut note.velocity),
+                AudioEvent::Drum(drum) => (drum.start_time, &mut drum.velocity),
+                _ => continue,
+            };
+
+            if start_time >= pattern_start && start_time < cursor {
+                // Calculate position in pattern (0.0 to 1.0)
+                let progress = (start_time - pattern_start) / pattern_duration;
+                // Linear interpolation
+                let new_velocity = start_vel + (end_vel - start_vel) * progress;
+                *velocity_ref = new_velocity;
+            }
+        }
+
+        self
+    }
+
+    /// Insert a gradual tempo change (tempo ramp) using TempoChangeEvents
+    ///
+    /// Unlike `tempo_curve` which physically moves events, this inserts actual
+    /// TempoChangeEvents which are useful for MIDI export and affect all subsequent
+    /// music in the composition.
+    ///
+    /// # Arguments
+    /// * `target_bpm` - Target tempo at end of the ramp
+    /// * `steps` - Number of tempo change events to insert
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Ritardando from 120 to 80 BPM over 4 steps
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    ///     .tempo_ramp(80.0, 4);
+    ///
+    /// // Accelerando from 100 to 140 BPM
+    /// comp.track("buildup")
+    ///     .pattern_start()
+    ///     .notes(&[C4; 8], 0.25)
+    ///     .tempo_ramp(140.0, 8);
+    /// ```
+    pub fn tempo_ramp(mut self, target_bpm: f32, steps: usize) -> Self {
+        if steps == 0 {
+            return self;
+        }
+
+        let pattern_start = self.pattern_start;
+        let pattern_duration = self.cursor - pattern_start;
+
+        if pattern_duration <= 0.0 {
+            return self;
+        }
+
+        // Get the current tempo from the composition
+        let start_bpm = self.composition.tempo().bpm;
+        let target_bpm = target_bpm.clamp(20.0, 500.0);
+
+        if (start_bpm - target_bpm).abs() < 0.01 {
+            return self;
+        }
+
+        // Insert tempo change events at evenly spaced intervals
+        let step_duration = pattern_duration / steps as f32;
+
+        for i in 0..steps {
+            let progress = (i + 1) as f32 / steps as f32;
+            let bpm = start_bpm + (target_bpm - start_bpm) * progress;
+            let time = pattern_start + step_duration * (i + 1) as f32;
+
+            self.get_track_mut()
+                .events
+                .push(crate::track::AudioEvent::TempoChange(
+                    crate::track::TempoChangeEvent {
+                        start_time: time,
+                        bpm,
+                    },
+                ));
+        }
+
+        self.get_track_mut().invalidate_time_cache();
+        self
+    }
+
+    /// Convenience method for gradual slowdown (ritardando)
+    ///
+    /// Inserts tempo change events to gradually slow down to the target BPM.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("ending")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.5)
+    ///     .ritardando(80.0, 4);  // Slow to 80 BPM over 4 steps
+    /// ```
+    pub fn ritardando(self, target_bpm: f32, steps: usize) -> Self {
+        self.tempo_ramp(target_bpm, steps)
+    }
+
+    /// Convenience method for gradual speedup (accelerando)
+    ///
+    /// Inserts tempo change events to gradually speed up to the target BPM.
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::consts::notes::*;
+    /// # let mut comp = Composition::new(Tempo::new(100.0));
+    /// comp.track("buildup")
+    ///     .pattern_start()
+    ///     .notes(&[C4; 8], 0.25)
+    ///     .accelerando(140.0, 8);  // Speed to 140 BPM over 8 steps
+    /// ```
+    pub fn accelerando(self, target_bpm: f32, steps: usize) -> Self {
+        self.tempo_ramp(target_bpm, steps)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::composition::Composition;
+    use crate::composition::timing::Tempo;
+    use crate::consts::notes::*;
+    use crate::instruments::drums::DrumType;
+
+    #[test]
+    fn test_crescendo_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .notes(&[C4, D4, E4, F4], 0.25)
+            .crescendo(0.2, 1.0);
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Note(n) = e {
+                    Some(n.velocity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Should ramp from 0.2 to close to 1.0
+        assert!((velocities[0] - 0.2).abs() < 0.01, "First note should be ~0.2");
+        assert!(velocities[1] > velocities[0], "Should increase");
+        assert!(velocities[2] > velocities[1], "Should increase");
+        assert!(velocities[3] > velocities[2], "Should increase");
+    }
+
+    #[test]
+    fn test_decrescendo_notes() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .notes(&[C4, D4, E4, F4], 0.25)
+            .decrescendo(1.0, 0.3);
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Note(n) = e {
+                    Some(n.velocity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Should ramp down from 1.0 to close to 0.3
+        assert!((velocities[0] - 1.0).abs() < 0.01, "First note should be ~1.0");
+        assert!(velocities[1] < velocities[0], "Should decrease");
+        assert!(velocities[2] < velocities[1], "Should decrease");
+        assert!(velocities[3] < velocities[2], "Should decrease");
+    }
+
+    #[test]
+    fn test_crescendo_drums() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("drums")
+            .drum_grid(4, 0.25, |g| g.sound(DrumType::HiHatClosed, "xxxx"))
+            .crescendo(0.3, 0.9);
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some(d.velocity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!((velocities[0] - 0.3).abs() < 0.01, "First drum should be ~0.3");
+        assert!(velocities[3] > velocities[0], "Last should be louder than first");
+    }
+
+    #[test]
+    fn test_tempo_ramp() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .notes(&[C4, D4, E4, F4], 0.25)
+            .tempo_ramp(80.0, 4);
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        // Count tempo change events
+        let tempo_changes: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::TempoChange(t) = e {
+                    Some(t.bpm)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(tempo_changes.len(), 4, "Should have 4 tempo changes");
+        assert!(tempo_changes[0] < 120.0, "First tempo should be less than start");
+        assert!((tempo_changes[3] - 80.0).abs() < 0.01, "Last tempo should be ~80");
+    }
+
+    #[test]
+    fn test_ritardando_accelerando() {
+        // Test ritardando (alias for tempo_ramp)
+        let mut comp1 = Composition::new(Tempo::new(120.0));
+        comp1.track("test")
+            .pattern_start()
+            .notes(&[C4, D4], 0.5)
+            .ritardando(60.0, 2);
+
+        let track1 = &comp1.into_mixer().tracks()[0];
+        let tempos1: Vec<f32> = track1.events.iter()
+            .filter_map(|e| if let AudioEvent::TempoChange(t) = e { Some(t.bpm) } else { None })
+            .collect();
+        assert_eq!(tempos1.len(), 2);
+
+        // Test accelerando
+        let mut comp2 = Composition::new(Tempo::new(100.0));
+        comp2.track("test")
+            .pattern_start()
+            .notes(&[C4, D4], 0.5)
+            .accelerando(150.0, 2);
+
+        let track2 = &comp2.into_mixer().tracks()[0];
+        let tempos2: Vec<f32> = track2.events.iter()
+            .filter_map(|e| if let AudioEvent::TempoChange(t) = e { Some(t.bpm) } else { None })
+            .collect();
+        assert_eq!(tempos2.len(), 2);
+        assert!((tempos2[1] - 150.0).abs() < 0.01, "Should reach target BPM");
+    }
 }

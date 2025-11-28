@@ -34,6 +34,14 @@ Pattern transformations are powerful tools for manipulating musical patterns in 
   - [Magnetize - Snap to Scale](#magnetize---snap-to-scale)
   - [Gravity - Pull Toward Center Pitch](#gravity---pull-toward-center-pitch)
   - [Ripple - Cascading Micro-Delays](#ripple---cascading-micro-delays)
+- [Velocity Transformations](#velocity-transformations)
+  - [Crescendo - Build Intensity](#crescendo---build-intensity)
+  - [Decrescendo - Fade Intensity](#decrescendo---fade-intensity)
+  - [Velocity Ramp - Generic](#velocity-ramp---generic)
+- [Tempo Transformations](#tempo-transformations)
+  - [Tempo Ramp - Gradual BPM Changes](#tempo-ramp---gradual-bpm-changes)
+  - [Ritardando - Musical Slowdown](#ritardando---musical-slowdown)
+  - [Accelerando - Musical Speedup](#accelerando---musical-speedup)
 - [Chaining Multiple Transformations](#chaining-multiple-transformations)
   - [Combining Transforms in One Block](#combining-transforms-in-one-block)
   - [Multiple Transform Blocks](#multiple-transform-blocks)
@@ -849,6 +857,140 @@ comp.track("generative")
 
 ### Feel Transformations
 - `.humanize(timing_variance, velocity_variance)` - Add organic variations
+
+### Velocity Transformations
+- `.crescendo(start_velocity, end_velocity)` - Build intensity
+- `.decrescendo(start_velocity, end_velocity)` - Fade intensity
+- `.velocity_ramp(start_velocity, end_velocity)` - Generic velocity ramp
+
+### Tempo Transformations
+- `.tempo_ramp(target_bpm, steps)` - Gradual BPM transition
+- `.ritardando(target_bpm, steps)` - Musical slowdown
+- `.accelerando(target_bpm, steps)` - Musical speedup
+
+---
+
+## Velocity Transformations
+
+### Crescendo - Build Intensity
+
+Ramp velocity from soft to loud across a pattern:
+
+```rust
+// Build from quiet to loud
+comp.track("strings")
+    .pattern_start()
+    .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    .transform(|t| t
+        .crescendo(0.3, 1.0)  // Start at 30%, end at 100%
+    );
+
+// Drum roll buildup
+comp.track("drums")
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::Snare, "xxxxxxxxxxxxxxxx"))
+    .crescendo(0.2, 1.0);
+```
+
+**Parameters:**
+- `start_velocity: f32` - Velocity at pattern start (0.0-1.0)
+- `end_velocity: f32` - Velocity at pattern end (0.0-1.0)
+
+### Decrescendo - Fade Intensity
+
+Ramp velocity from loud to soft (same as crescendo, just named for clarity):
+
+```rust
+// Fade out
+comp.track("piano")
+    .pattern_start()
+    .notes(&[C5, B4, A4, G4, F4, E4, D4, C4], 0.25)
+    .transform(|t| t
+        .decrescendo(1.0, 0.2)  // Start loud, end quiet
+    );
+```
+
+### Velocity Ramp - Generic
+
+The underlying method that crescendo/decrescendo call:
+
+```rust
+// Equivalent to crescendo(0.5, 0.8)
+.transform(|t| t.velocity_ramp(0.5, 0.8))
+```
+
+**How it works:**
+- Calculates each event's position in the pattern (0.0 to 1.0)
+- Linearly interpolates velocity between start and end values
+- Works on both notes and drums
+
+**Use cases:**
+- Building tension in a phrase
+- Natural-sounding phrase endings
+- Dynamic swells in ambient music
+- Drum roll buildups
+
+---
+
+## Tempo Transformations
+
+### Tempo Ramp - Gradual BPM Changes
+
+Insert tempo change events to gradually transition to a target BPM:
+
+```rust
+// Gradually slow down over 8 steps
+comp.track("outro")
+    .pattern_start()
+    .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    .transform(|t| t
+        .tempo_ramp(80.0, 8)  // Ramp to 80 BPM over 8 steps
+    );
+```
+
+**Parameters:**
+- `target_bpm: f32` - The destination tempo (20-500 BPM)
+- `steps: usize` - Number of intermediate tempo changes
+
+**How it works:**
+- Gets the current tempo from the composition
+- Inserts TempoChangeEvents at evenly spaced intervals within the pattern
+- Each event's BPM is linearly interpolated between current and target
+- These events affect MIDI export and subsequent playback timing
+
+### Ritardando - Musical Slowdown
+
+A semantic alias for tempo_ramp when slowing down:
+
+```rust
+// Gradual slowdown for dramatic ending
+comp.track("finale")
+    .pattern_start()
+    .notes(&[G4, F4, E4, D4, C4], 0.5)
+    .transform(|t| t
+        .ritardando(60.0, 5)  // Slow to 60 BPM over 5 steps
+    );
+```
+
+### Accelerando - Musical Speedup
+
+A semantic alias for tempo_ramp when speeding up:
+
+```rust
+// Building excitement
+comp.track("buildup")
+    .pattern_start()
+    .notes(&[C4, C4, D4, D4, E4, E4, F4, F4], 0.25)
+    .transform(|t| t
+        .accelerando(160.0, 8)  // Speed up to 160 BPM
+    );
+```
+
+**Use cases:**
+- Classical-style ritardando endings
+- Dramatic buildups and breakdowns
+- Multi-section pieces with tempo transitions
+- MIDI export with embedded tempo changes
 
 ---
 
