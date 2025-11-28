@@ -42,6 +42,10 @@ Pattern transformations are powerful tools for manipulating musical patterns in 
   - [Tempo Ramp - Gradual BPM Changes](#tempo-ramp---gradual-bpm-changes)
   - [Ritardando - Musical Slowdown](#ritardando---musical-slowdown)
   - [Accelerando - Musical Speedup](#accelerando---musical-speedup)
+- [Event Iteration Transforms](#event-iteration-transforms)
+  - [For Each Event - Full Control](#for-each-event---full-control)
+  - [Every Nth Note - Targeted Note Accents](#every-nth-note---targeted-note-accents)
+  - [Every Nth Drum - Targeted Drum Accents](#every-nth-drum---targeted-drum-accents)
 - [Chaining Multiple Transformations](#chaining-multiple-transformations)
   - [Combining Transforms in One Block](#combining-transforms-in-one-block)
   - [Multiple Transform Blocks](#multiple-transform-blocks)
@@ -54,13 +58,15 @@ Pattern transformations are powerful tools for manipulating musical patterns in 
 ## Overview
 
 Pattern transformations let you:
-- **Modify pitch** - transpose, rotate, invert, or mutate notes
+- **Modify pitch** - transpose, rotate, invert, or mutate notes and drums
 - **Modify timing** - stretch, compress, quantize, or add stuttering effects
 - **Add variation** - humanize, shuffle, or add evolutionary mutations
+- **Modify velocity** - crescendo, decrescendo, accent patterns
 - **Create echoes** - layer delayed repetitions with volume decay
 - **Shape melodies** - compress/expand pitch ranges, smooth/exaggerate contours
+- **Custom logic** - apply closures to every Nth note or drum
 
-All transformations are chainable and can be applied to any pattern created with `.pattern_start()`.
+All transformations are chainable and can be applied to any pattern created with `.pattern_start()`. **Transforms work on both NoteEvents and DrumEvents**, making them equally powerful for melodic and rhythmic content.
 
 ---
 
@@ -858,6 +864,11 @@ comp.track("generative")
 ### Feel Transformations
 - `.humanize(timing_variance, velocity_variance)` - Add organic variations
 
+### Event Iteration
+- `.for_each_event(closure)` - Apply custom logic to each event with counters
+- `.every_nth_note(n, closure)` - Apply closure to every Nth note
+- `.every_nth_drum(n, closure)` - Apply closure to every Nth drum
+
 ### Velocity Transformations
 - `.crescendo(start_velocity, end_velocity)` - Build intensity
 - `.decrescendo(start_velocity, end_velocity)` - Fade intensity
@@ -991,6 +1002,84 @@ comp.track("buildup")
 - Dramatic buildups and breakdowns
 - Multi-section pieces with tempo transitions
 - MIDI export with embedded tempo changes
+
+---
+
+## Event Iteration Transforms
+
+These transforms give you direct access to events with closures, enabling custom logic that isn't covered by the built-in transforms.
+
+### For Each Event - Full Control
+
+The most flexible transform - apply custom logic to every event with type-specific counters:
+
+```rust
+use tunes::prelude::*;
+use tunes::composition::generative::EventMut;
+
+comp.track("mixed")
+    .pattern_start()
+    .notes(&[C4, E4, G4, C5], 0.25)
+    .drum_grid(4, 0.25, |g| g.sound(DrumType::Kick, "x-x-"))
+    .for_each_event(|event, note_count, drum_count| {
+        match event {
+            EventMut::Note(n) if note_count % 2 == 0 => n.velocity = 1.0,
+            EventMut::Drum(d) if drum_count % 2 == 0 => d.velocity = 1.0,
+            _ => {}
+        }
+    });
+```
+
+**Parameters:**
+- `event` - `EventMut::Note(&mut NoteEvent)` or `EventMut::Drum(&mut DrumEvent)`
+- `note_count` - Running count of notes seen (1-indexed)
+- `drum_count` - Running count of drums seen (1-indexed)
+
+**What's happening:**
+- Iterates over all events in the pattern range
+- Counts notes and drums separately
+- Gives you mutable access to modify any field
+
+**Use cases:**
+- Custom accent patterns not covered by built-ins
+- Conditional modifications based on position
+- Interleaving logic between notes and drums
+- Any custom transformation you can imagine
+
+### Every Nth Note - Targeted Note Accents
+
+Convenience method for applying logic to every Nth note:
+
+```rust
+comp.track("melody")
+    .pattern_start()
+    .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    .every_nth_note(4, |note| {
+        note.velocity = 1.0;  // Accent every 4th note
+    });
+```
+
+**Parameters:**
+- `n` - Apply to every Nth note (1 = every note, 4 = every 4th)
+- `closure` - Receives `&mut NoteEvent` for modification
+
+### Every Nth Drum - Targeted Drum Accents
+
+Convenience method for applying logic to every Nth drum:
+
+```rust
+comp.track("drums")
+    .drum_grid(16, 0.125, |g| g
+        .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-"))
+    .every_nth_drum(4, |drum| {
+        drum.velocity = 1.0;  // Accent every 4th hi-hat
+    });
+```
+
+**Use cases:**
+- Downbeat accents on drums
+- Custom hi-hat patterns
+- Velocity humanization with specific rules
 
 ---
 

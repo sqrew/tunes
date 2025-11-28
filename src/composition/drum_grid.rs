@@ -318,6 +318,241 @@ impl<'a> DrumGrid<'a> {
         self
     }
 
+    /// Add a drag - main hit followed by a quieter grace note
+    ///
+    /// A drag is a rudiment where a grace note follows the main hit.
+    /// This is the opposite of a flam.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for drag positions
+    /// * `drag_offset` - Time after main hit for grace note (in seconds, e.g., 0.03)
+    /// * `drag_velocity` - Velocity of the trailing grace note (typically 0.3-0.5)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .drag(DrumType::Snare, "----x-------x---", 0.03, 0.4));
+    /// ```
+    pub fn drag<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        drag_offset: f32,
+        drag_velocity: f32,
+    ) -> Self {
+        let drag_vel = drag_velocity.clamp(0.0, 1.0);
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let main_time = self.start_time + (step as f32 * self.step_duration);
+                let drag_time = main_time + drag_offset;
+
+                // Add main hit
+                self.track.add_drum(drum_type, main_time, None);
+                // Add drag note (quieter, slightly after)
+                self.track
+                    .add_drum_with_velocity(drum_type, drag_time, drag_vel, None);
+            }
+        }
+        self
+    }
+
+    /// Add a ruff - two grace notes before the main hit
+    ///
+    /// A ruff (or drag) is a rudiment with two grace notes preceding the main hit.
+    /// This extends the flam concept with an additional grace note.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for ruff positions
+    /// * `first_offset` - Time before main hit for first grace note (e.g., 0.05)
+    /// * `second_offset` - Time before main hit for second grace note (e.g., 0.025)
+    /// * `grace_velocity` - Velocity of both grace notes (typically 0.3-0.5)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .ruff(DrumType::Snare, "----x-------x---", 0.05, 0.025, 0.35));
+    /// ```
+    pub fn ruff<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        first_offset: f32,
+        second_offset: f32,
+        grace_velocity: f32,
+    ) -> Self {
+        let grace_vel = grace_velocity.clamp(0.0, 1.0);
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let main_time = self.start_time + (step as f32 * self.step_duration);
+                let first_grace_time = (main_time - first_offset).max(0.0);
+                let second_grace_time = (main_time - second_offset).max(0.0);
+
+                // Add first grace note (earliest)
+                self.track
+                    .add_drum_with_velocity(drum_type, first_grace_time, grace_vel, None);
+                // Add second grace note
+                self.track
+                    .add_drum_with_velocity(drum_type, second_grace_time, grace_vel, None);
+                // Add main hit
+                self.track.add_drum(drum_type, main_time, None);
+            }
+        }
+        self
+    }
+
+    /// Add a diddle - quick double stroke
+    ///
+    /// A diddle is two hits played in quick succession at equal velocity.
+    /// Simpler than a roll, just two rapid hits.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for diddle positions
+    /// * `spacing` - Time between the two hits (in seconds, e.g., 0.03)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .diddle(DrumType::Snare, "----x-------x---", 0.03));
+    /// ```
+    pub fn diddle<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        spacing: f32,
+    ) -> Self {
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let first_time = self.start_time + (step as f32 * self.step_duration);
+                let second_time = first_time + spacing;
+
+                // Both hits at full velocity
+                self.track.add_drum(drum_type, first_time, None);
+                self.track.add_drum(drum_type, second_time, None);
+            }
+        }
+        self
+    }
+
+    /// Add a buzz roll - rapid hits with decaying velocity
+    ///
+    /// A buzz roll simulates the sound of a stick bouncing on the drum head,
+    /// with each successive hit quieter than the last.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for buzz positions
+    /// * `hits` - Number of hits in the buzz
+    /// * `decay` - Velocity multiplier per hit (e.g., 0.7 means each hit is 70% of previous)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .buzz(DrumType::Snare, "---------------x", 6, 0.7));
+    /// ```
+    pub fn buzz<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        hits: usize,
+        decay: f32,
+    ) -> Self {
+        if hits == 0 {
+            return self;
+        }
+
+        let decay = decay.clamp(0.0, 1.0);
+        let hit_spacing = self.step_duration / hits as f32;
+
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let step_start = self.start_time + (step as f32 * self.step_duration);
+                let mut velocity = 1.0f32;
+
+                for i in 0..hits {
+                    let time = step_start + (i as f32 * hit_spacing);
+                    self.track
+                        .add_drum_with_velocity(drum_type, time, velocity, None);
+                    velocity *= decay;
+                }
+            }
+        }
+        self
+    }
+
+    /// Add a double flam - two grace notes after the main hit
+    ///
+    /// A double flam is like a ruff but in the opposite direction - two grace
+    /// notes follow the main hit. This is the inverse of ruff, similar to how
+    /// drag is the inverse of flam.
+    ///
+    /// # Arguments
+    /// * `drum_type` - The drum sound
+    /// * `pattern` - Step pattern for double flam positions
+    /// * `first_offset` - Time after main hit for first grace note (e.g., 0.025)
+    /// * `second_offset` - Time after main hit for second grace note (e.g., 0.05)
+    /// * `grace_velocity` - Velocity of both grace notes (typically 0.3-0.5)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::composition::Composition;
+    /// # use tunes::composition::timing::Tempo;
+    /// # use tunes::instruments::drums::DrumType;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .double_flam(DrumType::Snare, "----x-------x---", 0.025, 0.05, 0.35));
+    /// ```
+    pub fn double_flam<P: DrumPattern + ?Sized>(
+        self,
+        drum_type: DrumType,
+        pattern: &P,
+        first_offset: f32,
+        second_offset: f32,
+        grace_velocity: f32,
+    ) -> Self {
+        let grace_vel = grace_velocity.clamp(0.0, 1.0);
+        for step in pattern.into_steps() {
+            if step < self.steps {
+                let main_time = self.start_time + (step as f32 * self.step_duration);
+                let first_grace_time = main_time + first_offset;
+                let second_grace_time = main_time + second_offset;
+
+                // Add main hit
+                self.track.add_drum(drum_type, main_time, None);
+                // Add first grace note (closer to main hit)
+                self.track
+                    .add_drum_with_velocity(drum_type, first_grace_time, grace_vel, None);
+                // Add second grace note (further from main hit)
+                self.track
+                    .add_drum_with_velocity(drum_type, second_grace_time, grace_vel, None);
+            }
+        }
+        self
+    }
+
     /// Add a drum roll - rapid repeated hits
     ///
     /// Creates multiple hits spread evenly across the step duration.
@@ -902,6 +1137,164 @@ mod tests {
         assert_eq!(times[0].1, 0.4, "Grace note velocity");
         assert_eq!(times[1].0, 1.0, "Main hit at 1.0s");
         assert_eq!(times[1].1, 1.0, "Main hit velocity");
+    }
+
+    #[test]
+    fn test_drag() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .drag(DrumType::Snare, "--x-", 0.03, 0.4);
+
+        assert_eq!(track.events.len(), 2); // Main hit + drag note
+
+        // Sort events by time to check order
+        let mut times: Vec<(f32, f32)> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some((d.start_time, d.velocity))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        times.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Main hit should be at step 2 = 1.0s
+        // Drag note should be at 1.0 + 0.03 = 1.03s
+        assert_eq!(times[0].0, 1.0, "Main hit at 1.0s");
+        assert_eq!(times[0].1, 1.0, "Main hit velocity");
+        assert!((times[1].0 - 1.03).abs() < 0.001, "Drag note at 1.03s");
+        assert_eq!(times[1].1, 0.4, "Drag note velocity");
+    }
+
+    #[test]
+    fn test_ruff() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .ruff(DrumType::Snare, "--x-", 0.05, 0.025, 0.35);
+
+        assert_eq!(track.events.len(), 3); // Two grace notes + main hit
+
+        // Sort events by time
+        let mut times: Vec<(f32, f32)> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some((d.start_time, d.velocity))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        times.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Main hit at step 2 = 1.0s
+        // First grace at 1.0 - 0.05 = 0.95s
+        // Second grace at 1.0 - 0.025 = 0.975s
+        assert!((times[0].0 - 0.95).abs() < 0.001, "First grace at 0.95s");
+        assert_eq!(times[0].1, 0.35, "First grace velocity");
+        assert!((times[1].0 - 0.975).abs() < 0.001, "Second grace at 0.975s");
+        assert_eq!(times[1].1, 0.35, "Second grace velocity");
+        assert_eq!(times[2].0, 1.0, "Main hit at 1.0s");
+        assert_eq!(times[2].1, 1.0, "Main hit velocity");
+    }
+
+    #[test]
+    fn test_diddle() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .diddle(DrumType::Snare, "x---", 0.03);
+
+        assert_eq!(track.events.len(), 2); // Two equal hits
+
+        let times: Vec<(f32, f32)> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some((d.start_time, d.velocity))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(times[0].0, 0.0, "First hit at 0.0s");
+        assert_eq!(times[0].1, 1.0, "First hit full velocity");
+        assert!((times[1].0 - 0.03).abs() < 0.001, "Second hit at 0.03s");
+        assert_eq!(times[1].1, 1.0, "Second hit full velocity");
+    }
+
+    #[test]
+    fn test_buzz() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .buzz(DrumType::Snare, "x---", 4, 0.5);
+
+        assert_eq!(track.events.len(), 4); // 4 hits with decay
+
+        let velocities: Vec<f32> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some(d.velocity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Decay: 1.0, 0.5, 0.25, 0.125
+        assert_eq!(velocities[0], 1.0);
+        assert_eq!(velocities[1], 0.5);
+        assert_eq!(velocities[2], 0.25);
+        assert_eq!(velocities[3], 0.125);
+    }
+
+    #[test]
+    fn test_buzz_zero_hits() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .buzz(DrumType::Snare, "x---", 0, 0.5);
+
+        assert_eq!(track.events.len(), 0, "Zero hits should add nothing");
+    }
+
+    #[test]
+    fn test_double_flam() {
+        let mut track = Track::new();
+        let _grid = DrumGrid::new(&mut track, 0.0, 4, 0.5)
+            .double_flam(DrumType::Snare, "--x-", 0.025, 0.05, 0.35);
+
+        assert_eq!(track.events.len(), 3); // Main hit + two grace notes
+
+        // Sort events by time
+        let mut times: Vec<(f32, f32)> = track
+            .events
+            .iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    Some((d.start_time, d.velocity))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        times.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Main hit at step 2 = 1.0s
+        // First grace at 1.0 + 0.025 = 1.025s
+        // Second grace at 1.0 + 0.05 = 1.05s
+        assert_eq!(times[0].0, 1.0, "Main hit at 1.0s");
+        assert_eq!(times[0].1, 1.0, "Main hit velocity");
+        assert!((times[1].0 - 1.025).abs() < 0.001, "First grace at 1.025s");
+        assert_eq!(times[1].1, 0.35, "First grace velocity");
+        assert!((times[2].0 - 1.05).abs() < 0.001, "Second grace at 1.05s");
+        assert_eq!(times[2].1, 0.35, "Second grace velocity");
     }
 
     #[test]

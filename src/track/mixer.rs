@@ -1596,6 +1596,24 @@ impl Mixer {
             // Start with current buffer value (which may contain cached samples written above)
             let mut track_value = *sample_out;
 
+            // Voice stealing: find the latest active drum for each type at this time
+            // This prevents overlapping drums of the same type from stacking
+            use std::collections::HashMap;
+            use crate::instruments::drums::DrumType;
+            let mut latest_drum_starts: HashMap<DrumType, f32> = HashMap::new();
+            for event in track.events[start_idx..end_idx].iter() {
+                if let AudioEvent::Drum(drum_event) = event {
+                    let pitch_ratio = 2.0_f32.powf(drum_event.pitch_offset / 12.0);
+                    let drum_duration = drum_event.drum_type.duration() / pitch_ratio;
+                    if time >= drum_event.start_time && time < drum_event.start_time + drum_duration {
+                        let entry = latest_drum_starts.entry(drum_event.drum_type).or_insert(f32::MIN);
+                        if drum_event.start_time > *entry {
+                            *entry = drum_event.start_time;
+                        }
+                    }
+                }
+            }
+
             // Process events (reuse binary search result for entire block)
             for (relative_idx, event) in track.events[start_idx..end_idx].iter().enumerate() {
                 let absolute_idx = start_idx + relative_idx;
@@ -1737,9 +1755,13 @@ impl Mixer {
                         if time >= drum_event.start_time
                             && time < drum_event.start_time + drum_duration
                         {
-                            let time_in_drum = time - drum_event.start_time;
-                            let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
-                            track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
+                            // Voice stealing: only render if this is the most recent trigger
+                            // This prevents overlapping drums of the same type from stacking
+                            if latest_drum_starts.get(&drum_event.drum_type) == Some(&drum_event.start_time) {
+                                let time_in_drum = time - drum_event.start_time;
+                                let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
+                                track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
+                            }
                         }
                     }
                     AudioEvent::Sample(_) => {
@@ -1804,6 +1826,24 @@ impl Mixer {
         // Binary search to find potentially active events
         let (start_idx, end_idx) = track.find_active_range(time);
 
+        // Voice stealing: find the latest active drum for each type at this time
+        // This prevents overlapping drums of the same type from stacking
+        use std::collections::HashMap;
+        use crate::instruments::drums::DrumType;
+        let mut latest_drum_starts: HashMap<DrumType, f32> = HashMap::new();
+        for event in track.events[start_idx..end_idx].iter() {
+            if let AudioEvent::Drum(drum_event) = event {
+                let pitch_ratio = 2.0_f32.powf(drum_event.pitch_offset / 12.0);
+                let drum_duration = drum_event.drum_type.duration() / pitch_ratio;
+                if time >= drum_event.start_time && time < drum_event.start_time + drum_duration {
+                    let entry = latest_drum_starts.entry(drum_event.drum_type).or_insert(f32::MIN);
+                    if drum_event.start_time > *entry {
+                        *entry = drum_event.start_time;
+                    }
+                }
+            }
+        }
+
         // Process events
         for event in &track.events[start_idx..end_idx] {
             match event {
@@ -1852,10 +1892,14 @@ impl Mixer {
                     let drum_duration = drum_event.drum_type.duration() / pitch_ratio;
                     if time >= drum_event.start_time && time < drum_event.start_time + drum_duration
                     {
-                        has_active_event = true;
-                        let time_in_drum = time - drum_event.start_time;
-                        let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
-                        track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
+                        // Voice stealing: only render if this is the most recent trigger
+                        // This prevents overlapping drums of the same type from stacking
+                        if latest_drum_starts.get(&drum_event.drum_type) == Some(&drum_event.start_time) {
+                            has_active_event = true;
+                            let time_in_drum = time - drum_event.start_time;
+                            let sample_index = (time_in_drum * sample_rate * pitch_ratio) as usize;
+                            track_value += drum_event.drum_type.sample(sample_index, sample_rate) * drum_event.velocity;
+                        }
                     }
                 }
                 AudioEvent::Sample(sample_event) => {

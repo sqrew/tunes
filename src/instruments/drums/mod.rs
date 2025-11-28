@@ -38,7 +38,7 @@ use electronic::*;
 use hand_percussion::*;
 
 /// Drum types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DrumType {
     Kick,
     Kick808, // Long, pitched 808 kick
