@@ -3,7 +3,35 @@
 use crate::composition::TrackBuilder;
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::waveform::Waveform;
-use crate::track::AudioEvent;
+use crate::track::{AudioEvent, DrumEvent, NoteEvent};
+
+/// Mutable reference to either a NoteEvent or DrumEvent
+///
+/// Used with `for_each_event` to allow transforms to operate on both event types
+/// with full access to their fields.
+///
+/// # Example
+/// ```
+/// # use tunes::prelude::*;
+/// # use tunes::composition::generative::transforms::EventMut;
+/// # let mut comp = Composition::new(Tempo::new(120.0));
+/// comp.track("test")
+///     .pattern_start()
+///     .notes(&[C4, E4, G4], 0.25)
+///     .for_each_event(|event, note_count, drum_count| {
+///         match event {
+///             EventMut::Note(n) if note_count % 2 == 0 => n.velocity = 1.0,
+///             EventMut::Drum(d) if drum_count % 4 == 0 => d.velocity = 1.0,
+///             _ => {}
+///         }
+///     });
+/// ```
+pub enum EventMut<'a> {
+    /// Mutable reference to a NoteEvent
+    Note(&'a mut NoteEvent),
+    /// Mutable reference to a DrumEvent
+    Drum(&'a mut DrumEvent),
+}
 
 impl<'a> TrackBuilder<'a> {
     /// Add human feel to pattern by randomizing timing and velocity
@@ -2557,6 +2585,146 @@ impl<'a> TrackBuilder<'a> {
     pub fn accelerando(self, target_bpm: f32, steps: usize) -> Self {
         self.tempo_ramp(target_bpm, steps)
     }
+
+    /// Apply a closure to each event in the pattern with type-specific counters
+    ///
+    /// This is the most flexible transform - it gives you mutable access to each
+    /// event along with counters for how many notes and drums have been seen.
+    /// This allows you to implement custom logic like "accent every 4th drum"
+    /// or "modify every 2nd note".
+    ///
+    /// # Arguments
+    /// * `f` - Closure receiving (event, note_count, drum_count)
+    ///   - `event` - `EventMut::Note` or `EventMut::Drum` with mutable access
+    ///   - `note_count` - Running count of notes seen (1-indexed, 0 if this is a drum)
+    ///   - `drum_count` - Running count of drums seen (1-indexed, 0 if this is a note)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # use tunes::composition::generative::transforms::EventMut;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Accent every 4th drum, every 2nd note
+    /// comp.track("mixed")
+    ///     .pattern_start()
+    ///     .notes(&[C4, E4, G4, C5], 0.25)
+    ///     .drum(DrumType::Kick, 0.25)
+    ///     .for_each_event(|event, note_count, drum_count| {
+    ///         match event {
+    ///             EventMut::Note(n) if note_count % 2 == 0 => n.velocity = 1.0,
+    ///             EventMut::Drum(d) if drum_count % 4 == 0 => d.velocity = 1.0,
+    ///             _ => {}
+    ///         }
+    ///     });
+    /// ```
+    pub fn for_each_event<F>(mut self, mut f: F) -> Self
+    where
+        F: FnMut(EventMut<'_>, usize, usize),
+    {
+        let pattern_start = self.pattern_start;
+        let cursor = self.cursor;
+
+        let mut note_count = 0usize;
+        let mut drum_count = 0usize;
+
+        for event in &mut self.get_track_mut().events {
+            let event_time = match event {
+                AudioEvent::Note(n) => n.start_time,
+                AudioEvent::Drum(d) => d.start_time,
+                _ => continue,
+            };
+
+            if event_time >= pattern_start && event_time < cursor {
+                match event {
+                    AudioEvent::Note(n) => {
+                        note_count += 1;
+                        f(EventMut::Note(n), note_count, drum_count);
+                    }
+                    AudioEvent::Drum(d) => {
+                        drum_count += 1;
+                        f(EventMut::Drum(d), note_count, drum_count);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        self
+    }
+
+    /// Apply a closure to every Nth note in the pattern
+    ///
+    /// Convenience method for common "accent every Nth note" patterns.
+    /// Only counts and affects NoteEvents, drums are ignored.
+    ///
+    /// # Arguments
+    /// * `n` - Apply to every Nth note (1 = every note, 2 = every other, etc.)
+    /// * `f` - Closure receiving mutable reference to NoteEvent
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Accent every 4th note
+    /// comp.track("melody")
+    ///     .pattern_start()
+    ///     .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.25)
+    ///     .every_nth_note(4, |note| {
+    ///         note.velocity = 1.0;
+    ///     });
+    /// ```
+    pub fn every_nth_note<F>(self, n: usize, mut f: F) -> Self
+    where
+        F: FnMut(&mut NoteEvent),
+    {
+        if n == 0 {
+            return self;
+        }
+        self.for_each_event(|event, note_count, _| {
+            if let EventMut::Note(note) = event {
+                if note_count % n == 0 {
+                    f(note);
+                }
+            }
+        })
+    }
+
+    /// Apply a closure to every Nth drum in the pattern
+    ///
+    /// Convenience method for common "accent every Nth drum" patterns.
+    /// Only counts and affects DrumEvents, notes are ignored.
+    ///
+    /// # Arguments
+    /// * `n` - Apply to every Nth drum (1 = every drum, 2 = every other, etc.)
+    /// * `f` - Closure receiving mutable reference to DrumEvent
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// // Accent every 4th hi-hat
+    /// comp.track("drums")
+    ///     .drum_grid(16, 0.125, |g| g
+    ///         .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-"))
+    ///     .every_nth_drum(4, |drum| {
+    ///         drum.velocity = 1.0;
+    ///     });
+    /// ```
+    pub fn every_nth_drum<F>(self, n: usize, mut f: F) -> Self
+    where
+        F: FnMut(&mut DrumEvent),
+    {
+        if n == 0 {
+            return self;
+        }
+        self.for_each_event(|event, _, drum_count| {
+            if let EventMut::Drum(drum) = event {
+                if drum_count % n == 0 {
+                    f(drum);
+                }
+            }
+        })
+    }
 }
 
 #[cfg(test)]
@@ -2703,5 +2871,110 @@ mod tests {
             .collect();
         assert_eq!(tempos2.len(), 2);
         assert!((tempos2[1] - 150.0).abs() < 0.01, "Should reach target BPM");
+    }
+
+    #[test]
+    fn test_for_each_event() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .notes(&[C4, E4, G4, C5], 0.25)
+            .for_each_event(|event, note_count, _drum_count| {
+                // Set velocity based on note count (accent every 2nd note)
+                if let EventMut::Note(n) = event {
+                    if note_count % 2 == 0 {
+                        n.velocity = 1.0;
+                    } else {
+                        n.velocity = 0.5;
+                    }
+                }
+            });
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track.events.iter()
+            .filter_map(|e| if let AudioEvent::Note(n) = e { Some(n.velocity) } else { None })
+            .collect();
+
+        assert_eq!(velocities.len(), 4);
+        assert_eq!(velocities[0], 0.5); // 1st note (count=1, odd)
+        assert_eq!(velocities[1], 1.0); // 2nd note (count=2, even)
+        assert_eq!(velocities[2], 0.5); // 3rd note (count=3, odd)
+        assert_eq!(velocities[3], 1.0); // 4th note (count=4, even)
+    }
+
+    #[test]
+    fn test_for_each_event_mixed() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .note(&[C4], 0.25)
+            .drum(DrumType::Kick, 0.25)
+            .note(&[E4], 0.25)
+            .drum(DrumType::Snare, 0.25)
+            .for_each_event(|event, note_count, drum_count| {
+                match event {
+                    EventMut::Note(n) => n.velocity = note_count as f32 * 0.1,
+                    EventMut::Drum(d) => d.velocity = drum_count as f32 * 0.2,
+                }
+            });
+
+        let track = &comp.into_mixer().tracks()[0];
+
+        let note_velocities: Vec<f32> = track.events.iter()
+            .filter_map(|e| if let AudioEvent::Note(n) = e { Some(n.velocity) } else { None })
+            .collect();
+        let drum_velocities: Vec<f32> = track.events.iter()
+            .filter_map(|e| if let AudioEvent::Drum(d) = e { Some(d.velocity) } else { None })
+            .collect();
+
+        assert_eq!(note_velocities, vec![0.1, 0.2]); // note_count 1 and 2
+        assert_eq!(drum_velocities, vec![0.2, 0.4]); // drum_count 1 and 2
+    }
+
+    #[test]
+    fn test_every_nth_note() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .pattern_start()
+            .notes(&[C4, D4, E4, F4, G4, A4, B4, C5], 0.125)
+            .every_nth_note(4, |note| {
+                note.velocity = 1.0;
+            });
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track.events.iter()
+            .filter_map(|e| if let AudioEvent::Note(n) = e { Some(n.velocity) } else { None })
+            .collect();
+
+        assert_eq!(velocities.len(), 8);
+        // Default velocity is 0.8, every 4th should be 1.0
+        assert!((velocities[3] - 1.0).abs() < 0.01, "4th note should be accented");
+        assert!((velocities[7] - 1.0).abs() < 0.01, "8th note should be accented");
+        // Others should be default
+        assert!((velocities[0] - 0.8).abs() < 0.01, "1st note should be default");
+        assert!((velocities[1] - 0.8).abs() < 0.01, "2nd note should be default");
+    }
+
+    #[test]
+    fn test_every_nth_drum() {
+        let mut comp = Composition::new(Tempo::new(120.0));
+        comp.track("test")
+            .drum_grid(8, 0.125, |g| g
+                .sound(DrumType::HiHatClosed, "xxxxxxxx"))
+            .every_nth_drum(2, |drum| {
+                drum.velocity = 1.0;
+            });
+
+        let track = &comp.into_mixer().tracks()[0];
+        let velocities: Vec<f32> = track.events.iter()
+            .filter_map(|e| if let AudioEvent::Drum(d) = e { Some(d.velocity) } else { None })
+            .collect();
+
+        assert_eq!(velocities.len(), 8);
+        // Every 2nd drum (indices 1, 3, 5, 7 in 0-based, counts 2, 4, 6, 8) should be 1.0
+        assert!((velocities[1] - 1.0).abs() < 0.01, "2nd drum should be accented");
+        assert!((velocities[3] - 1.0).abs() < 0.01, "4th drum should be accented");
+        assert!((velocities[5] - 1.0).abs() < 0.01, "6th drum should be accented");
+        assert!((velocities[7] - 1.0).abs() < 0.01, "8th drum should be accented");
     }
 }

@@ -12,6 +12,7 @@ mod builders;
 // Re-export public items
 pub use random_walk::{random_walk_sequence, biased_random_walk_sequence};
 pub use builders::{TransformBuilder, GeneratorBuilder};
+pub use transforms::EventMut;
 
 // Note: Transform and generator method implementations are in their respective modules
 // and are automatically available on TrackBuilder through the impl blocks
