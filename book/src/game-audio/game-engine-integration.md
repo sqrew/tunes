@@ -28,7 +28,7 @@ Tunes is **framework-agnostic** and integrates trivially with any Rust game engi
 
 The integration pattern is identical across all engines:
 
-1. **Add dependency:** `tunes = "1.0.2"` in `Cargo.toml`
+1. **Add dependency:** `tunes = "1.1.0"` in `Cargo.toml`
 2. **Create engine:** `AudioEngine::new()` or `AudioEngine::new_with_gpu()`
 3. **Store in game state:** Engine resource, struct field, or global
 4. **Call from game logic:** `engine.play_sample("sound.wav")`
@@ -44,7 +44,7 @@ Bevy integration uses the ECS resource system.
 ```toml
 [dependencies]
 bevy = "0.14"
-tunes = "1.0.2"
+tunes = "1.1.0"
 ```
 
 **2. Create the AudioEngine resource:**
@@ -378,7 +378,7 @@ ggez integration stores `AudioEngine` in your game state struct.
 ```toml
 [dependencies]
 ggez = "0.9"
-tunes = "1.0.2"
+tunes = "1.1.0"
 ```
 
 **Basic Integration:**
@@ -440,7 +440,7 @@ macroquad integration is the simplest - just create `AudioEngine` at the start o
 ```toml
 [dependencies]
 macroquad = "0.4"
-tunes = "1.0.2"
+tunes = "1.1.0"
 ```
 
 **Basic Integration:**
@@ -495,7 +495,7 @@ bracket-lib (formerly RLTK) integration uses the state pattern.
 ```toml
 [dependencies]
 bracket-lib = "0.8"
-tunes = "1.0.2"
+tunes = "1.1.0"
 ```
 
 **Basic Integration:**

@@ -1,6 +1,6 @@
 [package]
 name = "tunes"
-version = "1.0.2"
+version = "1.1.0"
 edition = "2021"
 authors = ["Nicholas Manson <nicholaspmanson@gmail.com>"]
 description = "A music composition, synthesis, and audio generation library"

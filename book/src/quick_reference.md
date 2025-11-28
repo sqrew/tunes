@@ -38,11 +38,11 @@ A concise guide to common Tunes operations. For detailed explanations, see the f
 
 ```toml
 [dependencies]
-tunes = "1.0.2"
+tunes = "1.1.0"
 
 # Optional features
-tunes = { version = "1.0.2", features = ["gpu"] }    # GPU acceleration
-tunes = { version = "1.0.2", features = ["web"] }    # WebAssembly support
+tunes = { version = "1.1.0", features = ["gpu"] }    # GPU acceleration
+tunes = { version = "1.1.0", features = ["web"] }    # WebAssembly support
 ```
 
 ## Basic Setup
@@ -427,7 +427,7 @@ engine.play_mixer(&mixer)?;
 
 ```toml
 [dependencies]
-tunes = { version = "1.0.2", features = ["web"] }
+tunes = { version = "1.1.0", features = ["web"] }
 ```
 
 ```bash

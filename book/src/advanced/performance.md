@@ -279,7 +279,7 @@ GPU is **slower** when:
 
 **Enable the `gpu` feature:**
 ```toml
-tunes = { version = "1.0.0", features = ["gpu"] }
+tunes = { version = "1.1.0", features = ["gpu"] }
 ```
 
 **Transparent API (recommended):**
