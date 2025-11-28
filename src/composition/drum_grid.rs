@@ -621,7 +621,7 @@ impl<'a> DrumGrid<'a> {
         let grid_duration = self.duration();
         let grid_end_time = self.start_time + grid_duration;
 
-        // Collect all drum events in this grid's time range
+        // Collect all drum events in this grid's time range, preserving all properties
         let pattern_events: Vec<_> = self
             .track
             .events
@@ -629,7 +629,14 @@ impl<'a> DrumGrid<'a> {
             .filter_map(|event| match event {
                 crate::track::AudioEvent::Drum(drum) => {
                     if drum.start_time >= self.start_time && drum.start_time < grid_end_time {
-                        Some((drum.drum_type, drum.start_time - self.start_time))
+                        // Capture all drum properties, not just type and time
+                        Some((
+                            drum.drum_type,
+                            drum.start_time - self.start_time, // relative_time
+                            drum.velocity,
+                            drum.pitch_offset,
+                            drum.spatial_position,
+                        ))
                     } else {
                         None
                     }
@@ -638,14 +645,24 @@ impl<'a> DrumGrid<'a> {
             })
             .collect();
 
-        // Repeat the pattern
+        // Repeat the pattern, preserving velocity, pitch_offset, and spatial_position
         for i in 0..times {
             let offset = grid_duration * (i + 1) as f32;
-            for &(drum_type, relative_time) in &pattern_events {
-                self.track
-                    .add_drum(drum_type, self.start_time + relative_time + offset, None);
+            for &(drum_type, relative_time, velocity, pitch_offset, spatial_position) in &pattern_events {
+                self.track.events.push(crate::track::AudioEvent::Drum(
+                    crate::track::DrumEvent {
+                        drum_type,
+                        start_time: self.start_time + relative_time + offset,
+                        velocity,
+                        pitch_offset,
+                        spatial_position,
+                    },
+                ));
             }
         }
+
+        // Invalidate cache so events get sorted before playback
+        self.track.invalidate_time_cache();
 
         self
     }
@@ -1369,6 +1386,266 @@ mod tests {
                 } else {
                     assert_eq!(drum.velocity, 0.5, "Other steps should be unaccented");
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn test_ghost_repeat_alignment() {
+        let mut track = Track::new();
+        let step_dur = 0.125; // 8th note at ~120bpm
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, step_dur)
+            .sound(DrumType::Snare, "----x---")  // Step 4 = 0.5s
+            .ghost(DrumType::Snare, "-x------", 0.3)  // Step 1 = 0.125s
+            .repeat(1);
+
+        // Collect all snare events sorted by time
+        let mut snares: Vec<_> = track.events.iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    if d.drum_type == DrumType::Snare {
+                        Some((d.start_time, d.velocity))
+                    } else { None }
+                } else { None }
+            })
+            .collect();
+        snares.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        println!("Snare events:");
+        for (i, (time, vel)) in snares.iter().enumerate() {
+            println!("  [{}] time={:.4}, vel={:.2}", i, time, vel);
+        }
+
+        // Expected: 4 events
+        // Original: ghost at 0.125 (vel 0.3), sound at 0.5 (vel 1.0)
+        // Repeat:   ghost at 1.125 (vel 0.3), sound at 1.5 (vel 1.0)
+        assert_eq!(snares.len(), 4, "Should have 4 snare events (2 original + 2 repeated)");
+
+        let grid_duration = 8.0 * step_dur; // 1.0 second
+
+        // Check original pattern
+        assert!((snares[0].0 - 0.125).abs() < 0.001, "First ghost at step 1");
+        assert!((snares[0].1 - 0.3).abs() < 0.001, "First ghost velocity 0.3");
+        assert!((snares[1].0 - 0.5).abs() < 0.001, "First sound at step 4");
+        assert!((snares[1].1 - 1.0).abs() < 0.001, "First sound velocity 1.0");
+
+        // Check repeated pattern - should be offset by grid_duration (1.0)
+        assert!((snares[2].0 - (0.125 + grid_duration)).abs() < 0.001,
+            "Repeated ghost should be at {} but was at {}", 0.125 + grid_duration, snares[2].0);
+        assert!((snares[2].1 - 0.3).abs() < 0.001, "Repeated ghost velocity 0.3");
+        assert!((snares[3].0 - (0.5 + grid_duration)).abs() < 0.001,
+            "Repeated sound should be at {} but was at {}", 0.5 + grid_duration, snares[3].0);
+        assert!((snares[3].1 - 1.0).abs() < 0.001, "Repeated sound velocity 1.0");
+    }
+
+    #[test]
+    fn test_voice_stealing_with_ghost_repeat() {
+        // Simulate what the mixer does: at each time point, find the latest drum
+        // and verify that ghost notes are not incorrectly silenced
+        use std::collections::HashMap;
+
+        let mut track = Track::new();
+        let step_dur = 0.125;
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, step_dur)
+            .sound(DrumType::Snare, "----x---")  // Step 4 = 0.5s
+            .ghost(DrumType::Snare, "-x------", 0.3)  // Step 1 = 0.125s
+            .repeat(1);
+
+        // Snare duration is 0.1 seconds
+        let snare_duration = 0.1;
+
+        // Collect expected active drums at various time points
+        let test_times = vec![
+            (0.13, "first ghost"),      // During first ghost (0.125 to 0.225)
+            (0.51, "first sound"),      // During first sound (0.5 to 0.6)
+            (1.13, "repeated ghost"),   // During repeated ghost (1.125 to 1.225)
+            (1.51, "repeated sound"),   // During repeated sound (1.5 to 1.6)
+        ];
+
+        for (time, label) in test_times {
+            // Find which drums are active at this time
+            let mut latest_drum_starts: HashMap<DrumType, f32> = HashMap::new();
+            for event in &track.events {
+                if let AudioEvent::Drum(d) = event {
+                    if time >= d.start_time && time < d.start_time + snare_duration {
+                        let entry = latest_drum_starts.entry(d.drum_type).or_insert(f32::MIN);
+                        if d.start_time > *entry {
+                            *entry = d.start_time;
+                        }
+                    }
+                }
+            }
+
+            // Count how many snares would actually render (voice stealing check)
+            let mut rendered_count = 0;
+            let mut rendered_vel = 0.0;
+            for event in &track.events {
+                if let AudioEvent::Drum(d) = event {
+                    if d.drum_type == DrumType::Snare
+                        && time >= d.start_time
+                        && time < d.start_time + snare_duration
+                        && latest_drum_starts.get(&d.drum_type) == Some(&d.start_time)
+                    {
+                        rendered_count += 1;
+                        rendered_vel = d.velocity;
+                    }
+                }
+            }
+
+            println!("At time {:.2} ({}): {} drum(s) rendered, vel={:.2}",
+                time, label, rendered_count, rendered_vel);
+
+            // Exactly one drum should render at each test time
+            assert_eq!(rendered_count, 1,
+                "Expected 1 drum at time {} ({}) but got {}", time, label, rendered_count);
+        }
+    }
+
+    #[test]
+    fn test_flam_repeat_offset_preserved() {
+        // Test that flam grace note offset is preserved across repeats
+        let mut track = Track::new();
+        let step_dur = 0.125;
+        let grace_offset = 0.03;
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, step_dur)
+            .flam(DrumType::Snare, "----x---", grace_offset, 0.4)
+            .repeat(1);
+
+        let mut snares: Vec<_> = track.events.iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    if d.drum_type == DrumType::Snare {
+                        Some((d.start_time, d.velocity))
+                    } else { None }
+                } else { None }
+            })
+            .collect();
+        snares.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        println!("\nFlam repeat test:");
+        for (i, (time, vel)) in snares.iter().enumerate() {
+            println!("  [{}] time={:.6}, vel={:.2}", i, time, vel);
+        }
+
+        // Should have 4 events: 2 original (grace + main) + 2 repeated
+        assert_eq!(snares.len(), 4, "Should have 4 snare events");
+
+        let main_time = 4.0 * step_dur; // 0.5
+        let grace_time = main_time - grace_offset; // 0.47
+        let grid_dur = 8.0 * step_dur; // 1.0
+
+        // Original: grace at 0.47, main at 0.5
+        assert!((snares[0].0 - grace_time).abs() < 0.001,
+            "Original grace should be at {} but was at {}", grace_time, snares[0].0);
+        assert!((snares[0].1 - 0.4).abs() < 0.001, "Grace velocity should be 0.4");
+        assert!((snares[1].0 - main_time).abs() < 0.001,
+            "Original main should be at {} but was at {}", main_time, snares[1].0);
+        assert!((snares[1].1 - 1.0).abs() < 0.001, "Main velocity should be 1.0");
+
+        // Repeated: grace at 1.47, main at 1.5
+        assert!((snares[2].0 - (grace_time + grid_dur)).abs() < 0.001,
+            "Repeated grace should be at {} but was at {}", grace_time + grid_dur, snares[2].0);
+        assert!((snares[2].1 - 0.4).abs() < 0.001, "Repeated grace velocity should be 0.4");
+        assert!((snares[3].0 - (main_time + grid_dur)).abs() < 0.001,
+            "Repeated main should be at {} but was at {}", main_time + grid_dur, snares[3].0);
+        assert!((snares[3].1 - 1.0).abs() < 0.001, "Repeated main velocity should be 1.0");
+
+        // Verify the offset is preserved (main - grace should be grace_offset in both cases)
+        let original_offset = snares[1].0 - snares[0].0;
+        let repeated_offset = snares[3].0 - snares[2].0;
+        assert!((original_offset - grace_offset).abs() < 0.001,
+            "Original grace offset should be {} but was {}", grace_offset, original_offset);
+        assert!((repeated_offset - grace_offset).abs() < 0.001,
+            "Repeated grace offset should be {} but was {}", grace_offset, repeated_offset);
+    }
+
+    #[test]
+    fn test_ghost_repeat_same_step() {
+        // Test ghost at same step as sound - voice stealing should let both play
+        // since they have same start_time (no one is "later")
+        let mut track = Track::new();
+        let step_dur = 0.125;
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, step_dur)
+            .sound(DrumType::Snare, "----x---")  // Step 4
+            .ghost(DrumType::Snare, "----x---", 0.3)  // Same step 4 (ghost velocity)
+            .repeat(1);
+
+        let mut snares: Vec<_> = track.events.iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    if d.drum_type == DrumType::Snare {
+                        Some((d.start_time, d.velocity))
+                    } else { None }
+                } else { None }
+            })
+            .collect();
+        snares.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        println!("\nSame-step ghost test:");
+        for (i, (time, vel)) in snares.iter().enumerate() {
+            println!("  [{}] time={:.6}, vel={:.2}", i, time, vel);
+        }
+
+        // Both hits at same time - two different events exist at 0.5 and at 1.5
+        assert_eq!(snares.len(), 4, "Should have 4 events");
+        // Check both exist at same times (they'll be sorted by time, then by insertion order)
+        assert!((snares[0].0 - 0.5).abs() < 0.001);
+        assert!((snares[1].0 - 0.5).abs() < 0.001);
+        assert!((snares[2].0 - 1.5).abs() < 0.001);
+        assert!((snares[3].0 - 1.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_ghost_repeat_multiple() {
+        // Test with 3 repeats to check if the issue compounds
+        let mut track = Track::new();
+        let step_dur = 0.125;
+        let _grid = DrumGrid::new(&mut track, 0.0, 8, step_dur)
+            .sound(DrumType::Snare, "----x---")
+            .ghost(DrumType::Snare, "-x------", 0.3)
+            .repeat(3);
+
+        let mut snares: Vec<_> = track.events.iter()
+            .filter_map(|e| {
+                if let AudioEvent::Drum(d) = e {
+                    if d.drum_type == DrumType::Snare {
+                        Some((d.start_time, d.velocity))
+                    } else { None }
+                } else { None }
+            })
+            .collect();
+        snares.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        println!("\nMultiple repeat test - all snare events:");
+        let grid_dur = 8.0 * step_dur;
+        for (i, (time, vel)) in snares.iter().enumerate() {
+            // Calculate which repetition this belongs to
+            let rep = (time / grid_dur).floor() as usize;
+            let relative = time - (rep as f32 * grid_dur);
+            println!("  [{}] time={:.6}, vel={:.2}, rep={}, relative={:.6}",
+                i, time, vel, rep, relative);
+        }
+
+        // Should have 8 events: 2 original + 2*3 repeated
+        assert_eq!(snares.len(), 8, "Should have 8 snare events");
+
+        // Check that relative positions are consistent across all repetitions
+        for rep in 0..4 {
+            let base = rep as f32 * grid_dur;
+            let ghost_time = base + 0.125;
+            let sound_time = base + 0.5;
+
+            let ghost = snares.iter().find(|(t, _)| (t - ghost_time).abs() < 0.001);
+            let sound = snares.iter().find(|(t, _)| (t - sound_time).abs() < 0.001);
+
+            assert!(ghost.is_some(), "Rep {} ghost at {} not found", rep, ghost_time);
+            assert!(sound.is_some(), "Rep {} sound at {} not found", rep, sound_time);
+
+            if let Some((_, vel)) = ghost {
+                assert!((vel - 0.3).abs() < 0.001, "Rep {} ghost velocity wrong", rep);
+            }
+            if let Some((_, vel)) = sound {
+                assert!((vel - 1.0).abs() < 0.001, "Rep {} sound velocity wrong", rep);
             }
         }
     }

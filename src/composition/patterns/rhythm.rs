@@ -57,8 +57,17 @@ impl<'a> TrackBuilder<'a> {
                             );
                     }
                     crate::track::AudioEvent::Drum(drum) => {
+                        // Preserve all drum properties (velocity, pitch_offset, spatial_position)
                         self.get_track_mut()
-                            .add_drum(drum.drum_type, drum.start_time + offset, None);
+                            .events
+                            .push(crate::track::AudioEvent::Drum(crate::track::DrumEvent {
+                                drum_type: drum.drum_type,
+                                start_time: drum.start_time + offset,
+                                velocity: drum.velocity,
+                                pitch_offset: drum.pitch_offset,
+                                spatial_position: drum.spatial_position,
+                            }));
+                        self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::Sample(sample) => {
                         self.get_track_mut()
@@ -427,8 +436,17 @@ impl<'a> TrackBuilder<'a> {
                             );
                     }
                     crate::track::AudioEvent::Drum(drum) => {
+                        // Preserve all drum properties (velocity, pitch_offset, spatial_position)
                         self.get_track_mut()
-                            .add_drum(drum.drum_type, drum.start_time + offset, None);
+                            .events
+                            .push(crate::track::AudioEvent::Drum(crate::track::DrumEvent {
+                                drum_type: drum.drum_type,
+                                start_time: drum.start_time + offset,
+                                velocity: drum.velocity,
+                                pitch_offset: drum.pitch_offset,
+                                spatial_position: drum.spatial_position,
+                            }));
+                        self.get_track_mut().invalidate_time_cache();
                     }
                     crate::track::AudioEvent::Sample(sample) => {
                         self.get_track_mut()
