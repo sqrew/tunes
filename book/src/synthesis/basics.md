@@ -335,6 +335,127 @@ fn main() -> anyhow::Result<()> {
 
 ---
 
+## The Synthesis Builder
+
+For complex synthesis configurations, the `.synthesis()` closure provides a clean, namespaced API that groups all synthesis options together:
+
+```rust
+comp.track("lead")
+    .synthesis(|s| s
+        .oscillator(Waveform::Saw)
+        .filter(FilterType::LowPass, 2000.0)
+        .resonance(2.0)
+        .adsr(0.01, 0.1, 0.7, 0.3)
+    )
+    .notes(&[C4, E4, G4], 0.5);
+```
+
+This is equivalent to calling the methods directly on the track, but keeps synthesis configuration organized in one place.
+
+### Available Methods
+
+**Oscillator Source:**
+- `.oscillator(Waveform)` - Set waveform (Sine, Square, Saw, Triangle)
+- `.wavetable(Wavetable)` - Use a custom wavetable
+- `.additive(&[f32])` - Build from harmonic amplitudes
+- `.supersaw(voices, detune_cents)` - Multiple detuned saws
+- `.unison(voices, detune_cents)` - Detune any waveform
+
+**Filter:**
+- `.filter(FilterType, cutoff)` - Set filter type and cutoff
+- `.resonance(q)` - Set filter resonance
+- `.filter_env(FilterEnvelope)` - Modulate cutoff over time
+- `.filter_adsr(a, d, s, r, base, peak)` - Quick filter envelope
+
+**Envelope:**
+- `.envelope(Envelope)` - Set amplitude envelope
+- `.adsr(a, d, s, r)` - Quick ADSR setup
+
+**FM Synthesis:**
+- `.fm(FMParams)` - Full FM configuration
+- `.fm_ratio(ratio, index)` - Quick FM setup
+
+**Modulation:**
+- `.lfo(target, waveform, rate, depth, amount)` - Add LFO
+- `.vibrato(rate, depth)` - Pitch modulation shortcut
+- `.tremolo(rate, depth)` - Volume modulation shortcut
+
+**Sample-based:**
+- `.granular(path, params, duration)` - Granular synthesis
+
+### Supersaw Example
+
+The classic trance/EDM supersaw creates thick, chorused leads:
+
+```rust
+// 7-voice supersaw with 25 cents spread
+comp.track("trance_lead")
+    .synthesis(|s| s
+        .supersaw(7, 25.0)
+        .filter(FilterType::LowPass, 4000.0)
+        .adsr(0.01, 0.2, 0.8, 0.5)
+    )
+    .notes(&[C4, E4, G4, C5], 0.5);
+```
+
+### Unison Example
+
+Apply unison to any waveform for thickness:
+
+```rust
+// Thick unison square wave
+comp.track("thick_square")
+    .synthesis(|s| s
+        .oscillator(Waveform::Square)
+        .unison(5, 20.0)
+        .filter(FilterType::LowPass, 1500.0)
+        .adsr(0.001, 0.1, 0.6, 0.2)
+    )
+    .notes(&[C3, G3, C4], 0.25);
+```
+
+### Filter Envelope Example
+
+Automate filter movement for dynamic sounds:
+
+```rust
+comp.track("sweep")
+    .synthesis(|s| s
+        .oscillator(Waveform::Saw)
+        .filter(FilterType::LowPass, 200.0)
+        .resonance(3.0)
+        .filter_adsr(0.01, 0.3, 0.2, 0.5, 200.0, 4000.0)
+        .adsr(0.01, 0.1, 0.5, 0.3)
+    )
+    .notes(&[C2, C2, G2, C2], 0.25);
+```
+
+### Direct vs Closure Style
+
+All synthesis methods are available both directly on the track and via the closure:
+
+```rust
+// Direct style - good for simple setups
+comp.track("simple")
+    .waveform(Waveform::Saw)
+    .supersaw(7, 25.0)
+    .notes(&[C4], 0.5);
+
+// Closure style - better for complex configurations
+comp.track("complex")
+    .synthesis(|s| s
+        .supersaw(7, 25.0)
+        .filter(FilterType::LowPass, 2000.0)
+        .resonance(2.0)
+        .filter_adsr(0.01, 0.2, 0.3, 0.5, 500.0, 3000.0)
+        .adsr(0.01, 0.15, 0.7, 0.4)
+        .vibrato(5.0, 0.2)
+    )
+    .notes(&[C4, E4, G4], 0.5);
+```
+
+---
+
 ## Common Synthesis Patterns
 
 ### Sub Bass

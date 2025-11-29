@@ -178,7 +178,6 @@ impl Filter {
         match self.filter_type {
             FilterType::None => {
                 // Bypass - no processing needed
-                return;
             }
             FilterType::Moog => {
                 self.process_buffer_moog(buffer, sample_rate);

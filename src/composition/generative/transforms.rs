@@ -13,7 +13,7 @@ use crate::track::{AudioEvent, DrumEvent, NoteEvent};
 /// # Example
 /// ```
 /// # use tunes::prelude::*;
-/// # use tunes::composition::generative::transforms::EventMut;
+/// # use tunes::composition::generative::EventMut;
 /// # let mut comp = Composition::new(Tempo::new(120.0));
 /// comp.track("test")
 ///     .pattern_start()
@@ -2602,7 +2602,7 @@ impl<'a> TrackBuilder<'a> {
     /// # Example
     /// ```
     /// # use tunes::prelude::*;
-    /// # use tunes::composition::generative::transforms::EventMut;
+    /// # use tunes::composition::generative::EventMut;
     /// # let mut comp = Composition::new(Tempo::new(120.0));
     /// // Accent every 4th drum, every 2nd note
     /// comp.track("mixed")

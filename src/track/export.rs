@@ -161,7 +161,7 @@ impl Mixer {
 
         // Pre-allocate full output buffer
         let mut samples_i32: Vec<i32> = vec![0i32; buffer.len()];
-        let total_chunks = (buffer.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        let total_chunks = buffer.len().div_ceil(CHUNK_SIZE);
 
         // Process in chunks for better cache locality and progress reporting
         for (chunk_idx, (src_chunk, dst_chunk)) in buffer

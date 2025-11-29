@@ -445,6 +445,12 @@ fn decoder_thread_func(
     }
 }
 
+/// Type alias for the inner monitor callback function
+type MonitorCallbackFn = Option<Box<dyn Fn(&[f32]) + Send + 'static>>;
+
+/// Type alias for the thread-safe monitor callback
+type MonitorCallback = Arc<Mutex<MonitorCallbackFn>>;
+
 /// Central audio engine that manages playback with concurrent mixing
 pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
@@ -465,7 +471,7 @@ pub struct AudioEngine {
     #[allow(dead_code)]
     enable_gpu_for_samples: bool,
     // Monitor callback for real-time audio visualization and analysis
-    monitor_callback: Arc<Mutex<Option<Box<dyn Fn(&[f32]) + Send + 'static>>>>,
+    monitor_callback: MonitorCallback,
 }
 
 impl AudioEngine {
@@ -555,8 +561,7 @@ impl AudioEngine {
         let spatial_params_for_stream = Arc::clone(&spatial_params);
 
         // Monitor callback for audio visualization/analysis
-        let monitor_callback: Arc<Mutex<Option<Box<dyn Fn(&[f32]) + Send + 'static>>>> =
-            Arc::new(Mutex::new(None));
+        let monitor_callback: MonitorCallback = Arc::new(Mutex::new(None));
         let monitor_callback_for_stream = Arc::clone(&monitor_callback);
 
         // Build stream configuration
@@ -1906,7 +1911,7 @@ impl AudioEngine {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_monitor_callback(&self, callback: Option<Box<dyn Fn(&[f32]) + Send + 'static>>) {
+    pub fn set_monitor_callback(&self, callback: MonitorCallbackFn) {
         if let Ok(mut guard) = self.monitor_callback.lock() {
             *guard = callback;
         }

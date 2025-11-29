@@ -148,6 +148,111 @@ impl<'a> TrackBuilder<'a> {
         self.custom_waveform(wavetable)
     }
 
+    /// Supersaw - multiple detuned sawtooth oscillators
+    ///
+    /// Creates the classic trance/EDM supersaw sound by layering multiple
+    /// sawtooth waves with slight detuning.
+    ///
+    /// # Arguments
+    /// * `voices` - Number of oscillator voices (3-9 typical, 7 is classic)
+    /// * `detune_cents` - Detune spread in cents (10-50 typical)
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("lead")
+    ///     .supersaw(7, 25.0)
+    ///     .notes(&[C4, E4, G4], 0.5);
+    /// ```
+    pub fn supersaw(self, voices: u8, detune_cents: f32) -> Self {
+        use crate::synthesis::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+        use std::f32::consts::PI;
+
+        let voices = voices.max(1) as usize;
+        let table_size = DEFAULT_TABLE_SIZE;
+        let mut table = vec![0.0f32; table_size];
+
+        for voice in 0..voices {
+            let voice_offset = if voices == 1 {
+                0.0
+            } else {
+                let normalized = (voice as f32 / (voices - 1) as f32) * 2.0 - 1.0;
+                normalized * detune_cents
+            };
+
+            let freq_ratio = 2.0_f32.powf(voice_offset / 1200.0);
+            let center_distance = ((voice as f32 / (voices.max(2) - 1) as f32) - 0.5).abs();
+            let amplitude = 1.0 - center_distance * 0.3;
+
+            for (i, table_slot) in table.iter_mut().enumerate() {
+                let phase = (i as f32 / table_size as f32) * freq_ratio;
+                let phase = phase.fract();
+
+                let mut sample = 0.0;
+                for harmonic in 1..=32 {
+                    let h = harmonic as f32;
+                    sample += (2.0 * PI * h * phase).sin() / h;
+                }
+                sample *= 2.0 / PI;
+
+                *table_slot += sample * amplitude / voices as f32;
+            }
+        }
+
+        let wavetable = Wavetable::from_samples(table);
+        self.custom_waveform(wavetable)
+    }
+
+    /// Unison - multiple detuned copies of any waveform
+    ///
+    /// Like supersaw but works with the currently selected waveform.
+    ///
+    /// # Arguments
+    /// * `voices` - Number of voices (2-9 typical)
+    /// * `detune_cents` - Detune spread in cents
+    ///
+    /// # Example
+    /// ```
+    /// # use tunes::prelude::*;
+    /// # let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("bass")
+    ///     .waveform(Waveform::Square)
+    ///     .unison(5, 20.0)
+    ///     .notes(&[C2], 1.0);
+    /// ```
+    pub fn unison(self, voices: u8, detune_cents: f32) -> Self {
+        use crate::synthesis::wavetable::{Wavetable, DEFAULT_TABLE_SIZE};
+
+        let voices = voices.max(1) as usize;
+        let table_size = DEFAULT_TABLE_SIZE;
+        let mut table = vec![0.0f32; table_size];
+        let base_waveform = self.waveform;
+
+        for voice in 0..voices {
+            let voice_offset = if voices == 1 {
+                0.0
+            } else {
+                let normalized = (voice as f32 / (voices - 1) as f32) * 2.0 - 1.0;
+                normalized * detune_cents
+            };
+
+            let freq_ratio = 2.0_f32.powf(voice_offset / 1200.0);
+            let center_distance = ((voice as f32 / (voices.max(2) - 1) as f32) - 0.5).abs();
+            let amplitude = 1.0 - center_distance * 0.3;
+
+            for (i, table_slot) in table.iter_mut().enumerate() {
+                let phase = (i as f32 / table_size as f32) * freq_ratio;
+                let phase = phase.fract();
+                let sample = base_waveform.sample(phase);
+                *table_slot += sample * amplitude / voices as f32;
+            }
+        }
+
+        let wavetable = Wavetable::from_samples(table);
+        self.custom_waveform(wavetable)
+    }
+
     /// Use wavetable synthesis with a rich, harmonically complex waveform
     ///
     /// Convenience method that creates a wavetable with a rich harmonic spectrum,

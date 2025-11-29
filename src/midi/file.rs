@@ -711,7 +711,7 @@ impl Mixer {
                                             // Otherwise use defaults (Sine, default envelope)
                                             let (waveform, envelope) = channel_instruments
                                                 .get(&ch_num)
-                                                .map(|inst| (inst.waveform, inst.envelope.clone()))
+                                                .map(|inst| (inst.waveform, inst.envelope))
                                                 .unwrap_or((
                                                     crate::synthesis::waveform::Waveform::Sine,
                                                     crate::synthesis::envelope::Envelope::default(),
@@ -847,7 +847,7 @@ impl Mixer {
                     // Otherwise use defaults (Sine, default envelope)
                     let (waveform, envelope) = channel_instruments
                         .get(&ch_num)
-                        .map(|inst| (inst.waveform, inst.envelope.clone()))
+                        .map(|inst| (inst.waveform, inst.envelope))
                         .unwrap_or((
                             crate::synthesis::waveform::Waveform::Sine,
                             crate::synthesis::envelope::Envelope::default(),

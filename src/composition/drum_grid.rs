@@ -12,31 +12,31 @@ use crate::track::Track;
 /// - Rest characters: `-`, `_`, `.`, `~`, `0`, space (and any other character)
 pub trait DrumPattern {
     /// Convert to a list of step indices where hits occur
-    fn into_steps(&self) -> Vec<usize>;
+    fn to_steps(&self) -> Vec<usize>;
 }
 
 impl DrumPattern for [usize] {
-    fn into_steps(&self) -> Vec<usize> {
+    fn to_steps(&self) -> Vec<usize> {
         self.to_vec()
     }
 }
 
 // Implement for fixed-size arrays using const generics
 impl<const N: usize> DrumPattern for [usize; N] {
-    fn into_steps(&self) -> Vec<usize> {
+    fn to_steps(&self) -> Vec<usize> {
         self.to_vec()
     }
 }
 
 // Implement for Vec<usize>
 impl DrumPattern for Vec<usize> {
-    fn into_steps(&self) -> Vec<usize> {
+    fn to_steps(&self) -> Vec<usize> {
         self.clone()
     }
 }
 
 impl DrumPattern for str {
-    fn into_steps(&self) -> Vec<usize> {
+    fn to_steps(&self) -> Vec<usize> {
         self.chars()
             .enumerate()
             .filter_map(|(i, c)| {
@@ -96,7 +96,7 @@ impl<'a> DrumGrid<'a> {
     ///         .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-"));
     /// ```
     pub fn sound<P: DrumPattern + ?Sized>(self, drum_type: DrumType, pattern: &P) -> Self {
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let time = self.start_time + (step as f32 * self.step_duration);
                 self.track.add_drum(drum_type, time, None);
@@ -147,7 +147,7 @@ impl<'a> DrumGrid<'a> {
         low_velocity: f32,
     ) -> Self {
         let accent_steps: std::collections::HashSet<usize> =
-            pattern.into_steps().into_iter().collect();
+            pattern.to_steps().into_iter().collect();
         let grid_end_time = self.start_time + self.duration();
 
         for event in &mut self.track.events {
@@ -230,7 +230,7 @@ impl<'a> DrumGrid<'a> {
         let mut rng = rand::rng();
         let prob = probability.clamp(0.0, 1.0);
 
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps && rng.random::<f32>() < prob {
                 let time = self.start_time + (step as f32 * self.step_duration);
                 self.track.add_drum(drum_type, time, None);
@@ -266,7 +266,7 @@ impl<'a> DrumGrid<'a> {
         velocity: f32,
     ) -> Self {
         let vel = velocity.clamp(0.0, 1.0);
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let time = self.start_time + (step as f32 * self.step_duration);
                 self.track.add_drum_with_velocity(drum_type, time, vel, None);
@@ -304,7 +304,7 @@ impl<'a> DrumGrid<'a> {
         grace_velocity: f32,
     ) -> Self {
         let grace_vel = grace_velocity.clamp(0.0, 1.0);
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let main_time = self.start_time + (step as f32 * self.step_duration);
                 let grace_time = (main_time - grace_offset).max(0.0);
@@ -347,7 +347,7 @@ impl<'a> DrumGrid<'a> {
         drag_velocity: f32,
     ) -> Self {
         let drag_vel = drag_velocity.clamp(0.0, 1.0);
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let main_time = self.start_time + (step as f32 * self.step_duration);
                 let drag_time = main_time + drag_offset;
@@ -393,7 +393,7 @@ impl<'a> DrumGrid<'a> {
         grace_velocity: f32,
     ) -> Self {
         let grace_vel = grace_velocity.clamp(0.0, 1.0);
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let main_time = self.start_time + (step as f32 * self.step_duration);
                 let first_grace_time = (main_time - first_offset).max(0.0);
@@ -438,7 +438,7 @@ impl<'a> DrumGrid<'a> {
         pattern: &P,
         spacing: f32,
     ) -> Self {
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let first_time = self.start_time + (step as f32 * self.step_duration);
                 let second_time = first_time + spacing;
@@ -486,7 +486,7 @@ impl<'a> DrumGrid<'a> {
         let decay = decay.clamp(0.0, 1.0);
         let hit_spacing = self.step_duration / hits as f32;
 
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let step_start = self.start_time + (step as f32 * self.step_duration);
                 let mut velocity = 1.0f32;
@@ -534,7 +534,7 @@ impl<'a> DrumGrid<'a> {
         grace_velocity: f32,
     ) -> Self {
         let grace_vel = grace_velocity.clamp(0.0, 1.0);
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let main_time = self.start_time + (step as f32 * self.step_duration);
                 let first_grace_time = main_time + first_offset;
@@ -584,7 +584,7 @@ impl<'a> DrumGrid<'a> {
 
         let sub_duration = self.step_duration / subdivisions as f32;
 
-        for step in pattern.into_steps() {
+        for step in pattern.to_steps() {
             if step < self.steps {
                 let step_start = self.start_time + (step as f32 * self.step_duration);
                 for i in 0..subdivisions {
@@ -1023,19 +1023,19 @@ mod tests {
     fn test_drum_pattern_trait_into_steps() {
         // Test the trait directly
         let array: &[usize] = &[0, 4, 8, 12];
-        assert_eq!(array.into_steps(), vec![0, 4, 8, 12]);
+        assert_eq!(array.to_steps(), vec![0, 4, 8, 12]);
 
         let pattern = "x---x---";
-        assert_eq!(pattern.into_steps(), vec![0, 4]);
+        assert_eq!(pattern.to_steps(), vec![0, 4]);
 
         let pattern2 = "xXx1*";
-        assert_eq!(pattern2.into_steps(), vec![0, 1, 2, 3, 4]);
+        assert_eq!(pattern2.to_steps(), vec![0, 1, 2, 3, 4]);
 
         let empty = "";
-        assert_eq!(empty.into_steps(), Vec::<usize>::new());
+        assert_eq!(empty.to_steps(), Vec::<usize>::new());
 
         let all_rests = "----";
-        assert_eq!(all_rests.into_steps(), Vec::<usize>::new());
+        assert_eq!(all_rests.to_steps(), Vec::<usize>::new());
     }
 
     // ===== Accent and Velocity Tests =====

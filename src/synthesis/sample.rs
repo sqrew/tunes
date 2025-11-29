@@ -574,8 +574,8 @@ impl Sample {
 
         // Time increment vector: [0*dt, 1*dt, 2*dt, 3*dt, ...]
         let mut time_increments = [0.0f32; MAX_LANES];
-        for i in 0..lanes {
-            time_increments[i] = i as f32 * time_delta;
+        for (i, slot) in time_increments[..lanes].iter_mut().enumerate() {
+            *slot = i as f32 * time_delta;
         }
         let time_inc_vec = V::from_array(&time_increments[..lanes]);
         let chunk_time_delta = V::splat(lanes as f32 * time_delta);
