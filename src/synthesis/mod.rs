@@ -18,6 +18,7 @@ pub mod additive;
 pub mod spatial;
 pub mod simd;
 pub mod spectral;
+pub mod synthesis_builder;
 
 // Re-export main types for convenience
 pub use waveform::Waveform;
@@ -45,3 +46,4 @@ pub use spatial::{
 };
 pub use simd::{SimdDispatcher, SimdLanes, SimdWidth, SIMD};
 pub use spectral::{Window, WindowType, ComplexOps, STFT, PhaseVocoder, SpectralFreeze, SpectralGate, SpectralCompressor, SpectralRobotize, SpectralDelay};
+pub use synthesis_builder::SynthesisBuilder;

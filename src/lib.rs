@@ -127,9 +127,32 @@ macro_rules! play_sample {
     }};
 }
 
+/// Repeat a pattern string N times for use in drum grids.
+///
+/// This is a convenience macro to avoid typing out long repetitive patterns.
+///
+/// # Example
+/// ```
+/// use tunes::pat;
+///
+/// // Instead of: "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-"
+/// let pattern = pat!("x-", 16);
+/// assert_eq!(pattern, "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-");
+///
+/// // Works great in drum_grid:
+/// // .sound(DrumType::HiHatClosed, pat!("x-", 16))
+/// ```
+#[macro_export]
+macro_rules! pat {
+    ($pattern:expr, $times:expr) => {
+        $pattern.repeat($times)
+    };
+}
+
 /// Prelude module for convenient imports
 pub mod prelude {
     // Macros and validation
+    pub use crate::pat;
     pub use crate::play_sample;
     pub use crate::validate_all_samples;
 

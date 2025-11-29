@@ -36,6 +36,16 @@ fn main() -> Result<(), anyhow::Error> {
     comp.instrument("a", &Instrument::analog_brass())
         .notes(&[C4, C3, C2, C1], 1.0);
 
+    comp.track("breaks")
+        .swing(0.54)
+        .drum_grid(32, 0.04, |g| {
+            g.sound(DrumType::SubKick, "x-------x-------x-------x-x-----")
+                .sound(DrumType::Snare, "----x-------x-x-----x-------x---")
+                .ghost(DrumType::Snare, "-x-x--x--x-x---x-x-x--x--x-x---x", 0.25)
+                .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-")
+        })
+        .repeat(3);
+
     let engine = AudioEngine::new()?;
     engine.play_mixer(&comp.into_mixer())?;
 

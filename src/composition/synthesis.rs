@@ -298,6 +298,30 @@ impl<'a> TrackBuilder<'a> {
 
         self
     }
+
+    /// Configure synthesis parameters using a builder closure
+    ///
+    /// This provides a namespaced, discoverable API for all synthesis options.
+    /// Settings configured here affect subsequent notes on this track.
+    ///
+    /// # Example
+    /// ```ignore
+    /// comp.track("lead")
+    ///     .synthesis(|s| s
+    ///         .oscillator(Waveform::Saw)
+    ///         .filter(FilterType::LowPass, 2000.0)
+    ///         .adsr(0.01, 0.1, 0.7, 0.3)
+    ///     )
+    ///     .notes(&[C4, E4, G4], 0.5);
+    /// ```
+    pub fn synthesis<F>(self, f: F) -> Self
+    where
+        F: FnOnce(crate::synthesis::SynthesisBuilder<'a>) -> crate::synthesis::SynthesisBuilder<'a>,
+    {
+        let builder = crate::synthesis::SynthesisBuilder { inner: self };
+        let result = f(builder);
+        result.into_inner()
+    }
 }
 
 #[cfg(test)]
