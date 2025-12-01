@@ -30,8 +30,12 @@ pub use sample_builder::SamplePlaybackBuilder;
 
 // Composition and Tempo are used for examples in doc comments
 use crate::error::{Result, TunesError};
+use crate::synthesis::simd::{SimdWidth, SIMD};
 use crate::synthesis::spatial::{ListenerConfig, SoundCone, SpatialParams, SpatialPosition};
+use crate::synthesis::Sample;
 use crate::track::Mixer;
+use std::thread;
+use std::time::Duration;
 
 use callback::{handle_command, mix_sounds, AudioCallbackState};
 use commands::AudioCommand;
@@ -304,8 +308,6 @@ impl AudioEngine {
     /// # }
     /// ```
     pub fn print_info(&self) {
-        use crate::synthesis::simd::{SimdWidth, SIMD};
-
         let latency_ms = (self.buffer_size as f32 / self.sample_rate) * 1000.0;
         let simd_width = SIMD.simd_width();
         let simd_lanes = SIMD.width();
@@ -602,8 +604,6 @@ impl AudioEngine {
     /// # }
     /// ```
     pub fn preload_sample(&self, path: &str) -> Result<()> {
-        use crate::synthesis::Sample;
-
         if !self.sample_cache.contains_key(path) {
             let sample = Sample::from_file(path).map_err(|e| {
                 TunesError::AudioEngineError(format!("Failed to preload sample '{}': {}", path, e))
@@ -1533,9 +1533,6 @@ impl AudioEngine {
     /// * `id` - The sound ID to wait for
     /// * `is_empty` - Whether the mixer is known to be empty (improves error messages)
     fn wait_for(&self, id: SoundId, is_empty: bool) -> Result<()> {
-        use std::thread;
-        use std::time::Duration;
-
         // Wait for sound to start playing (avoid race condition)
         // The audio thread needs time to process the Play command
         let mut started = false;

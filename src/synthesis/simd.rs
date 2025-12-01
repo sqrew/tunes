@@ -905,6 +905,35 @@ impl SimdDispatcher {
         lanes
     }
 
+    /// Clamp all samples in buffer to a range using SIMD
+    ///
+    /// Clamps each sample to [min, max]. Commonly used to prevent audio clipping.
+    #[inline]
+    pub fn clamp_buffer(&self, buffer: &mut [f32], min: f32, max: f32) {
+        match self.width {
+            SimdWidth::X8 => self.clamp_buffer_impl::<f32x8>(buffer, min, max),
+            SimdWidth::X4 => self.clamp_buffer_impl::<f32x4>(buffer, min, max),
+            SimdWidth::Scalar => self.clamp_buffer_impl::<f32>(buffer, min, max),
+        }
+    }
+
+    #[inline(always)]
+    fn clamp_buffer_impl<V: SimdLanes>(&self, buffer: &mut [f32], min: f32, max: f32) {
+        let min_vec = V::splat(min);
+        let max_vec = V::splat(max);
+        let (chunks, remainder) = buffer.split_at_mut(buffer.len() - (buffer.len() % V::LANES));
+
+        for chunk in chunks.chunks_exact_mut(V::LANES) {
+            let vec = V::from_array(chunk);
+            let result = vec.clamp(min_vec, max_vec);
+            result.write_to_slice(chunk);
+        }
+
+        for sample in remainder.iter_mut() {
+            *sample = sample.clamp(min, max);
+        }
+    }
+
     /// Interleave separate left/right SIMD vectors into stereo samples using shuffle instructions.
     ///
     /// Automatically dispatches to the optimal SIMD width (f32x8, f32x4, or scalar).

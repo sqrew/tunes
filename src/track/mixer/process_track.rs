@@ -6,6 +6,7 @@
 use super::Mixer;
 use crate::cache::{CacheKey, CachedSample, SampleCache};
 use crate::instruments::drums::DrumType;
+use crate::synthesis::simd::{SimdLanes, SIMD};
 use crate::track::events::{AudioEvent, NoteEvent};
 use crate::track::Track;
 use std::collections::HashMap;
@@ -462,7 +463,6 @@ impl Mixer {
 
         // Apply track volume to entire buffer (SIMD-optimized, ~8x faster than per-sample!)
         if track.volume != 1.0 {
-            use crate::synthesis::simd::SIMD;
             SIMD.multiply_const(buffer, track.volume);
         }
 
@@ -618,7 +618,6 @@ impl Mixer {
             .process_mono(track_value, sample_rate, time, sample_count);
 
         // Apply stereo panning using constant power panning (fast trig)
-        use crate::synthesis::simd::SimdLanes;
         let pan_angle = (track.pan + 1.0) * 0.25 * std::f32::consts::PI;
         let left_gain = pan_angle.fast_cos();
         let right_gain = pan_angle.fast_sin();

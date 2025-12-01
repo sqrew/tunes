@@ -48,6 +48,9 @@ fn main() -> Result<(), anyhow::Error> {
         .repeat(3);
 
     let engine = AudioEngine::new()?;
+
+    play_sample!(engine, "sample.wav");
+
     engine.play_mixer(&comp.into_mixer())?;
 
     Ok(())

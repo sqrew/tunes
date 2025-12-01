@@ -20,7 +20,7 @@ use crate::cache::SampleCache;
 use crate::composition::timing::Tempo;
 #[cfg(feature = "gpu")]
 use crate::gpu::GpuSynthesizer;
-use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource};
+use crate::synthesis::effects::{EffectChain, ResolvedSidechainSource, SidechainSource};
 use crate::track::ids::{BusId, TrackId};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -246,12 +246,10 @@ impl Mixer {
 
     /// Resolve a single sidechain source to an integer ID
     fn resolve_sidechain_source(
-        source: &crate::synthesis::effects::SidechainSource,
+        source: &SidechainSource,
         track_name_to_id: &HashMap<String, TrackId>,
         bus_name_to_id: &HashMap<String, BusId>,
     ) -> Option<ResolvedSidechainSource> {
-        use crate::synthesis::effects::SidechainSource;
-
         match source {
             SidechainSource::Track(name) => {
                 // Look up track by name

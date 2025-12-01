@@ -4,14 +4,16 @@
 //! and modulation in a namespaced, discoverable way.
 //!
 //! # Example
-//! ```ignore
+//! ```
+//! use tunes::prelude::*;
+//! let mut comp = Composition::new(Tempo::new(120.0));
 //! comp.track("lead")
 //!     .synthesis(|s| s
-//!         .oscillator(Waveform::Saw)
+//!         .oscillator(Waveform::Sawtooth)
 //!         .filter(FilterType::LowPass, 2000.0)
 //!         .adsr(0.01, 0.1, 0.7, 0.3)
 //!     )
-//!     .notes(&[C4, E4, G4], 0.5);
+//!     .note(&[C4, E4, G4], 0.5);
 //! ```
 
 use crate::composition::TrackBuilder;
@@ -45,8 +47,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// Set the oscillator waveform (sine, square, saw, triangle)
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.oscillator(Waveform::Saw))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.oscillator(Waveform::Sawtooth))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn oscillator(mut self, waveform: Waveform) -> Self {
         self.inner.waveform = waveform;
@@ -58,9 +64,13 @@ impl<'a> SynthesisBuilder<'a> {
     /// This overrides the basic waveform with a custom wavetable.
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
     /// let wt = Wavetable::from_harmonics(2048, &[(1, 1.0), (3, 0.5), (5, 0.25)]);
-    /// .synthesis(|s| s.wavetable(wt))
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.wavetable(wt))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn wavetable(mut self, table: Wavetable) -> Self {
         self.inner.custom_wavetable = Some(table);
@@ -76,12 +86,17 @@ impl<'a> SynthesisBuilder<'a> {
     /// * `harmonic_amps` - Array of harmonic amplitudes (e.g., `&[1.0, 0.5, 0.25]`)
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
     /// // Sawtooth-like sound (harmonic series with decreasing amplitudes)
-    /// .synthesis(|s| s.additive(&[1.0, 0.5, 0.33, 0.25, 0.2]))
-    ///
+    /// comp.track("saw")
+    ///     .synthesis(|s| s.additive(&[1.0, 0.5, 0.33, 0.25, 0.2]))
+    ///     .note(&[440.0], 0.5);
     /// // Organ sound (odd harmonics only)
-    /// .synthesis(|s| s.additive(&[1.0, 0.0, 0.5, 0.0, 0.3]))
+    /// comp.track("organ")
+    ///     .synthesis(|s| s.additive(&[1.0, 0.0, 0.5, 0.0, 0.3]))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn additive(mut self, harmonic_amps: &[f32]) -> Self {
         use crate::synthesis::wavetable::DEFAULT_TABLE_SIZE;
@@ -111,12 +126,17 @@ impl<'a> SynthesisBuilder<'a> {
     /// * `detune` - Detune spread in cents (10-50 typical, higher = wider)
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
     /// // Classic 7-voice supersaw
-    /// .synthesis(|s| s.supersaw(7, 25.0))
-    ///
+    /// comp.track("lead")
+    ///     .synthesis(|s| s.supersaw(7, 25.0))
+    ///     .note(&[440.0], 0.5);
     /// // Massive 9-voice with wide detune
-    /// .synthesis(|s| s.supersaw(9, 40.0))
+    /// comp.track("pad")
+    ///     .synthesis(|s| s.supersaw(9, 40.0))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn supersaw(mut self, voices: u8, detune_cents: f32) -> Self {
         use crate::synthesis::wavetable::DEFAULT_TABLE_SIZE;
@@ -176,9 +196,13 @@ impl<'a> SynthesisBuilder<'a> {
     /// * `detune` - Detune spread in cents
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
     /// // Unison square wave
-    /// .synthesis(|s| s.oscillator(Waveform::Square).unison(5, 20.0))
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.oscillator(Waveform::Square).unison(5, 20.0))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn unison(mut self, voices: u8, detune_cents: f32) -> Self {
         use crate::synthesis::wavetable::DEFAULT_TABLE_SIZE;
@@ -223,8 +247,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// Set the filter type and cutoff frequency
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.filter(FilterType::LowPass, 2000.0))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.filter(FilterType::LowPass, 2000.0))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn filter(mut self, filter_type: FilterType, cutoff: f32) -> Self {
         self.inner.get_track_mut().filter = Filter::new(filter_type, cutoff, 0.707);
@@ -237,8 +265,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// Typical range: 0.5 to 10.0
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.filter(FilterType::LowPass, 1000.0).resonance(4.0))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.filter(FilterType::LowPass, 1000.0).resonance(4.0))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn resonance(mut self, q: f32) -> Self {
         self.inner.get_track_mut().filter.resonance = q;
@@ -248,11 +280,15 @@ impl<'a> SynthesisBuilder<'a> {
     /// Set the filter envelope (modulates cutoff over time)
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s
-    ///     .filter(FilterType::LowPass, 800.0)
-    ///     .filter_env(FilterEnvelope::new(0.01, 0.2, 0.3, 0.5, 4000.0))
-    /// )
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s
+    ///         .filter(FilterType::LowPass, 800.0)
+    ///         .filter_env(FilterEnvelope::new(0.01, 0.2, 0.3, 0.5, 800.0, 4000.0, 1.0))
+    ///     )
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn filter_env(mut self, env: FilterEnvelope) -> Self {
         self.inner.filter_envelope = env;
@@ -278,8 +314,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// Set the amplitude envelope
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.envelope(Envelope::pad()))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.envelope(Envelope::pad()))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn envelope(mut self, env: Envelope) -> Self {
         self.inner.envelope = env;
@@ -303,8 +343,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// Configure FM synthesis parameters
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.fm(FMParams::new(2.0, 1.0)))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.fm(FMParams::new(2.0, 1.0)))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn fm(mut self, params: FMParams) -> Self {
         self.inner.fm_params = params;
@@ -333,8 +377,12 @@ impl<'a> SynthesisBuilder<'a> {
     /// * `amount` - How much the LFO affects the target (multiplier)
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s.lfo(ModTarget::Pitch, Waveform::Sine, 5.0, 0.5, 1.0))
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s.lfo(ModTarget::Pitch, Waveform::Sine, 5.0, 0.5, 1.0))
+    ///     .note(&[440.0], 0.5);
     /// ```
     pub fn lfo(mut self, target: ModTarget, waveform: Waveform, rate: f32, depth: f32, amount: f32) -> Self {
         self.inner.get_track_mut().modulation.push(ModRoute {
@@ -376,10 +424,13 @@ impl<'a> SynthesisBuilder<'a> {
     /// * `duration` - Output duration in seconds
     ///
     /// # Example
-    /// ```ignore
-    /// .synthesis(|s| s
-    ///     .granular("voice.wav", GranularParams::texture(), 5.0)
-    /// )
+    /// ```no_run
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
+    /// comp.track("synth")
+    ///     .synthesis(|s| s
+    ///         .granular("voice.wav", GranularParams::texture(), 5.0)
+    ///     );
     /// ```
     pub fn granular(mut self, sample_path: &str, params: GranularParams, duration: f32) -> Self {
         // Load the sample

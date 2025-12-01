@@ -141,10 +141,13 @@ macro_rules! play_sample {
 /// assert_eq!(pattern, "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-");
 /// ```
 ///
-/// ```ignore
+/// ```
+/// use tunes::prelude::*;
+/// let mut comp = Composition::new(Tempo::new(120.0));
 /// // In drum_grid, use &pat!(...) since .sound() expects a reference:
-/// .drum_grid(16, 0.125, |g| g
-///     .sound(DrumType::HiHatClosed, &pat!("x-", 16)))
+/// comp.track("drums")
+///     .drum_grid(16, 0.125, |g| g
+///         .sound(DrumType::HiHatClosed, &pat!("x-", 8)));
 /// ```
 #[macro_export]
 macro_rules! pat {

@@ -410,14 +410,16 @@ impl<'a> TrackBuilder<'a> {
     /// Settings configured here affect subsequent notes on this track.
     ///
     /// # Example
-    /// ```ignore
+    /// ```
+    /// use tunes::prelude::*;
+    /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("lead")
     ///     .synthesis(|s| s
-    ///         .oscillator(Waveform::Saw)
+    ///         .oscillator(Waveform::Sawtooth)
     ///         .filter(FilterType::LowPass, 2000.0)
     ///         .adsr(0.01, 0.1, 0.7, 0.3)
     ///     )
-    ///     .notes(&[C4, E4, G4], 0.5);
+    ///     .note(&[C4, E4, G4], 0.5);
     /// ```
     pub fn synthesis<F>(self, f: F) -> Self
     where

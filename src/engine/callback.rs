@@ -6,8 +6,9 @@ use super::active_sound::ActiveSound;
 use super::commands::{AudioCommand, SoundId};
 #[cfg(not(target_arch = "wasm32"))]
 use super::streaming::StreamingSound;
+use crate::synthesis::simd::{SimdWidth, SIMD};
 use crate::synthesis::spatial::{
-    ListenerConfig, SpatialParams, calculate_spatial_with_cone,
+    ListenerConfig, SpatialParams, Vec3, calculate_spatial_with_cone,
 };
 use crossbeam::epoch::{self, Atomic, Owned};
 use ringbuf::{traits::Split, HeapRb};
@@ -15,6 +16,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
+use wide::f32x8;
 
 /// Audio callback state (allocation-free mixing)
 ///
@@ -154,7 +156,6 @@ pub(crate) fn handle_command(
             listener_atomic.store(Owned::new(new_config), Ordering::Release);
         }
         AudioCommand::SetListenerForward { x, y, z } => {
-            use crate::synthesis::spatial::Vec3;
             let guard = epoch::pin();
             let current =
                 unsafe { listener_atomic.load(Ordering::Acquire, &guard).as_ref().unwrap() };
@@ -471,9 +472,6 @@ pub(crate) fn mix_sounds(
         // Use SIMD fast path when no fade is active (common case)
         if sound.fade_start_time.is_none() && channels == 2 {
             // SIMD fast path: no fade, stereo output
-            use crate::synthesis::simd::{SimdWidth, SIMD};
-            use wide::f32x8;
-
             let combined_volume = sound.volume * spatial_volume;
             let num_frames = temp_buffer.len() / 2;
 
@@ -642,10 +640,8 @@ pub(crate) fn mix_sounds(
         }
     }
 
-    // Clamp output to prevent distortion
-    for sample in output.iter_mut() {
-        *sample = sample.clamp(-1.0, 1.0);
-    }
+    // Clamp output to prevent distortion (SIMD accelerated)
+    SIMD.clamp_buffer(output, -1.0, 1.0);
 }
 
 #[cfg(not(target_arch = "wasm32"))]

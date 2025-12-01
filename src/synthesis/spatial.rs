@@ -748,9 +748,15 @@ fn batch_distance_squared_simd<V: SimdLanes>(
 /// appropriate SIMD implementation based on CPU capabilities.
 ///
 /// # Example
-/// ```ignore
-/// let mut distances_sq = vec![0.0; sources.len()];
+/// ```
+/// use tunes::synthesis::spatial::{batch_distance_squared, Vec3};
+/// let sources_x = vec![1.0, 2.0, 3.0];
+/// let sources_y = vec![0.0, 0.0, 0.0];
+/// let sources_z = vec![0.0, 0.0, 0.0];
+/// let listener_pos = Vec3::new(0.0, 0.0, 0.0);
+/// let mut distances_sq = vec![0.0; sources_x.len()];
 /// batch_distance_squared(&sources_x, &sources_y, &sources_z, &listener_pos, &mut distances_sq);
+/// assert_eq!(distances_sq, vec![1.0, 4.0, 9.0]);
 /// ```
 pub fn batch_distance_squared(
     sources_x: &[f32],
@@ -834,9 +840,15 @@ fn batch_attenuation_simd<V: SimdLanes>(
 /// Batch calculate inverse square attenuation for multiple distances
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// use tunes::synthesis::spatial::batch_attenuation_inverse_square;
+/// let distances = vec![1.0, 2.0, 4.0];
 /// let mut attenuations = vec![0.0; distances.len()];
 /// batch_attenuation_inverse_square(&distances, 1.0, &mut attenuations);
+/// // At ref_distance (1.0), attenuation is 1.0
+/// // At distance 2.0, attenuation is (1/2)^2 = 0.25
+/// // At distance 4.0, attenuation is (1/4)^2 = 0.0625
+/// assert_eq!(attenuations, vec![1.0, 0.25, 0.0625]);
 /// ```
 pub fn batch_attenuation_inverse_square(
     distances: &[f32],

@@ -6,6 +6,7 @@ use super::AudioEngine;
 use crate::composition::{Composition, Tempo};
 use crate::error::TunesError;
 use crate::synthesis::spatial::SpatialPosition;
+use crate::synthesis::Sample;
 
 use super::commands::SoundId;
 
@@ -550,8 +551,6 @@ impl<'a> SamplePlaybackBuilder<'a> {
 
     /// Internal method to execute playback
     pub(crate) fn execute_play(&self) -> crate::error::Result<SoundId> {
-        use crate::synthesis::Sample;
-
         // Check cache first, load if not present (lock-free with DashMap)
         let mut sample = if let Some(cached) = self.engine.sample_cache.get(&self.path) {
             cached.clone()
