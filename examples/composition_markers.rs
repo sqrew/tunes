@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     // === METHOD 2: Markers created by TrackBuilder ===
     println!("Building intro...");
     comp.track("structure")
-        .at_marker("intro")
+        .at_mark("intro")
         .wait(4.0)
         .mark("buildup")  // TrackBuilder can also create markers
         .wait(4.0);
@@ -27,41 +27,41 @@ fn main() -> anyhow::Result<()> {
 
     // Intro - just hi-hats
     comp.track("hats")
-        .at_marker("intro")
+        .at_mark("intro")
         .drum_grid(16, 0.125, |g| g
         .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-"));
 
     // Buildup - add kick
     comp.track("kick_buildup")
-        .at_marker("buildup")
+        .at_mark("buildup")
         .drum_grid(16, 0.125, |g| g
         .sound(DrumType::Kick, "x---x---x---x---"));
 
     // Verse - full drums
     comp.track("verse_drums")
-        .at_marker("verse")
+        .at_mark("verse")
         .drum_grid(16, 0.125, |g| g
         .sound(DrumType::Kick808, "x-x-x-x-x-x-x-x-")
         .sound(DrumType::Snare, "----x-------x---"));
 
     // Drop - everything hits together!
     comp.track("drop_kick")
-        .at_marker("drop")  // All start at exactly 16.0
+        .at_mark("drop")  // All start at exactly 16.0
         .drum_grid(16, 0.125, |g| g
         .sound(DrumType::Kick808, "x-x-x-x-x-x-x-x-"));
 
     comp.track("drop_bass")
-        .at_marker("drop")  // Synced to drop
+        .at_mark("drop")  // Synced to drop
         .notes(&[C1, C1, E2, C1, C1, G2, C1, C1], 0.5);
 
     comp.track("drop_lead")
-        .at_marker("drop")  // Also synced to drop
+        .at_mark("drop")  // Also synced to drop
         .notes(&[C5, E5, G5, C6], 0.25)
         .notes(&[C6, G5, E5, C5], 0.25);
 
     // Outro
     comp.track("outro_pad")
-        .at_marker("outro")
+        .at_mark("outro")
         .notes(&[C3, E3, G3], 4.0);
 
     // === Query markers ===

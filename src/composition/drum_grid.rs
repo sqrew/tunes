@@ -50,6 +50,12 @@ impl DrumPattern for str {
     }
 }
 
+impl DrumPattern for String {
+    fn to_steps(&self) -> Vec<usize> {
+        self.as_str().to_steps()
+    }
+}
+
 /// A step sequencer-style drum grid for easy drum pattern programming
 pub struct DrumGrid<'a> {
     track: &'a mut Track,

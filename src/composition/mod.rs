@@ -706,7 +706,7 @@ impl Composition {
     ///
     /// // Use markers to position tracks
     /// comp.track("bass")
-    ///     .at_marker("drop")
+    ///     .at_mark("drop")
     ///     .notes(&[C2, E2, G2], 0.5);
     /// ```
     pub fn mark_at(&mut self, name: &str, time: f32) {
@@ -822,11 +822,11 @@ mod marker_tests {
     }
 
     #[test]
-    fn test_track_at_marker_uses_composition_marker() {
+    fn test_track_at_mark_uses_composition_marker() {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.mark_at("drop", 16.0);
 
-        comp.track("bass").at_marker("drop").note(&[C2], 0.5);
+        comp.track("bass").at_mark("drop").note(&[C2], 0.5);
 
         let mixer = comp.into_mixer();
         let track = &mixer.tracks()[0];
@@ -843,9 +843,9 @@ mod marker_tests {
         let mut comp = Composition::new(Tempo::new(120.0));
         comp.mark_at("drop", 16.0);
 
-        comp.track("bass").at_marker("drop").note(&[C2], 0.5);
-        comp.track("lead").at_marker("drop").note(&[C5], 0.25);
-        comp.track("drums").at_marker("drop").note(&[100.0], 0.125);
+        comp.track("bass").at_mark("drop").note(&[C2], 0.5);
+        comp.track("lead").at_mark("drop").note(&[C5], 0.25);
+        comp.track("drums").at_mark("drop").note(&[100.0], 0.125);
 
         let mixer = comp.into_mixer();
 
@@ -877,36 +877,6 @@ mod marker_tests {
         assert_eq!(comp.marker_time("outro"), Some(48.0));
     }
 
-    #[test]
-    fn test_at_marker_alias_works_same_as_at_mark() {
-        let mut comp = Composition::new(Tempo::new(120.0));
-        comp.mark_at("drop", 16.0);
-
-        // Test .at_marker()
-        comp.track("track1").at_marker("drop").note(&[C4], 0.5);
-
-        // Test .at_mark()
-        comp.track("track2").at_mark("drop").note(&[E4], 0.5);
-
-        let mixer = comp.into_mixer();
-
-        // Both should start at the same time
-        let times: Vec<f32> = mixer
-            .tracks()
-            .iter()
-            .filter_map(|track| {
-                if let Some(crate::track::AudioEvent::Note(note)) = track.events.first() {
-                    Some(note.start_time)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        assert_eq!(times.len(), 2);
-        assert_eq!(times[0], 16.0);
-        assert_eq!(times[1], 16.0);
-    }
 }
 
 /// Context for where the TrackBuilder is building

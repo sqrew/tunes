@@ -130,6 +130,7 @@ macro_rules! play_sample {
 /// Repeat a pattern string N times for use in drum grids.
 ///
 /// This is a convenience macro to avoid typing out long repetitive patterns.
+/// Returns a `String`, so use `&pat!(...)` when passing to methods expecting `&str`.
 ///
 /// # Example
 /// ```
@@ -138,9 +139,12 @@ macro_rules! play_sample {
 /// // Instead of: "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-"
 /// let pattern = pat!("x-", 16);
 /// assert_eq!(pattern, "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-");
+/// ```
 ///
-/// // Works great in drum_grid:
-/// // .sound(DrumType::HiHatClosed, pat!("x-", 16))
+/// ```ignore
+/// // In drum_grid, use &pat!(...) since .sound() expects a reference:
+/// .drum_grid(16, 0.125, |g| g
+///     .sound(DrumType::HiHatClosed, &pat!("x-", 16)))
 /// ```
 #[macro_export]
 macro_rules! pat {
@@ -202,14 +206,27 @@ pub mod prelude {
     // LFO
     pub use crate::synthesis::{LFO, ModRoute, ModTarget};
 
-    // Sequences
+    // Sequences - utility functions
     pub use crate::sequences::{
         golden_ratio, golden_ratio_rhythm, golden_sections, harmonic_series,
+        normalize, map_to_scale, Scale,
     };
-    // Note: euclidean, fibonacci, and collatz are now modules - use:
-    //   sequences::euclidean::generate(pulses, steps) or sequences::euclidean::kick_four_floor()
-    //   sequences::fibonacci::generate(n) or sequences::fibonacci::classic()
-    //   sequences::collatz::generate(start, max) or sequences::collatz::dramatic()
+
+    // Sequences - generator modules (use as: euclidean::generate(), fibonacci::generate(), etc.)
+    pub use crate::sequences::{
+        // Mathematical
+        fibonacci, collatz, primes, arithmetic, geometric,
+        lucas, catalan, padovan, pell, triangular, pentagonal, powers_of_two,
+        // Rhythmic
+        euclidean, polyrhythm, clave, shepard_tone, phase_shift, additive_meter, circle_map,
+        // Generative
+        logistic_map, random_walk, bounded_walk, tent_map, sine_map,
+        henon_map, bakers_map, thue_morse, recaman, van_der_corput,
+        cellular_automaton, lsystem, markov, cantor_set,
+        lorenz_attractor, perlin_noise, rossler_attractor, clifford_attractor, ikeda_map,
+        // Musical
+        undertone_series, circle_of_fifths, pythagorean_tuning,
+    };
 
     // Automation
     pub use crate::synthesis::{Automation, Interpolation};

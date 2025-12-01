@@ -557,13 +557,13 @@ comp.track("hollow")
 
 ## Synthesis vs Samples: When to Use Each
 
-| Synthesis | Samples |
-|-----------|---------|
-| Small memory footprint | Realistic acoustic sounds |
-| Perfect at any pitch | Natural timbre and character |
-| Real-time parameter control | Quick to implement |
-| Infinite variation | No CPU overhead |
-| Retro/electronic aesthetic | Professional sound libraries |
+| Synthesis                   | Samples                      |
+|-----------------------------|------------------------------|
+| Small memory footprint      | Realistic acoustic sounds    |
+| Perfect at any pitch        | Natural timbre and character |
+| Real-time parameter control | Quick to implement           |
+| Infinite variation          | No CPU overhead              |
+| Retro/electronic aesthetic  | Professional sound libraries |
 
 **Best practice:** Use synthesis for synths, bass, and leads. Use samples for drums and acoustic instruments. Combine both for maximum flexibility.
 

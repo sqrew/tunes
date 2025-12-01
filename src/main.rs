@@ -27,6 +27,7 @@ use consts::*;
 use engine::AudioEngine;
 use instruments::Instrument;
 use synthesis::{BitCrusher, Chorus, Compressor, Distortion};
+use tunes::pat;
 use tunes::play_sample;
 
 fn main() -> Result<(), anyhow::Error> {
@@ -42,7 +43,7 @@ fn main() -> Result<(), anyhow::Error> {
             g.sound(DrumType::SubKick, "x-------x-------x-------x-x-----")
                 .sound(DrumType::Snare, "----x-------x-x-----x-------x---")
                 .ghost(DrumType::Snare, "-x-x--x--x-x---x-x-x--x--x-x---x", 0.25)
-                .sound(DrumType::HiHatClosed, "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-")
+                .sound(DrumType::HiHatClosed, &pat!("x-", 16))
         })
         .repeat(3);
 

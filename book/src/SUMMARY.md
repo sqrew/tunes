@@ -21,6 +21,7 @@
 # Core Concepts
 
 - [Architecture](./concepts/architecture.md)
+- [Scoped Builders](./concepts/scoped-builders.md)
 - [Audio Events](./concepts/events.md)
 - [Tempo and Rhythm](./concepts/tempo-rhythm.md)
 
@@ -39,10 +40,7 @@
 # Synthesis & Effects
 
 - [Synthesis Basics](./synthesis/basics.md)
-- [FM Synthesis](./synthesis/fm.md)
-- [Additive Synthesis](./synthesis/additive.md)
-- [Granular Synthesis](./synthesis/granular.md)
-- [Karplus-Strong Synthesis](./synthesis/karplus_strong.md)
+- [Advanced Synthesis](./synthesis/advanced_synthesis.md)
 - [Effects Chain](./synthesis/effects.md)
 - [Spectral Effects](./synthesis/spectral.md)
 
