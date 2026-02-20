@@ -170,8 +170,8 @@ impl Mixer {
             None,
         );
 
-        // Apply soft clipping to prevent harsh distortion
-        // tanh provides smooth saturation - maintains dynamics while preventing clipping
-        (master_left.tanh(), master_right.tanh())
+        // Hard clamp to [-1.0, 1.0] — matches process_block and export paths
+        // tanh was wrong here: tanh(1.0) ≈ 0.762 reduces amplitude even at 0 dBFS
+        (master_left.clamp(-1.0, 1.0), master_right.clamp(-1.0, 1.0))
     }
 }

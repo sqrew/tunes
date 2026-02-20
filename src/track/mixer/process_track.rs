@@ -256,6 +256,10 @@ impl Mixer {
             }
         }
 
+        // Pre-allocate drum voice stealing map once — reused across all samples via .clear()
+        // Avoids a HashMap::new() (heap allocation) on every sample frame
+        let mut latest_drum_starts: HashMap<DrumType, f32> = HashMap::with_capacity(8);
+
         // For each sample in the block
         for (i, sample_out) in buffer.iter_mut().enumerate() {
             let time = start_time + (i as f32 * time_delta);
@@ -264,7 +268,7 @@ impl Mixer {
 
             // Voice stealing: find the latest active drum for each type at this time
             // This prevents overlapping drums of the same type from stacking
-            let mut latest_drum_starts: HashMap<DrumType, f32> = HashMap::new();
+            latest_drum_starts.clear();
             for event in track.events[start_idx..end_idx].iter() {
                 if let AudioEvent::Drum(drum_event) = event {
                     let pitch_ratio = 2.0_f32.powf(drum_event.pitch_offset / 12.0);
