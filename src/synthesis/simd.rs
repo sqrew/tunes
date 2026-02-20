@@ -857,52 +857,24 @@ impl SimdDispatcher {
     /// Deinterleave stereo samples into separate left/right SIMD vectors using shuffle instructions.
     ///
     /// Automatically dispatches to the optimal SIMD width (f32x8, f32x4, or scalar).
-    /// Uses AVX2/SSE shuffle instructions when available for maximum performance.
+    /// De-interleaves stereo samples from LRLRLR... format into separate L and R slices.
+    ///
+    /// Processes exactly `left.len()` frames. True SIMD de-interleave (via permute/shuffle
+    /// intrinsics) is not available through the `SimdLanes` trait abstraction; this is a
+    /// scalar stride-2 gather. The compiler may auto-vectorize at -O2 but cannot guarantee
+    /// AVX2 gather for this access pattern.
     ///
     /// # Arguments
     /// * `interleaved` - Slice of interleaved stereo samples in LRLRLR... format
-    /// * `left` - Output slice for left channel (must have capacity for at least width samples)
-    /// * `right` - Output slice for right channel (must have capacity for at least width samples)
-    ///
-    /// # Returns
-    /// Number of frames processed (width of SIMD vector)
-    pub fn deinterleave_stereo(&self, interleaved: &[f32], left: &mut [f32], right: &mut [f32]) -> usize {
-        match self.width {
-            SimdWidth::X8 => self.deinterleave_stereo_impl::<f32x8>(interleaved, left, right),
-            SimdWidth::X4 => self.deinterleave_stereo_impl::<f32x4>(interleaved, left, right),
-            SimdWidth::Scalar => self.deinterleave_stereo_impl::<f32>(interleaved, left, right),
-        }
-    }
-
+    /// * `left` - Output slice for left channel
+    /// * `right` - Output slice for right channel (same length as `left`)
     #[inline(always)]
-    fn deinterleave_stereo_impl<V: SimdLanes>(
-        &self,
-        interleaved: &[f32],
-        left: &mut [f32],
-        right: &mut [f32],
-    ) -> usize {
-        let lanes = V::LANES;
-        let samples_needed = lanes * 2;
-
-        if interleaved.len() < samples_needed {
-            return 0;
+    pub fn deinterleave_stereo(&self, interleaved: &[f32], left: &mut [f32], right: &mut [f32]) {
+        let frames = left.len().min(right.len()).min(interleaved.len() / 2);
+        for i in 0..frames {
+            left[i] = interleaved[i * 2];
+            right[i] = interleaved[i * 2 + 1];
         }
-
-        // Deinterleave into temporary arrays
-        let mut left_arr = [0.0f32; 8];
-        let mut right_arr = [0.0f32; 8];
-        for i in 0..lanes {
-            left_arr[i] = interleaved[i * 2];
-            right_arr[i] = interleaved[i * 2 + 1];
-        }
-
-        // Load into SIMD and write out
-        let left_vec = V::from_array(&left_arr[..lanes]);
-        let right_vec = V::from_array(&right_arr[..lanes]);
-        left_vec.write_to_slice(&mut left[..lanes]);
-        right_vec.write_to_slice(&mut right[..lanes]);
-
-        lanes
     }
 
     /// Clamp all samples in buffer to a range using SIMD
@@ -934,57 +906,22 @@ impl SimdDispatcher {
         }
     }
 
-    /// Interleave separate left/right SIMD vectors into stereo samples using shuffle instructions.
+    /// Interleaves separate L and R slices into a stereo LRLRLR... output buffer.
     ///
-    /// Automatically dispatches to the optimal SIMD width (f32x8, f32x4, or scalar).
-    /// Uses AVX2/SSE shuffle instructions when available for maximum performance.
+    /// Processes exactly `left.len()` frames. Stride-2 scatter — LLVM can often
+    /// auto-vectorize this pattern with SSE/AVX unpack instructions at -O2.
     ///
     /// # Arguments
     /// * `left` - Left channel samples
-    /// * `right` - Right channel samples
-    /// * `output` - Output slice for interleaved stereo (must have capacity for width*2 samples)
-    ///
-    /// # Returns
-    /// Number of stereo frames written (width of SIMD vector)
-    pub fn interleave_stereo(&self, left: &[f32], right: &[f32], output: &mut [f32]) -> usize {
-        match self.width {
-            SimdWidth::X8 => self.interleave_stereo_impl::<f32x8>(left, right, output),
-            SimdWidth::X4 => self.interleave_stereo_impl::<f32x4>(left, right, output),
-            SimdWidth::Scalar => self.interleave_stereo_impl::<f32>(left, right, output),
-        }
-    }
-
+    /// * `right` - Right channel samples (same length as `left`)
+    /// * `output` - Output buffer for interleaved stereo (must hold at least `left.len() * 2` samples)
     #[inline(always)]
-    fn interleave_stereo_impl<V: SimdLanes>(
-        &self,
-        left: &[f32],
-        right: &[f32],
-        output: &mut [f32],
-    ) -> usize {
-        let lanes = V::LANES;
-        let samples_needed = lanes * 2;
-
-        if left.len() < lanes || right.len() < lanes || output.len() < samples_needed {
-            return 0;
+    pub fn interleave_stereo(&self, left: &[f32], right: &[f32], output: &mut [f32]) {
+        let frames = left.len().min(right.len()).min(output.len() / 2);
+        for i in 0..frames {
+            output[i * 2] = left[i];
+            output[i * 2 + 1] = right[i];
         }
-
-        // Load into SIMD
-        let left_vec = V::from_array(&left[..lanes]);
-        let right_vec = V::from_array(&right[..lanes]);
-
-        // Write to temporary arrays
-        let mut left_arr = [0.0f32; 8];
-        let mut right_arr = [0.0f32; 8];
-        left_vec.write_to_slice(&mut left_arr[..lanes]);
-        right_vec.write_to_slice(&mut right_arr[..lanes]);
-
-        // Interleave
-        for i in 0..lanes {
-            output[i * 2] = left_arr[i];
-            output[i * 2 + 1] = right_arr[i];
-        }
-
-        lanes
     }
 }
 
