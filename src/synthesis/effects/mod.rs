@@ -1342,6 +1342,36 @@ impl EffectChain {
         self.compute_effect_order();
         self
     }
+
+    pub fn with_formant_shifter(mut self, formant_shifter: FormantShifter) -> Self {
+        self.formant_shifter = Some(formant_shifter);
+        self.compute_effect_order();
+        self
+    }
+
+    pub fn with_spectral_harmonizer(mut self, spectral_harmonizer: SpectralHarmonizer) -> Self {
+        self.spectral_harmonizer = Some(spectral_harmonizer);
+        self.compute_effect_order();
+        self
+    }
+
+    pub fn with_spectral_resonator(mut self, spectral_resonator: SpectralResonator) -> Self {
+        self.spectral_resonator = Some(spectral_resonator);
+        self.compute_effect_order();
+        self
+    }
+
+    pub fn with_spectral_panner(mut self, spectral_panner: SpectralPanner) -> Self {
+        self.spectral_panner = Some(spectral_panner);
+        self.compute_effect_order();
+        self
+    }
+
+    pub fn with_convolution_reverb(mut self, convolution_reverb: ConvolutionReverb) -> Self {
+        self.convolution_reverb = Some(convolution_reverb);
+        self.compute_effect_order();
+        self
+    }
 }
 
 impl Default for EffectChain {
