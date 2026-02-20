@@ -60,7 +60,11 @@ type MonitorCallback = Arc<Mutex<MonitorCallbackFn>>;
 pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
     next_id: Arc<AtomicU64>,
+    #[allow(dead_code)] // Kept alive so the callback's Arc<Mutex<...>> clone remains valid
     callback_state: Arc<Mutex<AudioCallbackState>>,
+    /// Lock-free set of currently playing sound IDs.
+    /// Updated by the audio callback and read by is_playing() without touching the mutex.
+    playing_states: Arc<DashMap<SoundId, ()>>,
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
     listener_config: Arc<Atomic<ListenerConfig>>, // Lock-free reads via epoch-based reclamation
     #[allow(dead_code)] // Reserved for future spatial audio runtime control
@@ -158,6 +162,10 @@ impl AudioEngine {
             Arc::new(Mutex::new(AudioCallbackState::new()));
         let callback_state_for_stream = Arc::clone(&callback_state);
 
+        // Lock-free playing state — decouples is_playing() from the callback mutex
+        let playing_states: Arc<DashMap<SoundId, ()>> = Arc::new(DashMap::new());
+        let playing_states_for_stream = Arc::clone(&playing_states);
+
         // Lock-free shared state for spatial audio (epoch-based reclamation)
         let listener_config = Arc::new(Atomic::new(ListenerConfig::new()));
         let listener_config_for_stream = Arc::clone(&listener_config);
@@ -236,6 +244,7 @@ impl AudioEngine {
                             &listener_config_for_stream,
                             &spatial_params_for_stream,
                             sample_rate,
+                            &playing_states_for_stream,
                         );
                     }
 
@@ -250,6 +259,12 @@ impl AudioEngine {
                         sample_rate,
                         channels,
                     );
+
+                    // Remove finished sounds from the lock-free playing_states map
+                    // so is_playing() stays accurate without touching this mutex
+                    for &id in finished_sounds.iter() {
+                        playing_states_for_stream.remove(&id);
+                    }
 
                     // Trim trailing empty slots so the Vec doesn't grow unboundedly over a session
                     while matches!(active_sounds.last(), Some(None)) {
@@ -285,6 +300,7 @@ impl AudioEngine {
             command_tx,
             next_id: Arc::new(AtomicU64::new(1)),
             callback_state,
+            playing_states,
             listener_config,
             spatial_params,
             sample_rate,
@@ -399,6 +415,9 @@ impl AudioEngine {
         if self.enable_gpu_for_samples {
             mixer_clone.enable_gpu();
         }
+
+        // Register as playing before sending the command so is_playing() is accurate immediately
+        self.playing_states.insert(id, ());
 
         self.command_tx
             .send(AudioCommand::Play {
@@ -1004,10 +1023,11 @@ impl AudioEngine {
     }
 
     /// Check if a sound is still playing
+    ///
+    /// Lock-free: reads from a DashMap updated by the audio callback,
+    /// never contends with the callback mutex.
     pub fn is_playing(&self, id: SoundId) -> bool {
-        let state = self.callback_state.lock().unwrap();
-        let index = id as usize;
-        index < state.active_sounds.len() && state.active_sounds[index].is_some()
+        self.playing_states.contains_key(&id)
     }
 
     // ============================================================================

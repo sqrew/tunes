@@ -4,6 +4,7 @@
 
 use super::active_sound::ActiveSound;
 use super::commands::{AudioCommand, SoundId};
+use dashmap::DashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use super::streaming::StreamingSound;
 use crate::synthesis::simd::{SimdWidth, SIMD};
@@ -71,6 +72,7 @@ pub(crate) fn handle_command(
     listener_atomic: &Arc<Atomic<ListenerConfig>>,
     spatial_atomic: &Arc<Atomic<SpatialParams>>,
     sample_rate: f32,
+    playing_states: &DashMap<SoundId, ()>,
 ) {
     match cmd {
         AudioCommand::Play { id, mixer, looping } => {
@@ -87,6 +89,7 @@ pub(crate) fn handle_command(
             if index < active_sounds.len() {
                 active_sounds[index] = None;
             }
+            playing_states.remove(&id);
         }
         AudioCommand::SetVolume { id, volume } => {
             let index = id as usize;
@@ -193,6 +196,7 @@ pub(crate) fn handle_command(
         }
         AudioCommand::StopAll => {
             active_sounds.iter_mut().for_each(|slot| *slot = None); // Clear all slots
+            playing_states.clear();
         }
         AudioCommand::FadeOut { id, duration } => {
             let index = id as usize;

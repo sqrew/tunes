@@ -418,35 +418,35 @@ impl Sample {
                 let loop_length = loop_end - loop_start;
                 frame_index = loop_start + (frame_index - loop_start) % loop_length;
             }
-        } else if frame_index >= self.num_frames - 1 {
-            // No loop, near end - fall back to non-interpolated
+        } else if self.num_frames <= 1 || frame_index >= self.num_frames - 1 {
+            // No loop, at/near end, or empty sample — fall back to non-interpolated.
+            // Guard also prevents usize underflow when num_frames == 0.
             return self.sample_at(time, playback_rate);
         }
 
         match self.channels {
             1 => {
-                // Mono with interpolation - use unsafe for performance
-                unsafe {
-                    let sample1 = *self.data.get_unchecked(frame_index);
-                    let sample2 = *self.data.get_unchecked(frame_index + 1);
-                    let value = sample1 + (sample2 - sample1) * frac;
-                    (value, value)
-                }
+                // Mono with linear interpolation.
+                // Guard above ensures frame_index + 1 < num_frames.
+                // With well-formed data (data.len() == num_frames), bounds are valid
+                // and LLVM eliminates the checks in release builds.
+                let sample1 = self.data[frame_index];
+                let sample2 = self.data[frame_index + 1];
+                let value = sample1 + (sample2 - sample1) * frac;
+                (value, value)
             }
             2 => {
-                // Stereo with interpolation - use unsafe for performance
+                // Stereo with linear interpolation.
+                // Guard ensures frame_index + 1 < num_frames; with well-formed stereo
+                // data (data.len() == num_frames * 2), sample_index + 3 is in bounds.
                 let sample_index = frame_index * 2;
-                unsafe {
-                    let left1 = *self.data.get_unchecked(sample_index);
-                    let right1 = *self.data.get_unchecked(sample_index + 1);
-                    let left2 = *self.data.get_unchecked(sample_index + 2);
-                    let right2 = *self.data.get_unchecked(sample_index + 3);
-
-                    let left = left1 + (left2 - left1) * frac;
-                    let right = right1 + (right2 - right1) * frac;
-
-                    (left, right)
-                }
+                let left1 = self.data[sample_index];
+                let right1 = self.data[sample_index + 1];
+                let left2 = self.data[sample_index + 2];
+                let right2 = self.data[sample_index + 3];
+                let left = left1 + (left2 - left1) * frac;
+                let right = right1 + (right2 - right1) * frac;
+                (left, right)
             }
             _ => {
                 // Multi-channel with interpolation (use first two channels)
