@@ -385,24 +385,7 @@ pub(crate) fn mix_sounds(
             }
         }
 
-        // Only apply composition-time spatial audio if NO runtime position is set
-        let (listener_for_mixer, params_for_mixer) = if sound.spatial_position.is_some() {
-            (None, None) // Runtime position will handle spatial audio
-        } else {
-            (Some(listener), Some(spatial_params)) // Use composition-time position
-        };
-
-        // Process entire block at once
-        // Note: process_block fully overwrites the buffer, no need to clear it first
-        sound.mixer.process_block(
-            &mut temp_buffer[..required_size],
-            sample_rate,
-            sound.elapsed_time,
-            listener_for_mixer,
-            params_for_mixer,
-        );
-
-        // Apply pan tween if active (before calculating spatial audio)
+        // Apply pan tween if active
         if let Some(tween_start) = sound.pan_tween_start_time {
             let tween_elapsed = sound.elapsed_time - tween_start;
             if tween_elapsed >= sound.pan_tween_duration {
@@ -472,12 +455,45 @@ pub(crate) fn mix_sounds(
         let effective_playback_rate = sound.playback_rate * spatial_pitch;
         let base_block_duration = num_frames as f32 * time_delta;
 
-        // Mix temp buffer into output with volume/pan/fade applied
-        // Use SIMD fast path when no fade is active (common case)
-        if sound.fade_start_time.is_none() && channels == 2 {
-            // SIMD fast path: no fade, stereo output
+        // Compute source frames needed for resampling.
+        // rate > 1.0 (faster/higher pitch): render more source frames, compress into output.
+        // rate < 1.0 (slower/lower pitch):  render fewer source frames, stretch into output.
+        // At rate == 1.0 we skip resampling entirely and use the SIMD fast path.
+        let needs_resample = (effective_playback_rate - 1.0).abs() > 1e-4;
+        let source_frames = if needs_resample {
+            ((num_frames as f32 * effective_playback_rate).ceil() as usize).max(1)
+        } else {
+            num_frames
+        };
+        let source_size = source_frames * 2;
+
+        // Grow temp buffer if this sound needs more source frames than current capacity
+        if temp_buffer.len() < source_size {
+            temp_buffer.resize(source_size, 0.0);
+        }
+
+        // Only apply composition-time spatial audio if NO runtime position is set
+        let (listener_for_mixer, params_for_mixer) = if sound.spatial_position.is_some() {
+            (None, None) // Runtime position will handle spatial audio
+        } else {
+            (Some(listener), Some(spatial_params)) // Use composition-time position
+        };
+
+        // Render source_frames of source material into temp_buffer
+        sound.mixer.process_block(
+            &mut temp_buffer[..source_size],
+            sample_rate,
+            sound.elapsed_time,
+            listener_for_mixer,
+            params_for_mixer,
+        );
+
+        // Mix temp buffer into output with volume/pan/fade applied.
+        // SIMD fast path requires rate == 1.0 (no resampling) and no active fade.
+        if sound.fade_start_time.is_none() && channels == 2 && !needs_resample {
+            // SIMD fast path: no fade, stereo output, playback_rate == 1.0
             let combined_volume = sound.volume * spatial_volume;
-            let num_frames = temp_buffer.len() / 2;
+            let simd_num_frames = source_frames; // == num_frames when !needs_resample
 
             // Calculate pan multipliers once (constant-power, matches process_block.rs)
             let pan_angle = (spatial_pan + 1.0) * 0.25 * std::f32::consts::PI;
@@ -489,7 +505,7 @@ pub(crate) fn mix_sounds(
                     // Process 8 stereo frames (16 samples) at once
                     // But only if we have enough room in the output buffer
                     let max_frames_in_output = output.len() / 2;
-                    let safe_frames = num_frames.min(max_frames_in_output);
+                    let safe_frames = simd_num_frames.min(max_frames_in_output);
                     let chunks_of_16 = safe_frames / 8;
                     let remainder_start = chunks_of_16 * 8;
 
@@ -545,7 +561,7 @@ pub(crate) fn mix_sounds(
                     }
 
                     // Handle remainder frames with scalar code
-                    for frame_idx in remainder_start..num_frames {
+                    for frame_idx in remainder_start..simd_num_frames {
                         let temp_idx = frame_idx * 2;
                         let out_idx = frame_idx * 2;
 
@@ -560,7 +576,7 @@ pub(crate) fn mix_sounds(
                 }
                 _ => {
                     // Fallback: scalar path
-                    for frame_idx in 0..num_frames {
+                    for frame_idx in 0..simd_num_frames {
                         let temp_idx = frame_idx * 2;
                         let out_idx = frame_idx * 2;
 
@@ -575,8 +591,35 @@ pub(crate) fn mix_sounds(
                 }
             }
         } else {
-            // Scalar path: fade is active or mono output
-            for (frame_idx, temp_frame) in temp_buffer.chunks(2).enumerate() {
+            // Scalar path: fade active, mono output, or resampling needed.
+            // When needs_resample, reads source frames with linear interpolation.
+            for frame_idx in 0..num_frames {
+                let (left, right) = if needs_resample {
+                    // Fractional source position for this output frame
+                    let src_pos = frame_idx as f32 * effective_playback_rate;
+                    let src_a = src_pos as usize;
+                    let frac = src_pos - src_a as f32;
+
+                    let a_idx = src_a * 2;
+                    let b_idx = (src_a + 1) * 2;
+
+                    let (a_l, a_r) = if a_idx + 1 < source_size {
+                        (temp_buffer[a_idx], temp_buffer[a_idx + 1])
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    let (b_l, b_r) = if b_idx + 1 < source_size {
+                        (temp_buffer[b_idx], temp_buffer[b_idx + 1])
+                    } else {
+                        (a_l, a_r) // Clamp at end of source
+                    };
+
+                    (a_l + frac * (b_l - a_l), a_r + frac * (b_r - a_r))
+                } else {
+                    let idx = frame_idx * 2;
+                    (temp_buffer[idx], temp_buffer[idx + 1])
+                };
+
                 let frame_time =
                     sound.elapsed_time + (frame_idx as f32 * time_delta * effective_playback_rate);
 
@@ -600,37 +643,30 @@ pub(crate) fn mix_sounds(
                     sound.volume
                 };
 
-                let mut left = temp_frame[0];
-                let mut right = temp_frame[1];
-
-                // Apply volume
-                left *= effective_volume * spatial_volume;
-                right *= effective_volume * spatial_volume;
+                let mut out_left = left * effective_volume * spatial_volume;
+                let mut out_right = right * effective_volume * spatial_volume;
 
                 // Apply pan
                 if spatial_pan < 0.0 {
-                    right *= 1.0 + spatial_pan;
+                    out_right *= 1.0 + spatial_pan;
                 } else if spatial_pan > 0.0 {
-                    left *= 1.0 - spatial_pan;
+                    out_left *= 1.0 - spatial_pan;
                 }
 
                 // Mix into output
                 let out_idx = frame_idx * channels;
-                if out_idx + 1 < output.len() {
+                if out_idx < output.len() {
                     if channels == 1 {
-                        output[out_idx] += (left + right) * 0.5;
-                    } else {
-                        output[out_idx] += left;
-                        output[out_idx + 1] += right;
+                        output[out_idx] += (out_left + out_right) * 0.5;
+                    } else if out_idx + 1 < output.len() {
+                        output[out_idx] += out_left;
+                        output[out_idx + 1] += out_right;
                     }
                 }
             }
         }
 
-        // Advance time with doppler-adjusted playback rate
-        // This ensures mixer renders samples at the correct pitch
-        // Note: block_duration already includes playback_rate, so we use
-        // base_block_duration here to avoid applying playback_rate twice
+        // Advance elapsed time by the amount of source material consumed this block
         sound.elapsed_time += base_block_duration * effective_playback_rate;
         sound.sample_clock =
             (sound.sample_clock + (num_frames as f32 * effective_playback_rate)) % sample_rate;
