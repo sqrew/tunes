@@ -1140,7 +1140,7 @@ impl Sample {
             let best_input_pos = if output_pos == 0 {
                 0 // Always start at the beginning
             } else {
-                self.find_best_grain_match(input_pos, grain_frames, search_frames)
+                self.find_best_grain_match(input_pos, grain_frames, search_frames, &output_data, output_pos)
             };
 
             // Extract and apply grain
@@ -1318,6 +1318,8 @@ impl Sample {
         target_pos: usize,
         grain_size: usize,
         search_window: usize,
+        prev_output: &[f32],
+        output_overlap_pos: usize,
     ) -> usize {
         let search_start = target_pos.saturating_sub(search_window);
         let search_end = (target_pos + search_window).min(self.num_frames - grain_size);
@@ -1337,8 +1339,7 @@ impl Sample {
                 break;
             }
 
-            // Cross-correlation score for this position
-            let score = self.compute_cross_correlation(pos, overlap_size);
+            let score = self.compute_cross_correlation(pos, prev_output, output_overlap_pos, overlap_size);
 
             if score > best_score {
                 best_score = score;
@@ -1349,25 +1350,51 @@ impl Sample {
         best_pos
     }
 
-    /// Compute cross-correlation score for a grain position
+    /// Compute normalized cross-correlation between a candidate grain and the previous output.
     ///
-    /// Higher scores indicate better waveform similarity (less discontinuity)
-    fn compute_cross_correlation(&self, pos: usize, window_size: usize) -> f32 {
-        let mut correlation = 0.0f32;
-        let end = (pos + window_size).min(self.num_frames);
+    /// Compares `window_size` frames starting at `candidate_pos` in the source audio
+    /// against `window_size` frames starting at `ref_frame_start` in `reference` (the
+    /// output buffer). Returns the normalized cross-correlation coefficient in [-1, 1];
+    /// higher values indicate better waveform continuity at the grain boundary.
+    fn compute_cross_correlation(
+        &self,
+        candidate_pos: usize,
+        reference: &[f32],
+        ref_frame_start: usize,
+        window_size: usize,
+    ) -> f32 {
+        let channels = self.channels as usize;
+        let mut dot = 0.0f32;
+        let mut ref_energy = 0.0f32;
+        let mut cand_energy = 0.0f32;
 
-        for i in pos..end {
-            for ch in 0..self.channels as usize {
-                let idx = i * self.channels as usize + ch;
-                if let Some(&sample) = self.data.get(idx) {
-                    // Simple energy-based correlation
-                    // (in full WSOLA this would compare with previous grain)
-                    correlation += sample * sample;
+        for i in 0..window_size {
+            let cand_frame = candidate_pos + i;
+            let ref_frame = ref_frame_start + i;
+
+            if cand_frame >= self.num_frames {
+                break;
+            }
+
+            for ch in 0..channels {
+                let cand_idx = cand_frame * channels + ch;
+                let ref_idx = ref_frame * channels + ch;
+
+                if let (Some(&c), Some(&r)) = (self.data.get(cand_idx), reference.get(ref_idx)) {
+                    dot += c * r;
+                    ref_energy += r * r;
+                    cand_energy += c * c;
                 }
             }
         }
 
-        correlation
+        // Normalized cross-correlation coefficient
+        let denom = (ref_energy * cand_energy).sqrt();
+        if denom > 1e-10 {
+            dot / denom
+        } else {
+            0.0
+        }
     }
 
     /// Generate a Hann window of specified size

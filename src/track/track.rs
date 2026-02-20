@@ -47,6 +47,9 @@ pub struct Track {
 
     // Flag to track if events are sorted by start_time
     pub(super) events_sorted: bool,
+
+    /// Pre-allocated scratch buffer for block audio processing (reused each callback)
+    pub(crate) scratch_buffer: Vec<f32>,
 }
 
 impl Track {
@@ -73,6 +76,7 @@ impl Track {
             cached_start_time: None,
             cached_end_time: None,
             events_sorted: true, // Empty list is sorted
+            scratch_buffer: Vec::new(),
         }
     }
 

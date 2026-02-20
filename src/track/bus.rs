@@ -81,6 +81,9 @@ pub struct Bus {
 
     /// Whether this bus is soloed
     pub soloed: bool,
+
+    /// Pre-allocated scratch buffer for block audio processing (reused each callback)
+    pub(crate) scratch_buffer: Vec<f32>,
 }
 
 impl Bus {
@@ -99,6 +102,7 @@ impl Bus {
             pan: 0.0,
             muted: false,
             soloed: false,
+            scratch_buffer: Vec::new(),
         }
     }
 

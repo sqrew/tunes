@@ -370,7 +370,6 @@ pub(crate) fn mix_sounds(
 
         // Check if sound will finish during this block
         let time_delta = 1.0 / sample_rate;
-        let block_duration = num_frames as f32 * time_delta * sound.playback_rate;
 
         if sound.elapsed_time >= duration {
             if sound.looping {

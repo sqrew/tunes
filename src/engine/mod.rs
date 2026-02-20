@@ -251,6 +251,11 @@ impl AudioEngine {
                         channels,
                     );
 
+                    // Trim trailing empty slots so the Vec doesn't grow unboundedly over a session
+                    while matches!(active_sounds.last(), Some(None)) {
+                        active_sounds.pop();
+                    }
+
                     // Mix streaming sounds into the output buffer
                     #[cfg(not(target_arch = "wasm32"))]
                     mix_streaming_sounds(data, streaming_sounds, finished_streams, channels);
