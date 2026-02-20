@@ -53,15 +53,6 @@ impl GpuDevice {
             let info = adapter.get_info();
             let gpu_type = Self::classify_gpu_type(&info);
 
-            println!("🎮 GPU Device: {} ({:?})", info.name, info.backend);
-            println!("   Driver: {} / {}", info.driver, info.driver_info);
-            println!("   Type: {:?}", gpu_type);
-
-            // Warn on integrated GPUs
-            if gpu_type == GpuType::Integrated {
-                println!("   ⚠️  Integrated GPU detected - may be slower than CPU synthesis");
-                println!("   💡 Tip: GPU acceleration works best with discrete graphics cards");
-            }
 
             // Request device and queue
             let (device, queue) = adapter

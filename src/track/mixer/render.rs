@@ -24,8 +24,6 @@ impl Mixer {
             None => return,
         };
 
-        println!("🔄 Pre-rendering unique notes...");
-
         // Collect all unique notes from all tracks
         let mut unique_notes: HashMap<CacheKey, NoteEvent> = HashMap::new();
 

@@ -157,10 +157,6 @@ impl LiveInput {
         stream.play()?;
         self.stream = Some(stream);
 
-        println!(
-            "🎙️  Recording at {} Hz, {} channel(s)",
-            self.sample_rate, self.channels
-        );
 
         Ok(())
     }
@@ -191,7 +187,6 @@ impl LiveInput {
             }
         }
 
-        println!("✅ Recording stopped");
 
         Ok(())
     }
