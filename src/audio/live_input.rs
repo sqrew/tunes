@@ -1,6 +1,6 @@
 //! Live audio input recording
 
-use anyhow::{Context, Result};
+use crate::error::{Result, TunesError};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound::{WavSpec, WavWriter};
 use std::path::Path;
@@ -43,12 +43,12 @@ impl LiveInput {
         let host = cpal::default_host();
         let device = host
             .default_input_device()
-            .context("No input device available")?;
+            .ok_or_else(|| TunesError::AudioEngineError("No input device available".to_string()))?;
 
         // Get default input config
         let config = device
             .default_input_config()
-            .context("Failed to get default input config")?;
+            .map_err(|e| TunesError::AudioEngineError(format!("Failed to get default input config: {}", e)))?;
 
         Ok(Self {
             stream: None,
@@ -72,7 +72,7 @@ impl LiveInput {
     /// - Already recording (call `stop()` first)
     pub fn start_recording(&mut self, path: impl AsRef<Path>) -> Result<()> {
         if self.stream.is_some() {
-            anyhow::bail!("Already recording. Call stop() first.");
+            return Err(TunesError::AudioEngineError("Already recording. Call stop() first.".to_string()));
         }
 
         // Create WAV writer
@@ -84,7 +84,7 @@ impl LiveInput {
         };
 
         let writer = WavWriter::create(path.as_ref(), spec)
-            .context("Failed to create WAV file")?;
+            .map_err(|e| TunesError::WavWriteError(e.to_string()))?;
         let writer = Arc::new(Mutex::new(writer));
         self.writer = Some(Arc::clone(&writer));
 
@@ -92,11 +92,11 @@ impl LiveInput {
         let host = cpal::default_host();
         let device = host
             .default_input_device()
-            .context("No input device available")?;
+            .ok_or_else(|| TunesError::AudioEngineError("No input device available".to_string()))?;
 
         let config = device
             .default_input_config()
-            .context("Failed to get default input config")?;
+            .map_err(|e| TunesError::AudioEngineError(format!("Failed to get default input config: {}", e)))?;
 
         // Build input stream
         let err_fn = |err| eprintln!("Audio stream error: {}", err);
@@ -151,7 +151,7 @@ impl LiveInput {
                     None,
                 )?
             }
-            _ => anyhow::bail!("Unsupported sample format"),
+            _ => return Err(TunesError::AudioEngineError("Unsupported sample format".to_string())),
         };
 
         stream.play()?;
@@ -180,7 +180,7 @@ impl LiveInput {
             match Arc::try_unwrap(writer) {
                 Ok(mutex) => {
                     let writer = mutex.into_inner().unwrap();
-                    writer.finalize().context("Failed to finalize WAV file")?;
+                    writer.finalize().map_err(|e| TunesError::WavWriteError(e.to_string()))?;
                 }
                 Err(arc) => {
                     // Still shared - just lock and finalize

@@ -3,7 +3,7 @@
 use super::device::GpuDevice;
 use crate::synthesis::waveform::Waveform;
 use crate::track::NoteEvent;
-use anyhow::{Context, Result};
+use crate::error::{Result, TunesError};
 use wgpu::util::DeviceExt;
 
 /// GPU synthesizer for accelerated audio generation
@@ -223,8 +223,8 @@ impl GpuSynthesizer {
 
         // Wait for mapping
         pollster::block_on(async { receiver.receive().await })
-            .context("Failed to map buffer")?
-            .context("Buffer mapping failed")?;
+            .ok_or_else(|| TunesError::AudioEngineError("Failed to map buffer".to_string()))?
+            .map_err(|e| TunesError::AudioEngineError(format!("Buffer mapping failed: {}", e)))?;
 
         // Copy data to Vec
         let data = buffer_slice.get_mapped_range();

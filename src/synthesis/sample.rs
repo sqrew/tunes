@@ -559,6 +559,12 @@ impl Sample {
         sample_duration: f32,
         volume: f32,
     ) -> usize {
+        // Empty or single-frame sample: nothing to interpolate, and num_frames - 1
+        // would underflow to usize::MAX making the per-element bounds check always false.
+        if self.num_frames <= 1 {
+            return 0;
+        }
+
         const MAX_LANES: usize = 8;
         let lanes = V::LANES;
         let num_chunks = buffer.len() / lanes;

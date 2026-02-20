@@ -4,7 +4,7 @@
 //! Provides forward and inverse FFT for sizes 256-4096 (powers of 2).
 
 use super::device::GpuDevice;
-use anyhow::{Context, Result};
+use crate::error::{Result, TunesError};
 use rustfft::num_complex::Complex;
 use std::f32::consts::PI;
 use std::sync::Arc;
@@ -53,11 +53,11 @@ impl GpuFft {
     pub fn new(device: Arc<GpuDevice>, fft_size: usize) -> Result<Self> {
         // Validate FFT size
         if !fft_size.is_power_of_two() {
-            anyhow::bail!("FFT size must be power of 2, got {}", fft_size);
+            return Err(TunesError::AudioEngineError(format!("FFT size must be power of 2, got {}", fft_size)));
         }
 
         if !(8..=4096).contains(&fft_size) {
-            anyhow::bail!("FFT size must be between 8 and 4096, got {}", fft_size);
+            return Err(TunesError::AudioEngineError(format!("FFT size must be between 8 and 4096, got {}", fft_size)));
         }
 
         let log2_size = (fft_size as f32).log2() as u32;
@@ -338,11 +338,11 @@ impl GpuFft {
     /// Execute FFT (forward or inverse)
     fn execute_fft(&mut self, data: &mut [Complex<f32>], inverse: bool) -> Result<()> {
         if data.len() != self.fft_size {
-            anyhow::bail!(
+            return Err(TunesError::AudioEngineError(format!(
                 "Data length {} doesn't match FFT size {}",
                 data.len(),
                 self.fft_size
-            );
+            )));
         }
 
         // Convert Complex<f32> to interleaved f32 [re0, im0, re1, im1, ...]
@@ -482,8 +482,8 @@ impl GpuFft {
 
         self.device.device.poll(wgpu::Maintain::Wait);
         pollster::block_on(receiver.receive())
-            .context("Failed to receive buffer mapping result")?
-            .context("Buffer mapping failed")?;
+            .ok_or_else(|| TunesError::AudioEngineError("Failed to receive buffer mapping result".to_string()))?
+            .map_err(|e| TunesError::AudioEngineError(format!("Buffer mapping failed: {}", e)))?;
 
         {
             let data_view = buffer_slice.get_mapped_range();

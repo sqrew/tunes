@@ -1,7 +1,7 @@
 //! GPU-accelerated convolution reverb using compute shaders
 
 use super::device::GpuDevice;
-use anyhow::{Context, Result};
+use crate::error::{Result, TunesError};
 use rustfft::num_complex::Complex;
 use wgpu::util::DeviceExt;
 
@@ -413,9 +413,9 @@ impl GpuConvolution {
             receiver
                 .receive()
                 .await
-                .context("Failed to map buffer")?
-                .context("Buffer mapping failed")?;
-            Ok::<(), anyhow::Error>(())
+                .ok_or_else(|| TunesError::AudioEngineError("Failed to map buffer".to_string()))?
+                .map_err(|e| TunesError::AudioEngineError(format!("Buffer mapping failed: {}", e)))?;
+            Ok::<(), TunesError>(())
         })?;
 
         // Read data
@@ -444,9 +444,9 @@ impl GpuConvolution {
             receiver
                 .receive()
                 .await
-                .context("Failed to map buffer")?
-                .context("Buffer mapping failed")?;
-            Ok::<(), anyhow::Error>(())
+                .ok_or_else(|| TunesError::AudioEngineError("Failed to map buffer".to_string()))?
+                .map_err(|e| TunesError::AudioEngineError(format!("Buffer mapping failed: {}", e)))?;
+            Ok::<(), TunesError>(())
         })?;
 
         // Read data

@@ -524,6 +524,9 @@ impl AudioEngine {
     pub fn play_looping(&self, mixer: &Mixer) -> Result<SoundId> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
 
+        // Register in playing_states so is_playing() returns true immediately
+        self.playing_states.insert(id, ());
+
         // Clone mixer and automatically enable GPU if engine was created with GPU support
         #[cfg(feature = "gpu")]
         let mut mixer_clone = mixer.clone();

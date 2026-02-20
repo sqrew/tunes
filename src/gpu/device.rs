@@ -1,5 +1,5 @@
 //! GPU device initialization and management
-use anyhow::{Context, Result};
+use crate::error::{Result, TunesError};
 use std::sync::Arc;
 
 /// GPU device state (shared across threads)
@@ -47,7 +47,7 @@ impl GpuDevice {
                     force_fallback_adapter: false,
                 })
                 .await
-                .context("Failed to find a suitable GPU adapter")?;
+                .ok_or_else(|| TunesError::AudioEngineError("Failed to find a suitable GPU adapter".to_string()))?;
 
             // Print GPU info
             let info = adapter.get_info();
@@ -75,7 +75,7 @@ impl GpuDevice {
                     None,
                 )
                 .await
-                .context("Failed to create GPU device")?;
+                .map_err(|e| TunesError::AudioEngineError(format!("Failed to create GPU device: {}", e)))?;
 
             Ok(Self {
                 device: Arc::new(device),
