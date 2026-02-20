@@ -694,17 +694,20 @@ impl Sample {
             // Apply volume
             let result = interpolated.mul(V::splat(volume));
 
-            // Write output
+            // Accumulate output (must add, not overwrite — multiple sample events may overlap)
             let chunk_start = chunk_idx * lanes;
             if valid_samples == lanes {
-                // Fast path: write full SIMD vector
+                // Fast path: accumulate full SIMD vector
                 let chunk = &mut buffer[chunk_start..chunk_start + lanes];
-                result.write_to_slice(chunk);
+                let existing = V::from_array(chunk);
+                existing.add(result).write_to_slice(chunk);
             } else {
-                // Partial chunk: extract and write only valid samples
+                // Partial chunk: accumulate only valid samples
                 let mut temp = [0.0f32; MAX_LANES];
                 result.write_to_slice(&mut temp[..lanes]);
-                buffer[chunk_start..chunk_start + valid_samples].copy_from_slice(&temp[..valid_samples]);
+                for i in 0..valid_samples {
+                    buffer[chunk_start + i] += temp[i];
+                }
             }
 
             samples_written += valid_samples;
@@ -723,7 +726,7 @@ impl Sample {
             }
 
             let (left, right) = self.sample_at_interpolated(time_offset, playback_rate);
-            *sample = (left + right) * 0.5 * volume;
+            *sample += (left + right) * 0.5 * volume;
             samples_written += 1;
             time_offset += time_delta;
         }

@@ -479,12 +479,10 @@ pub(crate) fn mix_sounds(
             let combined_volume = sound.volume * spatial_volume;
             let num_frames = temp_buffer.len() / 2;
 
-            // Calculate pan multipliers once
-            let (left_pan, right_pan) = if spatial_pan < 0.0 {
-                (1.0, 1.0 + spatial_pan)
-            } else {
-                (1.0 - spatial_pan, 1.0)
-            };
+            // Calculate pan multipliers once (constant-power, matches process_block.rs)
+            let pan_angle = (spatial_pan + 1.0) * 0.25 * std::f32::consts::PI;
+            let left_pan = pan_angle.cos();
+            let right_pan = pan_angle.sin();
 
             match SIMD.simd_width() {
                 SimdWidth::X8 => {
@@ -702,10 +700,11 @@ pub(crate) fn mix_streaming_sounds(
                 left // Mono - use same sample for both channels
             };
 
-            // Apply volume and pan
+            // Apply volume and pan (constant-power, matches process_block.rs)
             let pan = stream.pan;
-            let left_gain = if pan <= 0.0 { 1.0 } else { 1.0 - pan } * stream.volume;
-            let right_gain = if pan >= 0.0 { 1.0 } else { 1.0 + pan } * stream.volume;
+            let pan_angle = (pan + 1.0) * 0.25 * std::f32::consts::PI;
+            let left_gain = pan_angle.cos() * stream.volume;
+            let right_gain = pan_angle.sin() * stream.volume;
 
             // Mix into output (additively)
             if i < output.len() {
