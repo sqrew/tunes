@@ -1458,7 +1458,7 @@ impl AudioEngine {
     /// # Note
     /// If you need a specific sample rate (e.g., for upsampling/downsampling),
     /// use `mixer.export_wav(path, sample_rate)` directly.
-    pub fn export_wav(&self, mixer: &mut Mixer, path: &str) -> anyhow::Result<()> {
+    pub fn export_wav(&self, mixer: &mut Mixer, path: &str) -> Result<()> {
         // Automatically enable GPU if engine was created with GPU support
         #[cfg(feature = "gpu")]
         if self.enable_gpu_for_samples {
@@ -1492,7 +1492,7 @@ impl AudioEngine {
     ///
     /// # Note
     /// If you need a specific sample rate, use `mixer.export_flac(path, sample_rate)` directly.
-    pub fn export_flac(&self, mixer: &mut Mixer, path: &str) -> anyhow::Result<()> {
+    pub fn export_flac(&self, mixer: &mut Mixer, path: &str) -> Result<()> {
         // Automatically enable GPU if engine was created with GPU support
         #[cfg(feature = "gpu")]
         if self.enable_gpu_for_samples {

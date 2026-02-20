@@ -3,6 +3,7 @@
 //! This module contains methods for exporting audio to WAV and FLAC files,
 //! including stems (individual track exports).
 
+use crate::error::{Result, TunesError};
 use super::mixer::Mixer;
 
 impl Mixer {
@@ -25,7 +26,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<()> {
     /// // Standalone rendering (no engine needed)
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
@@ -35,7 +36,7 @@ impl Mixer {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_wav(&mut self, path: &str, sample_rate: u32) -> anyhow::Result<()> {
+    pub fn export_wav(&mut self, path: &str, sample_rate: u32) -> Result<()> {
         let spec = hound::WavSpec {
             channels: 2,
             sample_rate,
@@ -125,7 +126,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<()> {
     /// // Standalone rendering (no engine needed)
     /// let mut comp = Composition::new(Tempo::new(120.0));
     /// comp.track("piano").note(&[440.0], 1.0);
@@ -135,7 +136,7 @@ impl Mixer {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_flac(&mut self, path: &str, sample_rate: u32) -> anyhow::Result<()> {
+    pub fn export_flac(&mut self, path: &str, sample_rate: u32) -> Result<()> {
         use flacenc::component::BitRepr;
         use flacenc::error::Verify;
         use flacenc::source::MemSource;
@@ -204,12 +205,12 @@ impl Mixer {
             &config,
             source,
             config.block_size,
-        ).map_err(|e| anyhow::anyhow!("FLAC encoding failed: {:?}", e))?;
+        ).map_err(|e| TunesError::Other(format!("FLAC encoding failed: {:?}", e)))?;
 
         // Write to file using ByteSink
         let mut sink = flacenc::bitsink::ByteSink::new();
         flac_stream.write(&mut sink)
-            .map_err(|e| anyhow::anyhow!("Failed to write FLAC stream: {:?}", e))?;
+            .map_err(|e| TunesError::Other(format!("Failed to write FLAC stream: {:?}", e)))?;
 
         std::fs::write(path, sink.as_slice())?;
 
@@ -234,7 +235,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<()> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// comp.track("drums").note(&[C4], 0.5);
@@ -250,7 +251,7 @@ impl Mixer {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn export_stems(&mut self, output_dir: &str, sample_rate: u32) -> anyhow::Result<()> {
+    pub fn export_stems(&mut self, output_dir: &str, sample_rate: u32) -> Result<()> {
         use std::fs;
 
         // Create output directory if it doesn't exist
@@ -296,7 +297,7 @@ impl Mixer {
     /// # Example
     /// ```no_run
     /// # use tunes::prelude::*;
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<()> {
     /// let mut comp = Composition::new(Tempo::new(120.0));
     ///
     /// comp.track("drums").note(&[C4], 0.5);
@@ -315,7 +316,7 @@ impl Mixer {
         &mut self,
         output_dir: &str,
         sample_rate: u32,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         // Export individual stems
         self.export_stems(output_dir, sample_rate)?;
 
@@ -337,7 +338,7 @@ impl Mixer {
         track_index: usize,
         path: &str,
         sample_rate: u32,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let spec = hound::WavSpec {
             channels: 2,
             sample_rate,

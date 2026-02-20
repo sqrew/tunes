@@ -154,6 +154,13 @@ impl From<cpal::PlayStreamError> for TunesError {
     }
 }
 
+// Conversion from hound WAV errors
+impl From<hound::Error> for TunesError {
+    fn from(err: hound::Error) -> Self {
+        TunesError::WavWriteError(err.to_string())
+    }
+}
+
 // Conversion from string errors (for convenience)
 impl From<String> for TunesError {
     fn from(err: String) -> Self {

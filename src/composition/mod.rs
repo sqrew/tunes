@@ -1,3 +1,4 @@
+use crate::error::Result;
 use crate::instruments::Instrument;
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::sample::Sample;
@@ -159,7 +160,7 @@ impl Composition {
     /// comp.load_sample("hihat", "samples/hihat.flac")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
-    pub fn load_sample(&mut self, name: &str, path: &str) -> anyhow::Result<()> {
+    pub fn load_sample(&mut self, name: &str, path: &str) -> Result<()> {
         let sample = Sample::from_file(path)?;
         self.samples.insert(name.to_string(), sample);
         Ok(())
@@ -441,8 +442,7 @@ impl Composition {
                 \n\nTo fix this:\n\
                 - Use separate tracks for sounds at different positions, OR\n\
                 - Use engine.set_sound_position() to move sounds in real-time\n\n\
-                Found positions:\n{}\n\
-                See: https://docs.claude.com/spatial-audio for more details.",
+                Found positions:\n{}",
                 track_name,
                 found_positions.len(),
                 found_positions
@@ -563,10 +563,8 @@ impl Composition {
         section_name: &str,
         path: &str,
         sample_rate: u32,
-    ) -> anyhow::Result<()> {
-        let mut mixer = self
-            .section_to_mixer(section_name)
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    ) -> Result<()> {
+        let mut mixer = self.section_to_mixer(section_name)?;
         mixer.export_wav(path, sample_rate)
     }
 
