@@ -347,19 +347,18 @@ impl Default for Wavetable {
 
 // Global wavetable instances (initialized once, used everywhere)
 // These are thread-safe because Wavetable is read-only after creation
-lazy_static::lazy_static! {
-    /// Global sine wavetable (used for Waveform::Sine)
-    pub static ref WAVETABLE: Wavetable = Wavetable::sine();
 
-    /// Global band-limited sawtooth wavetable (used for Waveform::Sawtooth)
-    pub static ref SAWTOOTH_WAVETABLE: Wavetable = Wavetable::saw_bandlimited();
+/// Global sine wavetable (used for Waveform::Sine)
+pub static WAVETABLE: std::sync::LazyLock<Wavetable> = std::sync::LazyLock::new(Wavetable::sine);
 
-    /// Global band-limited square wavetable (used for Waveform::Square)
-    pub static ref SQUARE_WAVETABLE: Wavetable = Wavetable::square_bandlimited();
+/// Global band-limited sawtooth wavetable (used for Waveform::Sawtooth)
+pub static SAWTOOTH_WAVETABLE: std::sync::LazyLock<Wavetable> = std::sync::LazyLock::new(Wavetable::saw_bandlimited);
 
-    /// Global band-limited triangle wavetable (used for Waveform::Triangle)
-    pub static ref TRIANGLE_WAVETABLE: Wavetable = Wavetable::triangle_bandlimited();
-}
+/// Global band-limited square wavetable (used for Waveform::Square)
+pub static SQUARE_WAVETABLE: std::sync::LazyLock<Wavetable> = std::sync::LazyLock::new(Wavetable::square_bandlimited);
+
+/// Global band-limited triangle wavetable (used for Waveform::Triangle)
+pub static TRIANGLE_WAVETABLE: std::sync::LazyLock<Wavetable> = std::sync::LazyLock::new(Wavetable::triangle_bandlimited);
 
 #[cfg(test)]
 mod tests {

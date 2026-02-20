@@ -66,7 +66,6 @@ web = ["cpal/wasm-bindgen"]
 cpal = "0.15"
 anyhow = "1.0"
 rand = "0.9.2"
-lazy_static = "1.4"
 midly = "0.5"
 notify = "6.1"
 inventory = "0.3"   # Distributed plugin registration for sample validation

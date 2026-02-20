@@ -9,7 +9,7 @@
 ///
 /// # Performance Model
 ///
-/// - CPU detection happens ONCE at startup via lazy_static
+/// - CPU detection happens ONCE at startup via LazyLock
 /// - Match/dispatch overhead: ~3 CPU cycles per call
 /// - Actual DSP math: ~500-1000 cycles per 8 samples
 /// - Overhead percentage: < 0.5% (negligible)
@@ -23,16 +23,14 @@
 /// let width = SIMD.width();
 /// println!("Using {}-wide SIMD", width);
 /// ```
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 use wide::{f32x4, f32x8};
 
-lazy_static! {
-    /// Global SIMD dispatcher - detects CPU capabilities once at startup.
-    ///
-    /// Use this instead of calling `SimdDispatcher::detect()` repeatedly.
-    /// Detection happens once, results are cached forever.
-    pub static ref SIMD: SimdDispatcher = SimdDispatcher::detect();
-}
+/// Global SIMD dispatcher - detects CPU capabilities once at startup.
+///
+/// Use this instead of calling `SimdDispatcher::detect()` repeatedly.
+/// Detection happens once, results are cached forever.
+pub static SIMD: LazyLock<SimdDispatcher> = LazyLock::new(SimdDispatcher::detect);
 
 /// Trait abstracting over SIMD lane widths for audio processing.
 ///
@@ -412,17 +410,15 @@ pub enum SimdWidth {
 
 /// Runtime dispatcher that detects CPU capabilities and selects optimal SIMD width.
 ///
-/// This struct is designed to be constructed once at startup (ideally via lazy_static)
+/// This struct is designed to be constructed once at startup (via `LazyLock`)
 /// and reused throughout the application lifetime.
 ///
 /// # Example
 /// ```rust
-/// use lazy_static::lazy_static;
+/// use std::sync::LazyLock;
 /// use tunes::synthesis::simd::SimdDispatcher;
 ///
-/// lazy_static! {
-///     static ref SIMD: SimdDispatcher = SimdDispatcher::detect();
-/// }
+/// static SIMD: LazyLock<SimdDispatcher> = LazyLock::new(SimdDispatcher::detect);
 ///
 /// // Later, in your DSP code:
 /// fn process_audio(buffer: &mut [f32]) {

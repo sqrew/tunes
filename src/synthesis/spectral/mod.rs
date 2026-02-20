@@ -23,7 +23,7 @@ use std::f32::consts::PI;
 use dashmap::DashMap;
 use std::sync::Arc;
 use wide::{f32x4, f32x8};
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
 // Module declarations
 mod blur;
@@ -72,30 +72,28 @@ type WindowCache = DashMap<(WindowType, usize), Arc<Vec<f32>>>;
 
 // Global cache for pre-computed window functions
 // Common sizes: 256, 512, 1024, 2048, 4096, 8192
-lazy_static! {
-    static ref WINDOW_CACHE: WindowCache = {
-        let cache = DashMap::new();
+static WINDOW_CACHE: LazyLock<WindowCache> = LazyLock::new(|| {
+    let cache = DashMap::new();
 
-        // Pre-compute common window sizes for each type
-        let common_sizes = [256, 512, 1024, 2048, 4096, 8192];
-        let window_types = [
-            WindowType::Rectangular,
-            WindowType::Hann,
-            WindowType::Hamming,
-            WindowType::Blackman,
-            WindowType::BlackmanHarris,
-        ];
+    // Pre-compute common window sizes for each type
+    let common_sizes = [256, 512, 1024, 2048, 4096, 8192];
+    let window_types = [
+        WindowType::Rectangular,
+        WindowType::Hann,
+        WindowType::Hamming,
+        WindowType::Blackman,
+        WindowType::BlackmanHarris,
+    ];
 
-        for &size in &common_sizes {
-            for &window_type in &window_types {
-                let coefficients = Window::generate_coefficients(window_type, size);
-                cache.insert((window_type, size), Arc::new(coefficients));
-            }
+    for &size in &common_sizes {
+        for &window_type in &window_types {
+            let coefficients = Window::generate_coefficients(window_type, size);
+            cache.insert((window_type, size), Arc::new(coefficients));
         }
+    }
 
-        cache
-    };
-}
+    cache
+});
 
 /// Window function types for spectral processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{Result, TunesError};
 use crate::instruments::Instrument;
 use crate::synthesis::envelope::Envelope;
 use crate::synthesis::sample::Sample;
@@ -352,10 +352,18 @@ impl Composition {
 
     /// Convert this composition into a Mixer for playback
     pub fn into_mixer(self) -> Mixer {
+        self.try_into_mixer()
+            .expect("Composition has tracks with conflicting spatial positions. Use try_into_mixer() to handle this as a recoverable error.")
+    }
+
+    /// Convert this composition into a Mixer for playback, returning an error instead of panicking.
+    ///
+    /// Prefer this over `into_mixer()` when spatial position conflicts are possible.
+    pub fn try_into_mixer(self) -> Result<Mixer> {
         let mut mixer = Mixer::new(self.tempo);
         for (name, mut track) in self.tracks {
             // Validate that all events in this track have the same spatial position (if any)
-            Self::validate_track_spatial_positions(&name, &track);
+            Self::validate_track_spatial_positions(&name, &track)?;
 
             track.name = Some(name.clone());
 
@@ -372,7 +380,7 @@ impl Composition {
         // Phase 6: Resolve sidechain sources from string names to integer IDs
         mixer.resolve_sidechains();
 
-        mixer
+        Ok(mixer)
     }
 
     /// Convert this composition into a mixer with cache and GPU acceleration enabled
@@ -400,12 +408,12 @@ impl Composition {
         mixer
     }
 
-    /// Validate that all events in a track have the same spatial position
+    /// Validate that all events in a track have the same spatial position.
     ///
-    /// Panics if a track has events with multiple different spatial positions.
+    /// Returns an error if a track has events with multiple different spatial positions.
     /// This is necessary because the current architecture applies spatial audio
     /// at the track level, not per-event. Multiple positions require separate tracks.
-    fn validate_track_spatial_positions(track_name: &str, track: &crate::track::Track) {
+    fn validate_track_spatial_positions(track_name: &str, track: &crate::track::Track) -> Result<()> {
         use crate::track::AudioEvent;
 
         let mut found_positions: Vec<crate::synthesis::spatial::SpatialPosition> = Vec::new();
@@ -435,7 +443,7 @@ impl Composition {
 
         // If we found more than one unique spatial position, that's an error
         if found_positions.len() > 1 {
-            panic!(
+            return Err(TunesError::InvalidAudioFormat(format!(
                 "Track '{}' has events with {} different spatial positions. \
                 The current architecture applies spatial audio at the track level, so all events \
                 in a track must have the same spatial position (or no position). \
@@ -453,8 +461,10 @@ impl Composition {
                     ))
                     .collect::<Vec<_>>()
                     .join("\n")
-            );
+            )));
         }
+
+        Ok(())
     }
 
     /// Convert a specific section into a Mixer for isolated playback or export

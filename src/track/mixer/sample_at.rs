@@ -138,9 +138,10 @@ impl Mixer {
                 sidechain_env,
             );
 
-            // Apply bus volume and pan
-            let pan_left = if bus.pan <= 0.0 { 1.0 } else { 1.0 - bus.pan };
-            let pan_right = if bus.pan >= 0.0 { 1.0 } else { 1.0 + bus.pan };
+            // Apply bus volume and pan (constant-power panning, matches process_block.rs)
+            let bus_pan_angle = (bus.pan + 1.0) * 0.25 * std::f32::consts::PI;
+            let pan_left = bus_pan_angle.cos();
+            let pan_right = bus_pan_angle.sin();
 
             let final_bus_left = effected_left * bus.volume * pan_left;
             let final_bus_right = effected_right * bus.volume * pan_right;
