@@ -467,6 +467,7 @@ pub(crate) fn mix_sounds(
 
         // Apply doppler pitch shift to playback rate
         let effective_playback_rate = sound.playback_rate * spatial_pitch;
+        let base_block_duration = num_frames as f32 * time_delta;
 
         // Mix temp buffer into output with volume/pan/fade applied
         // Use SIMD fast path when no fade is active (common case)
@@ -627,7 +628,9 @@ pub(crate) fn mix_sounds(
 
         // Advance time with doppler-adjusted playback rate
         // This ensures mixer renders samples at the correct pitch
-        sound.elapsed_time += block_duration * effective_playback_rate;
+        // Note: block_duration already includes playback_rate, so we use
+        // base_block_duration here to avoid applying playback_rate twice
+        sound.elapsed_time += base_block_duration * effective_playback_rate;
         sound.sample_clock =
             (sound.sample_clock + (num_frames as f32 * effective_playback_rate)) % sample_rate;
     }
