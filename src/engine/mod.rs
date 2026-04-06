@@ -179,7 +179,14 @@ impl AudioEngine {
 
         // Build stream configuration
         let mut stream_config: cpal::StreamConfig = config.clone().into();
-        stream_config.buffer_size = cpal::BufferSize::Fixed(buffer_size);
+        // On iOS, cpal's CoreAudio backend rejects BufferSize::Fixed entirely
+        // (returns StreamConfigNotSupported).  Use Default and let iOS pick
+        // the buffer size via AVAudioSession's preferredIOBufferDuration.
+        if cfg!(target_os = "ios") {
+            stream_config.buffer_size = cpal::BufferSize::Default;
+        } else {
+            stream_config.buffer_size = cpal::BufferSize::Fixed(buffer_size);
+        }
 
         // Error handler
         let err_fn = |err| eprintln!("Audio stream error: {}", err);
